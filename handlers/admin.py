@@ -8,12 +8,24 @@ import string
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 
+import asyncio
 from database.db import (
     is_admin,
     insert_activation_codes,
     add_admin_job,
     add_admin_announcement,
     get_job_fields,
+    get_user_by_id,
+    admin_stats_users_count,
+    admin_stats_applications_total,
+    admin_stats_applications_today,
+    admin_stats_applications_recent,
+    admin_stats_jobs_applied_count,
+    admin_stats_activation_codes_used,
+    admin_stats_activation_codes_unused,
+    admin_list_users,
+    admin_list_activation_codes_unused,
+    admin_list_activation_codes_used,
 )
 from states import States
 
@@ -22,9 +34,17 @@ _SPEC_PAGE_SIZE = 8
 
 # ─── Reply Keyboards للأدمن ───
 
+_ADMIN_BUTTONS = (
+    "🔑 توليد أكواد", "➕ كود يدوي", "💼 إضافة وظيفة", "📢 إضافة إعلان", "🚪 إغلاق لوحة الأدمن",
+    "📊 إحصائيات", "👥 المشتركين", "📄 التقديمات", "🔑 الأكواد",
+)
+
+
 def admin_reply_keyboard():
     return ReplyKeyboardMarkup(
         [
+            [KeyboardButton("📊 إحصائيات"), KeyboardButton("👥 المشتركين")],
+            [KeyboardButton("📄 التقديمات"), KeyboardButton("🔑 الأكواد")],
             [KeyboardButton("🔑 توليد أكواد"), KeyboardButton("➕ كود يدوي")],
             [KeyboardButton("💼 إضافة وظيفة"), KeyboardButton("📢 إضافة إعلان")],
             [KeyboardButton("🚪 إغلاق لوحة الأدمن")],
@@ -139,14 +159,95 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
         context.user_data["admin_awaiting"] = "ann_title"
         return States.ADMIN_AWAIT_ANN_TITLE
 
+    # ─── إحصائيات ومشتركين وأكواد ───
+    elif text == "📊 إحصائيات":
+        users = await asyncio.to_thread(admin_stats_users_count)
+        apps_total = await asyncio.to_thread(admin_stats_applications_total)
+        apps_today = await asyncio.to_thread(admin_stats_applications_today)
+        jobs_applied = await asyncio.to_thread(admin_stats_jobs_applied_count)
+        codes_used = await asyncio.to_thread(admin_stats_activation_codes_used)
+        codes_unused = await asyncio.to_thread(admin_stats_activation_codes_unused)
+        msg = (
+            "📊 **إحصائيات اللوحة**\n\n"
+            f"👥 المشتركون: **{users}**\n"
+            f"📄 إجمالي التقديمات: **{apps_total}**\n"
+            f"📅 تقديمات اليوم: **{apps_today}**\n"
+            f"💼 وظائف تم التقديم عليها: **{jobs_applied}**\n"
+            f"🔑 أكواد مستعملة: **{codes_used}**\n"
+            f"🔑 أكواد غير مستعملة: **{codes_unused}**"
+        )
+        await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=admin_reply_keyboard())
+        return ConversationHandler.END
+
+    elif text == "👥 المشتركين":
+        users_list = await asyncio.to_thread(admin_list_users, 40)
+        if not users_list:
+            await update.message.reply_text("لا يوجد مشتركون حتى الآن.", reply_markup=admin_reply_keyboard())
+            return ConversationHandler.END
+        lines = []
+        for i, u in enumerate(users_list[:40], 1):
+            name = (u.get("full_name") or "—")[:25]
+            phone = (u.get("phone") or "—")[:12]
+            ends = (u.get("subscription_ends_at") or "—")[:10]
+            lines.append(f"{i}. {name} | {phone} | ينتهي: {ends}")
+        msg = "👥 **المشتركون** (آخر 40)\n\n" + "\n".join(lines)
+        if len(msg) > 4000:
+            msg = msg[:3980] + "\n\n..."
+        await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=admin_reply_keyboard())
+        return ConversationHandler.END
+
+    elif text == "📄 التقديمات":
+        total = await asyncio.to_thread(admin_stats_applications_total)
+        today = await asyncio.to_thread(admin_stats_applications_today)
+        recent = await asyncio.to_thread(admin_stats_applications_recent, 15)
+        head = f"📄 **التقديمات**\n\nإجمالي: **{total}** | اليوم: **{today}**\n\n**آخر 15 تقديم:**\n"
+        if not recent:
+            await update.message.reply_text(head + "لا توجد تقديمات.", parse_mode="Markdown", reply_markup=admin_reply_keyboard())
+            return ConversationHandler.END
+        lines = []
+        for r in recent:
+            user_id = r.get("user_id")
+            user = await asyncio.to_thread(get_user_by_id, user_id) if user_id else None
+            name = (user.get("full_name") or "مجهول")[:15] if user else "—"
+            job = (r.get("job_title") or "—")[:30]
+            at = (r.get("applied_at") or "—")[:16]
+            lines.append(f"• {name} | {job} | {at}")
+        msg = head + "\n".join(lines)
+        if len(msg) > 4000:
+            msg = msg[:3980] + "\n..."
+        await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=admin_reply_keyboard())
+        return ConversationHandler.END
+
+    elif text == "🔑 الأكواد":
+        used = await asyncio.to_thread(admin_stats_activation_codes_used)
+        unused = await asyncio.to_thread(admin_stats_activation_codes_unused)
+        used_list = await asyncio.to_thread(admin_list_activation_codes_used, 10)
+        unused_list = await asyncio.to_thread(admin_list_activation_codes_unused, 15)
+        msg = (
+            "🔑 **الأكواد**\n\n"
+            f"مستعملة: **{used}** | غير مستعملة: **{unused}**\n\n"
+            "**عينة مستعملة (آخر 10):**\n"
+        )
+        for r in used_list[:10]:
+            code = (r.get("code") or "—")[:20]
+            used_at = (r.get("used_at") or "—")[:10]
+            msg += f"• `{code}` ← {used_at}\n"
+        msg += "\n**عينة غير مستعملة (15):**\n"
+        for r in unused_list[:15]:
+            code = (r.get("code") or "—")[:20]
+            msg += f"• `{code}`\n"
+        if len(msg) > 4000:
+            msg = msg[:3980] + "\n..."
+        await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=admin_reply_keyboard())
+        return ConversationHandler.END
+
 
 # ─── معالجات النصوص داخل الـ ConversationHandler ───
 
 async def admin_receive_codes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return ConversationHandler.END
-    # تجاهل أزرار الـ reply keyboard
-    if update.message.text.strip() in ("🔑 توليد أكواد", "➕ كود يدوي", "💼 إضافة وظيفة", "📢 إضافة إعلان", "🚪 إغلاق لوحة الأدمن"):
+    if update.message.text.strip() in _ADMIN_BUTTONS:
         return States.ADMIN_AWAIT_CODES
     try:
         parts = update.message.text.strip().split()
@@ -178,7 +279,7 @@ async def admin_receive_codes(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def admin_receive_single_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return ConversationHandler.END
-    if update.message.text.strip() in ("🔑 توليد أكواد", "➕ كود يدوي", "💼 إضافة وظيفة", "📢 إضافة إعلان", "🚪 إغلاق لوحة الأدمن"):
+    if update.message.text.strip() in _ADMIN_BUTTONS:
         return States.ADMIN_AWAIT_SINGLE_CODE
     text = update.message.text.strip()
     parts = text.split()
@@ -208,7 +309,7 @@ async def admin_receive_single_code(update: Update, context: ContextTypes.DEFAUL
 async def admin_receive_job_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return ConversationHandler.END
-    if update.message.text.strip() in ("🔑 توليد أكواد", "➕ كود يدوي", "💼 إضافة وظيفة", "📢 إضافة إعلان", "🚪 إغلاق لوحة الأدمن"):
+    if update.message.text.strip() in _ADMIN_BUTTONS:
         return States.ADMIN_AWAIT_JOB_TITLE
     context.user_data["admin_title"] = update.message.text.strip()
     await update.message.reply_text("أرسل **الوصف** (أو `-` لتخطي):", parse_mode="Markdown")
@@ -218,7 +319,7 @@ async def admin_receive_job_title(update: Update, context: ContextTypes.DEFAULT_
 async def admin_receive_job_desc(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return ConversationHandler.END
-    if update.message.text.strip() in ("🔑 توليد أكواد", "➕ كود يدوي", "💼 إضافة وظيفة", "📢 إضافة إعلان", "🚪 إغلاق لوحة الأدمن"):
+    if update.message.text.strip() in _ADMIN_BUTTONS:
         return States.ADMIN_AWAIT_JOB_DESC
     context.user_data["admin_desc"] = update.message.text.strip() if update.message.text.strip() != "-" else ""
     await update.message.reply_text("أرسل **اسم الشركة** (أو `-` لتخطي):", parse_mode="Markdown")
@@ -228,7 +329,7 @@ async def admin_receive_job_desc(update: Update, context: ContextTypes.DEFAULT_T
 async def admin_receive_job_company(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return ConversationHandler.END
-    if update.message.text.strip() in ("🔑 توليد أكواد", "➕ كود يدوي", "💼 إضافة وظيفة", "📢 إضافة إعلان", "🚪 إغلاق لوحة الأدمن"):
+    if update.message.text.strip() in _ADMIN_BUTTONS:
         return States.ADMIN_AWAIT_JOB_COMPANY
     context.user_data["admin_company"] = update.message.text.strip() if update.message.text.strip() != "-" else ""
     await update.message.reply_text(
@@ -241,7 +342,7 @@ async def admin_receive_job_company(update: Update, context: ContextTypes.DEFAUL
 async def admin_receive_job_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return ConversationHandler.END
-    if update.message.text.strip() in ("🔑 توليد أكواد", "➕ كود يدوي", "💼 إضافة وظيفة", "📢 إضافة إعلان", "🚪 إغلاق لوحة الأدمن"):
+    if update.message.text.strip() in _ADMIN_BUTTONS:
         return States.ADMIN_AWAIT_JOB_EMAIL
     email = update.message.text.strip()
     if not email or "@" not in email:
@@ -336,7 +437,7 @@ async def admin_spec_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_receive_ann_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return ConversationHandler.END
-    if update.message.text.strip() in ("🔑 توليد أكواد", "➕ كود يدوي", "💼 إضافة وظيفة", "📢 إضافة إعلان", "🚪 إغلاق لوحة الأدمن"):
+    if update.message.text.strip() in _ADMIN_BUTTONS:
         return States.ADMIN_AWAIT_ANN_TITLE
     context.user_data["admin_ann_title"] = update.message.text.strip() if update.message.text.strip() != "-" else ""
     await update.message.reply_text("أرسل **نص الإعلان**:", parse_mode="Markdown")
@@ -346,7 +447,7 @@ async def admin_receive_ann_title(update: Update, context: ContextTypes.DEFAULT_
 async def admin_receive_ann_body(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return ConversationHandler.END
-    if update.message.text.strip() in ("🔑 توليد أكواد", "➕ كود يدوي", "💼 إضافة وظيفة", "📢 إضافة إعلان", "🚪 إغلاق لوحة الأدمن"):
+    if update.message.text.strip() in _ADMIN_BUTTONS:
         return States.ADMIN_AWAIT_ANN_BODY
     context.user_data["admin_ann_body"] = update.message.text.strip()
     await update.message.reply_text("أرسل **صورة** للإعلان (أو اكتب `-` لتخطي):", parse_mode="Markdown")
@@ -373,7 +474,7 @@ async def admin_receive_ann_image(update: Update, context: ContextTypes.DEFAULT_
 async def admin_receive_ann_duration(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return ConversationHandler.END
-    if update.message.text.strip() in ("🔑 توليد أكواد", "➕ كود يدوي", "💼 إضافة وظيفة", "📢 إضافة إعلان", "🚪 إغلاق لوحة الأدمن"):
+    if update.message.text.strip() in _ADMIN_BUTTONS:
         return States.ADMIN_AWAIT_ANN_DURATION
     from datetime import datetime, timedelta
     raw = update.message.text.strip()
@@ -420,7 +521,7 @@ def setup_admin_handlers(application):
     application.add_handler(CommandHandler("admin", cmd_admin))
 
     # أزرار الأدمن Reply Keyboard بأولوية عالية
-    admin_buttons = ("🔑 توليد أكواد", "➕ كود يدوي", "💼 إضافة وظيفة", "📢 إضافة إعلان", "🚪 إغلاق لوحة الأدمن")
+    admin_buttons = _ADMIN_BUTTONS
     admin_pattern = "|".join(re.escape(b) for b in admin_buttons)
 
     conv_admin = ConversationHandler(

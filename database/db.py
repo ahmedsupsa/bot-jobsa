@@ -32,6 +32,15 @@ def _user_cache_set(telegram_id: int, user: dict | None) -> None:
 def invalidate_user_cache(telegram_id: int) -> None:
     _USER_CACHE.pop(telegram_id, None)
 
+
+def get_user_by_id(user_id: str) -> dict | None:
+    """جلب مستخدم بالـ UUID (للوحة الأدمن)."""
+    if _use_rest:
+        return _rest_select_one("users", id=user_id)
+    sb = get_supabase()
+    r = sb.table("users").select("*").eq("id", user_id).execute()
+    return r.data[0] if r.data else None
+
 # دعم مفاتيح sb_secret_ عبر REST (مكتبة supabase-py تقبل JWT فقط)
 try:
     from . import supabase_rest as rest
@@ -434,6 +443,90 @@ def is_admin(telegram_id: int) -> bool:
     sb = get_supabase()
     r = sb.table("admin_users").select("id").eq("telegram_id", telegram_id).execute()
     return bool(r.data and len(r.data) > 0)
+
+
+# ─── إحصائيات لوحة تحكم الأدمن ───
+
+def admin_stats_users_count() -> int:
+    if _use_rest:
+        return _rest_count("users")
+    r = get_supabase().table("users").select("*", count="exact", head=True).execute()
+    return getattr(r, "count", None) or 0
+
+
+def admin_stats_applications_total() -> int:
+    if _use_rest:
+        return _rest_count("applications")
+    r = get_supabase().table("applications").select("*", count="exact", head=True).execute()
+    return getattr(r, "count", None) or 0
+
+
+def admin_stats_applications_today() -> int:
+    now = datetime.utcnow()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start_iso = today_start.isoformat() + "Z"
+    tomorrow = today_start + timedelta(days=1)
+    tomorrow_iso = tomorrow.isoformat() + "Z"
+    if _use_rest:
+        rows = _rest_select_columns("applications", "id,applied_at", limit=2000)
+        return sum(1 for r in rows if (r.get("applied_at") or "") >= today_start_iso and (r.get("applied_at") or "") < tomorrow_iso)
+    r = get_supabase().table("applications").select("id", count="exact", head=True).gte("applied_at", today_start_iso).lt("applied_at", tomorrow_iso).execute()
+    return getattr(r, "count", None) or 0
+
+
+def admin_stats_applications_recent(limit: int = 15) -> list:
+    """آخر التقديمات: [{user_id, job_title, applied_at}, ...]"""
+    if _use_rest:
+        return _rest_select_columns("applications", "user_id,job_title,applied_at", order="applied_at.desc", limit=limit)
+    r = get_supabase().table("applications").select("user_id, job_title, applied_at").order("applied_at", desc=True).limit(limit).execute()
+    return r.data or []
+
+
+def admin_stats_jobs_applied_count() -> int:
+    """عدد الوظائف (المميزة) التي تم التقديم عليها (عدد job_id مختلف)."""
+    if _use_rest:
+        rows = _rest_select_columns("applications", "job_id", limit=5000)
+        return len(set(r["job_id"] for r in rows if r.get("job_id")))
+    r = get_supabase().table("applications").select("job_id").execute()
+    return len(set(x["job_id"] for x in (r.data or []) if x.get("job_id")))
+
+
+def admin_stats_activation_codes_used() -> int:
+    if _use_rest:
+        return _rest_count("activation_codes", used=True)
+    r = get_supabase().table("activation_codes").select("*", count="exact", head=True).eq("used", True).execute()
+    return getattr(r, "count", None) or 0
+
+
+def admin_stats_activation_codes_unused() -> int:
+    if _use_rest:
+        return _rest_count("activation_codes", used=False)
+    r = get_supabase().table("activation_codes").select("*", count="exact", head=True).eq("used", False).execute()
+    return getattr(r, "count", None) or 0
+
+
+def admin_list_users(limit: int = 50) -> list:
+    """قائمة المشتركين (للوحة الأدمن)."""
+    if _use_rest:
+        return _rest_select_all("users", order="created_at.desc", limit=limit)
+    r = get_supabase().table("users").select("*").order("created_at", desc=True).limit(limit).execute()
+    return r.data or []
+
+
+def admin_list_activation_codes_unused(limit: int = 30) -> list:
+    """أكواد غير مستخدمة (عينة)."""
+    if _use_rest:
+        return _rest_select_all("activation_codes", order="created_at.desc", limit=limit, used=False)
+    r = get_supabase().table("activation_codes").select("*").eq("used", False).order("created_at", desc=True).limit(limit).execute()
+    return r.data or []
+
+
+def admin_list_activation_codes_used(limit: int = 20) -> list:
+    """أكواد مستخدمة (آخرها)."""
+    if _use_rest:
+        return _rest_select_all("activation_codes", order="used_at.desc", limit=limit, used=True)
+    r = get_supabase().table("activation_codes").select("*").eq("used", True).order("used_at", desc=True).limit(limit).execute()
+    return r.data or []
 
 
 if _use_rest:
