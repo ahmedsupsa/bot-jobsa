@@ -5,6 +5,7 @@ from telegram.ext import ContextTypes
 from telegram.error import BadRequest
 
 from database.db import get_user_by_telegram, is_subscription_active, get_admin_announcements
+from handlers.settings import clear_email_flow_state
 from keyboards import (
     main_reply_keyboard,
     applications_reply_keyboard,
@@ -52,11 +53,19 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
         return
     text = update.message.text.strip()
 
-    # ──── رجوع ────
+    # ──── رجوع ──── (وإلغاء أي تدفق مثل ربط الإيميل)
     if text == "⬅️ الرئيسية":
+        if update.effective_user and update.effective_chat:
+            clear_email_flow_state(update.effective_user.id, update.effective_chat.id)
+        context.user_data.pop("awaiting", None)
+        context.user_data.pop("temp_email", None)
         await update.message.reply_text("القائمة الرئيسية:", reply_markup=main_reply_keyboard())
         return
     if text == "⬅️ حسابي":
+        if update.effective_user and update.effective_chat:
+            clear_email_flow_state(update.effective_user.id, update.effective_chat.id)
+        context.user_data.pop("awaiting", None)
+        context.user_data.pop("temp_email", None)
         await update.message.reply_text("👤 حسابي:", reply_markup=account_reply_keyboard())
         return
 

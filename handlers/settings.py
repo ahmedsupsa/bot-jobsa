@@ -18,6 +18,8 @@ from keyboards import (
     templates_menu_keyboard,
     template_options_keyboard,
     lang_menu_keyboard,
+    main_reply_keyboard,
+    account_reply_keyboard,
 )
 from states import States
 
@@ -67,23 +69,34 @@ async def cb_set_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _awaiting_by_key[(update.effective_user.id, update.effective_chat.id)] = "email"
 
 
-async def cancel_email_flow(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or not update.message.text:
+async def cancel_email_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, reply_text: str = "تم الإلغاء.", reply_markup=None):
+    if not update.message:
         return
     context.user_data.pop("temp_email", None)
     context.user_data.pop("awaiting", None)
     key = _email_flow_key(update)
     if key:
         _awaiting_by_key.pop(key, None)
-    await update.message.reply_text("تم الإلغاء.", reply_markup=settings_menu_keyboard())
+    await update.message.reply_text(reply_text, reply_markup=reply_markup or settings_menu_keyboard())
 
+
+# أزرار الرجوع من القائمة تُنهي ربط الإيميل ولا تُعتبر إيميلاً
+_EMAIL_CANCEL_MAIN = "⬅️ الرئيسية"
+_EMAIL_CANCEL_ACCOUNT = "⬅️ حسابي"
+_EMAIL_CANCEL_WORDS = ("الغاء", "رجوع", "إلغاء")
 
 async def receive_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return
     email = update.message.text.strip()
-    if email in ("الغاء", "رجوع", "إلغاء"):
+    if email in _EMAIL_CANCEL_WORDS:
         await cancel_email_flow(update, context)
+        return
+    if email == _EMAIL_CANCEL_MAIN:
+        await cancel_email_flow(update, context, "القائمة الرئيسية:", main_reply_keyboard())
+        return
+    if email == _EMAIL_CANCEL_ACCOUNT:
+        await cancel_email_flow(update, context, "👤 حسابي:", account_reply_keyboard())
         return
     if "@" not in email or "gmail" not in email.lower():
         await update.message.reply_text("يرجى إدخال إيميل Gmail صحيح.")
@@ -100,8 +113,14 @@ async def receive_app_password(update: Update, context: ContextTypes.DEFAULT_TYP
     if not update.message or not update.effective_user:
         return
     raw = (update.message.text or "").strip()
-    if raw in ("الغاء", "رجوع", "إلغاء"):
+    if raw in _EMAIL_CANCEL_WORDS:
         await cancel_email_flow(update, context)
+        return
+    if raw == _EMAIL_CANCEL_MAIN:
+        await cancel_email_flow(update, context, "القائمة الرئيسية:", main_reply_keyboard())
+        return
+    if raw == _EMAIL_CANCEL_ACCOUNT:
+        await cancel_email_flow(update, context, "👤 حسابي:", account_reply_keyboard())
         return
     password = raw
     user = await asyncio.to_thread(get_user_by_telegram, update.effective_user.id)
