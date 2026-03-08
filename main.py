@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import warnings
+from datetime import datetime, timezone, timedelta
 from telegram.ext import Application, ContextTypes
 from telegram.error import Conflict, BadRequest
 
@@ -42,6 +43,9 @@ async def auto_apply_job(context: ContextTypes.DEFAULT_TYPE) -> None:
         logger.info("✅ انتهت دورة التقديم التلقائي.")
     except Exception as e:
         logger.error("❌ خطأ في دورة التقديم التلقائي: %s", e)
+    # تخزين موعد الدورة القادمة لعرضه للمستخدم (رسالة مفاجأة)
+    now = datetime.now(timezone.utc)
+    context.bot_data["next_auto_apply_at"] = now + timedelta(seconds=1800)
 
 
 def main():
@@ -52,6 +56,8 @@ def main():
     # Scheduler: تقديم تلقائي كل 30 دقيقة
     job_queue = app.job_queue
     if job_queue:
+        # تعيين موعد الدورة القادمة (أول تشغيل بعد دقيقتين) لرسالة "سيتم التقديم خلال X دقيقة"
+        app.bot_data["next_auto_apply_at"] = datetime.now(timezone.utc) + timedelta(seconds=120)
         job_queue.run_repeating(
             auto_apply_job,
             interval=1800,   # كل 30 دقيقة

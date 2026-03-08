@@ -2,6 +2,7 @@
 import asyncio
 import tempfile
 import os
+from datetime import datetime, timezone
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -213,6 +214,21 @@ async def cb_job_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["awaiting_job_search"] = True
 
 
+def _next_auto_apply_message(context: ContextTypes.DEFAULT_TYPE) -> str:
+    """رسالة مفاجأة: متى ستكون دورة التقديم التلقائي القادمة."""
+    next_at = context.application.bot_data.get("next_auto_apply_at")
+    if not next_at:
+        return "🕐 سيتم التقديم التلقائي على الوظائف المطابقة تلقائياً كل 30 دقيقة."
+    now = datetime.now(timezone.utc)
+    if getattr(next_at, "tzinfo", None) is None:
+        next_at = next_at.replace(tzinfo=timezone.utc)
+    secs = (next_at - now).total_seconds()
+    mins = max(1, int(round(secs / 60)))
+    if mins <= 2:
+        return "🕐 سيتم التقديم التلقائي على الوظائف المطابقة خلال دقيقتين."
+    return f"🕐 مفاجأة: سيتم التقديم التلقائي على الوظائف المطابقة خلال حوالي {mins} دقيقة."
+
+
 async def cb_job_save_prefs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if not query:
@@ -222,6 +238,15 @@ async def cb_job_save_prefs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "✅ تم حفظ تفضيلات الوظائف بنجاح.",
         reply_markup=applications_menu_keyboard(),
     )
+    # رسالة مفاجأة: موعد التقديم التلقائي القادم
+    try:
+        msg = _next_auto_apply_message(context)
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=msg,
+        )
+    except Exception:
+        pass
     context.user_data.pop("job_prefs_user_id", None)
     context.user_data.pop("job_prefs_category", None)
     context.user_data.pop("job_prefs_page", None)
