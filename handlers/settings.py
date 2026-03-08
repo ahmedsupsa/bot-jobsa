@@ -1,0 +1,329 @@
+# -*- coding: utf-8 -*-
+import asyncio
+from telegram import Update
+from telegram.ext import ContextTypes, ConversationHandler, filters
+from telegram.error import BadRequest
+
+from database.db import (
+    get_user_by_telegram,
+    get_or_create_user_settings,
+    save_user_email_password,
+    save_user_template,
+    set_application_language,
+    is_subscription_active,
+)
+from keyboards import (
+    settings_menu_keyboard,
+    back_to_settings_keyboard,
+    templates_menu_keyboard,
+    template_options_keyboard,
+    lang_menu_keyboard,
+)
+from states import States
+
+# فلتر ربط الإيميل: المعالج يُستدعى فقط عندما المستخدم في خطوة الإيميل أو كلمة المرور
+# (الفلتر لا يحصل على context فنتتبع الحالة هنا ليتطابق مع user_data)
+_awaiting_by_key: dict[tuple[int, int], str] = {}  # (user_id, chat_id) -> "email" | "app_password"
+
+
+def _email_flow_key(update: Update) -> tuple[int, int] | None:
+    u = update.effective_user
+    c = update.effective_chat
+    if u and c:
+        return (u.id, c.id)
+    return None
+
+
+def clear_email_flow_state(user_id: int, chat_id: int) -> None:
+    """استدعاؤه عند الرجوع للإعدادات لمسح حالة ربط الإيميل."""
+    _awaiting_by_key.pop((user_id, chat_id), None)
+
+
+def _in_email_flow(context: ContextTypes.DEFAULT_TYPE) -> bool:
+    return context.user_data.get("awaiting") in ("email", "app_password")
+
+
+class _FilterAwaitingEmailFlow(filters.BaseFilter):
+    """فلتر: يمرّر فقط عندما المستخدم في خطوة ربط الإيميل أو كلمة مرور التطبيق."""
+    def filter(self, update: Update) -> bool:
+        key = _email_flow_key(update)
+        return key is not None and _awaiting_by_key.get(key) in ("email", "app_password")
+
+
+async def cb_set_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query or not update.effective_user or not update.effective_chat:
+        return
+    await query.answer()
+    try:
+        await query.edit_message_text(
+            "📧 ربط الإيميل\n\nأدخل إيميلك (Gmail فقط حالياً):\n\nأو اضغط «رجوع» للإلغاء.",
+            reply_markup=back_to_settings_keyboard(),
+        )
+    except BadRequest as e:
+        if "message is not modified" not in str(e).lower():
+            raise
+    context.user_data["awaiting"] = "email"
+    _awaiting_by_key[(update.effective_user.id, update.effective_chat.id)] = "email"
+
+
+async def cancel_email_flow(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text:
+        return
+    context.user_data.pop("temp_email", None)
+    context.user_data.pop("awaiting", None)
+    key = _email_flow_key(update)
+    if key:
+        _awaiting_by_key.pop(key, None)
+    await update.message.reply_text("تم الإلغاء.", reply_markup=settings_menu_keyboard())
+
+
+async def receive_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text:
+        return
+    email = update.message.text.strip()
+    if email in ("الغاء", "رجوع", "إلغاء"):
+        await cancel_email_flow(update, context)
+        return
+    if "@" not in email or "gmail" not in email.lower():
+        await update.message.reply_text("يرجى إدخال إيميل Gmail صحيح.")
+        return
+    context.user_data["temp_email"] = email
+    await update.message.reply_text("أدخل كلمة مرور التطبيق (App Password):")
+    context.user_data["awaiting"] = "app_password"
+    key = _email_flow_key(update)
+    if key:
+        _awaiting_by_key[key] = "app_password"
+
+
+async def receive_app_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.effective_user:
+        return
+    raw = (update.message.text or "").strip()
+    if raw in ("الغاء", "رجوع", "إلغاء"):
+        await cancel_email_flow(update, context)
+        return
+    password = raw
+    user = await asyncio.to_thread(get_user_by_telegram, update.effective_user.id)
+    if not user or not is_subscription_active(user):
+        await update.message.reply_text("انتهى اشتراكك.")
+        context.user_data.pop("awaiting", None)
+        key = _email_flow_key(update)
+        if key:
+            _awaiting_by_key.pop(key, None)
+        return
+    email = context.user_data.get("temp_email", "")
+    if not email:
+        await update.message.reply_text("انتهت الجلسة. أعد ربط الإيميل من الإعدادات.")
+        context.user_data.pop("awaiting", None)
+        key = _email_flow_key(update)
+        if key:
+            _awaiting_by_key.pop(key, None)
+        return
+    try:
+        await asyncio.to_thread(save_user_email_password, user["id"], email, password)
+    except Exception as e:
+        await update.message.reply_text(
+            f"❌ فشل الحفظ: {e}\nتأكد من البيانات وحاول من الإعدادات مرة أخرى.",
+            reply_markup=back_to_settings_keyboard(),
+        )
+        context.user_data.pop("temp_email", None)
+        context.user_data.pop("awaiting", None)
+        key = _email_flow_key(update)
+        if key:
+            _awaiting_by_key.pop(key, None)
+        return
+    context.user_data.pop("temp_email", None)
+    context.user_data.pop("awaiting", None)
+    key = _email_flow_key(update)
+    if key:
+        _awaiting_by_key.pop(key, None)
+    await update.message.reply_text(
+        "✅ تم ربط الإيميل بنجاح\nسيتم الإرسال من إيميلك مباشرة",
+        reply_markup=back_to_settings_keyboard(),
+    )
+
+
+async def handle_email_flow_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """يُستدعى فقط عندما user_data['awaiting'] هو email أو app_password (فلتر يُسجّل أولاً)."""
+    if not _in_email_flow(context):
+        return
+    awaiting = context.user_data.get("awaiting")
+    if awaiting == "email":
+        await receive_email(update, context)
+    elif awaiting == "app_password":
+        await receive_app_password(update, context)
+
+
+async def cb_set_templates(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query:
+        return
+    await query.answer()
+    await query.edit_message_text(
+        "القوالب التقديم\n\nاختر قالباً:",
+        reply_markup=templates_menu_keyboard(),
+    )
+
+
+async def cb_tpl_option(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query or not query.data:
+        return
+    await query.answer()
+    data = query.data
+    if data.startswith("tpl_preview_"):
+        template_key = data.replace("tpl_preview_", "")
+        user = await asyncio.to_thread(get_user_by_telegram, update.effective_user.id) if update.effective_user else None
+        if not user or not is_subscription_active(user):
+            await query.edit_message_text("انتهى اشتراكك.")
+            return
+        settings = await asyncio.to_thread(get_or_create_user_settings, user["id"])
+        email = settings.get("email")
+        if not email:
+            await query.edit_message_text(
+                "يرجى ربط الإيميل أولاً من الإعدادات → ربط الإيميل.",
+                reply_markup=template_options_keyboard(template_key),
+            )
+            return
+        from templates.preview import send_template_preview_email
+        try:
+            await send_template_preview_email(context.bot, user, settings, template_key, update.effective_chat.id)
+            await query.edit_message_text(
+                "تم إرسال معاينة القالب إلى إيميلك.",
+                reply_markup=template_options_keyboard(template_key),
+            )
+        except Exception as e:
+            await query.edit_message_text(
+                f"فشل الإرسال: {e}",
+                reply_markup=template_options_keyboard(template_key),
+            )
+        return
+    if data.startswith("tpl_save_"):
+        template_key = data.replace("tpl_save_", "")
+        user = await asyncio.to_thread(get_user_by_telegram, update.effective_user.id) if update.effective_user else None
+        if not user or not is_subscription_active(user):
+            await query.edit_message_text("انتهى اشتراكك.")
+            return
+        await asyncio.to_thread(save_user_template, user["id"], template_key)
+        await query.edit_message_text(
+            "✅ تم الحفظ بنجاح.",
+            reply_markup=back_to_settings_keyboard(),
+        )
+
+
+async def cb_tpl_formal(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query:
+        return
+    await query.answer()
+    await query.edit_message_text(
+        "قالب رسمي\n\nاختر:",
+        reply_markup=template_options_keyboard("formal"),
+    )
+
+
+async def cb_tpl_normal(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query:
+        return
+    await query.answer()
+    await query.edit_message_text(
+        "قالب عادي\n\nاختر:",
+        reply_markup=template_options_keyboard("normal"),
+    )
+
+
+async def cb_tpl_professional(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query:
+        return
+    await query.answer()
+    await query.edit_message_text(
+        "قالب احترافي\n\nاختر:",
+        reply_markup=template_options_keyboard("professional"),
+    )
+
+
+async def cb_set_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query:
+        return
+    await query.answer()
+    warn = (
+        "⚠️ تحذير: لا يمكن تغيير لغة التقديم بعد الاختيار حتى انتهاء الاشتراك."
+    )
+    await query.edit_message_text(
+        f"لغة التقديم على الوظائف\n\n{warn}\n\nاختر اللغة:",
+        reply_markup=lang_menu_keyboard(),
+    )
+
+
+async def cb_lang_ar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query or not update.effective_user:
+        return
+    await query.answer()
+    user = await asyncio.to_thread(get_user_by_telegram, update.effective_user.id)
+    if not user or not is_subscription_active(user):
+        await query.edit_message_text("انتهى اشتراكك.")
+        return
+    await asyncio.to_thread(set_application_language, user["id"], "ar")
+    await query.edit_message_text(
+        "✅ تم تعيين لغة التقديم: العربية",
+        reply_markup=back_to_settings_keyboard(),
+    )
+
+
+async def cb_lang_en(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query or not update.effective_user:
+        return
+    await query.answer()
+    user = await asyncio.to_thread(get_user_by_telegram, update.effective_user.id)
+    if not user or not is_subscription_active(user):
+        await query.edit_message_text("انتهى اشتراكك.")
+        return
+    await asyncio.to_thread(set_application_language, user["id"], "en")
+    await query.edit_message_text(
+        "✅ تم تعيين لغة التقديم: English",
+        reply_markup=back_to_settings_keyboard(),
+    )
+
+
+async def cb_set_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query:
+        return
+    await query.answer()
+    await query.edit_message_text(
+        "تواصل معنا\n\nللدعم والاستفسارات تواصل مع الإدارة عبر البوت أو القنوات المعلنة.",
+        reply_markup=back_to_settings_keyboard(),
+    )
+
+
+async def cb_back_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if query:
+        await query.answer()
+        await query.edit_message_text("⚙️ الإعدادات\n\nاختر:", reply_markup=settings_menu_keyboard())
+    return ConversationHandler.END
+
+
+def setup_settings_handlers(application):
+    from telegram.ext import CallbackQueryHandler, MessageHandler, filters
+    # معالج ربط الإيميل يُسجّل أولاً: يلتقط النص فقط عندما المستخدم في خطوة الإيميل أو كلمة المرور
+    application.add_handler(MessageHandler(
+        _FilterAwaitingEmailFlow() & filters.TEXT & ~filters.COMMAND,
+        handle_email_flow_message,
+    ))
+    application.add_handler(CallbackQueryHandler(cb_set_email, pattern="^set_email$"))
+    application.add_handler(CallbackQueryHandler(cb_set_templates, pattern="^set_templates$"))
+    application.add_handler(CallbackQueryHandler(cb_tpl_formal, pattern="^tpl_formal$"))
+    application.add_handler(CallbackQueryHandler(cb_tpl_normal, pattern="^tpl_normal$"))
+    application.add_handler(CallbackQueryHandler(cb_tpl_professional, pattern="^tpl_professional$"))
+    application.add_handler(CallbackQueryHandler(cb_tpl_option, pattern="^tpl_preview_|^tpl_save_"))
+    application.add_handler(CallbackQueryHandler(cb_set_lang, pattern="^set_lang$"))
+    application.add_handler(CallbackQueryHandler(cb_lang_ar, pattern="^lang_ar$"))
+    application.add_handler(CallbackQueryHandler(cb_lang_en, pattern="^lang_en$"))
+    application.add_handler(CallbackQueryHandler(cb_set_contact, pattern="^set_contact$"))

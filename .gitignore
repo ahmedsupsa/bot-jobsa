@@ -1,0 +1,38 @@
+# بيئة بايثون
+venv/
+.venv/
+env/
+*.pyc
+__pycache__/
+*.pyo
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# ملفات البيئة والأسرار (مهم: لا ترفعها أبداً)
+.env
+*.env
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# نظام التشغيل
+.DS_Store
+Thumbs.db
+
+# سجلات
+*.log
+logs/
+
+# مؤقت
+*.tmp
+.cache/
+
+# أرشيفات النشر
+*.zip
