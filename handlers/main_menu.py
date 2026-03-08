@@ -197,6 +197,7 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
     elif text == "📊 حالة الاشتراك":
         from database.db import get_subscription_ends_at
         from datetime import datetime, timezone
+        from handlers.applications import get_next_auto_apply_message
         ends = get_subscription_ends_at(user)
         try:
             if not ends:
@@ -209,11 +210,13 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
                 days = max(0, (end_dt - now).days)
         except Exception:
             days = 0
+        next_apply = get_next_auto_apply_message(context)
         await update.message.reply_text(
             f"📊 **حالة الاشتراك**\n\n"
             f"نوع الاشتراك: اشتراك نشط\n"
             f"ينتهي بعد: {days} يوم\n"
-            f"تاريخ الانتهاء: {ends[:10] if ends else '—'}",
+            f"تاريخ الانتهاء: {ends[:10] if ends else '—'}\n\n"
+            f"{next_apply}",
             parse_mode="Markdown",
             reply_markup=account_reply_keyboard(),
         )

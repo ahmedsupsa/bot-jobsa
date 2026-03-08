@@ -214,7 +214,7 @@ async def cb_job_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["awaiting_job_search"] = True
 
 
-def _next_auto_apply_message(context: ContextTypes.DEFAULT_TYPE) -> str:
+def get_next_auto_apply_message(context: ContextTypes.DEFAULT_TYPE) -> str:
     """رسالة مفاجأة: متى ستكون دورة التقديم التلقائي القادمة."""
     next_at = context.application.bot_data.get("next_auto_apply_at")
     if not next_at:
@@ -240,7 +240,7 @@ async def cb_job_save_prefs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     # رسالة مفاجأة: موعد التقديم التلقائي القادم
     try:
-        msg = _next_auto_apply_message(context)
+        msg = get_next_auto_apply_message(context)
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=msg,

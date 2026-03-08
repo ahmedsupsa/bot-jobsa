@@ -174,6 +174,7 @@ async def cb_acc_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
     ends = get_subscription_ends_at(user)
     from datetime import datetime, timezone
+    from handlers.applications import get_next_auto_apply_message
     try:
         if not ends:
             days = 0
@@ -185,8 +186,9 @@ async def cb_acc_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE
             days = max(0, (end_dt - now).days)
     except Exception:
         days = 0
+    next_apply = get_next_auto_apply_message(context)
     await query.edit_message_text(
-        f"📊 حالة الاشتراك\n\nنوع الاشتراك: اشتراك شهري\nينتهي بعد: {days} يوم\nتاريخ الانتهاء: {ends[:10] if ends else '—'}",
+        f"📊 حالة الاشتراك\n\nنوع الاشتراك: اشتراك شهري\nينتهي بعد: {days} يوم\nتاريخ الانتهاء: {ends[:10] if ends else '—'}\n\n{next_apply}",
         reply_markup=account_menu_keyboard(),
     )
 
