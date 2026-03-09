@@ -18,6 +18,7 @@ from database.db import (
     get_admin_announcements,
     delete_admin_job,
     delete_admin_announcement,
+    delete_user_completely,
     get_job_fields,
     get_user_by_id,
     admin_stats_users_count,
@@ -39,8 +40,9 @@ _SPEC_PAGE_SIZE = 8
 # ─── Reply Keyboards للأدمن ───
 
 _ADMIN_BUTTONS = (
-    "🔑 توليد أكواد", "➕ كود يدوي", "💼 إضافة وظيفة", "📢 إضافة إعلان", "🚪 إغلاق لوحة الأدمن",
-    "📊 إحصائيات", "👥 المشتركين", "📄 التقديمات", "🔑 الأكواد", "📋 الوظائف", "📢 الإعلانات",
+    "🔑 توليد أكواد", "➕ كود يدوي", "💼 إضافة وظيفة", "📢 إضافة إعلان",
+    "📊 إحصائيات", "👥 المشتركين", "📊 احصائيات التقديمات", "🔑 الأكواد", "📋 احصائيات الوظائف", "📢 الإعلانات",
+    "🗑 حذف مستخدم",
 )
 
 
@@ -48,11 +50,11 @@ def admin_reply_keyboard():
     return ReplyKeyboardMarkup(
         [
             [KeyboardButton("📊 إحصائيات"), KeyboardButton("👥 المشتركين")],
-            [KeyboardButton("📄 التقديمات"), KeyboardButton("🔑 الأكواد")],
-            [KeyboardButton("💼 إضافة وظيفة"), KeyboardButton("📋 الوظائف")],
+            [KeyboardButton("📊 احصائيات التقديمات"), KeyboardButton("🔑 الأكواد")],
+            [KeyboardButton("💼 إضافة وظيفة"), KeyboardButton("📋 احصائيات الوظائف")],
             [KeyboardButton("📢 إضافة إعلان"), KeyboardButton("📢 الإعلانات")],
             [KeyboardButton("🔑 توليد أكواد"), KeyboardButton("➕ كود يدوي")],
-            [KeyboardButton("🚪 إغلاق لوحة الأدمن")],
+            [KeyboardButton("🗑 حذف مستخدم")],
         ],
         resize_keyboard=True,
         input_field_placeholder="لوحة تحكم الأدمن...",
@@ -110,19 +112,7 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
 
     text = update.message.text.strip()
 
-    if text == "🚪 إغلاق لوحة الأدمن":
-        context.user_data.pop("admin_mode", None)
-        for k in list(context.user_data.keys()):
-            if k.startswith("admin_"):
-                context.user_data.pop(k, None)
-        from keyboards import main_reply_keyboard
-        await update.message.reply_text(
-            "تم إغلاق لوحة الأدمن.",
-            reply_markup=main_reply_keyboard(),
-        )
-        return ConversationHandler.END
-
-    elif text == "🔑 توليد أكواد":
+    if text == "🔑 توليد أكواد":
         await update.message.reply_text(
             "🔑 **توليد أكواد تفعيل**\n\n"
             "أرسل سطراً بصيغة:\n"
@@ -201,11 +191,11 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
         await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=admin_reply_keyboard())
         return ConversationHandler.END
 
-    elif text == "📄 التقديمات":
+    elif text == "📊 احصائيات التقديمات":
         total = await asyncio.to_thread(admin_stats_applications_total)
         today = await asyncio.to_thread(admin_stats_applications_today)
         recent = await asyncio.to_thread(admin_stats_applications_recent, 15)
-        head = f"📄 **التقديمات**\n\nإجمالي: **{total}** | اليوم: **{today}**\n\n**آخر 15 تقديم:**\n"
+        head = f"📊 **احصائيات التقديمات**\n\nإجمالي: **{total}** | اليوم: **{today}**\n\n**آخر 15 تقديم:**\n"
         if not recent:
             await update.message.reply_text(head + "لا توجد تقديمات.", parse_mode="Markdown", reply_markup=admin_reply_keyboard())
             return ConversationHandler.END
@@ -246,7 +236,7 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
         await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=admin_reply_keyboard())
         return ConversationHandler.END
 
-    elif text == "📋 الوظائف":
+    elif text == "📋 احصائيات الوظائف":
         jobs = await asyncio.to_thread(get_admin_jobs, False)
         if not jobs:
             await update.message.reply_text("لا توجد وظائف مسجلة.", reply_markup=admin_reply_keyboard())
@@ -261,7 +251,7 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
             lines.append(f"{active} {title} | {company}")
             kb.append([InlineKeyboardButton(f"🗑 حذف: {title[:25]}", callback_data=f"admin_del_job:{jid}")])
         kb.append([InlineKeyboardButton("⬅️ رجوع", callback_data="admin_close")])
-        msg = "📋 **الوظائف**\n\nاضغط حذف لإزالة وظيفة:\n\n" + "\n".join(lines)
+        msg = "📋 **احصائيات الوظائف**\n\nاضغط حذف لإزالة وظيفة:\n\n" + "\n".join(lines)
         if len(msg) > 4000:
             msg = msg[:3980] + "\n..."
         await update.message.reply_text(
@@ -294,6 +284,26 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup(kb),
         )
+        return ConversationHandler.END
+
+    elif text == "🗑 حذف مستخدم":
+        users_list = await asyncio.to_thread(admin_list_users, 25)
+        if not users_list:
+            await update.message.reply_text("لا يوجد مستخدمون مسجلون.", reply_markup=admin_reply_keyboard())
+            return ConversationHandler.END
+        lines = []
+        kb = []
+        for u in users_list:
+            uid = str(u.get("id", ""))
+            name = (u.get("full_name") or "بدون اسم")[:25]
+            phone = (u.get("phone") or "")[:12]
+            lines.append(f"• {name} | {phone}")
+            kb.append([InlineKeyboardButton(f"🗑 حذف: {name}", callback_data=f"admin_del_user:{uid}")])
+        kb.append([InlineKeyboardButton("⬅️ رجوع", callback_data="admin_close")])
+        msg = "🗑 **حذف مستخدم**\n\nسيتم حذف المستخدم وكل بياناته من Supabase (اشتراك، إعدادات، سيرة ذاتية، تقديمات).\n\nاختر المستخدم:\n\n" + "\n".join(lines)
+        if len(msg) > 4000:
+            msg = msg[:3980] + "\n..."
+        await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
         return ConversationHandler.END
 
 
@@ -597,20 +607,78 @@ async def cb_admin_del_ann(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text("✅ تم حذف الإعلان.")
 
 
+async def cb_admin_del_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """عرض تأكيد حذف المستخدم."""
+    query = update.callback_query
+    if not query or not update.effective_user or not is_admin(update.effective_user.id):
+        if query:
+            await query.answer()
+        return
+    await query.answer()
+    user_id = (query.data or "").split(":", 1)[-1].strip()
+    if not user_id:
+        return
+    user = await asyncio.to_thread(get_user_by_id, user_id)
+    name = (user.get("full_name") or user.get("phone") or "المستخدم")[:30] if user else "المستخدم"
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ نعم، احذف المستخدم وكل بياناته", callback_data=f"admin_del_user_confirm:{user_id}")],
+        [InlineKeyboardButton("❌ إلغاء", callback_data="admin_del_user_cancel")],
+    ])
+    await query.edit_message_text(
+        f"⚠️ **تأكيد الحذف**\n\n"
+        f"حذف **{name}**؟\n\n"
+        f"سيتم حذف المستخدم وكل بياناته من Supabase:\n"
+        f"• الحساب والاشتراك\n• الإعدادات والإيميل\n• السيرة الذاتية (من التخزين أيضاً)\n• التفضيلات وسجل التقديمات",
+        parse_mode="Markdown",
+        reply_markup=kb,
+    )
+
+
+async def cb_admin_del_user_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """تنفيذ حذف المستخدم وكل بياناته."""
+    query = update.callback_query
+    if not query or not update.effective_user or not is_admin(update.effective_user.id):
+        if query:
+            await query.answer()
+        return
+    await query.answer()
+    user_id = (query.data or "").split(":", 1)[-1].strip()
+    if not user_id:
+        return
+    try:
+        ok = await asyncio.to_thread(delete_user_completely, user_id)
+        if ok:
+            await query.edit_message_text("✅ تم حذف المستخدم وكل بياناته من قاعدة البيانات والتخزين.")
+        else:
+            await query.edit_message_text("❌ لم يُعثر على المستخدم أو حدث خطأ أثناء الحذف.")
+    except Exception as e:
+        await query.edit_message_text(f"❌ خطأ أثناء الحذف: {e}")
+
+
+async def cb_admin_del_user_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if query:
+        await query.answer()
+        await query.edit_message_text("تم الإلغاء.")
+
+
 def setup_admin_handlers(application):
     from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, filters
     import re
+    import config
 
     application.add_handler(CommandHandler("admin", cmd_admin))
 
-    # أزرار الأدمن Reply Keyboard بأولوية عالية
+    # أزرار الأدمن Reply Keyboard: تُستقبل فقط من حسابات الأدمن (لئلا يلتقط معالج الأدمن ضغطات المستخدمين مثل «التقديمات»)
     admin_buttons = _ADMIN_BUTTONS
     admin_pattern = "|".join(re.escape(b) for b in admin_buttons)
+    admin_ids = getattr(config, "ADMIN_TELEGRAM_IDS", None) or []
+    admin_filter = filters.User(user_id=admin_ids) if admin_ids else filters.ALL
 
     conv_admin = ConversationHandler(
         entry_points=[
             MessageHandler(
-                filters.TEXT & filters.Regex(f"^({admin_pattern})$"),
+                filters.TEXT & filters.Regex(f"^({admin_pattern})$") & admin_filter,
                 handle_admin_reply_keyboard,
             ),
         ],
@@ -662,3 +730,6 @@ def setup_admin_handlers(application):
     application.add_handler(CallbackQueryHandler(cb_admin_close, pattern="^admin_close$"))
     application.add_handler(CallbackQueryHandler(cb_admin_del_job, pattern="^admin_del_job:"))
     application.add_handler(CallbackQueryHandler(cb_admin_del_ann, pattern="^admin_del_ann:"))
+    application.add_handler(CallbackQueryHandler(cb_admin_del_user, pattern="^admin_del_user:"))
+    application.add_handler(CallbackQueryHandler(cb_admin_del_user_confirm, pattern="^admin_del_user_confirm:"))
+    application.add_handler(CallbackQueryHandler(cb_admin_del_user_cancel, pattern="^admin_del_user_cancel$"))

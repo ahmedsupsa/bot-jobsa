@@ -514,6 +514,58 @@ def admin_list_users(limit: int = 50) -> list:
     return r.data or []
 
 
+def delete_user_completely(user_id: str) -> bool:
+    """
+    حذف المستخدم وكل بياناته من قاعدة البيانات والتخزين:
+    - السيرة الذاتية من Storage إن وُجدت
+    - إعدادات المستخدم، السير الذاتية، التفضيلات، التقديمات (CASCADE)
+    - سجل ربط كود التفعيل (تحرير الكود إن أردت)
+    - المستخدم نفسه
+    """
+    user = get_user_by_id(user_id)
+    if not user:
+        return False
+    telegram_id = user.get("telegram_id")
+    # حذف ملف السيرة من Supabase Storage إن وُجد
+    cv = get_cv(user_id)
+    if cv and cv.get("storage_path"):
+        try:
+            from database.storage import delete_object, BUCKET_CVS
+            delete_object(BUCKET_CVS, cv["storage_path"])
+        except Exception:
+            pass
+    # تحرير كود التفعيل المرتبط بهذا المستخدم (يعود غير مستعمل بعد الحذف)
+    code_id = user.get("activation_code_id")
+    if code_id:
+        code_id = str(code_id)
+        if _use_rest:
+            try:
+                _rest_update(
+                    "activation_codes",
+                    {"used": False, "used_at": None, "used_by_user_id": None},
+                    id=code_id,
+                )
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning("تحرير كود التفعيل عند حذف المستخدم: %s", e)
+        else:
+            try:
+                get_supabase().table("activation_codes").update(
+                    {"used": False, "used_at": None, "used_by_user_id": None}
+                ).eq("id", code_id).execute()
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning("تحرير كود التفعيل عند حذف المستخدم: %s", e)
+    # حذف المستخدم (CASCADE يحذف user_settings, user_cvs, user_job_preferences, applications)
+    if _use_rest:
+        _rest_delete("users", id=user_id)
+    else:
+        get_supabase().table("users").delete().eq("id", user_id).execute()
+    if telegram_id is not None:
+        invalidate_user_cache(int(telegram_id))
+    return True
+
+
 def admin_list_activation_codes_unused(limit: int = 30) -> list:
     """أكواد غير مستخدمة (عينة)."""
     if _use_rest:

@@ -88,6 +88,20 @@ def get_cv_public_url(storage_path: str) -> str:
     return f"{url}/storage/v1/object/public/{BUCKET_CVS}/{storage_path}"
 
 
+def delete_object(bucket: str, object_path: str) -> bool:
+    """حذف ملف من التخزين. المسار مثل user_id/filename.ext"""
+    if not object_path or not object_path.strip():
+        return False
+    client = _get_storage_client()
+    path_encoded = "/".join(quote(segment, safe="") for segment in object_path.strip().split("/"))
+    url_path = f"/object/{bucket}/{path_encoded}"
+    r = client.delete(url_path)
+    if r.status_code in (200, 204):
+        return True
+    logger.warning("فشل حذف الملف من التخزين: %s %s", r.status_code, r.text)
+    return False
+
+
 def ensure_bucket_exists() -> bool:
     """يتحقق من وجود bucket أو يحاول إنشاءه (قد يتطلب صلاحيات)."""
     client = _get_storage_client()

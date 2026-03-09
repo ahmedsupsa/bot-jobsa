@@ -14,6 +14,8 @@ ON storage.objects
 FOR SELECT
 USING (bucket_id = 'cvs');
 
--- اختياري: السماح بالتحديث والحذف لنفس المستخدم لاحقاً إن احتجت
--- CREATE POLICY "Allow update cvs" ON storage.objects FOR UPDATE USING (bucket_id = 'cvs');
--- CREATE POLICY "Allow delete cvs" ON storage.objects FOR DELETE USING (bucket_id = 'cvs');
+-- السماح بالحذف (DELETE) من bucket cvs (مطلوب عند حذف مستخدم وحذف سيرته من التخزين)
+CREATE POLICY "Allow delete cvs"
+ON storage.objects
+FOR DELETE
+USING (bucket_id = 'cvs');

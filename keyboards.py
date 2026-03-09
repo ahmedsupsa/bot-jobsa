@@ -9,11 +9,12 @@ from telegram import (
 # ─────────────────────────────────────────────
 
 def main_reply_keyboard():
-    """القائمة الرئيسية - تظهر دائماً."""
+    """القائمة الرئيسية - تظهر دائماً (5 خيارات)."""
     return ReplyKeyboardMarkup(
         [
             [KeyboardButton("📄 التقديمات"), KeyboardButton("👤 حسابي")],
-            [KeyboardButton("📢 الإعلانات"), KeyboardButton("⚙️ الإعدادات")],
+            [KeyboardButton("🎯 تفضيلات الوظائف"), KeyboardButton("📢 الإعلانات")],
+            [KeyboardButton("⚙️ الإعدادات")],
         ],
         resize_keyboard=True,
         input_field_placeholder="اختر من القائمة...",
@@ -56,7 +57,7 @@ def settings_reply_keyboard():
     return ReplyKeyboardMarkup(
         [
             [KeyboardButton("📧 ربط الإيميل"), KeyboardButton("🖼️ قوالب التقديم")],
-            [KeyboardButton("🌐 لغة التقديم"), KeyboardButton("📞 تواصل معنا")],
+            [KeyboardButton("📞 تواصل معنا")],
             [KeyboardButton("⬅️ الرئيسية")],
         ],
         resize_keyboard=True,
@@ -64,12 +65,11 @@ def settings_reply_keyboard():
 
 
 def admin_reply_keyboard():
-    """لوحة تحكم الأدمن - Reply Keyboard."""
+    """لوحة تحكم الأدمن - Reply Keyboard (لا يظهر للمستخدمين؛ الأدمن يُعرَف بـ ID فقط)."""
     return ReplyKeyboardMarkup(
         [
             [KeyboardButton("🔑 توليد أكواد"), KeyboardButton("➕ كود يدوي")],
             [KeyboardButton("💼 إضافة وظيفة"), KeyboardButton("📢 إضافة إعلان")],
-            [KeyboardButton("🚪 إغلاق لوحة الأدمن")],
         ],
         resize_keyboard=True,
     )

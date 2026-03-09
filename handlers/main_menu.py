@@ -26,7 +26,7 @@ _ALL_BUTTONS = (
     # سيرة ذاتية
     "➕ رفع سيرة ذاتية", "👁️ معاينة السيرة",
     # إعدادات
-    "📧 ربط الإيميل", "🖼️ قوالب التقديم", "🌐 لغة التقديم", "📞 تواصل معنا",
+    "📧 ربط الإيميل", "🖼️ قوالب التقديم", "📞 تواصل معنا",
     # رجوع
     "⬅️ الرئيسية", "⬅️ حسابي",
 )
@@ -78,7 +78,8 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     # ──── القائمة الرئيسية ────
-    if text == "📄 التقديمات":
+    # قبول "التقديمات" مع أو بدون إيموجي (بعض الأجهزة ترسل إيموجي مختلف أو مع variation selector)
+    if text == "📄 التقديمات" or (text.endswith("التقديمات") and "احصائيات" not in text and "المرسلة" not in text and "سجل" not in text):
         await update.message.reply_text("📄 التقديمات:\n\nاختر:", reply_markup=applications_reply_keyboard())
 
     elif text == "👤 حسابي":
@@ -114,6 +115,14 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
 
     elif text == "⚙️ الإعدادات":
         await update.message.reply_text("⚙️ الإعدادات:\n\nاختر:", reply_markup=settings_reply_keyboard())
+
+    elif text == "🎯 تفضيلات الوظائف":
+        from keyboards import job_categories_keyboard
+        context.user_data["job_prefs_user_id"] = user["id"]
+        await update.message.reply_text(
+            "🎯 اختر نوع المجالات:",
+            reply_markup=job_categories_keyboard(),
+        )
 
     # ──── التقديمات ────
     elif text == "📌 التقديمات المرسلة":
@@ -237,12 +246,6 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
         from keyboards import templates_menu_keyboard
         await update.message.reply_text(
             "اختر قالب التقديم:", reply_markup=templates_menu_keyboard(),
-        )
-
-    elif text == "🌐 لغة التقديم":
-        from keyboards import lang_menu_keyboard
-        await update.message.reply_text(
-            "اختر لغة التقديم:", reply_markup=lang_menu_keyboard(),
         )
 
     elif text == "📞 تواصل معنا":
@@ -375,6 +378,18 @@ async def cb_menu_announcements(update: Update, context: ContextTypes.DEFAULT_TY
             )
 
 
+async def handle_applications_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """معالج بديل لزر التقديمات عندما لا يطابق الـ Regex الرئيسي (مثلاً اختلاف ترميز الإيموجي)."""
+    if not update.message or not update.effective_user:
+        return
+    if is_admin(update.effective_user.id):
+        return
+    user = await _check_user(update)
+    if not user:
+        return
+    await update.message.reply_text("📄 التقديمات:\n\nاختر:", reply_markup=applications_reply_keyboard())
+
+
 def setup_main_menu_handlers(application):
     from telegram.ext import CallbackQueryHandler, MessageHandler, filters
     import re
@@ -393,4 +408,11 @@ def setup_main_menu_handlers(application):
     application.add_handler(MessageHandler(
         filters.TEXT & filters.Regex(f"^({pattern})$"),
         handle_reply_keyboard,
+    ), group=-1)
+
+    # معالج بديل لـ «التقديمات» عندما يختلف ترميز الإيموجي فلا يطابق الـ Regex أعلاه (لا يطابق «احصائيات التقديمات» أو «سجل التقديمات» أو «المرسلة»)
+    pattern_taqdimat = r"^(?!.*احصائيات)(?!.*المرسلة)(?!.*سجل).*التقديمات\s*$"
+    application.add_handler(MessageHandler(
+        filters.TEXT & filters.Regex(pattern_taqdimat),
+        handle_applications_fallback,
     ), group=-1)
