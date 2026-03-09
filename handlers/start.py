@@ -10,6 +10,7 @@ from database.db import (
     validate_activation_code,
     create_user,
     get_supabase,
+    is_admin,
 )
 from keyboards import (
     main_start_keyboard,
@@ -25,6 +26,13 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.effective_user:
         return
     telegram_id = update.effective_user.id
+
+    # إذا كان هذا الحساب أدمن، نوجّهه مباشرة إلى لوحة الأدمن ولا نظهر قوائم المستخدمين
+    if is_admin(telegram_id):
+        from handlers.admin import cmd_admin
+        await cmd_admin(update, context)
+        return ConversationHandler.END
+
     user = await asyncio.to_thread(get_user_by_telegram, telegram_id)
     if user and user.get("full_name") and user.get("phone"):
         await update.message.reply_text(

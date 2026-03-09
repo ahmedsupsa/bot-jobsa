@@ -4,7 +4,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.error import BadRequest
 
-from database.db import get_user_by_telegram, is_subscription_active, get_admin_announcements
+from database.db import get_user_by_telegram, is_subscription_active, get_admin_announcements, is_admin
 from handlers.settings import clear_email_flow_state
 from keyboards import (
     main_reply_keyboard,
@@ -34,6 +34,10 @@ _ALL_BUTTONS = (
 
 async def _check_user(update: Update) -> dict | None:
     """تحقق من وجود المستخدم وصلاحية اشتراكه."""
+    # حسابات الأدمن لا تُعامل كحسابات مستخدمين عاديين
+    if update.effective_user and is_admin(update.effective_user.id):
+        await update.message.reply_text("أنت أدمن في هذا البوت. استخدم الأمر /admin لإدارة النظام.")
+        return None
     user = await asyncio.to_thread(get_user_by_telegram, update.effective_user.id)
     if not user or not user.get("full_name"):
         await update.message.reply_text("اضغط /start للبدء أولاً.")
@@ -283,6 +287,10 @@ async def cb_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not query or not update.effective_user:
         return
     await query.answer()
+    # في حال كان الحساب أدمن، لا نعرض قائمة المستخدمين بل نذكّره بلوحة الأدمن
+    if is_admin(update.effective_user.id):
+        await query.edit_message_text("أنت أدمن في هذا البوت.\nاستخدم الأمر /admin لفتح لوحة تحكم الأدمن.")
+        return
     await query.edit_message_text("القائمة الرئيسية 👇")
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
