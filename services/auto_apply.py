@@ -3,7 +3,7 @@
 محرك التقديم التلقائي الكامل.
 - يعمل دورياً في الخلفية بدون تدخل المستخدم
 - يمنع التقديم المكرر على نفس الوظيفة
-- فاصل زمني 3 دقائق بين كل تقديم لكل مستخدم
+- فاصل زمني 45 ثانية بين كل تقديم لكل مستخدم
 - يستخدم قالب المستخدم المختار
 - يحلل السيرة الذاتية بالذكاء الاصطناعي
 """
@@ -15,8 +15,8 @@ import time
 
 logger = logging.getLogger(__name__)
 
-# فاصل 3 دقائق بين كل تقديم لكل مستخدم
-_SEND_INTERVAL_SECONDS = 180
+# فاصل 45 ثانية بين كل تقديم لكل مستخدم (لتسريع الدورة وتجنب التأخير الطويل)
+_SEND_INTERVAL_SECONDS = 45
 
 # آخر وقت تقديم لكل مستخدم: {user_id: timestamp}
 _last_send_time: dict[str, float] = {}
@@ -33,7 +33,7 @@ def _job_matches_user(job: dict, user_field_names: list[str]) -> bool:
 
 
 def _can_send_now(user_id: str) -> bool:
-    """تحقق إذا مرّت 3 دقائق من آخر تقديم لهذا المستخدم."""
+    """تحقق إذا مرّ الفاصل الزمني من آخر تقديم لهذا المستخدم."""
     last = _last_send_time.get(user_id, 0)
     return (time.monotonic() - last) >= _SEND_INTERVAL_SECONDS
 
@@ -164,6 +164,7 @@ async def run_auto_apply_cycle(bot) -> None:
         remaining = 10 - count_today
 
         sent_this_cycle = 0
+        failed_titles: list[str] = []  # رسالة فشل واحدة في نهاية الدورة
         for job in jobs_to_apply[:remaining]:
             # تحقق من الفاصل الزمني بين التقديمات
             if not _can_send_now(user_id):
@@ -230,14 +231,21 @@ async def run_auto_apply_cycle(bot) -> None:
 
             except Exception as e:
                 logger.warning("❌ فشل التقديم: %s → %s: %s", name, job_title, e)
-                if telegram_id:
-                    try:
-                        await bot.send_message(
-                            chat_id=telegram_id,
-                            text=f"⚠️ تعذّر التقديم على «{job_title}»: تأكد من صحة إيميلك وكلمة مرور التطبيق.",
-                        )
-                    except Exception:
-                        pass
+                failed_titles.append(job_title)
+
+        # رسالة فشل واحدة فقط لكل مستخدم (بدل رسالة لكل وظيفة)
+        if failed_titles and telegram_id:
+            try:
+                n = len(failed_titles)
+                jobs_preview = "، ".join(failed_titles[:3])
+                if n > 3:
+                    jobs_preview += f" و{n - 3} أخرى"
+                await bot.send_message(
+                    chat_id=telegram_id,
+                    text=f"⚠️ تعذّر التقديم على {n} وظيفة ({jobs_preview}). تأكد من صحة إيميلك وكلمة مرور التطبيق.",
+                )
+            except Exception:
+                pass
 
         if sent_this_cycle > 0 and telegram_id:
             new_count = count_today + sent_this_cycle

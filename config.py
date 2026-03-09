@@ -30,3 +30,8 @@ if not SUPABASE_KEY:
     raise ValueError("أضف SUPABASE_KEY في ملف .env")
 if USE_WEBHOOK and not WEBHOOK_URL:
     raise ValueError("عند تفعيل USE_WEBHOOK يجب تعيين WEBHOOK_URL في .env (رابط HTTPS العام للبوت)")
+
+# قناة مصدر الوظائف: البوت يضيف منشوراتها كوظائف تلقائياً (البوت يجب أن يكون أدمن في القناة)
+# ضع معرّف القناة (رقم سالب مثل -1001234567890) أو اتركه فارغاً لتعطيل
+_jo = os.getenv("JOBS_SOURCE_CHANNEL_ID", "").strip()
+JOBS_SOURCE_CHANNEL_ID = int(_jo) if _jo and _jo.lstrip("-").isdigit() else None

@@ -68,6 +68,9 @@ def main():
     else:
         logger.warning("⚠️ job_queue غير متوفر، التقديم التلقائي لن يعمل.")
 
+    allowed = ["message", "callback_query"]
+    if getattr(config, "JOBS_SOURCE_CHANNEL_ID", None):
+        allowed.append("channel_post")
     if config.USE_WEBHOOK:
         full_url = f"{config.WEBHOOK_URL}/{config.WEBHOOK_PATH}"
         logger.info("البوت يعمل بوضع Webhook على %s", full_url)
@@ -76,13 +79,13 @@ def main():
             port=config.WEBHOOK_PORT,
             url_path=config.WEBHOOK_PATH,
             webhook_url=full_url,
-            allowed_updates=["message", "callback_query"],
+            allowed_updates=allowed,
             drop_pending_updates=True,
         )
     else:
         logger.info("البوت يعمل بوضع Polling...")
         app.run_polling(
-            allowed_updates=["message", "callback_query"],
+            allowed_updates=allowed,
             drop_pending_updates=True,
         )
 

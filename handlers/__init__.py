@@ -5,11 +5,13 @@ from .applications import setup_applications_handlers
 from .account import setup_account_handlers
 from .settings import setup_settings_handlers
 from .admin import setup_admin_handlers
+from .channel_jobs import setup_channel_jobs_handlers
 
 def setup_all_handlers(application):
     # الإعدادات وربط الإيميل أولاً حتى لا تُسرق الرسائل النصية من محادثة التسجيل (كود التفعيل)
     setup_settings_handlers(application)
     setup_admin_handlers(application)  # /admin للأدمن فقط
+    setup_channel_jobs_handlers(application)  # استيراد الوظائف من قناة (إن وُجد JOBS_SOURCE_CHANNEL_ID)
     setup_main_menu_handlers(application)  # يجب قبل applications لأن reply keyboard handler هنا
     setup_applications_handlers(application)
     setup_account_handlers(application)

@@ -14,6 +14,10 @@ from database.db import (
     insert_activation_codes,
     add_admin_job,
     add_admin_announcement,
+    get_admin_jobs,
+    get_admin_announcements,
+    delete_admin_job,
+    delete_admin_announcement,
     get_job_fields,
     get_user_by_id,
     admin_stats_users_count,
@@ -36,7 +40,7 @@ _SPEC_PAGE_SIZE = 8
 
 _ADMIN_BUTTONS = (
     "🔑 توليد أكواد", "➕ كود يدوي", "💼 إضافة وظيفة", "📢 إضافة إعلان", "🚪 إغلاق لوحة الأدمن",
-    "📊 إحصائيات", "👥 المشتركين", "📄 التقديمات", "🔑 الأكواد",
+    "📊 إحصائيات", "👥 المشتركين", "📄 التقديمات", "🔑 الأكواد", "📋 الوظائف", "📢 الإعلانات",
 )
 
 
@@ -45,8 +49,9 @@ def admin_reply_keyboard():
         [
             [KeyboardButton("📊 إحصائيات"), KeyboardButton("👥 المشتركين")],
             [KeyboardButton("📄 التقديمات"), KeyboardButton("🔑 الأكواد")],
+            [KeyboardButton("💼 إضافة وظيفة"), KeyboardButton("📋 الوظائف")],
+            [KeyboardButton("📢 إضافة إعلان"), KeyboardButton("📢 الإعلانات")],
             [KeyboardButton("🔑 توليد أكواد"), KeyboardButton("➕ كود يدوي")],
-            [KeyboardButton("💼 إضافة وظيفة"), KeyboardButton("📢 إضافة إعلان")],
             [KeyboardButton("🚪 إغلاق لوحة الأدمن")],
         ],
         resize_keyboard=True,
@@ -239,6 +244,56 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
         if len(msg) > 4000:
             msg = msg[:3980] + "\n..."
         await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=admin_reply_keyboard())
+        return ConversationHandler.END
+
+    elif text == "📋 الوظائف":
+        jobs = await asyncio.to_thread(get_admin_jobs, False)
+        if not jobs:
+            await update.message.reply_text("لا توجد وظائف مسجلة.", reply_markup=admin_reply_keyboard())
+            return ConversationHandler.END
+        lines = []
+        kb = []
+        for j in jobs[:25]:
+            jid = j.get("id", "")
+            title = (j.get("title_ar") or j.get("title_en") or "—")[:40]
+            company = (j.get("company") or "")[:20]
+            active = "✅" if j.get("is_active") else "⏸"
+            lines.append(f"{active} {title} | {company}")
+            kb.append([InlineKeyboardButton(f"🗑 حذف: {title[:25]}", callback_data=f"admin_del_job:{jid}")])
+        kb.append([InlineKeyboardButton("⬅️ رجوع", callback_data="admin_close")])
+        msg = "📋 **الوظائف**\n\nاضغط حذف لإزالة وظيفة:\n\n" + "\n".join(lines)
+        if len(msg) > 4000:
+            msg = msg[:3980] + "\n..."
+        await update.message.reply_text(
+            msg,
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(kb),
+        )
+        return ConversationHandler.END
+
+    elif text == "📢 الإعلانات":
+        anns = await asyncio.to_thread(get_admin_announcements, False, False)
+        if not anns:
+            await update.message.reply_text("لا توجد إعلانات.", reply_markup=admin_reply_keyboard())
+            return ConversationHandler.END
+        lines = []
+        kb = []
+        for a in anns[:25]:
+            aid = a.get("id", "")
+            title = (a.get("title") or "إعلان")[:40]
+            body = (a.get("body_text") or "")[:30]
+            active = "✅" if a.get("is_active") else "⏸"
+            lines.append(f"{active} {title} | {body}...")
+            kb.append([InlineKeyboardButton(f"🗑 حذف: {title[:25]}", callback_data=f"admin_del_ann:{aid}")])
+        kb.append([InlineKeyboardButton("⬅️ رجوع", callback_data="admin_close")])
+        msg = "📢 **الإعلانات**\n\nاضغط حذف لإزالة إعلان:\n\n" + "\n".join(lines)
+        if len(msg) > 4000:
+            msg = msg[:3980] + "\n..."
+        await update.message.reply_text(
+            msg,
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(kb),
+        )
         return ConversationHandler.END
 
 
@@ -514,6 +569,34 @@ async def cb_admin_close(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
+async def cb_admin_del_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query or not update.effective_user or not is_admin(update.effective_user.id):
+        if query:
+            await query.answer()
+        return
+    await query.answer()
+    job_id = (query.data or "").split(":", 1)[-1].strip()
+    if not job_id:
+        return
+    await asyncio.to_thread(delete_admin_job, job_id)
+    await query.edit_message_text("✅ تم حذف الوظيفة.")
+
+
+async def cb_admin_del_ann(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query or not update.effective_user or not is_admin(update.effective_user.id):
+        if query:
+            await query.answer()
+        return
+    await query.answer()
+    ann_id = (query.data or "").split(":", 1)[-1].strip()
+    if not ann_id:
+        return
+    await asyncio.to_thread(delete_admin_announcement, ann_id)
+    await query.edit_message_text("✅ تم حذف الإعلان.")
+
+
 def setup_admin_handlers(application):
     from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, filters
     import re
@@ -577,3 +660,5 @@ def setup_admin_handlers(application):
     )
     application.add_handler(conv_admin, group=-1)
     application.add_handler(CallbackQueryHandler(cb_admin_close, pattern="^admin_close$"))
+    application.add_handler(CallbackQueryHandler(cb_admin_del_job, pattern="^admin_del_job:"))
+    application.add_handler(CallbackQueryHandler(cb_admin_del_ann, pattern="^admin_del_ann:"))
