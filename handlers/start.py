@@ -11,6 +11,7 @@ from database.db import (
     create_user,
     get_supabase,
     is_admin,
+    invalidate_user_cache,
 )
 from keyboards import (
     main_start_keyboard,
@@ -26,6 +27,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.effective_user:
         return
     telegram_id = update.effective_user.id
+
+    # مسح كاش هذا المستخدم عند كل /start لضمان جلب بيانات محدثة وتحديث القائمة (لوحة المفاتيح) في تليجرام
+    invalidate_user_cache(telegram_id)
 
     # إذا كان هذا الحساب أدمن، نوجّهه مباشرة إلى لوحة الأدمن ولا نظهر قوائم المستخدمين
     if is_admin(telegram_id):

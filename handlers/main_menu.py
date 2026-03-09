@@ -20,7 +20,7 @@ _ALL_BUTTONS = (
     "📄 التقديمات", "👤 حسابي", "📢 الإعلانات", "⚙️ الإعدادات",
     # تقديمات
     "📌 التقديمات المرسلة", "📅 سجل التقديمات",
-    "💼 وظائف من الإدارة", "🎯 تفضيلات الوظائف",
+    "🎯 تفضيلات الوظائف",
     # حسابي
     "📄 بياناتي", "📎 السيرة الذاتية", "📊 حالة الاشتراك",
     # سيرة ذاتية
@@ -138,36 +138,6 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
                 lines.append(f"{i}. {job} | {applied}")
             msg = "📅 سجل التقديمات\n\n" + "\n".join(lines)
         await update.message.reply_text(msg, reply_markup=applications_reply_keyboard())
-
-    elif text == "💼 وظائف من الإدارة":
-        from database.db import get_admin_jobs
-        jobs = await asyncio.to_thread(get_admin_jobs, True)
-        if not jobs:
-            await update.message.reply_text(
-                "💼 لا توجد وظائف معروضة حالياً.",
-                reply_markup=applications_reply_keyboard(),
-            )
-            return
-        lines = []
-        for j in jobs[:20]:
-            title = (j.get("title_ar") or j.get("title_en") or "وظيفة")[:60]
-            company = (j.get("company") or "")
-            desc = (j.get("description_ar") or "")[:120]
-            spec = (j.get("specializations") or "")[:60]
-            line = f"• **{title}**"
-            if company:
-                line += f"\n  🏢 {company}"
-            if desc:
-                line += f"\n  {desc}"
-            if spec:
-                line += f"\n  🎯 {spec}"
-            lines.append(line)
-        text_msg = "💼 وظائف من الإدارة\n\n" + "\n\n".join(lines)
-        if len(text_msg) > 4000:
-            text_msg = text_msg[:3980] + "\n\n..."
-        await update.message.reply_text(
-            text_msg, parse_mode="Markdown", reply_markup=applications_reply_keyboard(),
-        )
 
     elif text == "🎯 تفضيلات الوظائف":
         from keyboards import job_categories_keyboard

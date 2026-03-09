@@ -21,6 +21,10 @@ _SEND_INTERVAL_SECONDS = 45
 # آخر وقت تقديم لكل مستخدم: {user_id: timestamp}
 _last_send_time: dict[str, float] = {}
 
+# آخر وقت إرسال رسالة فشل التقديم لكل مستخدم (لتجنب التكرار كل 30 دقيقة)
+_FAILURE_NOTIFICATION_COOLDOWN_SECONDS = 86400  # 24 ساعة
+_last_failure_notification: dict[str, float] = {}  # user_id -> time.time()
+
 
 def _job_matches_user(job: dict, user_field_names: list[str]) -> bool:
     """تحقق إذا كانت الوظيفة تطابق تفضيلات المستخدم."""
@@ -83,7 +87,7 @@ async def run_auto_apply_cycle(bot) -> None:
     all_fields = await asyncio.to_thread(get_job_fields)
 
     for user in users:
-        user_id = user["id"]
+        user_id = str(user["id"])  # توحيد النوع لاستخدامه كـ key في الكاش ودوال DB
         telegram_id = user.get("telegram_id")
 
         if not is_subscription_active(user):
@@ -120,6 +124,7 @@ async def run_auto_apply_cycle(bot) -> None:
             job_id = job.get("id")
             if not job_id:
                 continue
+            job_id = str(job_id)
             already = await asyncio.to_thread(has_applied_to_job, user_id, job_id)
             if already:
                 continue
@@ -176,7 +181,7 @@ async def run_auto_apply_cycle(bot) -> None:
             job_title = job.get("title_ar") or job.get("title_en") or "وظيفة"
             company = job.get("company") or ""
             desc = (job.get("description_ar") or job.get("description_en") or "")[:600]
-            job_id = job["id"]
+            job_id = str(job["id"])
 
             # توليد رسالة التغطية بالذكاء الاصطناعي
             try:
@@ -233,19 +238,23 @@ async def run_auto_apply_cycle(bot) -> None:
                 logger.warning("❌ فشل التقديم: %s → %s: %s", name, job_title, e)
                 failed_titles.append(job_title)
 
-        # رسالة فشل واحدة فقط لكل مستخدم (بدل رسالة لكل وظيفة)
+        # رسالة فشل مرة واحدة فقط كل 24 ساعة لكل مستخدم (لا تُرسل كل دورة كتذكير)
         if failed_titles and telegram_id:
-            try:
-                n = len(failed_titles)
-                jobs_preview = "، ".join(failed_titles[:3])
-                if n > 3:
-                    jobs_preview += f" و{n - 3} أخرى"
-                await bot.send_message(
-                    chat_id=telegram_id,
-                    text=f"⚠️ تعذّر التقديم على {n} وظيفة ({jobs_preview}). تأكد من صحة إيميلك وكلمة مرور التطبيق.",
-                )
-            except Exception:
-                pass
+            now = time.time()
+            last = _last_failure_notification.get(user_id, 0)
+            if (now - last) >= _FAILURE_NOTIFICATION_COOLDOWN_SECONDS:
+                try:
+                    n = len(failed_titles)
+                    jobs_preview = "، ".join(failed_titles[:3])
+                    if n > 3:
+                        jobs_preview += f" و{n - 3} أخرى"
+                    await bot.send_message(
+                        chat_id=telegram_id,
+                        text=f"⚠️ تعذّر التقديم على {n} وظيفة ({jobs_preview}). تأكد من صحة إيميلك وكلمة مرور التطبيق.",
+                    )
+                    _last_failure_notification[user_id] = now
+                except Exception:
+                    pass
 
         if sent_this_cycle > 0 and telegram_id:
             new_count = count_today + sent_this_cycle

@@ -24,7 +24,6 @@ def applications_reply_keyboard():
     return ReplyKeyboardMarkup(
         [
             [KeyboardButton("📌 التقديمات المرسلة"), KeyboardButton("📅 سجل التقديمات")],
-            [KeyboardButton("💼 وظائف من الإدارة")],
             [KeyboardButton("🎯 تفضيلات الوظائف")],
             [KeyboardButton("⬅️ الرئيسية")],
         ],

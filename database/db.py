@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # تخزين مؤقت للمستخدم (تقليل استدعاءات Supabase)
+# يُمسح تلقائياً بعد 90 ثانية أو عند استدعاء invalidate_user_cache أو عند إعادة تشغيل البوت
 _USER_CACHE: dict[int, tuple[dict, float]] = {}
 _USER_CACHE_TTL = 90  # ثانية
 
