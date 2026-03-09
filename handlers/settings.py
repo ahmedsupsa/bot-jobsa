@@ -102,7 +102,15 @@ async def receive_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("يرجى إدخال إيميل Gmail صحيح.")
         return
     context.user_data["temp_email"] = email
-    await update.message.reply_text("أدخل كلمة مرور التطبيق (App Password):")
+    await update.message.reply_text(
+        "أدخل كلمة مرور التطبيق (App Password) لهذا الإيميل.\n\n"
+        "📌 طريقة إنشاء كلمة مرور التطبيق (Gmail):\n"
+        "1- فعّل التحقق بخطوتين لحساب Google من إعدادات الأمان.\n"
+        "2- بعد التفعيل ادخل إلى صفحة \"كلمات مرور التطبيقات\".\n"
+        "3- اختر التطبيق \"البريد\" والجهاز \"أخرى\" ثم أنشئ كلمة مرور.\n"
+        "4- انسخ كلمة المرور ذات 16 خانة والصقها هنا في البوت.\n\n"
+        "رابط مباشر (بعد تسجيل الدخول): https://myaccount.google.com/apppasswords"
+    )
     context.user_data["awaiting"] = "app_password"
     key = _email_flow_key(update)
     if key:
