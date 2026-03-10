@@ -65,6 +65,10 @@ def main():
             name="auto_apply_cycle",
         )
         logger.info("📅 Scheduler مُفعَّل: تقديم تلقائي كل 30 دقيقة.")
+        if getattr(config, "GEMINI_API_KEY", ""):
+            logger.info("🔑 GEMINI_API_KEY معرّف — التقديم التلقائي يستخدم جيميني لرسالة التغطية وقراءة السيرة (PDF/صور).")
+        else:
+            logger.warning("⚠️ GEMINI_API_KEY غير معرّف — التقديم التلقائي سيعمل برسالة عامة فقط (بدون جيميني).")
     else:
         logger.warning("⚠️ job_queue غير متوفر، التقديم التلقائي لن يعمل.")
 

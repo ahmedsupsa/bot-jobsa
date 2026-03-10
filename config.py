@@ -35,3 +35,7 @@ if USE_WEBHOOK and not WEBHOOK_URL:
 # ضع معرّف القناة (رقم سالب مثل -1001234567890) أو اتركه فارغاً لتعطيل
 _jo = os.getenv("JOBS_SOURCE_CHANNEL_ID", "").strip()
 JOBS_SOURCE_CHANNEL_ID = int(_jo) if _jo and _jo.lstrip("-").isdigit() else None
+
+# مفتاح جيميني: يُستخدم في التقديم التلقائي لتوليد رسالة التغطية وقراءة السيرة من الصور (OCR)
+# من https://aistudio.google.com/apikey — إن لم يُضف، التقديم يعمل برسالة عامة وبدون قراءة الصور
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()

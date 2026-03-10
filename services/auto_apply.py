@@ -62,7 +62,7 @@ async def run_auto_apply_cycle(bot) -> None:
         add_application,
         is_subscription_active,
     )
-    from services.cover_letter import generate_cover_letter, extract_text_from_pdf
+    from services.cover_letter import generate_cover_letter, extract_text_from_cv
     from templates.preview import build_application_html, get_preview_html
     from templates.preview import send_email_smtp
 
@@ -151,19 +151,19 @@ async def run_auto_apply_cycle(bot) -> None:
             logger.warning("فشل تحميل السيرة للمستخدم %s: %s", telegram_id, e)
             continue
 
-        # استخراج نص السيرة الذاتية
-        cv_text = ""
+        # استخراج نص السيرة الذاتية (PDF، DOCX، أو صورة عبر جيميني)
         cv_filename = cv.get("file_name") or "cv.pdf"
-        if cv_filename.lower().endswith(".pdf"):
-            try:
-                cv_text = await asyncio.to_thread(extract_text_from_pdf, cv_bytes)
-            except Exception:
-                cv_text = ""
+        try:
+            cv_text = await asyncio.to_thread(extract_text_from_cv, cv_bytes, cv_filename)
+        except Exception:
+            cv_text = ""
 
         name = user.get("full_name") or "المتقدم"
         phone = user.get("phone") or ""
         lang = user.get("application_language") or "ar"
-        template_type = settings.get("template_type") or "normal"
+        # استخدام القالب الذي اختاره المستخدم في الإعدادات (قالب رسمي / عادي / احترافي)
+        raw_template = (settings.get("template_type") or "normal").strip().lower()
+        template_type = raw_template if raw_template in ("formal", "normal", "professional") else "normal"
         sender_email = settings["email"]
         app_password = settings["app_password_encrypted"]
         remaining = 10 - count_today
@@ -180,7 +180,7 @@ async def run_auto_apply_cycle(bot) -> None:
             to_email = (job.get("application_email") or "").strip()
             job_title = job.get("title_ar") or job.get("title_en") or "وظيفة"
             company = job.get("company") or ""
-            desc = (job.get("description_ar") or job.get("description_en") or "")[:600]
+            desc = (job.get("description_ar") or job.get("description_en") or "")[:1200]
             job_id = str(job["id"])
 
             # توليد رسالة التغطية بالذكاء الاصطناعي
@@ -192,7 +192,7 @@ async def run_auto_apply_cycle(bot) -> None:
             except Exception:
                 cover = ""
 
-            # بناء HTML بالقالب المختار
+            # بناء HTML بالقالب المختار + إظهار أن الرسالة نُشئت من السيرة إن وُجد نصها
             html_body = build_application_html(
                 name=name,
                 phone=phone,
@@ -201,6 +201,7 @@ async def run_auto_apply_cycle(bot) -> None:
                 cover_letter=cover,
                 lang=lang,
                 template_type=template_type,
+                cv_used_for_letter=len((cv_text or "").strip()) > 80,
             )
 
             subject = (

@@ -23,7 +23,7 @@ from keyboards import (
     job_fields_keyboard,
     job_categories_reply_keyboard,
 )
-from services.cover_letter import generate_cover_letter, extract_text_from_pdf
+from services.cover_letter import generate_cover_letter, extract_text_from_cv
 from templates.preview import send_email_smtp, build_application_html
 
 

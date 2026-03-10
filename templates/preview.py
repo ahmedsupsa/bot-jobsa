@@ -155,11 +155,20 @@ def build_application_html(
     cover_letter: str,
     lang: str = "ar",
     template_type: str = "normal",
+    cv_used_for_letter: bool = False,
 ) -> str:
     """
     بناء HTML التقديم بناءً على القالب الذي اختاره المستخدم.
     template_type: formal | normal | professional
+    cv_used_for_letter: إذا True يُضاف سطر يوضح أن رسالة التغطية نُشئت من تحليل السيرة.
     """
+    footer_note = ""
+    if cv_used_for_letter:
+        footer_note = (
+            '<p style="margin-top:16px;font-size:12px;color:#666;">'
+            + ("تم توليد رسالة التغطية أعلاه بناءً على تحليل السيرة الذاتية المرفقة." if lang == "ar" else "The cover letter above was generated from the attached CV.")
+            + "</p>"
+        )
     if template_type == "formal":
         base = _html_formal(name, phone, job_title)
         cover_html = cover_letter.replace("\n", "<br>") if cover_letter else ""
@@ -170,13 +179,20 @@ def build_application_html(
 <h2 style="color:#333;">{"طلب توظيف" if lang=="ar" else "Job Application"} - {job_title}</h2>
 <hr/>
 <p style="line-height:1.8;">{cover_html}</p>
+{footer_note}
 <hr/>
 <p><strong>{"الاسم" if lang=="ar" else "Name"}:</strong> {name}</p>
 <p><strong>{"الجوال" if lang=="ar" else "Phone"}:</strong> {phone}</p>
 </div></body></html>"""
 
     elif template_type == "professional":
-        return _html_professional_full(name, phone, job_title, company, cover_letter, lang)
+        html = _html_professional_full(name, phone, job_title, company, cover_letter, lang)
+        if footer_note:
+            html = html.replace(
+                "    <hr class=\"divider\">\n    <div class=\"info-box\">",
+                footer_note + "\n    <hr class=\"divider\">\n    <div class=\"info-box\">",
+            )
+        return html
 
     else:  # normal
         cover_html = cover_letter.replace("\n", "<br>") if cover_letter else ""
@@ -185,6 +201,7 @@ def build_application_html(
 <body style="font-family:'Segoe UI',sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f9f9f9;">
 <div style="background:#fff;padding:24px;border-radius:8px;">
 <p style="line-height:1.9;color:#2c2c2c;">{cover_html}</p>
+{footer_note}
 <hr style="border:none;border-top:1px solid #eee;margin:16px 0;">
 <p><strong>{"الاسم" if lang=="ar" else "Name"}:</strong> {name}</p>
 <p><strong>{"الجوال" if lang=="ar" else "Phone"}:</strong> {phone}</p>
