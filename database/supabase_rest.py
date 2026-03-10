@@ -63,10 +63,8 @@ def _eq(k: str, v: Any) -> str:
         return f"{k}=is.null"
     if isinstance(v, bool):
         return f"{k}=eq.{str(v).lower()}"
+    # باقي الأنواع (نحو UUID, نصوص, أرقام...) تُرسل كما هي بدون اقتباس إضافي
     s = str(v)
-    # قيم UUID في PostgREST تحتاج اقتباساً في الرابط لئلا تُفسَّر الشرطات خطأ
-    if len(s) == 36 and s.count("-") == 4 and all(c in "0123456789abcdefABCDEF-" for c in s):
-        return f'{k}=eq."{s}"'
     return f"{k}=eq.{s}"
 
 
