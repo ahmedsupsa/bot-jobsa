@@ -130,11 +130,17 @@ async def cb_job_cat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user_id:
         await query.edit_message_text("انتهت الجلسة. ارجع للتقديمات.")
         return
-    if category:
-        fields = get_job_fields(category=category)
-    else:
-        fields = get_job_fields()
-    selected = [str(x) for x in get_user_job_preferences(user_id)]
+    # جلب المجالات والتفضيلات في Thread منفصل لتفادي حظر الـ event loop وأخطاء الشبكة
+    try:
+        if category:
+            fields = await asyncio.to_thread(get_job_fields, category=category)
+        else:
+            fields = await asyncio.to_thread(get_job_fields)
+        selected_ids = await asyncio.to_thread(get_user_job_preferences, user_id)
+    except Exception as e:
+        await query.edit_message_text(f"حدث خطأ أثناء جلب مجالات الوظائف: {e}")
+        return
+    selected = [str(x) for x in selected_ids]
     context.user_data["job_prefs_category"] = category or "both"
     context.user_data["job_prefs_page"] = 0
     context.user_data["job_prefs_search"] = ""
