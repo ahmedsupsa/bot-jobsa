@@ -108,8 +108,10 @@ async def cb_app_job_prefs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("انتهى اشتراكك.")
         return
     context.user_data["job_prefs_user_id"] = user["id"]
-    await query.edit_message_text(
-        "الوظائف التي تريد:\nاختر نوع المجالات (عامة، خاصة، أو الاثنين):",
+    # نرسل رسالة جديدة مثل أزرار المستخدمين (أوضح للمستخدم)
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="🎯 تفضيلات الوظائف\n\nاختر نوع المجالات (عامة، خاصة، أو الاثنين):",
         reply_markup=job_categories_keyboard(),
     )
 
@@ -144,8 +146,10 @@ async def cb_job_cat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["job_prefs_category"] = category or "both"
     context.user_data["job_prefs_page"] = 0
     context.user_data["job_prefs_search"] = ""
-    await query.edit_message_text(
-        "اختر المجالات (اضغط على المجال لإضافته أو إزالته):",
+    # أيضاً نرسل رسالة جديدة بالقائمة بدل تعديل الرسالة السابقة
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="اختر المجالات (اضغط على المجال لإضافته أو إزالته):",
         reply_markup=job_fields_keyboard(fields, selected, category or "both", 0, ""),
     )
 
