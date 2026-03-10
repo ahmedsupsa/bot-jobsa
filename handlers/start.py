@@ -200,16 +200,21 @@ async def cb_start_subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not query:
         return
     await query.answer()
+    PAYMENT_LINK = "https://streampay.sa/s/bDgCO"
     text = (
         "🛒 **الاشتراك في البوت**\n\n"
-        "لشراء الاشتراك ادفع عبر رابط الدفع الآمن التالي:\n"
-        "`https://streampay.sa/s/bDgCO`\n\n"
+        "لشراء الاشتراك ادفع عبر رابط الدفع الآمن:\n"
+        f"[اضغط هنا للدفع]({PAYMENT_LINK})\n\n"
         "بعد الدفع **تواصل معنا** لإرسال كود التفعيل:\n"
-        "• واتساب: `0560766880`\n"
+        "• واتساب: 0560766880\n"
         "• تليجرام: @ahmedsupsa\n\n"
         "بعد استلام كود التفعيل، اضغط /start ثم اختر «مشترك لدي كود تفعيل» وأدخل الكود."
     )
-    await query.edit_message_text(text, reply_markup=back_to_main_start_keyboard())
+    await query.edit_message_text(
+        text,
+        reply_markup=back_to_main_start_keyboard(),
+        parse_mode="Markdown",
+    )
 
 
 async def cb_main_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
