@@ -324,7 +324,7 @@ async def cb_set_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await query.answer()
     await query.edit_message_text(
-        "تواصل معنا\n\nللدعم والاستفسارات تواصل مع الإدارة عبر البوت أو القنوات المعلنة.",
+        "📞 تواصل معنا\n\nواتساب: 0560766880\nتليجرام: @ahmedsupsa",
         reply_markup=back_to_settings_keyboard(),
     )
 

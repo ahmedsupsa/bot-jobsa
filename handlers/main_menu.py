@@ -250,7 +250,10 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
 
     elif text == "📞 تواصل معنا":
         await update.message.reply_text(
-            "📞 للتواصل مع الدعم الفني:\n\n@support",
+            "📞 **تواصل معنا**\n\n"
+            "واتساب: `0560766880`\n"
+            "تليجرام: @ahmedsupsa",
+            parse_mode="Markdown",
             reply_markup=settings_reply_keyboard(),
         )
 
