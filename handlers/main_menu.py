@@ -116,12 +116,13 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
     elif text == "⚙️ الإعدادات":
         await update.message.reply_text("⚙️ الإعدادات:\n\nاختر:", reply_markup=settings_reply_keyboard())
 
+    # ──── تفضيلات الوظائف (من القائمة الرئيسية أو من قائمة التقديمات) ────
     elif text == "🎯 تفضيلات الوظائف":
-        from keyboards import job_categories_keyboard
+        from keyboards import job_categories_reply_keyboard
         context.user_data["job_prefs_user_id"] = user["id"]
         await update.message.reply_text(
-            "🎯 اختر نوع المجالات:",
-            reply_markup=job_categories_keyboard(),
+            "🎯 تفضيلات الوظائف\n\nاختر نوع المجالات (عامة، خاصة، أو الاثنين):",
+            reply_markup=job_categories_reply_keyboard(),
         )
 
     # ──── التقديمات ────
@@ -147,14 +148,6 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
                 lines.append(f"{i}. {job} | {applied}")
             msg = "📅 سجل التقديمات\n\n" + "\n".join(lines)
         await update.message.reply_text(msg, reply_markup=applications_reply_keyboard())
-
-    elif text == "🎯 تفضيلات الوظائف":
-        from keyboards import job_categories_keyboard
-        context.user_data["job_prefs_user_id"] = user["id"]
-        await update.message.reply_text(
-            "🎯 اختر نوع المجالات:",
-            reply_markup=job_categories_keyboard(),
-        )
 
     # ──── حسابي ────
     elif text == "📄 بياناتي":
