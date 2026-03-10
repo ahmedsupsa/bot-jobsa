@@ -125,6 +125,38 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
             reply_markup=job_categories_reply_keyboard(),
         )
 
+    elif text in ("مجالات عامة", "مجالات خاصة", "الاثنين"):
+        from database.db import get_job_fields, get_user_job_preferences
+        from keyboards import job_fields_keyboard
+
+        user_id = context.user_data.get("job_prefs_user_id") or user["id"]
+        if text == "مجالات عامة":
+            category = "general"
+        elif text == "مجالات خاصة":
+            category = "specific"
+        else:
+            category = None
+
+        try:
+            if category:
+                fields = await asyncio.to_thread(get_job_fields, category=category)
+            else:
+                fields = await asyncio.to_thread(get_job_fields)
+            selected_ids = await asyncio.to_thread(get_user_job_preferences, user_id)
+        except Exception as e:
+            await update.message.reply_text(f"حدث خطأ أثناء جلب مجالات الوظائف: {e}")
+            return
+
+        selected = [str(x) for x in selected_ids]
+        context.user_data["job_prefs_user_id"] = user_id
+        context.user_data["job_prefs_category"] = category or "both"
+        context.user_data["job_prefs_page"] = 0
+        context.user_data["job_prefs_search"] = ""
+        await update.message.reply_text(
+            "اختر المجالات (اضغط على المجال لإضافته أو إزالته):",
+            reply_markup=job_fields_keyboard(fields, selected, category or "both", 0, ""),
+        )
+
     # ──── التقديمات ────
     elif text == "📌 التقديمات المرسلة":
         from database.db import get_applications_count
