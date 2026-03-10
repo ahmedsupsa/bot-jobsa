@@ -85,6 +85,22 @@ _EMAIL_CANCEL_MAIN = "⬅️ الرئيسية"
 _EMAIL_CANCEL_ACCOUNT = "⬅️ حسابي"
 _EMAIL_CANCEL_WORDS = ("الغاء", "رجوع", "إلغاء")
 
+# نصوص أزرار القوائم — إذا أرسلها المستخدم أثناء انتظار الإيميل لا نعتبرها إيميلاً ولا نرفضها بقسوة
+_EMAIL_IGNORE_BUTTONS = (
+    "📧 ربط الإيميل",
+    "🖼️ قوالب التقديم",
+    "📞 تواصل معنا",
+    "⚙️ الإعدادات",
+)
+
+def _is_valid_gmail(s: str) -> bool:
+    """يقبل example@gmail.com أو example@googlemail.com مع إزالة المسافات."""
+    s = (s or "").strip().lower()
+    if "@" not in s or "." not in s:
+        return False
+    # Gmail أو Google Mail
+    return "gmail" in s or "googlemail" in s
+
 async def receive_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return
@@ -98,8 +114,17 @@ async def receive_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if email == _EMAIL_CANCEL_ACCOUNT:
         await cancel_email_flow(update, context, "👤 حسابي:", account_reply_keyboard())
         return
-    if "@" not in email or "gmail" not in email.lower():
-        await update.message.reply_text("يرجى إدخال إيميل Gmail صحيح.")
+    # إذا ضغط زر من القائمة بدل كتابة الإيميل نطلب منه الكتابة فقط
+    if email in _EMAIL_IGNORE_BUTTONS:
+        await update.message.reply_text(
+            "يرجى **كتابة** عنوان الإيميل في رسالة جديدة (مثال: yourname@gmail.com)\nولا تضغط على أزرار القائمة.",
+            parse_mode="Markdown",
+        )
+        return
+    if not _is_valid_gmail(email):
+        await update.message.reply_text(
+            "يرجى إدخال إيميل Gmail صحيح (مثال: yourname@gmail.com).\nتأكد من وجود @ و gmail في العنوان.",
+        )
         return
     context.user_data["temp_email"] = email
     await update.message.reply_text(
