@@ -21,6 +21,7 @@ from keyboards import (
     applications_menu_keyboard,
     job_categories_keyboard,
     job_fields_keyboard,
+    job_categories_reply_keyboard,
 )
 from services.cover_letter import generate_cover_letter, extract_text_from_pdf
 from templates.preview import send_email_smtp, build_application_html
@@ -108,11 +109,11 @@ async def cb_app_job_prefs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("انتهى اشتراكك.")
         return
     context.user_data["job_prefs_user_id"] = user["id"]
-    # نرسل رسالة جديدة مثل أزرار المستخدمين (أوضح للمستخدم)
+    # نرسل رسالة جديدة مع Reply Keyboard لاختيار نوع المجالات
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="🎯 تفضيلات الوظائف\n\nاختر نوع المجالات (عامة، خاصة، أو الاثنين):",
-        reply_markup=job_categories_keyboard(),
+        reply_markup=job_categories_reply_keyboard(),
     )
 
 
@@ -150,6 +151,58 @@ async def cb_job_cat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="اختر المجالات (اضغط على المجال لإضافته أو إزالته):",
+        reply_markup=job_fields_keyboard(fields, selected, category or "both", 0, ""),
+    )
+
+
+async def msg_job_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """اختيار نوع المجالات من Reply Keyboard (مجالات عامة / خاصة / الاثنين)."""
+    if not update.message or not update.message.text:
+        return
+    text = update.message.text.strip()
+    if text not in ("مجالات عامة", "مجالات خاصة", "الاثنين", "⬅️ رجوع"):
+        return
+
+    # رجوع لقائمة التقديمات
+    if text == "⬅️ رجوع":
+        await update.message.reply_text(
+            "رجعت لقائمة التقديمات.",
+            reply_markup=applications_menu_keyboard(),
+        )
+        context.user_data.pop("job_prefs_user_id", None)
+        context.user_data.pop("job_prefs_category", None)
+        context.user_data.pop("job_prefs_page", None)
+        context.user_data.pop("job_prefs_search", None)
+        return
+
+    user_id = context.user_data.get("job_prefs_user_id")
+    if not user_id:
+        await update.message.reply_text("انتهت الجلسة. ارجع للتقديمات.")
+        return
+
+    if text == "مجالات عامة":
+        category = "general"
+    elif text == "مجالات خاصة":
+        category = "specific"
+    else:
+        category = None
+
+    try:
+        if category:
+            fields = await asyncio.to_thread(get_job_fields, category=category)
+        else:
+            fields = await asyncio.to_thread(get_job_fields)
+        selected_ids = await asyncio.to_thread(get_user_job_preferences, user_id)
+    except Exception as e:
+        await update.message.reply_text(f"حدث خطأ أثناء جلب مجالات الوظائف: {e}")
+        return
+
+    selected = [str(x) for x in selected_ids]
+    context.user_data["job_prefs_category"] = category or "both"
+    context.user_data["job_prefs_page"] = 0
+    context.user_data["job_prefs_search"] = ""
+    await update.message.reply_text(
+        "اختر المجالات (اضغط على المجال لإضافته أو إزالته):",
         reply_markup=job_fields_keyboard(fields, selected, category or "both", 0, ""),
     )
 
@@ -245,7 +298,7 @@ async def cb_job_save_prefs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await query.answer()
     await query.edit_message_text(
-        "✅ تم حفظ تفضيلات الوظائف بنجاح.",
+        "✅ تم حفظ التغييرات.",
         reply_markup=applications_menu_keyboard(),
     )
     # رسالة مفاجأة: موعد التقديم التلقائي القادم
@@ -301,4 +354,13 @@ def setup_applications_handlers(application):
     application.add_handler(CallbackQueryHandler(cb_job_toggle, pattern="^job_toggle_"))
     application.add_handler(CallbackQueryHandler(cb_job_search, pattern="^job_search$"))
     application.add_handler(CallbackQueryHandler(cb_job_save_prefs, pattern="^job_save_prefs$"))
+    # اختيار نوع المجالات من Reply Keyboard
+    application.add_handler(
+        MessageHandler(
+            filters.TEXT & ~filters.COMMAND
+            & filters.Regex("^(مجالات عامة|مجالات خاصة|الاثنين|⬅️ رجوع)$"),
+            msg_job_category,
+        )
+    )
+    # البحث داخل المجالات
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, msg_job_search))

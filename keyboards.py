@@ -160,6 +160,18 @@ def job_categories_keyboard():
     ])
 
 
+def job_categories_reply_keyboard():
+    return ReplyKeyboardMarkup(
+        [
+            [KeyboardButton("مجالات عامة")],
+            [KeyboardButton("مجالات خاصة")],
+            [KeyboardButton("الاثنين")],
+            [KeyboardButton("⬅️ رجوع")],
+        ],
+        resize_keyboard=True,
+    )
+
+
 def job_fields_keyboard(fields: list, selected_ids: list, category: str, page: int = 0, search: str = ""):
     per_page = 8
     start = page * per_page
