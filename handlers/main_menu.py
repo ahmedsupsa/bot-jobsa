@@ -21,6 +21,8 @@ _ALL_BUTTONS = (
     # تقديمات
     "📌 التقديمات المرسلة", "📅 سجل التقديمات",
     "🎯 تفضيلات الوظائف",
+    # تفضيلات الوظائف (Reply Keyboard)
+    "مجالات عامة", "مجالات خاصة", "الاثنين",
     # حسابي
     "📄 بياناتي", "📎 السيرة الذاتية", "📊 حالة الاشتراك",
     # سيرة ذاتية
@@ -28,7 +30,7 @@ _ALL_BUTTONS = (
     # إعدادات
     "📧 ربط الإيميل", "🖼️ قوالب التقديم", "📞 تواصل معنا",
     # رجوع
-    "⬅️ الرئيسية", "⬅️ حسابي",
+    "⬅️ الرئيسية", "⬅️ حسابي", "⬅️ رجوع",
 )
 
 
@@ -71,6 +73,15 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
         context.user_data.pop("awaiting", None)
         context.user_data.pop("temp_email", None)
         await update.message.reply_text("👤 حسابي:", reply_markup=account_reply_keyboard())
+        return
+
+    if text == "⬅️ رجوع":
+        # رجوع لقائمة التقديمات من تفضيلات الوظائف
+        context.user_data.pop("job_prefs_user_id", None)
+        context.user_data.pop("job_prefs_category", None)
+        context.user_data.pop("job_prefs_page", None)
+        context.user_data.pop("job_prefs_search", None)
+        await update.message.reply_text("📄 التقديمات:\n\nاختر:", reply_markup=applications_reply_keyboard())
         return
 
     user = await _check_user(update)
