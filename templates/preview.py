@@ -217,6 +217,7 @@ def send_email_smtp(
     attachment_bytes: bytes | None = None,
     attachment_filename: str | None = None,
 ) -> None:
+    """الإرسال من إيميل المستخدم نفسه عبر Gmail SMTP (App Password)."""
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = sender_email
@@ -229,7 +230,6 @@ def send_email_smtp(
         encoders.encode_base64(part)
         part.add_header("Content-Disposition", "attachment", filename=attachment_filename)
         msg.attach(part)
-    # محاولة المنفذ 465 أولاً، ثم 587 (STARTTLS) إذا فشل الاتصال — بعض المنصات تسمح بـ 587 فقط
     err_465 = None
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as server:
