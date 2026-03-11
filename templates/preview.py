@@ -229,9 +229,14 @@ def send_email_smtp(
         encoders.encode_base64(part)
         part.add_header("Content-Disposition", "attachment", filename=attachment_filename)
         msg.attach(part)
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(sender_email, app_password)
-        server.sendmail(sender_email, to_email, msg.as_string())
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as server:
+            server.login(sender_email, app_password)
+            server.sendmail(sender_email, to_email, msg.as_string())
+    except OSError as e:
+        if "101" in str(e) or "unreachable" in str(e).lower():
+            raise ConnectionError("الشبكة غير متاحة أو المنفذ 465 مغلق (تحقق من الجدار الناري أو منصة الاستضافة).") from e
+        raise
 
 
 async def send_template_preview_email(bot, user: dict, settings: dict, template_key: str, chat_id: int) -> None:

@@ -246,10 +246,16 @@ async def cb_tpl_option(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=template_options_keyboard(template_key),
             )
         except Exception as e:
-            await query.edit_message_text(
-                f"فشل الإرسال: {e}",
-                reply_markup=template_options_keyboard(template_key),
-            )
+            err_msg = str(e).strip()
+            if "101" in err_msg or "unreachable" in err_msg.lower() or "network" in err_msg.lower():
+                text = (
+                    "⚠️ فشل الإرسال: لا يمكن الوصول إلى خادم البريد (الشبكة غير متاحة).\n\n"
+                    "• إذا كنت على سيرفر (مثل Railway): بعض المنصات تمنع الإرسال عبر المنفذ 465.\n"
+                    "• تأكد من اتصال الإنترنت أو جرّب من شبكة أخرى."
+                )
+            else:
+                text = f"فشل الإرسال: {err_msg}"
+            await query.edit_message_text(text, reply_markup=template_options_keyboard(template_key))
         return
     if data.startswith("tpl_save_"):
         template_key = data.replace("tpl_save_", "")
