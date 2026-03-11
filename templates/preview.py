@@ -229,13 +229,23 @@ def send_email_smtp(
         encoders.encode_base64(part)
         part.add_header("Content-Disposition", "attachment", filename=attachment_filename)
         msg.attach(part)
+    # محاولة المنفذ 465 أولاً، ثم 587 (STARTTLS) إذا فشل الاتصال — بعض المنصات تسمح بـ 587 فقط
+    err_465 = None
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as server:
             server.login(sender_email, app_password)
             server.sendmail(sender_email, to_email, msg.as_string())
+        return
     except OSError as e:
-        if "101" in str(e) or "unreachable" in str(e).lower():
-            raise ConnectionError("الشبكة غير متاحة أو المنفذ 465 مغلق (تحقق من الجدار الناري أو منصة الاستضافة).") from e
+        err_465 = e
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=15) as server:
+            server.starttls()
+            server.login(sender_email, app_password)
+            server.sendmail(sender_email, to_email, msg.as_string())
+    except Exception:
+        if err_465 is not None:
+            raise err_465
         raise
 
 
