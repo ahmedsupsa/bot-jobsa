@@ -149,3 +149,8 @@ CREATE TABLE IF NOT EXISTS admin_users (
 
 CREATE INDEX IF NOT EXISTS idx_admin_jobs_active ON admin_jobs(is_active);
 CREATE INDEX IF NOT EXISTS idx_admin_announcements_active ON admin_announcements(is_active);
+
+-- ─── حفظ الإيميل في user_settings لا يعمل؟ ───
+-- ضع في البيئة SUPABASE_KEY = مفتاح service_role / secret من لوحة Supabase (ليس المفتاح العام anon).
+-- مفتاح الخدمة يتجاوز RLS. إذا بقي المنع، نفّذ (للتشخيص فقط):
+-- ALTER TABLE user_settings DISABLE ROW LEVEL SECURITY;

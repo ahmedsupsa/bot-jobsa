@@ -126,19 +126,10 @@ def back_to_settings_keyboard():
     return settings_reply_keyboard()
 
 
+# قالب تقديم واحد فقط — بدون اختيار بين عدة قوالب
 def templates_menu_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("قالب رسمي", callback_data="tpl_formal")],
-        [InlineKeyboardButton("قالب عادي", callback_data="tpl_normal")],
-        [InlineKeyboardButton("قالب احترافي", callback_data="tpl_professional")],
-        [InlineKeyboardButton("⬅️ الرجوع", callback_data="back_to_settings")],
-    ])
-
-
-def template_options_keyboard(template_key: str):
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("معاينة وارسال على البريد", callback_data=f"tpl_preview_{template_key}")],
-        [InlineKeyboardButton("اختيار القالب والحفظ", callback_data=f"tpl_save_{template_key}")],
+        [InlineKeyboardButton("📧 معاينة القالب وإرسال إلى إيميلك", callback_data="tpl_preview")],
         [InlineKeyboardButton("⬅️ الرجوع", callback_data="back_to_settings")],
     ])
 

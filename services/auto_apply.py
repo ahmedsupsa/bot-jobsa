@@ -64,7 +64,7 @@ async def run_auto_apply_cycle(bot) -> None:
     )
     from services.cover_letter import generate_cover_letter, extract_text_from_cv
     from templates.preview import build_application_html, get_preview_html
-    from templates.preview import send_email_smtp
+    from templates.preview import send_email_smtp, get_smtp_error_user_message, SMTP_NETWORK_ERROR_HINT
 
     # جلب كل الوظائف النشطة التي لها إيميل
     try:
@@ -161,15 +161,15 @@ async def run_auto_apply_cycle(bot) -> None:
         name = user.get("full_name") or "المتقدم"
         phone = user.get("phone") or ""
         lang = user.get("application_language") or "ar"
-        # استخدام القالب الذي اختاره المستخدم في الإعدادات (قالب رسمي / عادي / احترافي)
-        raw_template = (settings.get("template_type") or "normal").strip().lower()
-        template_type = raw_template if raw_template in ("formal", "normal", "professional") else "normal"
+        # قالب تقديم واحد لجميع المستخدمين
+        template_type = "normal"
         sender_email = settings["email"]
         app_password = settings["app_password_encrypted"]
         remaining = 10 - count_today
 
         sent_this_cycle = 0
-        failed_titles: list[str] = []  # رسالة فشل واحدة في نهاية الدورة
+        failed_titles: list[str] = []
+        had_network_error = False  # لإضافة توجيه عند منع SMTP من الاستضافة
         for job in jobs_to_apply[:remaining]:
             # تحقق من الفاصل الزمني بين التقديمات
             if not _can_send_now(user_id):
@@ -210,8 +210,7 @@ async def run_auto_apply_cycle(bot) -> None:
             )
 
             try:
-                await asyncio.to_thread(
-                    send_email_smtp,
+                await send_email_smtp(
                     sender_email, app_password, to_email,
                     subject, html_body, cv_bytes, cv_filename,
                 )
@@ -238,6 +237,8 @@ async def run_auto_apply_cycle(bot) -> None:
             except Exception as e:
                 logger.warning("❌ فشل التقديم: %s → %s: %s", name, job_title, e)
                 failed_titles.append(job_title)
+                if get_smtp_error_user_message(e):
+                    had_network_error = True
 
         # رسالة فشل مرة واحدة فقط كل 24 ساعة لكل مستخدم (لا تُرسل كل دورة كتذكير)
         if failed_titles and telegram_id:
@@ -249,10 +250,10 @@ async def run_auto_apply_cycle(bot) -> None:
                     jobs_preview = "، ".join(failed_titles[:3])
                     if n > 3:
                         jobs_preview += f" و{n - 3} أخرى"
-                    await bot.send_message(
-                        chat_id=telegram_id,
-                        text=f"⚠️ تعذّر التقديم على {n} وظيفة ({jobs_preview}). تأكد من صحة إيميلك وكلمة مرور التطبيق.",
-                    )
+                    text = f"⚠️ تعذّر التقديم على {n} وظيفة ({jobs_preview}). تأكد من صحة إيميلك وكلمة مرور التطبيق."
+                    if had_network_error:
+                        text += "\n\n" + SMTP_NETWORK_ERROR_HINT
+                    await bot.send_message(chat_id=telegram_id, text=text)
                     _last_failure_notification[user_id] = now
                 except Exception:
                     pass

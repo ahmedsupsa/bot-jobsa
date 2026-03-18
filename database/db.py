@@ -59,6 +59,7 @@ if _use_rest:
         insert_many as _rest_insert_many,
         update as _rest_update,
         delete as _rest_delete,
+        upsert_merge as _rest_upsert_merge,
     )
 else:
     from supabase import create_client, Client
@@ -149,7 +150,13 @@ def get_or_create_user_settings(user_id: str) -> dict:
         row = _rest_select_one("user_settings", user_id=user_id)
         if row:
             return row
-        rows = _rest_insert("user_settings", {"user_id": user_id})
+        try:
+            rows = _rest_insert("user_settings", {"user_id": user_id})
+        except Exception:
+            row = _rest_select_one("user_settings", user_id=user_id)
+            if row:
+                return row
+            raise
         return rows[0] if rows else {}
     sb = get_supabase()
     r = sb.table("user_settings").select("*").eq("user_id", user_id).execute()
@@ -169,8 +176,52 @@ def update_user_settings(user_id: str, **kwargs) -> None:
 
 
 def save_user_email_password(user_id: str, email: str, app_password: str) -> None:
-    get_or_create_user_settings(user_id)
-    update_user_settings(user_id, email=email, app_password_encrypted=app_password)
+    """
+    حفظ إيميل Gmail وكلمة مرور التطبيق.
+    يستخدم Upsert لضمان كتابة الصف حتى لو لم يكن موجوداً أو فشل التحديث السابق.
+    """
+    email = (email or "").strip()
+    # Gmail يقبل كلمة المرور بمسافات أو بدون — نخزن بدون مسافات
+    pwd = (app_password or "").replace(" ", "").strip()
+    if not email or not pwd:
+        raise ValueError("الإيميل وكلمة مرور التطبيق مطلوبان.")
+    now = datetime.utcnow().isoformat()
+    payload = {
+        "user_id": user_id,
+        "email": email,
+        "app_password_encrypted": pwd,
+        "updated_at": now,
+    }
+    if _use_rest:
+        rows = _rest_upsert_merge("user_settings", payload, on_conflict="user_id")
+        if not rows:
+            # تحقق: ربما RLS أو مفتاح غير كافٍ
+            row = _rest_select_one("user_settings", user_id=user_id)
+            if not row or (row.get("email") or "").strip() != email:
+                raise RuntimeError(
+                    "لم يُحفظ الإيميل في قاعدة البيانات. "
+                    "استخدم في المتغيرات مفتاح Supabase من نوع **service_role / secret** (ليس المفتاح العام فقط)، "
+                    "أو راجع سياسات RLS لجدول user_settings في لوحة Supabase."
+                )
+            if (row.get("app_password_encrypted") or "").replace(" ", "") != pwd:
+                raise RuntimeError(
+                    "لم تُحفظ كلمة مرور التطبيق. تحقق من مفتاح Supabase (service role) وسياسات RLS."
+                )
+        else:
+            r0 = rows[0]
+            if (r0.get("email") or "").strip() != email:
+                raise RuntimeError("فشل التحقق من حفظ الإيميل.")
+            if (r0.get("app_password_encrypted") or "").replace(" ", "") != pwd:
+                raise RuntimeError("فشل التحقق من حفظ كلمة مرور التطبيق.")
+        return
+    sb = get_supabase()
+    sb.table("user_settings").upsert(payload, on_conflict="user_id").execute()
+    r = sb.table("user_settings").select("*").eq("user_id", user_id).execute()
+    row = r.data[0] if r.data else None
+    if not row or (row.get("email") or "").strip() != email:
+        raise RuntimeError("لم يُحفظ الإيميل. تحقق من الصلاحيات في Supabase.")
+    if (row.get("app_password_encrypted") or "").replace(" ", "") != pwd:
+        raise RuntimeError("لم تُحفظ كلمة مرور التطبيق.")
 
 
 def save_user_template(user_id: str, template_type: str) -> None:

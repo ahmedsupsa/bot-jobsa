@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
+import asyncio
 import smtplib
+import time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
+
+try:
+    import aiosmtplib
+except ImportError:
+    aiosmtplib = None  # fallback to sync smtplib
 
 
 def _html_professional_full(
@@ -208,7 +215,130 @@ def build_application_html(
 </div></body></html>"""
 
 
-def send_email_smtp(
+# مهلة الاتصال بـ SMTP (ثواني) — بيئات السحابة قد تكون أبطأ
+SMTP_TIMEOUT = 25
+# عدد المحاولات قبل الفشل (محاولة أولى + إعادة محاولتين)
+SMTP_MAX_ATTEMPTS = 3
+SMTP_RETRY_DELAY = 2
+
+
+def is_smtp_network_error(exc: Exception) -> bool:
+    """هل الخطأ ناتج عن عدم إمكانية الوصول لخوادم البريد (شبكة/منفذ مغلق)؟"""
+    msg = (str(exc) or "").lower()
+    errno = getattr(exc, "errno", None)
+    if errno in (101, 111, 110, 113):  # unreachable, refused, timeout, no route
+        return True
+    if "network is unreachable" in msg or "errno 101" in msg:
+        return True
+    if "connection refused" in msg or "connection reset" in msg:
+        return True
+    if "timed out" in msg or "timeout" in msg:
+        return True
+    return False
+
+
+# رسالة توجيهية عند منع الاستضافة لـ SMTP (تُستخدم في الإعدادات والتقديم التلقائي)
+SMTP_NETWORK_ERROR_HINT = (
+    "⚠️ لا يمكن الوصول لخوادم البريد (Gmail) من السيرفر الحالي.\n\n"
+    "الحل: شغّل البوت من جهازك أو من استضافة (VPS) تسمح بمنافذ SMTP (465، 587). "
+    "بعض المنصات مثل Railway قد تغلق هذه المنافذ."
+)
+
+
+def get_smtp_error_user_message(exc: Exception) -> str | None:
+    """رسالة عربية توجيهية عند فشل الإرسال بسبب الشبكة/الاستضافة."""
+    if not is_smtp_network_error(exc):
+        return None
+    return SMTP_NETWORK_ERROR_HINT
+
+
+def _do_smtp_send_sync(
+    sender_email: str,
+    app_password: str,
+    to_email: str,
+    msg: MIMEMultipart,
+) -> None:
+    """تنفيذ إرسال واحدة (sync) عبر 465 أو 587 — للاستخدام عند عدم توفر aiosmtplib."""
+    err_465 = None
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=SMTP_TIMEOUT) as server:
+            server.login(sender_email, app_password)
+            server.sendmail(sender_email, to_email, msg.as_string())
+        return
+    except OSError as e:
+        err_465 = e
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=SMTP_TIMEOUT) as server:
+            server.starttls()
+            server.login(sender_email, app_password)
+            server.sendmail(sender_email, to_email, msg.as_string())
+    except Exception:
+        if err_465 is not None:
+            raise err_465
+        raise
+
+
+async def _do_smtp_send_async(
+    sender_email: str,
+    app_password: str,
+    to_email: str,
+    msg: MIMEMultipart,
+) -> None:
+    """تنفيذ إرسال واحدة عبر aiosmtplib (465 ثم 587)."""
+    if aiosmtplib is None:
+        await asyncio.to_thread(_do_smtp_send_sync, sender_email, app_password, to_email, msg)
+        return
+    err_465 = None
+    try:
+        smtp = aiosmtplib.SMTP(
+            hostname="smtp.gmail.com",
+            port=465,
+            use_tls=True,
+            timeout=SMTP_TIMEOUT,
+        )
+        async with smtp:
+            await smtp.login(sender_email, app_password)
+            await smtp.send_message(msg)
+        return
+    except Exception as e:
+        err_465 = e
+    smtp = aiosmtplib.SMTP(
+        hostname="smtp.gmail.com",
+        port=587,
+        use_tls=False,
+        timeout=SMTP_TIMEOUT,
+    )
+    async with smtp:
+        await smtp.starttls()
+        await smtp.login(sender_email, app_password)
+        await smtp.send_message(msg)
+    if err_465 is not None:
+        raise err_465
+
+
+def _build_smtp_message(
+    sender_email: str,
+    to_email: str,
+    subject: str,
+    html_body: str,
+    attachment_bytes: bytes | None,
+    attachment_filename: str | None,
+) -> MIMEMultipart:
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = sender_email
+    msg["To"] = to_email
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+    if attachment_bytes and attachment_filename:
+        part = MIMEBase("application", "octet-stream")
+        part.set_payload(attachment_bytes)
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition", "attachment", filename=attachment_filename)
+        msg.attach(part)
+    return msg
+
+
+async def send_email_smtp(
     sender_email: str,
     app_password: str,
     to_email: str,
@@ -217,36 +347,22 @@ def send_email_smtp(
     attachment_bytes: bytes | None = None,
     attachment_filename: str | None = None,
 ) -> None:
-    """الإرسال من إيميل المستخدم نفسه عبر Gmail SMTP (App Password)."""
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = sender_email
-    msg["To"] = to_email
-    part = MIMEText(html_body, "html", "utf-8")
-    msg.attach(part)
-    if attachment_bytes and attachment_filename:
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload(attachment_bytes)
-        encoders.encode_base64(part)
-        part.add_header("Content-Disposition", "attachment", filename=attachment_filename)
-        msg.attach(part)
-    err_465 = None
-    try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as server:
-            server.login(sender_email, app_password)
-            server.sendmail(sender_email, to_email, msg.as_string())
-        return
-    except OSError as e:
-        err_465 = e
-    try:
-        with smtplib.SMTP("smtp.gmail.com", 587, timeout=15) as server:
-            server.starttls()
-            server.login(sender_email, app_password)
-            server.sendmail(sender_email, to_email, msg.as_string())
-    except Exception:
-        if err_465 is not None:
-            raise err_465
-        raise
+    """الإرسال من إيميل المستخدم عبر Gmail SMTP (App Password) — async مع إعادة محاولة."""
+    msg = _build_smtp_message(
+        sender_email, to_email, subject, html_body,
+        attachment_bytes, attachment_filename,
+    )
+    last_error = None
+    for attempt in range(SMTP_MAX_ATTEMPTS):
+        try:
+            await _do_smtp_send_async(sender_email, app_password, to_email, msg)
+            return
+        except Exception as e:
+            last_error = e
+            if attempt < SMTP_MAX_ATTEMPTS - 1:
+                await asyncio.sleep(SMTP_RETRY_DELAY)
+    if last_error is not None:
+        raise last_error
 
 
 async def send_template_preview_email(bot, user: dict, settings: dict, template_key: str, chat_id: int) -> None:
@@ -258,7 +374,7 @@ async def send_template_preview_email(bot, user: dict, settings: dict, template_
     phone = user.get("phone") or "رقم الجوال"
     job_fake = "وظيفة وهمية - معاينة القالب"
     html = get_preview_html(template_key, name, phone, job_fake)
-    send_email_smtp(
+    await send_email_smtp(
         sender_email=email,
         app_password=app_password,
         to_email=email,

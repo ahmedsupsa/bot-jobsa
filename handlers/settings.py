@@ -16,7 +16,6 @@ from keyboards import (
     settings_menu_keyboard,
     back_to_settings_keyboard,
     templates_menu_keyboard,
-    template_options_keyboard,
     lang_menu_keyboard,
     main_reply_keyboard,
     account_reply_keyboard,
@@ -213,88 +212,40 @@ async def cb_set_templates(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await query.answer()
     await query.edit_message_text(
-        "القوالب التقديم\n\nاختر قالباً:",
+        "🖼️ قالب التقديم\n\nيُستخدم قالب واحد لجميع التقديمات. يمكنك معاينته وإرساله إلى إيميلك.",
         reply_markup=templates_menu_keyboard(),
     )
 
 
-async def cb_tpl_option(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def cb_tpl_preview(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """معاينة القالب الواحد وإرساله إلى إيميل المستخدم."""
     query = update.callback_query
-    if not query or not query.data:
+    if not query or not update.effective_user:
         return
     await query.answer()
-    data = query.data
-    if data.startswith("tpl_preview_"):
-        template_key = data.replace("tpl_preview_", "")
-        user = await asyncio.to_thread(get_user_by_telegram, update.effective_user.id) if update.effective_user else None
-        if not user or not is_subscription_active(user):
-            await query.edit_message_text("انتهى اشتراكك.")
-            return
-        settings = await asyncio.to_thread(get_or_create_user_settings, user["id"])
-        email = settings.get("email")
-        if not email:
-            await query.edit_message_text(
-                "يرجى ربط الإيميل أولاً من الإعدادات → ربط الإيميل.",
-                reply_markup=template_options_keyboard(template_key),
-            )
-            return
-        from templates.preview import send_template_preview_email
-        try:
-            await send_template_preview_email(context.bot, user, settings, template_key, update.effective_chat.id)
-            await query.edit_message_text(
-                "تم إرسال معاينة القالب إلى إيميلك.",
-                reply_markup=template_options_keyboard(template_key),
-            )
-        except Exception as e:
-            await query.edit_message_text(
-                f"فشل الإرسال: {e}",
-                reply_markup=template_options_keyboard(template_key),
-            )
+    user = await asyncio.to_thread(get_user_by_telegram, update.effective_user.id)
+    if not user or not is_subscription_active(user):
+        await query.edit_message_text("انتهى اشتراكك.")
         return
-    if data.startswith("tpl_save_"):
-        template_key = data.replace("tpl_save_", "")
-        user = await asyncio.to_thread(get_user_by_telegram, update.effective_user.id) if update.effective_user else None
-        if not user or not is_subscription_active(user):
-            await query.edit_message_text("انتهى اشتراكك.")
-            return
-        await asyncio.to_thread(save_user_template, user["id"], template_key)
+    settings = await asyncio.to_thread(get_or_create_user_settings, user["id"])
+    email = settings.get("email")
+    if not email:
         await query.edit_message_text(
-            "✅ تم الحفظ بنجاح.",
-            reply_markup=back_to_settings_keyboard(),
+            "يرجى ربط الإيميل أولاً من الإعدادات → ربط الإيميل.",
+            reply_markup=templates_menu_keyboard(),
         )
-
-
-async def cb_tpl_formal(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    if not query:
         return
-    await query.answer()
-    await query.edit_message_text(
-        "قالب رسمي\n\nاختر:",
-        reply_markup=template_options_keyboard("formal"),
-    )
-
-
-async def cb_tpl_normal(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    if not query:
-        return
-    await query.answer()
-    await query.edit_message_text(
-        "قالب عادي\n\nاختر:",
-        reply_markup=template_options_keyboard("normal"),
-    )
-
-
-async def cb_tpl_professional(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    if not query:
-        return
-    await query.answer()
-    await query.edit_message_text(
-        "قالب احترافي\n\nاختر:",
-        reply_markup=template_options_keyboard("professional"),
-    )
+    from templates.preview import send_template_preview_email, get_smtp_error_user_message
+    try:
+        await send_template_preview_email(context.bot, user, settings, "normal", update.effective_chat.id)
+        await query.edit_message_text(
+            "تم إرسال معاينة القالب إلى إيميلك.",
+            reply_markup=templates_menu_keyboard(),
+        )
+    except Exception as e:
+        friendly = get_smtp_error_user_message(e)
+        text = (friendly + "\n\n" + str(e)) if friendly else f"فشل الإرسال: {e}"
+        await query.edit_message_text(text, reply_markup=templates_menu_keyboard())
 
 
 async def cb_set_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -371,10 +322,7 @@ def setup_settings_handlers(application):
     ))
     application.add_handler(CallbackQueryHandler(cb_set_email, pattern="^set_email$"))
     application.add_handler(CallbackQueryHandler(cb_set_templates, pattern="^set_templates$"))
-    application.add_handler(CallbackQueryHandler(cb_tpl_formal, pattern="^tpl_formal$"))
-    application.add_handler(CallbackQueryHandler(cb_tpl_normal, pattern="^tpl_normal$"))
-    application.add_handler(CallbackQueryHandler(cb_tpl_professional, pattern="^tpl_professional$"))
-    application.add_handler(CallbackQueryHandler(cb_tpl_option, pattern="^tpl_preview_|^tpl_save_"))
+    application.add_handler(CallbackQueryHandler(cb_tpl_preview, pattern="^tpl_preview$"))
     application.add_handler(CallbackQueryHandler(cb_set_lang, pattern="^set_lang$"))
     application.add_handler(CallbackQueryHandler(cb_lang_ar, pattern="^lang_ar$"))
     application.add_handler(CallbackQueryHandler(cb_lang_en, pattern="^lang_en$"))

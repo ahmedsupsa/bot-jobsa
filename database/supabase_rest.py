@@ -146,8 +146,37 @@ def insert_many(table: str, rows: list[dict]) -> list:
 def update(table: str, data: dict, **filters) -> None:
     q = "&".join(f"{k}=eq.{v}" for k, v in filters.items())
     r = _req("PATCH", f"/{table}?{q}", json=data)
-    if r.status_code != 200:
+    # PostgREST قد يرجع 204 بدون جسم عند نجاح PATCH
+    if r.status_code not in (200, 204):
         r.raise_for_status()
+
+
+def upsert_merge(table: str, row: dict, on_conflict: str) -> list:
+    """
+    إدراج أو دمج (تحديث عند التعارض) — مفيد لـ user_settings حتى لا يضيع الحفظ
+    إذا كان الصف غير موجود أو التحديث لم يطابق أي صف.
+    """
+    client = _get_client()
+    path = f"/{table}?on_conflict={on_conflict}"
+    r = client.post(
+        path,
+        json=row,
+        headers={
+            "Prefer": "resolution=merge-duplicates,return=representation",
+            "Content-Type": "application/json",
+            "apikey": _KEY or "",
+            "Authorization": f"Bearer {_KEY}",
+        },
+    )
+    if r.status_code not in (200, 201):
+        r.raise_for_status()
+    try:
+        out = r.json()
+    except Exception:
+        return []
+    if isinstance(out, list):
+        return out
+    return [out] if out else []
 
 
 def delete(table: str, **filters) -> None:

@@ -281,7 +281,8 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
     elif text == "🖼️ قوالب التقديم":
         from keyboards import templates_menu_keyboard
         await update.message.reply_text(
-            "اختر قالب التقديم:", reply_markup=templates_menu_keyboard(),
+            "🖼️ قالب التقديم\n\nيُستخدم قالب واحد لجميع التقديمات. يمكنك معاينته وإرساله إلى إيميلك.",
+            reply_markup=templates_menu_keyboard(),
         )
 
     elif text == "📞 تواصل معنا":
