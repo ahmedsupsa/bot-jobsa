@@ -288,7 +288,6 @@ async def _do_smtp_send_async(
     if aiosmtplib is None:
         await asyncio.to_thread(_do_smtp_send_sync, sender_email, app_password, to_email, msg)
         return
-    err_465 = None
     try:
         smtp = aiosmtplib.SMTP(
             hostname="smtp.gmail.com",
@@ -300,8 +299,8 @@ async def _do_smtp_send_async(
             await smtp.login(sender_email, app_password)
             await smtp.send_message(msg)
         return
-    except Exception as e:
-        err_465 = e
+    except Exception:
+        pass
     smtp = aiosmtplib.SMTP(
         hostname="smtp.gmail.com",
         port=587,
@@ -312,8 +311,6 @@ async def _do_smtp_send_async(
         await smtp.starttls()
         await smtp.login(sender_email, app_password)
         await smtp.send_message(msg)
-    if err_465 is not None:
-        raise err_465
 
 
 def _build_smtp_message(
