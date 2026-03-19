@@ -216,7 +216,7 @@ def build_application_html(
 
 
 # مهلة الاتصال بـ SMTP (ثواني) — بيئات السحابة قد تكون أبطأ
-SMTP_TIMEOUT = 25
+SMTP_TIMEOUT = 60
 # عدد المحاولات قبل الفشل (محاولة أولى + إعادة محاولتين)
 SMTP_MAX_ATTEMPTS = 3
 SMTP_RETRY_DELAY = 2
