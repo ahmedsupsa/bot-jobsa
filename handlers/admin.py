@@ -333,7 +333,11 @@ async def admin_receive_codes(update: Update, context: ContextTypes.DEFAULT_TYPE
         count = min(max(1, count), 500)
         days = max(1, days)
     except (ValueError, IndexError):
-        await update.message.reply_text("صيغة غير صحيحة. مثال: `49 365`", parse_mode="Markdown")
+        await update.message.reply_text(
+            "صيغة غير صحيحة. مثال: `49 365`",
+            parse_mode="Markdown",
+            reply_markup=admin_reply_keyboard(),
+        )
         return States.ADMIN_AWAIT_CODES
     seen = set()
     codes = []

@@ -265,7 +265,8 @@ async def cb_job_save_prefs(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def msg_job_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.user_data.get("awaiting_job_search") or not update.message or not update.message.text:
+    """يُستدعى فقط عندما awaiting_job_search = True (انظر route_text_after_settings)."""
+    if not update.message or not update.message.text:
         return
     search = update.message.text.strip()
     context.user_data["awaiting_job_search"] = False
@@ -291,6 +292,21 @@ async def msg_job_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def route_text_after_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    بعد معالج ربط الإيميل (نفس المجموعة 0):
+    - إن كان المستخدم في وضع البحث عن مجال → msg_job_search
+    - وإلا → إعادة لوحة المفاتيح مع رسالة توضيحية (لم يعد msg_job_search يلتقط كل النصوص بصمت)
+    """
+    if not update.message or not update.message.text:
+        return
+    if context.user_data.get("awaiting_job_search"):
+        await msg_job_search(update, context)
+        return
+    from handlers.fallback import handle_unknown_text
+    await handle_unknown_text(update, context)
+
+
 def setup_applications_handlers(application):
     from telegram.ext import CallbackQueryHandler, MessageHandler, filters
     application.add_handler(CallbackQueryHandler(cb_app_sent, pattern="^app_sent$"))
@@ -302,5 +318,8 @@ def setup_applications_handlers(application):
     application.add_handler(CallbackQueryHandler(cb_job_toggle, pattern="^job_toggle_"))
     application.add_handler(CallbackQueryHandler(cb_job_search, pattern="^job_search$"))
     application.add_handler(CallbackQueryHandler(cb_job_save_prefs, pattern="^job_save_prefs$"))
-    # البحث داخل المجالات
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, msg_job_search))
+    # نص خاص: البحث عن مجال أو (إن لم يكن في وضع بحث) إعادة لوحة المفاتيح
+    application.add_handler(MessageHandler(
+        filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE,
+        route_text_after_settings,
+    ))
