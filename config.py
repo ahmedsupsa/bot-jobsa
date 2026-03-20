@@ -40,3 +40,8 @@ JOBS_SOURCE_CHANNEL_ID = int(_jo) if _jo and _jo.lstrip("-").isdigit() else None
 # من https://aistudio.google.com/apikey — إن لم يُضف، التقديم يعمل برسالة عامة وبدون قراءة الصور
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 
+# Resend (اختياري): عند تعيينه سيُستخدم بدل Gmail SMTP
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
+RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "").strip()
+RESEND_FROM_NAME = os.getenv("RESEND_FROM_NAME", "Jobsa Bot").strip() or "Jobsa Bot"
+

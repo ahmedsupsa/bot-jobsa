@@ -8,10 +8,12 @@ from database.db import (
     get_user_by_telegram,
     get_or_create_user_settings,
     save_user_email_password,
+    save_user_email,
     save_user_template,
     set_application_language,
     is_subscription_active,
 )
+from config import RESEND_API_KEY, RESEND_FROM_EMAIL
 from keyboards import (
     settings_menu_keyboard,
     back_to_settings_keyboard,
@@ -57,8 +59,11 @@ async def cb_set_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await query.answer()
     try:
+        msg = "📧 ربط الإيميل\n\nأدخل إيميلك (Gmail فقط حالياً):\n\nأو اضغط «رجوع» للإلغاء."
+        if _USES_RESEND:
+            msg = "📧 ربط الإيميل\n\nأدخل إيميلك (Gmail فقط حالياً).\nلن تحتاج كلمة مرور التطبيق عند استخدام Resend.\n\nأو اضغط «رجوع» للإلغاء."
         await query.edit_message_text(
-            "📧 ربط الإيميل\n\nأدخل إيميلك (Gmail فقط حالياً):\n\nأو اضغط «رجوع» للإلغاء.",
+            msg,
             reply_markup=back_to_settings_keyboard(),
         )
     except BadRequest as e:
@@ -92,6 +97,8 @@ _EMAIL_IGNORE_BUTTONS = (
     "⚙️ الإعدادات",
 )
 
+_USES_RESEND = bool((RESEND_API_KEY or "").strip() and (RESEND_FROM_EMAIL or "").strip())
+
 def _is_valid_gmail(s: str) -> bool:
     """يقبل example@gmail.com أو example@googlemail.com مع إزالة المسافات."""
     s = (s or "").strip().lower()
@@ -123,6 +130,36 @@ async def receive_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _is_valid_gmail(email):
         await update.message.reply_text(
             "يرجى إدخال إيميل Gmail صحيح (مثال: yourname@gmail.com).\nتأكد من وجود @ و gmail في العنوان.",
+        )
+        return
+    if _USES_RESEND and update.effective_user:
+        user = await asyncio.to_thread(get_user_by_telegram, update.effective_user.id)
+        if not user or not is_subscription_active(user):
+            await update.message.reply_text("انتهى اشتراكك.")
+            context.user_data.pop("awaiting", None)
+            key = _email_flow_key(update)
+            if key:
+                _awaiting_by_key.pop(key, None)
+            return
+        try:
+            await asyncio.to_thread(save_user_email, user["id"], email)
+        except Exception as e:
+            await update.message.reply_text(
+                f"❌ فشل الحفظ: {e}\nحاول مرة أخرى.",
+                reply_markup=back_to_settings_keyboard(),
+            )
+            context.user_data.pop("awaiting", None)
+            key = _email_flow_key(update)
+            if key:
+                _awaiting_by_key.pop(key, None)
+            return
+        context.user_data.pop("awaiting", None)
+        key = _email_flow_key(update)
+        if key:
+            _awaiting_by_key.pop(key, None)
+        await update.message.reply_text(
+            "✅ تم ربط الإيميل بنجاح\nسيتم استخدامه كـ Reply-To واستلام نسخة من التقديم.",
+            reply_markup=back_to_settings_keyboard(),
         )
         return
     context.user_data["temp_email"] = email

@@ -12,6 +12,7 @@ import logging
 import tempfile
 import os
 import time
+from config import RESEND_API_KEY, RESEND_FROM_EMAIL
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,7 @@ async def run_auto_apply_cycle(bot) -> None:
     )
     from services.cover_letter import generate_cover_letter, extract_text_from_cv
     from templates.preview import build_application_html, get_preview_html
-    from templates.preview import send_email_smtp, get_smtp_error_user_message, SMTP_NETWORK_ERROR_HINT
+    from templates.preview import send_email, get_smtp_error_user_message, SMTP_NETWORK_ERROR_HINT
 
     # جلب كل الوظائف النشطة التي لها إيميل
     try:
@@ -104,7 +105,8 @@ async def run_auto_apply_cycle(bot) -> None:
         except Exception:
             continue
 
-        if not settings.get("email") or not settings.get("app_password_encrypted"):
+        resend_enabled = bool((RESEND_API_KEY or "").strip() and (RESEND_FROM_EMAIL or "").strip())
+        if not settings.get("email") or (not settings.get("app_password_encrypted") and not resend_enabled):
             continue
 
         cv = await asyncio.to_thread(get_cv, user_id)
@@ -164,7 +166,7 @@ async def run_auto_apply_cycle(bot) -> None:
         # قالب تقديم واحد لجميع المستخدمين
         template_type = "normal"
         sender_email = settings["email"]
-        app_password = settings["app_password_encrypted"]
+        app_password = settings.get("app_password_encrypted")
         remaining = 10 - count_today
 
         sent_this_cycle = 0
@@ -210,7 +212,7 @@ async def run_auto_apply_cycle(bot) -> None:
             )
 
             try:
-                await send_email_smtp(
+                await send_email(
                     sender_email, app_password, to_email,
                     subject, html_body, cv_bytes, cv_filename,
                 )

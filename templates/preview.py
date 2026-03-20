@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 import asyncio
+import base64
 import smtplib
 import time
+import httpx
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
+from config import RESEND_API_KEY, RESEND_FROM_EMAIL, RESEND_FROM_NAME
 
 try:
     import aiosmtplib
@@ -364,16 +367,95 @@ async def send_email_smtp(
         raise last_error
 
 
+async def send_email_resend(
+    to_email: str,
+    subject: str,
+    html_body: str,
+    reply_to_email: str | None = None,
+    cc_email: str | None = None,
+    attachment_bytes: bytes | None = None,
+    attachment_filename: str | None = None,
+) -> None:
+    """إرسال البريد عبر Resend API."""
+    api_key = (RESEND_API_KEY or "").strip()
+    from_email = (RESEND_FROM_EMAIL or "").strip()
+    if not api_key or not from_email:
+        raise RuntimeError("RESEND_API_KEY أو RESEND_FROM_EMAIL غير معرّف.")
+
+    payload: dict = {
+        "from": f"{RESEND_FROM_NAME} <{from_email}>",
+        "to": [to_email],
+        "subject": subject,
+        "html": html_body,
+    }
+    if reply_to_email:
+        payload["reply_to"] = reply_to_email
+    if cc_email and cc_email.strip().lower() != to_email.strip().lower():
+        payload["cc"] = [cc_email]
+    if attachment_bytes and attachment_filename:
+        payload["attachments"] = [{
+            "filename": attachment_filename,
+            "content": base64.b64encode(attachment_bytes).decode("ascii"),
+        }]
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
+    if r.status_code not in (200, 201, 202):
+        raise RuntimeError(f"Resend error {r.status_code}: {r.text}")
+
+
+async def send_email(
+    sender_email: str | None,
+    app_password: str | None,
+    to_email: str,
+    subject: str,
+    html_body: str,
+    attachment_bytes: bytes | None = None,
+    attachment_filename: str | None = None,
+) -> None:
+    """إرسال موحد: Resend إذا مفعّل، وإلا SMTP."""
+    if (RESEND_API_KEY or "").strip() and (RESEND_FROM_EMAIL or "").strip():
+        await send_email_resend(
+            to_email=to_email,
+            subject=subject,
+            html_body=html_body,
+            reply_to_email=(sender_email or "").strip() or None,
+            cc_email=(sender_email or "").strip() or None,
+            attachment_bytes=attachment_bytes,
+            attachment_filename=attachment_filename,
+        )
+        return
+    if not sender_email or not app_password:
+        raise ValueError("لم يتم ربط الإيميل أو كلمة مرور التطبيق.")
+    await send_email_smtp(
+        sender_email=sender_email,
+        app_password=app_password,
+        to_email=to_email,
+        subject=subject,
+        html_body=html_body,
+        attachment_bytes=attachment_bytes,
+        attachment_filename=attachment_filename,
+    )
+
+
 async def send_template_preview_email(bot, user: dict, settings: dict, template_key: str, chat_id: int) -> None:
     email = settings.get("email")
     app_password = settings.get("app_password_encrypted")
-    if not email or not app_password:
+    resend_enabled = bool((RESEND_API_KEY or "").strip() and (RESEND_FROM_EMAIL or "").strip())
+    if not email or (not app_password and not resend_enabled):
         raise ValueError("لم يتم ربط الإيميل أو كلمة مرور التطبيق.")
     name = user.get("full_name") or "الاسم"
     phone = user.get("phone") or "رقم الجوال"
     job_fake = "وظيفة وهمية - معاينة القالب"
     html = get_preview_html(template_key, name, phone, job_fake)
-    await send_email_smtp(
+    await send_email(
         sender_email=email,
         app_password=app_password,
         to_email=email,

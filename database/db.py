@@ -224,6 +224,14 @@ def save_user_email_password(user_id: str, email: str, app_password: str) -> Non
         raise RuntimeError("لم تُحفظ كلمة مرور التطبيق.")
 
 
+def save_user_email(user_id: str, email: str) -> None:
+    """حفظ إيميل المستخدم فقط (مفيد عند استخدام Resend بدل SMTP)."""
+    email = (email or "").strip()
+    if not email:
+        raise ValueError("الإيميل مطلوب.")
+    update_user_settings(user_id, email=email)
+
+
 def save_user_template(user_id: str, template_type: str) -> None:
     update_user_settings(user_id, template_type=template_type)
 
