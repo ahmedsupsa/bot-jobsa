@@ -5,6 +5,7 @@
 """
 import random
 import string
+import re
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 
@@ -138,7 +139,13 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
 
     elif text == "💼 إضافة وظيفة":
         await update.message.reply_text(
-            "💼 **إضافة وظيفة**\n\nأرسل **عنوان الوظيفة** (عربي):",
+            "💼 **إضافة وظيفة (سريع)**\n\n"
+            "أرسل كل تفاصيل الوظيفة في **رسالة واحدة** (عدا إيميل التقديم) بصيغة مثل:\n\n"
+            "`العنوان: مدير مبيعات`\n"
+            "`الشركة: شركة المثال`\n"
+            "`الوصف: تفاصيل الوظيفة...`\n"
+            "`الشروط: شرط 1، شرط 2...`\n\n"
+            "بعدها سأطلب منك **إيميل التقديم** في خطوة منفصلة.",
             parse_mode="Markdown",
             reply_markup=admin_reply_keyboard(),
         )
@@ -376,9 +383,54 @@ async def admin_receive_job_title(update: Update, context: ContextTypes.DEFAULT_
         return ConversationHandler.END
     if update.message.text.strip() in _ADMIN_BUTTONS:
         return States.ADMIN_AWAIT_JOB_TITLE
-    context.user_data["admin_title"] = update.message.text.strip()
-    await update.message.reply_text("أرسل **الوصف** (أو `-` لتخطي):", parse_mode="Markdown")
-    return States.ADMIN_AWAIT_JOB_DESC
+    raw = update.message.text.strip()
+    lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+    if not lines:
+        await update.message.reply_text("❌ أرسل نص الوظيفة في رسالة واحدة.")
+        return States.ADMIN_AWAIT_JOB_TITLE
+
+    # صيغة مفضلة بالحقول: العنوان/الشركة/الوصف/الشروط
+    title = ""
+    company = ""
+    desc_parts: list[str] = []
+    for ln in lines:
+        m = re.match(r"^(العنوان|المسمى|الوظيفة)\s*:\s*(.+)$", ln, flags=re.IGNORECASE)
+        if m:
+            title = m.group(2).strip()
+            continue
+        m = re.match(r"^(الشركة)\s*:\s*(.+)$", ln, flags=re.IGNORECASE)
+        if m:
+            company = m.group(2).strip()
+            continue
+        m = re.match(r"^(الوصف|الشروط|المتطلبات)\s*:\s*(.+)$", ln, flags=re.IGNORECASE)
+        if m:
+            desc_parts.append(f"{m.group(1)}: {m.group(2).strip()}")
+            continue
+        desc_parts.append(ln)
+
+    # fallback ذكي: أول سطر عنوان، ثاني سطر شركة، والباقي وصف
+    if not title:
+        title = lines[0]
+    if not company and len(lines) > 1 and not lines[1].startswith(("الوصف", "الشروط", "المتطلبات")):
+        company = lines[1].replace("الشركة:", "").strip()
+    if not desc_parts:
+        rest = lines[2:] if len(lines) > 2 else lines[1:]
+        desc_parts = rest
+
+    desc_text = "\n".join([p for p in desc_parts if p]).strip()
+    if not title:
+        await update.message.reply_text("❌ لم أستطع استخراج عنوان الوظيفة. اكتب العنوان بوضوح.")
+        return States.ADMIN_AWAIT_JOB_TITLE
+
+    context.user_data["admin_title"] = title
+    context.user_data["admin_company"] = company
+    context.user_data["admin_desc"] = desc_text
+
+    await update.message.reply_text(
+        "✅ تم استلام تفاصيل الوظيفة.\n\nالآن أرسل **إيميل التقديم** (إلزامي):",
+        parse_mode="Markdown",
+    )
+    return States.ADMIN_AWAIT_JOB_EMAIL
 
 
 async def admin_receive_job_desc(update: Update, context: ContextTypes.DEFAULT_TYPE):
