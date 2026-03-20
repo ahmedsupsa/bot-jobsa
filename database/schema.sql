@@ -32,10 +32,16 @@ CREATE TABLE IF NOT EXISTS user_settings (
   user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   email TEXT,
   app_password_encrypted TEXT,  -- كلمة مرور التطبيق (يفضل تشفيرها لاحقاً)
+  email_change_count INTEGER DEFAULT 0,          -- عدد مرات تغيير الإيميل داخل النافذة
+  email_change_window_start TIMESTAMPTZ,         -- بداية نافذة الـ 30 يوم
   template_type TEXT DEFAULT 'normal',  -- formal | normal | professional
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- دعم الجداول القديمة
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS email_change_count INTEGER DEFAULT 0;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS email_change_window_start TIMESTAMPTZ;
 
 -- السير الذاتية (ملف واحد فقط للمستخدم - نتحقق بالكود)
 CREATE TABLE IF NOT EXISTS user_cvs (

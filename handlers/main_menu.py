@@ -137,7 +137,7 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
         )
 
     elif text in ("مجالات عامة", "مجالات خاصة", "الاثنين"):
-        from database.db import get_job_fields, get_user_job_preferences
+        from database.db import get_job_fields, get_user_job_preferences, set_user_job_preferences
         from keyboards import job_fields_keyboard
 
         user_id = context.user_data.get("job_prefs_user_id") or user["id"]
@@ -151,9 +151,13 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
         try:
             if category:
                 fields = await asyncio.to_thread(get_job_fields, category=category)
+                selected_ids = await asyncio.to_thread(get_user_job_preferences, user_id)
             else:
                 fields = await asyncio.to_thread(get_job_fields)
-            selected_ids = await asyncio.to_thread(get_user_job_preferences, user_id)
+                # عند اختيار "الاثنين": نحدد كل المجالات فعلياً للمستخدم
+                all_ids = [str(f.get("id")) for f in fields if f.get("id")]
+                await asyncio.to_thread(set_user_job_preferences, user_id, all_ids)
+                selected_ids = all_ids
         except Exception as e:
             await update.message.reply_text(f"حدث خطأ أثناء جلب مجالات الوظائف: {e}")
             return
@@ -163,10 +167,17 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
         context.user_data["job_prefs_category"] = category or "both"
         context.user_data["job_prefs_page"] = 0
         context.user_data["job_prefs_search"] = ""
-        await update.message.reply_text(
-            "اختر المجالات (اضغط على المجال لإضافته أو إزالته):",
-            reply_markup=job_fields_keyboard(fields, selected, category or "both", 0, ""),
-        )
+        if text == "الاثنين":
+            await update.message.reply_text(
+                "✅ تم تحديد كل الخيارات (عامة + خاصة) فعلياً.\n"
+                "⚠️ لا ننصح بهذا الخيار لأنه قد يسبب تقديمات كثيرة غير مناسبة. الأفضل تحديد مجالات دقيقة.",
+                reply_markup=job_fields_keyboard(fields, selected, category or "both", 0, ""),
+            )
+        else:
+            await update.message.reply_text(
+                "اختر المجالات (اضغط على المجال لإضافته أو إزالته):",
+                reply_markup=job_fields_keyboard(fields, selected, category or "both", 0, ""),
+            )
 
     # ──── التقديمات ────
     elif text == "📌 التقديمات المرسلة":

@@ -11,6 +11,7 @@ load_dotenv()
 # يُمسح تلقائياً بعد 90 ثانية أو عند استدعاء invalidate_user_cache أو عند إعادة تشغيل البوت
 _USER_CACHE: dict[int, tuple[dict, float]] = {}
 _USER_CACHE_TTL = 90  # ثانية
+_EMAIL_CHANGE_LIMIT = 3
 
 
 def _user_cache_get(telegram_id: int) -> dict | None:
@@ -175,6 +176,40 @@ def update_user_settings(user_id: str, **kwargs) -> None:
     sb.table("user_settings").update(kwargs).eq("user_id", user_id).execute()
 
 
+def _parse_iso_dt(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def _compute_email_change_update(existing_row: dict | None, new_email: str) -> dict:
+    """
+    يحسب تحديثات عداد تغيير الإيميل (3 مرات فقط إجمالاً).
+    - نفس الإيميل الحالي لا يستهلك محاولة.
+    """
+    row = existing_row or {}
+    current_email = (row.get("email") or "").strip().lower()
+    target_email = (new_email or "").strip().lower()
+    if current_email and target_email and current_email == target_email:
+        return {}
+
+    count = int(row.get("email_change_count") or 0)
+
+    if count >= _EMAIL_CHANGE_LIMIT:
+        raise RuntimeError(
+            "وصلت للحد الأعلى لتغيير الإيميل (3 مرات فقط). "
+            "إذا احتجت تعديل إضافي تواصل مع الدعم."
+        )
+
+    out = {"email_change_count": count + 1}
+    if not row.get("email_change_window_start"):
+        out["email_change_window_start"] = datetime.utcnow().isoformat()
+    return out
+
+
 def save_user_email_password(user_id: str, email: str, app_password: str) -> None:
     """
     حفظ إيميل Gmail وكلمة مرور التطبيق.
@@ -192,6 +227,8 @@ def save_user_email_password(user_id: str, email: str, app_password: str) -> Non
         "app_password_encrypted": pwd,
         "updated_at": now,
     }
+    current = get_or_create_user_settings(user_id)
+    payload.update(_compute_email_change_update(current, email))
     if _use_rest:
         rows = _rest_upsert_merge("user_settings", payload, on_conflict="user_id")
         if not rows:
@@ -229,7 +266,9 @@ def save_user_email(user_id: str, email: str) -> None:
     email = (email or "").strip()
     if not email:
         raise ValueError("الإيميل مطلوب.")
-    update_user_settings(user_id, email=email)
+    current = get_or_create_user_settings(user_id)
+    extra = _compute_email_change_update(current, email)
+    update_user_settings(user_id, email=email, **extra)
 
 
 def save_user_template(user_id: str, template_type: str) -> None:
