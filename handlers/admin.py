@@ -6,6 +6,7 @@
 import random
 import string
 import re
+from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 
@@ -154,7 +155,11 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
 
     elif text == "📢 إضافة إعلان":
         await update.message.reply_text(
-            "📢 **إضافة إعلان**\n\nأرسل **عنوان الإعلان** (أو `-` لتخطي):",
+            "📢 **إضافة إعلان (سريع)**\n\n"
+            "أرسل الإعلان في **رسالة واحدة**:\n"
+            "- إمّا **صورة مع كابشن**\n"
+            "- أو **نص فقط**\n\n"
+            "ملاحظة: أول سطر يُعتبر عنواناً، والباقي نص الإعلان.",
             parse_mode="Markdown",
             reply_markup=admin_reply_keyboard(),
         )
@@ -552,13 +557,49 @@ async def admin_spec_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def admin_receive_ann_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or not update.message.text:
+    """
+    استقبال الإعلان دفعة واحدة:
+    - صورة + كابشن
+    - أو نص فقط
+    ثم طلب المدة والتكرار.
+    """
+    if not update.message:
         return ConversationHandler.END
-    if update.message.text.strip() in _ADMIN_BUTTONS:
+
+    text = ""
+    image_file_id = None
+
+    if update.message.photo:
+        image_file_id = update.message.photo[-1].file_id
+        text = (update.message.caption or "").strip()
+    elif update.message.text:
+        text = update.message.text.strip()
+        if text in _ADMIN_BUTTONS:
+            return States.ADMIN_AWAIT_ANN_TITLE
+    else:
+        await update.message.reply_text("أرسل صورة مع كابشن أو أرسل نص الإعلان فقط.")
         return States.ADMIN_AWAIT_ANN_TITLE
-    context.user_data["admin_ann_title"] = update.message.text.strip() if update.message.text.strip() != "-" else ""
-    await update.message.reply_text("أرسل **نص الإعلان**:", parse_mode="Markdown")
-    return States.ADMIN_AWAIT_ANN_BODY
+
+    if not text:
+        await update.message.reply_text("❌ أرسل نص الإعلان داخل الرسالة (كابشن أو نص).")
+        return States.ADMIN_AWAIT_ANN_TITLE
+
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    title = lines[0] if lines else ""
+    body = "\n".join(lines[1:]).strip() if len(lines) > 1 else ""
+    if not body:
+        # إذا أرسل سطر واحد فقط نخزّنه كنص الإعلان بدون عنوان مستقل
+        body = title
+        title = ""
+
+    context.user_data["admin_ann_title"] = title
+    context.user_data["admin_ann_body"] = body
+    context.user_data["admin_ann_image"] = image_file_id
+    await update.message.reply_text(
+        "أرسل **مدة بقاء الإعلان بالأيام** (مثل `7`، أو `-` بدون انتهاء):",
+        parse_mode="Markdown",
+    )
+    return States.ADMIN_AWAIT_ANN_DURATION
 
 
 async def admin_receive_ann_body(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -593,7 +634,6 @@ async def admin_receive_ann_duration(update: Update, context: ContextTypes.DEFAU
         return ConversationHandler.END
     if update.message.text.strip() in _ADMIN_BUTTONS:
         return States.ADMIN_AWAIT_ANN_DURATION
-    from datetime import datetime, timedelta
     raw = update.message.text.strip()
     expires_at = None
     if raw != "-":
@@ -631,10 +671,21 @@ async def admin_receive_ann_repeat(update: Update, context: ContextTypes.DEFAULT
         expires_at=context.user_data.get("admin_ann_expires_at"),
         repeat_count=repeat_count,
     )
+    # تشغيل دورة الإعلانات فوراً بعد النشر، حتى لا ينتظر الأدمن حتى الدورة الدورية القادمة.
+    try:
+        from services.announcements import run_announcements_cycle
+        await run_announcements_cycle(context.bot)
+    except Exception:
+        pass
+    next_send_at = datetime.utcnow() + timedelta(hours=24)
+    next_send_txt = next_send_at.strftime("%Y-%m-%d %H:%M UTC")
     for k in ("admin_ann_title", "admin_ann_body", "admin_ann_image", "admin_ann_expires_at", "admin_awaiting"):
         context.user_data.pop(k, None)
     await update.message.reply_text(
-        f"✅ **تم نشر الإعلان بنجاح!**\n\n🔁 عدد التكرار لكل مشترك: {repeat_count}",
+        f"✅ **تم نشر الإعلان بنجاح!**\n\n"
+        f"🔁 عدد التكرار لكل مشترك: {repeat_count}\n"
+        f"⏱️ التكرار يتم كل 24 ساعة.\n"
+        f"📅 الإرسال التالي المتوقع (المرّة الثانية): {next_send_txt}",
         parse_mode="Markdown",
         reply_markup=admin_reply_keyboard(),
     )
@@ -780,6 +831,7 @@ def setup_admin_handlers(application):
                 CallbackQueryHandler(admin_spec_done, pattern="^adspec_done$"),
             ],
             States.ADMIN_AWAIT_ANN_TITLE: [
+                MessageHandler(filters.PHOTO, admin_receive_ann_title),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, admin_receive_ann_title),
             ],
             States.ADMIN_AWAIT_ANN_BODY: [
