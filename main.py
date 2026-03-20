@@ -48,6 +48,15 @@ async def auto_apply_job(context: ContextTypes.DEFAULT_TYPE) -> None:
     context.bot_data["next_auto_apply_at"] = now + timedelta(seconds=1800)
 
 
+async def announcements_job(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """مهمة دورية: إرسال الإعلانات التلقائية للمشتركين."""
+    from services.announcements import run_announcements_cycle
+    try:
+        await run_announcements_cycle(context.bot)
+    except Exception as e:
+        logger.error("❌ خطأ في دورة الإعلانات: %s", e)
+
+
 def main():
     app = Application.builder().token(config.BOT_TOKEN).build()
     setup_all_handlers(app)
@@ -63,6 +72,12 @@ def main():
             interval=1800,   # كل 30 دقيقة
             first=120,        # أول تشغيل بعد دقيقتين من البدء
             name="auto_apply_cycle",
+        )
+        job_queue.run_repeating(
+            announcements_job,
+            interval=1800,  # فحص كل 30 دقيقة، لكن التكرار لكل مستخدم مضبوط داخلياً كل 24 ساعة
+            first=90,
+            name="announcements_cycle",
         )
         logger.info("📅 Scheduler مُفعَّل: تقديم تلقائي كل 30 دقيقة.")
         if getattr(config, "GEMINI_API_KEY", ""):

@@ -604,16 +604,37 @@ async def admin_receive_ann_duration(update: Update, context: ContextTypes.DEFAU
         except ValueError:
             await update.message.reply_text("أدخل رقماً (أيام) أو `-`.")
             return States.ADMIN_AWAIT_ANN_DURATION
+    context.user_data["admin_ann_expires_at"] = expires_at
+    await update.message.reply_text(
+        "أرسل **عدد مرات التكرار لكل مشترك** (من 1 إلى 10):",
+        parse_mode="Markdown",
+    )
+    return States.ADMIN_AWAIT_ANN_REPEAT
+
+
+async def admin_receive_ann_repeat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text:
+        return ConversationHandler.END
+    if update.message.text.strip() in _ADMIN_BUTTONS:
+        return States.ADMIN_AWAIT_ANN_REPEAT
+    try:
+        repeat_count = int(update.message.text.strip())
+    except ValueError:
+        await update.message.reply_text("أدخل رقماً من 1 إلى 10.")
+        return States.ADMIN_AWAIT_ANN_REPEAT
+    repeat_count = max(1, min(repeat_count, 10))
+
     add_admin_announcement(
         title=context.user_data.get("admin_ann_title", ""),
         body_text=context.user_data.get("admin_ann_body", ""),
         image_file_id=context.user_data.get("admin_ann_image"),
-        expires_at=expires_at,
+        expires_at=context.user_data.get("admin_ann_expires_at"),
+        repeat_count=repeat_count,
     )
-    for k in ("admin_ann_title", "admin_ann_body", "admin_ann_image", "admin_awaiting"):
+    for k in ("admin_ann_title", "admin_ann_body", "admin_ann_image", "admin_ann_expires_at", "admin_awaiting"):
         context.user_data.pop(k, None)
     await update.message.reply_text(
-        "✅ **تم نشر الإعلان بنجاح!**",
+        f"✅ **تم نشر الإعلان بنجاح!**\n\n🔁 عدد التكرار لكل مشترك: {repeat_count}",
         parse_mode="Markdown",
         reply_markup=admin_reply_keyboard(),
     )
@@ -770,6 +791,9 @@ def setup_admin_handlers(application):
             ],
             States.ADMIN_AWAIT_ANN_DURATION: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, admin_receive_ann_duration),
+            ],
+            States.ADMIN_AWAIT_ANN_REPEAT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, admin_receive_ann_repeat),
             ],
         },
         fallbacks=[

@@ -139,8 +139,12 @@ async def receive_register_name(update: Update, context: ContextTypes.DEFAULT_TY
 async def receive_register_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return ConversationHandler.END
-    context.user_data["register_phone"] = update.message.text.strip()
-    await update.message.reply_text("أدخل عمرك (رقم فقط، أو اكتب 0 لتخطي):")
+    phone = update.message.text.strip().replace(" ", "")
+    if not phone.isdigit() or len(phone) != 10 or not phone.startswith("05"):
+        await update.message.reply_text("أدخل رقم جوال صحيح.")
+        return States.AWAIT_REGISTER_PHONE
+    context.user_data["register_phone"] = phone
+    await update.message.reply_text("أدخل عمرك (رقم فقط):")
     context.user_data["awaiting"] = "register_age"
     return States.AWAIT_REGISTER_AGE
 
@@ -150,10 +154,12 @@ async def receive_register_age(update: Update, context: ContextTypes.DEFAULT_TYP
         return ConversationHandler.END
     try:
         age = int(update.message.text.strip())
-        if age < 0 or age > 150:
-            age = None
     except ValueError:
-        age = None
+        await update.message.reply_text("أدخل عمراً صحيحاً.")
+        return States.AWAIT_REGISTER_AGE
+    if age < 16 or age > 100:
+        await update.message.reply_text("أدخل عمراً صحيحاً.")
+        return States.AWAIT_REGISTER_AGE
     context.user_data["register_age"] = age
     await update.message.reply_text("أدخل مدينتك:")
     context.user_data["awaiting"] = "register_city"

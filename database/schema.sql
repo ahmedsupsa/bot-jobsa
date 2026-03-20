@@ -138,12 +138,26 @@ CREATE TABLE IF NOT EXISTS admin_announcements (
   body_text TEXT NOT NULL,
   image_file_id TEXT,       -- صورة اختيارية (file_id تليجرام)
   expires_at TIMESTAMPTZ,   -- انتهاء عرض الإعلان (NULL = بدون انتهاء)
+  repeat_count INTEGER DEFAULT 1, -- عدد مرات إرسال الإعلان لكل مستخدم
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE admin_announcements ADD COLUMN IF NOT EXISTS image_file_id TEXT;
 ALTER TABLE admin_announcements ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE admin_announcements ADD COLUMN IF NOT EXISTS repeat_count INTEGER DEFAULT 1;
+
+-- تتبع مرات إرسال كل إعلان لكل مستخدم
+CREATE TABLE IF NOT EXISTS admin_announcement_deliveries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  announcement_id UUID NOT NULL REFERENCES admin_announcements(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  send_count INTEGER NOT NULL DEFAULT 0,
+  last_sent_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(announcement_id, user_id)
+);
 
 -- أدمنين لوحة التحكم (رقم تليجرام أو اسم مستخدم)
 CREATE TABLE IF NOT EXISTS admin_users (

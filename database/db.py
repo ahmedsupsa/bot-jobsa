@@ -494,12 +494,15 @@ def add_admin_announcement(
     body_text: str,
     image_file_id: str | None = None,
     expires_at: datetime | None = None,
+    repeat_count: int = 1,
 ) -> dict:
+    repeat_count = max(1, min(int(repeat_count or 1), 10))
     row = {
         "title": title or None,
         "body_text": body_text,
         "image_file_id": image_file_id,
         "expires_at": expires_at.isoformat() if expires_at else None,
+        "repeat_count": repeat_count,
         "is_active": True,
     }
     if _use_rest:
@@ -530,6 +533,29 @@ def delete_admin_announcement(ann_id: str) -> None:
         _rest_delete("admin_announcements", id=ann_id)
         return
     get_supabase().table("admin_announcements").delete().eq("id", ann_id).execute()
+
+
+def get_announcement_delivery(announcement_id: str, user_id: str) -> dict | None:
+    if _use_rest:
+        return _rest_select_one("admin_announcement_deliveries", announcement_id=announcement_id, user_id=user_id)
+    sb = get_supabase()
+    r = sb.table("admin_announcement_deliveries").select("*").eq("announcement_id", announcement_id).eq("user_id", user_id).execute()
+    return r.data[0] if r.data else None
+
+
+def upsert_announcement_delivery(announcement_id: str, user_id: str, send_count: int) -> None:
+    payload = {
+        "announcement_id": announcement_id,
+        "user_id": user_id,
+        "send_count": int(send_count),
+        "last_sent_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+    if _use_rest:
+        _rest_upsert_merge("admin_announcement_deliveries", payload, on_conflict="announcement_id,user_id")
+        return
+    sb = get_supabase()
+    sb.table("admin_announcement_deliveries").upsert(payload, on_conflict="announcement_id,user_id").execute()
 
 
 def is_admin(telegram_id: int) -> bool:
