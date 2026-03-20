@@ -462,3 +462,47 @@ async def send_template_preview_email(bot, user: dict, settings: dict, template_
         subject=f"معاينة قالب التقديم - {template_key}",
         html_body=html,
     )
+
+
+async def send_welcome_email(user: dict, settings: dict) -> None:
+    """إرسال رسالة ترحيبية بعد ربط الإيميل."""
+    email = (settings.get("email") or "").strip()
+    if not email:
+        raise ValueError("لا يوجد إيميل مربوط للمستخدم.")
+    app_password = settings.get("app_password_encrypted")
+    resend_enabled = bool((RESEND_API_KEY or "").strip() and (RESEND_FROM_EMAIL or "").strip())
+    if not app_password and not resend_enabled:
+        raise ValueError("لا يمكن إرسال الترحيب بدون App Password أو Resend.")
+
+    name = (user.get("full_name") or "المشترك").strip()
+    phone = (user.get("phone") or "").strip()
+    html = f"""<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="font-family:Segoe UI,Arial,sans-serif;background:#f7f9fc;padding:24px;">
+  <div style="max-width:620px;margin:0 auto;background:#fff;border:1px solid #e6edf5;border-radius:10px;padding:24px;">
+    <h2 style="margin:0 0 12px 0;color:#1e3a5f;">مرحباً {name} 👋</h2>
+    <p style="margin:0 0 10px 0;line-height:1.9;color:#2d3748;">
+      يسعدنا انضمامك إلى بوت التقديم على الوظائف. تم تفعيل حسابك البريدية بنجاح.
+    </p>
+    <p style="margin:0 0 10px 0;line-height:1.9;color:#2d3748;">
+      من الآن سيصلك إشعار عند نجاح التقديم، ويمكنك متابعة الحالة من داخل البوت.
+    </p>
+    <hr style="border:none;border-top:1px solid #edf2f7;margin:16px 0;">
+    <p style="margin:0;color:#4a5568;"><strong>الاسم:</strong> {name}</p>
+    <p style="margin:6px 0 0 0;color:#4a5568;"><strong>الإيميل:</strong> {email}</p>
+    <p style="margin:6px 0 0 0;color:#4a5568;"><strong>الجوال:</strong> {phone or '—'}</p>
+  </div>
+</body>
+</html>"""
+
+    await send_email(
+        sender_email=email,
+        app_password=app_password,
+        to_email=email,
+        subject="🎉 أهلاً بك في بوت التقديم على الوظائف",
+        html_body=html,
+    )

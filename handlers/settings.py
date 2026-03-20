@@ -161,6 +161,12 @@ async def receive_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "✅ تم ربط الإيميل بنجاح\nسيتم استخدامه كـ Reply-To واستلام نسخة من التقديم.",
             reply_markup=back_to_settings_keyboard(),
         )
+        try:
+            from templates.preview import send_welcome_email
+            settings = await asyncio.to_thread(get_or_create_user_settings, user["id"])
+            await send_welcome_email(user, settings)
+        except Exception:
+            pass
         return
     context.user_data["temp_email"] = email
     await update.message.reply_text(
@@ -230,6 +236,12 @@ async def receive_app_password(update: Update, context: ContextTypes.DEFAULT_TYP
         "✅ تم ربط الإيميل بنجاح\nسيتم الإرسال من إيميلك مباشرة",
         reply_markup=back_to_settings_keyboard(),
     )
+    try:
+        from templates.preview import send_welcome_email
+        settings = await asyncio.to_thread(get_or_create_user_settings, user["id"])
+        await send_welcome_email(user, settings)
+    except Exception:
+        pass
 
 
 async def handle_email_flow_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
