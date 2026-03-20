@@ -6,6 +6,7 @@ from .account import setup_account_handlers
 from .settings import setup_settings_handlers
 from .admin import setup_admin_handlers
 from .channel_jobs import setup_channel_jobs_handlers
+from .fallback import setup_fallback_handlers
 
 def setup_all_handlers(application):
     # الإعدادات وربط الإيميل أولاً حتى لا تُسرق الرسائل النصية من محادثة التسجيل (كود التفعيل)
@@ -16,3 +17,4 @@ def setup_all_handlers(application):
     setup_applications_handlers(application)
     setup_account_handlers(application)
     setup_start_handlers(application)
+    setup_fallback_handlers(application)
