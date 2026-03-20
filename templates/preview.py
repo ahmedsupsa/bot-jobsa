@@ -25,9 +25,10 @@ def _html_professional_full(
     lang: str = "ar",
 ) -> str:
     """قالب HTML احترافي يدمج رسالة التغطية مع بيانات المتقدم."""
-    is_rtl = lang != "en"
-    direction = "rtl" if is_rtl else "ltr"
-    text_align = "right" if is_rtl else "left"
+    # اعتماد اتجاه RTL دائماً لتوحيد شكل رسالة التقديم.
+    is_rtl = True
+    direction = "rtl"
+    text_align = "right"
     cover_html = cover_letter.replace("\n", "<br>") if cover_letter else ""
 
     if lang == "ar":
@@ -173,18 +174,12 @@ def build_application_html(
     cv_used_for_letter: إذا True يُضاف سطر يوضح أن رسالة التغطية نُشئت من تحليل السيرة.
     """
     footer_note = ""
-    if cv_used_for_letter:
-        footer_note = (
-            '<p style="margin-top:16px;font-size:12px;color:#666;">'
-            + ("تم توليد رسالة التغطية أعلاه بناءً على تحليل السيرة الذاتية المرفقة." if lang == "ar" else "The cover letter above was generated from the attached CV.")
-            + "</p>"
-        )
     if template_type == "formal":
         base = _html_formal(name, phone, job_title)
         cover_html = cover_letter.replace("\n", "<br>") if cover_letter else ""
-        direction = "rtl" if lang != "en" else "ltr"
+        direction = "rtl"
         return f"""<!DOCTYPE html><html dir="{direction}"><head><meta charset="UTF-8"></head>
-<body style="font-family:Arial;max-width:600px;margin:0 auto;padding:20px;">
+<body style="font-family:Arial;max-width:600px;margin:0 auto;padding:20px;direction:rtl;text-align:right;">
 <div style="border:1px solid #ddd;padding:20px;">
 <h2 style="color:#333;">{"طلب توظيف" if lang=="ar" else "Job Application"} - {job_title}</h2>
 <hr/>
@@ -206,9 +201,9 @@ def build_application_html(
 
     else:  # normal
         cover_html = cover_letter.replace("\n", "<br>") if cover_letter else ""
-        direction = "rtl" if lang != "en" else "ltr"
+        direction = "rtl"
         return f"""<!DOCTYPE html><html dir="{direction}"><head><meta charset="UTF-8"></head>
-<body style="font-family:'Segoe UI',sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f9f9f9;">
+<body style="font-family:'Segoe UI',sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f9f9f9;direction:rtl;text-align:right;">
 <div style="background:#fff;padding:24px;border-radius:8px;">
 <p style="line-height:1.9;color:#2c2c2c;">{cover_html}</p>
 {footer_note}
@@ -482,7 +477,7 @@ async def send_welcome_email(user: dict, settings: dict) -> None:
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
-<body style="font-family:Segoe UI,Arial,sans-serif;background:#f7f9fc;padding:24px;">
+<body style="font-family:Segoe UI,Arial,sans-serif;background:#f7f9fc;padding:24px;direction:rtl;text-align:right;">
   <div style="max-width:620px;margin:0 auto;background:#fff;border:1px solid #e6edf5;border-radius:10px;padding:24px;">
     <h2 style="margin:0 0 12px 0;color:#1e3a5f;">مرحباً {name} 👋</h2>
     <p style="margin:0 0 10px 0;line-height:1.9;color:#2d3748;">

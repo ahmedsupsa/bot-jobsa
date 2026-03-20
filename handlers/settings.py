@@ -58,10 +58,21 @@ async def cb_set_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not query or not update.effective_user or not update.effective_chat:
         return
     await query.answer()
+    user = await asyncio.to_thread(get_user_by_telegram, update.effective_user.id)
+    current_email = ""
+    if user:
+        settings = await asyncio.to_thread(get_or_create_user_settings, user["id"])
+        current_email = (settings.get("email") or "").strip()
+    current_email_line = f"الإيميل المربوط حالياً: {current_email}\n\n" if current_email else "لا يوجد إيميل مربوط حالياً.\n\n"
     try:
-        msg = "📧 ربط الإيميل\n\nأدخل إيميلك (Gmail فقط حالياً):\n\nأو اضغط «رجوع» للإلغاء."
+        msg = f"📧 ربط الإيميل\n\n{current_email_line}أدخل إيميلك (Gmail فقط حالياً):\n\nأو اضغط «رجوع» للإلغاء."
         if _USES_RESEND:
-            msg = "📧 ربط الإيميل\n\nأدخل إيميلك (Gmail فقط حالياً).\nلن تحتاج كلمة مرور التطبيق عند استخدام Resend.\n\nأو اضغط «رجوع» للإلغاء."
+            msg = (
+                f"📧 ربط الإيميل\n\n{current_email_line}"
+                "أدخل إيميلك (Gmail فقط حالياً).\n"
+                "لن تحتاج كلمة مرور التطبيق عند استخدام Resend.\n\n"
+                "أو اضغط «رجوع» للإلغاء."
+            )
         await query.edit_message_text(
             msg,
             reply_markup=back_to_settings_keyboard(),

@@ -4,7 +4,13 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.error import BadRequest
 
-from database.db import get_user_by_telegram, is_subscription_active, get_admin_announcements, is_admin
+from database.db import (
+    get_user_by_telegram,
+    get_or_create_user_settings,
+    is_subscription_active,
+    get_admin_announcements,
+    is_admin,
+)
 from handlers.settings import clear_email_flow_state
 from keyboards import (
     main_reply_keyboard,
@@ -32,6 +38,20 @@ _ALL_BUTTONS = (
     # رجوع
     "⬅️ الرئيسية", "⬅️ حسابي", "⬅️ رجوع",
 )
+
+
+async def _settings_header_text(telegram_user_id: int | None) -> str:
+    """نص شاشة الإعدادات مع الإيميل المربوط حالياً."""
+    if not telegram_user_id:
+        return "⚙️ الإعدادات:\n\nاختر:"
+    user = await asyncio.to_thread(get_user_by_telegram, telegram_user_id)
+    if not user:
+        return "⚙️ الإعدادات:\n\nاختر:"
+    settings = await asyncio.to_thread(get_or_create_user_settings, user["id"])
+    current_email = (settings.get("email") or "").strip()
+    if current_email:
+        return f"⚙️ الإعدادات:\n\n📧 الإيميل المربوط: {current_email}\n\nاختر:"
+    return "⚙️ الإعدادات:\n\n📧 الإيميل المربوط: لا يوجد\n\nاختر:"
 
 
 async def _check_user(update: Update) -> dict | None:
@@ -125,7 +145,8 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
                 )
 
     elif text == "⚙️ الإعدادات":
-        await update.message.reply_text("⚙️ الإعدادات:\n\nاختر:", reply_markup=settings_reply_keyboard())
+        header = await _settings_header_text(update.effective_user.id if update.effective_user else None)
+        await update.message.reply_text(header, reply_markup=settings_reply_keyboard())
 
     # ──── تفضيلات الوظائف (من القائمة الرئيسية أو من قائمة التقديمات) ────
     elif text == "🎯 تفضيلات الوظائف":
@@ -384,10 +405,11 @@ async def cb_menu_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     clear_email_flow_state(update.effective_user.id, update.effective_chat.id)
     context.user_data.pop("awaiting", None)
     context.user_data.pop("temp_email", None)
+    header = await _settings_header_text(update.effective_user.id if update.effective_user else None)
     await query.edit_message_text("⚙️ الإعدادات:")
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="اختر:",
+        text=header,
         reply_markup=settings_reply_keyboard(),
     )
 
