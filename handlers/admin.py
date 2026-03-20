@@ -677,8 +677,9 @@ async def admin_receive_ann_repeat(update: Update, context: ContextTypes.DEFAULT
         await run_announcements_cycle(context.bot)
     except Exception:
         pass
-    next_send_at = datetime.utcnow() + timedelta(hours=24)
-    next_send_txt = next_send_at.strftime("%Y-%m-%d %H:%M UTC")
+    next_send_at_utc = datetime.utcnow() + timedelta(hours=24)
+    next_send_at_ksa = next_send_at_utc + timedelta(hours=3)
+    next_send_txt = next_send_at_ksa.strftime("%Y-%m-%d %H:%M (توقيت السعودية)")
     for k in ("admin_ann_title", "admin_ann_body", "admin_ann_image", "admin_ann_expires_at", "admin_awaiting"):
         context.user_data.pop(k, None)
     await update.message.reply_text(
