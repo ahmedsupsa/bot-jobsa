@@ -193,6 +193,8 @@ def analyze_cv_and_generate_letter(
 4. أسلوب احترافي ومباشر فقط — **ممنوع التملق أو المدح الفارغ** (مثل "شركتكم الرائدة"، "أنا الأفضل"). ركّز على الحقائق والمؤهلات
 5. فقرة واحدة أو فقرتين كحد أقصى، بدون عناوين أو نقاط
 6. ابدأ بـ "السلام عليكم" وانهِ بالشكر والاسم فقط
+7. اذكر **على الأقل نقطتين محددتين من السيرة** (مثل سنوات خبرة/أدوات/إنجاز/دور سابق) بصياغة طبيعية داخل الفقرة
+8. لا تستخدم عبارات عامة مبهمة مثل "لدي خبرة واسعة" بدون دليل من السيرة
 
 اكتب الرسالة الآن:"""
             else:
@@ -201,7 +203,8 @@ def analyze_cv_and_generate_letter(
 {"- الشركة: " + company if company else ""}
 - اسم المتقدم: {applicant_name}
 
-القواعد: فقرة واحدة، مهنية ومباشرة، بدون تملق أو مدح فارغ. ابدأ بـ "السلام عليكم" وانهِ بالاسم. بدون عناوين أو نقاط."""
+القواعد: فقرة واحدة، مهنية ومباشرة، بدون تملق أو مدح فارغ. ابدأ بـ "السلام عليكم" وانهِ بالاسم. بدون عناوين أو نقاط.
+ممنوع الجمل العامة المكررة."""
         else:
             if has_cv:
                 job_desc_block = f"""
@@ -229,6 +232,8 @@ Task: Write a cover letter **based on reading the job and its description first,
 4. Professional, direct tone only — **no flattery or empty praise** (e.g. "your leading company", "I am the best"). Stick to facts and qualifications
 5. Maximum 1–2 short paragraphs, no headers or bullets
 6. Start with "Dear Hiring Manager," end with thanks and name only
+7. Mention **at least 2 concrete CV facts** (tools, years, responsibilities, outcomes) naturally in the letter
+8. Avoid vague statements like "I have extensive experience" without evidence from the CV
 
 Write the letter now:"""
             else:
