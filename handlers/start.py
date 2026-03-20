@@ -206,7 +206,7 @@ async def cb_start_subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not query:
         return
     await query.answer()
-    PAYMENT_LINK = "https://streampay.sa/s/bDgCO"
+    PAYMENT_LINK = "https://salla.sa/ahmedsupsa/payment/p1216790320"
     text = (
         "🛒 **الاشتراك في البوت**\n\n"
         "لشراء الاشتراك ادفع عبر رابط الدفع الآمن:\n"
