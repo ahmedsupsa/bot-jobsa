@@ -25,6 +25,8 @@ _last_send_time: dict[str, float] = {}
 # آخر وقت إرسال رسالة فشل التقديم لكل مستخدم (لتجنب التكرار كل 30 دقيقة)
 _FAILURE_NOTIFICATION_COOLDOWN_SECONDS = 86400  # 24 ساعة
 _last_failure_notification: dict[str, float] = {}  # user_id -> time.time()
+_MISSING_REQUIREMENTS_COOLDOWN_SECONDS = 86400  # 24 ساعة
+_last_missing_requirements_notification: dict[str, float] = {}  # user_id -> time.time()
 
 
 def _job_matches_user(job: dict, user_field_names: list[str]) -> bool:
@@ -45,6 +47,26 @@ def _can_send_now(user_id: str) -> bool:
 
 def _mark_sent(user_id: str) -> None:
     _last_send_time[user_id] = time.monotonic()
+
+
+async def _notify_missing_requirements(bot, telegram_id: int | None, user_id: str, missing_items: list[str]) -> None:
+    """إشعار المستخدم بما ينقصه للتقديم التلقائي (مرة كل 24 ساعة)."""
+    if not telegram_id or not missing_items:
+        return
+    now = time.time()
+    last = _last_missing_requirements_notification.get(user_id, 0)
+    if (now - last) < _MISSING_REQUIREMENTS_COOLDOWN_SECONDS:
+        return
+    try:
+        text = (
+            "⚠️ التقديم التلقائي متوقف لأن حسابك ناقصه:\n"
+            + "\n".join(f"• {item}" for item in missing_items)
+            + "\n\nبعد الإكمال، سيعود التقديم التلقائي بشكل طبيعي."
+        )
+        await bot.send_message(chat_id=telegram_id, text=text)
+        _last_missing_requirements_notification[user_id] = now
+    except Exception:
+        pass
 
 
 async def run_auto_apply_cycle(bot) -> None:
@@ -106,11 +128,18 @@ async def run_auto_apply_cycle(bot) -> None:
             continue
 
         resend_enabled = bool((RESEND_API_KEY or "").strip() and (RESEND_FROM_EMAIL or "").strip())
-        if not settings.get("email") or (not settings.get("app_password_encrypted") and not resend_enabled):
+        missing: list[str] = []
+        if not settings.get("email"):
+            missing.append("ربط الإيميل من الإعدادات")
+        if (not settings.get("app_password_encrypted") and not resend_enabled):
+            missing.append("كلمة مرور التطبيق (App Password)")
+        if missing:
+            await _notify_missing_requirements(bot, telegram_id, user_id, missing)
             continue
 
         cv = await asyncio.to_thread(get_cv, user_id)
         if not cv:
+            await _notify_missing_requirements(bot, telegram_id, user_id, ["رفع السيرة الذاتية"])
             continue
 
         # جلب تفضيلات الوظائف
