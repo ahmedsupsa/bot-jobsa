@@ -43,7 +43,10 @@ def clear_email_flow_state(user_id: int, chat_id: int) -> None:
 
 
 def _in_email_flow(context: ContextTypes.DEFAULT_TYPE) -> bool:
-    return context.user_data.get("awaiting") in ("email", "app_password")
+    ud = context.user_data
+    if not ud:
+        return False
+    return ud.get("awaiting") in ("email", "app_password")
 
 
 class _FilterAwaitingEmailFlow(filters.BaseFilter):
@@ -80,15 +83,21 @@ async def cb_set_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except BadRequest as e:
         if "message is not modified" not in str(e).lower():
             raise
-    context.user_data["awaiting"] = "email"
+    ud = context.user_data
+    if not ud:
+        await query.answer("أعد المحاولة من الإعدادات.", show_alert=True)
+        return
+    ud["awaiting"] = "email"
     _awaiting_by_key[(update.effective_user.id, update.effective_chat.id)] = "email"
 
 
 async def cancel_email_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, reply_text: str = "تم الإلغاء.", reply_markup=None):
     if not update.message:
         return
-    context.user_data.pop("temp_email", None)
-    context.user_data.pop("awaiting", None)
+    ud = context.user_data
+    if ud:
+        ud.pop("temp_email", None)
+        ud.pop("awaiting", None)
     key = _email_flow_key(update)
     if key:
         _awaiting_by_key.pop(key, None)
@@ -257,6 +266,11 @@ async def receive_app_password(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def handle_email_flow_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """يُستدعى فقط عندما user_data['awaiting'] هو email أو app_password (فلتر يُسجّل أولاً)."""
+    if not context.user_data:
+        key = _email_flow_key(update)
+        if key:
+            _awaiting_by_key.pop(key, None)
+        return
     if not _in_email_flow(context):
         return
     awaiting = context.user_data.get("awaiting")
@@ -377,7 +391,10 @@ def setup_settings_handlers(application):
     from telegram.ext import CallbackQueryHandler, MessageHandler, filters
     # معالج ربط الإيميل يُسجّل أولاً: يلتقط النص فقط عندما المستخدم في خطوة الإيميل أو كلمة المرور
     application.add_handler(MessageHandler(
-        _FilterAwaitingEmailFlow() & filters.TEXT & ~filters.COMMAND,
+        _FilterAwaitingEmailFlow()
+        & filters.TEXT
+        & ~filters.COMMAND
+        & filters.ChatType.PRIVATE,
         handle_email_flow_message,
     ))
     application.add_handler(CallbackQueryHandler(cb_set_email, pattern="^set_email$"))

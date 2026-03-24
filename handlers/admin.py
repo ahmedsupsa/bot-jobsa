@@ -718,8 +718,13 @@ async def cb_admin_del_job(update: Update, context: ContextTypes.DEFAULT_TYPE):
     job_id = (query.data or "").split(":", 1)[-1].strip()
     if not job_id:
         return
-    await asyncio.to_thread(delete_admin_job, job_id)
-    await query.edit_message_text("✅ تم حذف الوظيفة.")
+    outcome = await asyncio.to_thread(delete_admin_job, job_id)
+    if outcome == "deactivated":
+        await query.edit_message_text(
+            "⚠️ الوظيفة مرتبطة بتقديمات سابقة؛ تم إخفاؤها من القائمة (تعطيل) بدل الحذف النهائي."
+        )
+    else:
+        await query.edit_message_text("✅ تم حذف الوظيفة.")
 
 
 async def cb_admin_del_ann(update: Update, context: ContextTypes.DEFAULT_TYPE):

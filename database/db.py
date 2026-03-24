@@ -3,6 +3,7 @@ import os
 import time
 from datetime import datetime, timedelta
 
+import httpx
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -464,11 +465,36 @@ def add_admin_job(
     return r.data[0] if r.data else {}
 
 
-def delete_admin_job(job_id: str) -> None:
+def deactivate_admin_job(job_id: str) -> None:
+    """إخفاء الوظيفة من القائمة دون حذف الصف (مطلوب عند وجود تقديمات مرتبطة بـ job_id)."""
     if _use_rest:
-        _rest_delete("admin_jobs", id=job_id)
+        _rest_update("admin_jobs", {"is_active": False}, id=job_id)
         return
-    get_supabase().table("admin_jobs").delete().eq("id", job_id).execute()
+    get_supabase().table("admin_jobs").update({"is_active": False}).eq("id", job_id).execute()
+
+
+def delete_admin_job(job_id: str) -> str:
+    """
+    حذف نهائي من القاعدة. إن رفضت القاعدة الحذف (409 — تقديمات مرتبطة)، تُعطّل الوظيفة فقط.
+    يعيد: 'deleted' أو 'deactivated'.
+    """
+    try:
+        if _use_rest:
+            _rest_delete("admin_jobs", id=job_id)
+        else:
+            get_supabase().table("admin_jobs").delete().eq("id", job_id).execute()
+        return "deleted"
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 409:
+            deactivate_admin_job(job_id)
+            return "deactivated"
+        raise
+    except Exception as e:
+        err = str(e).lower()
+        if "409" in err or "conflict" in err:
+            deactivate_admin_job(job_id)
+            return "deactivated"
+        raise
 
 
 def get_admin_announcements(active_only: bool = True, only_visible: bool = True) -> list:
