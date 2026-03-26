@@ -56,7 +56,7 @@ def cv_reply_keyboard():
 def settings_reply_keyboard():
     return ReplyKeyboardMarkup(
         [
-            [KeyboardButton("📧 ربط الإيميل"), KeyboardButton("🖼️ قوالب التقديم")],
+            [KeyboardButton("📧 ربط الإيميل"), KeyboardButton("📘 دليل البدء")],
             [KeyboardButton("📞 تواصل معنا")],
             [KeyboardButton("⬅️ الرئيسية")],
         ],

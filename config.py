@@ -23,6 +23,7 @@ WEBHOOK_URL = (os.getenv("WEBHOOK_URL") or "").strip().rstrip("/")  # مثال: 
 WEBHOOK_PORT = int(os.getenv("WEBHOOK_PORT", "8080"))
 WEBHOOK_PATH = (os.getenv("WEBHOOK_PATH") or "webhook").strip().strip("/") or "webhook"
 WEBHOOK_LISTEN = os.getenv("WEBHOOK_LISTEN", "0.0.0.0")
+ADMIN_DASHBOARD_URL = (os.getenv("ADMIN_DASHBOARD_URL") or "").strip().rstrip("/")
 
 if not BOT_TOKEN:
     raise ValueError("أضف BOT_TOKEN في ملف .env")

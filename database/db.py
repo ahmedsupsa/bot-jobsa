@@ -2,7 +2,6 @@
 import os
 import time
 import re
-import uuid
 from datetime import datetime, timedelta
 
 import httpx
@@ -234,9 +233,8 @@ def _build_sender_alias_email(personal_email: str, domain: str) -> str:
     local = re.sub(r"[-_.]{2,}", "-", local).strip("-_.")
     if not local:
         local = "user"
-    local = local[:24]
-    suffix = uuid.uuid4().hex[:6]
-    return f"{local}-{suffix}@{domain}"
+    local = local[:48]
+    return f"{local}@{domain}"
 
 
 def ensure_user_sender_alias(user_id: str, personal_email: str) -> str:
@@ -248,9 +246,10 @@ def ensure_user_sender_alias(user_id: str, personal_email: str) -> str:
         return ""
     row = get_or_create_user_settings(user_id)
     existing = (row.get("sender_email_alias") or "").strip().lower()
-    if existing:
+    preferred = _build_sender_alias_email(personal_email, _resend_alias_domain())
+    if existing == preferred:
         return existing
-    alias = _build_sender_alias_email(personal_email, _resend_alias_domain())
+    alias = preferred
     update_user_settings(
         user_id,
         sender_email_alias=alias,

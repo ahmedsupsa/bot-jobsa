@@ -35,6 +35,7 @@ from database.db import (
     admin_list_activation_codes_used,
 )
 from states import States
+from admin.web_access import build_gate_token
 
 _SPEC_PAGE_SIZE = 8
 
@@ -44,7 +45,7 @@ _SPEC_PAGE_SIZE = 8
 _ADMIN_BUTTONS = (
     "🔑 توليد أكواد", "➕ كود يدوي", "💼 إضافة وظيفة", "📢 إضافة إعلان",
     "📊 إحصائيات", "👥 المشتركين", "📊 احصائيات التقديمات", "🔑 الأكواد", "📋 احصائيات الوظائف", "📢 الإعلانات",
-    "🗑 حذف مستخدم",
+    "🗑 حذف مستخدم", "🌐 لوحة الويب",
 )
 
 
@@ -56,7 +57,7 @@ def admin_reply_keyboard():
             [KeyboardButton("💼 إضافة وظيفة"), KeyboardButton("📋 احصائيات الوظائف")],
             [KeyboardButton("📢 إضافة إعلان"), KeyboardButton("📢 الإعلانات")],
             [KeyboardButton("🔑 توليد أكواد"), KeyboardButton("➕ كود يدوي")],
-            [KeyboardButton("🗑 حذف مستخدم")],
+            [KeyboardButton("🗑 حذف مستخدم"), KeyboardButton("🌐 لوحة الويب")],
         ],
         resize_keyboard=True,
         input_field_placeholder="لوحة تحكم الأدمن...",
@@ -316,6 +317,26 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
         if len(msg) > 4000:
             msg = msg[:3980] + "\n..."
         await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
+        return ConversationHandler.END
+
+    elif text == "🌐 لوحة الويب":
+        import config
+        base_url = (getattr(config, "ADMIN_DASHBOARD_URL", "") or "").strip().rstrip("/")
+        if not base_url:
+            await update.message.reply_text(
+                "❌ متغير ADMIN_DASHBOARD_URL غير مضبوط في البيئة.",
+                reply_markup=admin_reply_keyboard(),
+            )
+            return ConversationHandler.END
+        gate = build_gate_token(update.effective_user.id, ttl_seconds=300)
+        url = f"{base_url}/login?gate={gate}"
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔐 فتح لوحة الأدمن (5 دقائق)", url=url)],
+        ])
+        await update.message.reply_text(
+            "رابط آمن ومؤقت للوحة الأدمن.\nبعد فتحه أدخل كلمة المرور.",
+            reply_markup=kb,
+        )
         return ConversationHandler.END
 
 

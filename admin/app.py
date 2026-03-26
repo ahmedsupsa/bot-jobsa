@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from flask import Flask, request, redirect, url_for, session, render_template_string
 from dotenv import load_dotenv
+from admin.web_access import verify_gate_token
 
 load_dotenv()
 
@@ -29,6 +30,10 @@ from database.db import (
 app = Flask(__name__)
 app.secret_key = os.getenv("ADMIN_SECRET", "change-me-in-production")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+_raw_admin_ids = (os.getenv("ADMIN_TELEGRAM_IDS") or "").strip()
+ADMIN_TELEGRAM_IDS = {
+    int(x.strip()) for x in _raw_admin_ids.split(",") if x.strip().lstrip("-").isdigit()
+}
 
 
 def login_required(f):
@@ -100,7 +105,33 @@ BASE_HTML = """
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    # الوصول لصفحة تسجيل الدخول مسموح فقط عبر رابط بوابة آمن من تليجرام الأدمن.
+    if request.method == "GET":
+        gate = (request.args.get("gate") or "").strip()
+        payload = verify_gate_token(gate)
+        if not payload:
+            return render_template_string(
+                BASE_HTML, url_for=url_for, content="""
+                <div class="card">
+                  <h2>وصول غير مصرح</h2>
+                  <p>افتح لوحة الويب من زر الأدمن داخل تليجرام أولاً.</p>
+                </div>
+                """
+            ), 403
+        aid = int(payload.get("aid") or 0)
+        if ADMIN_TELEGRAM_IDS and aid not in ADMIN_TELEGRAM_IDS:
+            return render_template_string(
+                BASE_HTML, url_for=url_for, content="""
+                <div class="card"><p style="color:#c0392b;">لا تملك صلاحية الوصول.</p></div>
+                """
+            ), 403
+        session["admin_gate_ok"] = True
+        session["admin_gate_aid"] = aid
+        session["admin_gate_exp"] = int(payload.get("exp") or 0)
+
     if request.method == "POST":
+        if not session.get("admin_gate_ok"):
+            return redirect(url_for("login"))
         if request.form.get("password") == ADMIN_PASSWORD:
             session["admin_logged_in"] = True
             return redirect(url_for("dashboard"))
@@ -129,6 +160,9 @@ def login():
 @app.route("/logout")
 def logout():
     session.pop("admin_logged_in", None)
+    session.pop("admin_gate_ok", None)
+    session.pop("admin_gate_aid", None)
+    session.pop("admin_gate_exp", None)
     return redirect(url_for("login"))
 
 
