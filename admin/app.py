@@ -25,6 +25,13 @@ from database.db import (
     get_admin_announcements,
     add_admin_announcement,
     delete_admin_announcement,
+    admin_stats_applications_recent,
+    admin_list_users,
+    admin_list_activation_codes_used,
+    admin_list_activation_codes_unused,
+    get_user_by_id,
+    admin_get_user_settings,
+    admin_update_user_email,
 )
 
 app = Flask(__name__)
@@ -77,36 +84,229 @@ BASE_HTML = """
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>لوحة التحكم - بوت الوظائف</title>
   <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121a31;
+      --panel-2: #172241;
+      --text: #ecf2ff;
+      --muted: #9eb1da;
+      --primary: #5da7ff;
+      --primary-2: #3f87e0;
+      --danger: #ff7d7d;
+      --success-bg: #143826;
+      --success-border: #2d6b4d;
+    }
     * { box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 20px; background: #f5f5f5; }
-    h1 { color: #1a5276; }
-    nav { margin: 20px 0; }
-    nav a { margin-left: 12px; color: #1a5276; text-decoration: none; }
-    nav a:hover { text-decoration: underline; }
-    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; max-width: 700px; }
-    input, textarea, button { width: 100%; padding: 10px; margin: 6px 0; font-size: 1em; }
-    textarea { min-height: 100px; resize: vertical; }
-    button { background: #1a5276; color: white; border: none; cursor: pointer; border-radius: 6px; }
-    button:hover { background: #154360; }
-    .logout { display: inline-block; margin-top: 20px; color: #666; font-size: 0.9em; }
-    .item { padding: 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      margin: 0;
+      background: radial-gradient(1200px 700px at 80% -20%, #22336a 0%, var(--bg) 55%);
+      color: var(--text);
+    }
+    .container {
+      max-width: 1120px;
+      margin: 24px auto;
+      padding: 0 16px 24px;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      color: var(--text);
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    nav a {
+      color: var(--text);
+      background: var(--panel-2);
+      border: 1px solid rgba(157, 182, 230, 0.2);
+      text-decoration: none;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 0.92rem;
+    }
+    nav a:hover { background: #20305f; }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid rgba(157, 182, 230, 0.2);
+      padding: 18px;
+      border-radius: 14px;
+      margin-bottom: 16px;
+      width: 100%;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .stat {
+      background: var(--panel-2);
+      border: 1px solid rgba(157, 182, 230, 0.2);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .stat .k {
+      color: var(--muted);
+      font-size: 0.86rem;
+      margin-bottom: 4px;
+    }
+    .stat .v {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+    input, textarea, button {
+      width: 100%;
+      padding: 10px 12px;
+      margin: 6px 0;
+      font-size: 0.97rem;
+      border-radius: 10px;
+    }
+    input, textarea {
+      background: #0d1630;
+      color: var(--text);
+      border: 1px solid rgba(157, 182, 230, 0.35);
+      outline: none;
+    }
+    textarea { min-height: 120px; resize: vertical; }
+    button {
+      background: linear-gradient(180deg, var(--primary), var(--primary-2));
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { filter: brightness(1.05); }
+    .logout {
+      color: #ffd4d4;
+      border-color: rgba(255, 125, 125, 0.5);
+      background: rgba(95, 29, 29, 0.3);
+    }
+    .item {
+      padding: 12px;
+      border-bottom: 1px solid rgba(157, 182, 230, 0.2);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
     .item:last-child { border-bottom: none; }
-    .del { color: #c0392b; text-decoration: none; font-size: 0.9em; }
-    .del:hover { text-decoration: underline; }
-    .msg { padding: 10px; background: #d5f5e3; border-radius: 6px; margin-bottom: 15px; }
-    label { display: block; margin-top: 10px; font-weight: bold; }
+    .item span { color: #e7efff; }
+    .del {
+      color: var(--danger);
+      text-decoration: none;
+      font-size: 0.9em;
+      white-space: nowrap;
+    }
+    .msg {
+      padding: 10px;
+      background: var(--success-bg);
+      border: 1px solid var(--success-border);
+      border-radius: 8px;
+      margin-bottom: 14px;
+    }
+    .warn {
+      padding: 10px;
+      background: #3d2b15;
+      border: 1px solid #7a5423;
+      border-radius: 8px;
+      margin-bottom: 14px;
+    }
+    .codebox {
+      background: #0d1630;
+      border: 1px dashed rgba(157, 182, 230, 0.35);
+      color: #f3f7ff;
+      border-radius: 10px;
+      padding: 10px;
+      min-height: 120px;
+      width: 100%;
+      font-family: Consolas, monospace;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      overflow: auto;
+      margin-top: 6px;
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .inline-btn {
+      width: auto;
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      margin-top: 8px;
+    }
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 0.92rem;
+    }
+    th, td {
+      text-align: right;
+      border-bottom: 1px solid rgba(157, 182, 230, 0.2);
+      padding: 10px 8px;
+      white-space: nowrap;
+    }
+    th { color: #b7c9f0; font-weight: 600; }
+    .small { font-size: 0.86rem; color: #9eb1da; }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: 600;
+      color: #d6e3ff;
+    }
+    @media (max-width: 900px) {
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+      .stats { grid-template-columns: 1fr; }
+      .item { align-items: flex-start; flex-direction: column; }
+      .row { grid-template-columns: 1fr; }
+    }
   </style>
+  <script>
+    function copyById(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const text = el.innerText || el.value || "";
+      navigator.clipboard.writeText(text).then(() => {
+        alert("تم النسخ");
+      });
+    }
+  </script>
 </head>
 <body>
-  <h1>لوحة تحكم البوت</h1>
-  <nav>
-    <a href="{{ url_for('dashboard') }}">الرئيسية</a>
-    <a href="{{ url_for('codes') }}">أكواد التفعيل</a>
-    <a href="{{ url_for('jobs') }}">الوظائف</a>
-    <a href="{{ url_for('announcements') }}">الإعلانات</a>
-    <a href="{{ url_for('logout') }}" class="logout">تسجيل الخروج</a>
-  </nav>
-  {{ content | safe }}
+  <div class="container">
+    <div class="topbar">
+      <div>
+        <h1>لوحة تحكم البوت</h1>
+        <div class="sub">إدارة الأكواد والوظائف والإعلانات من مكان واحد</div>
+      </div>
+    </div>
+    <nav>
+      <a href="{{ url_for('dashboard') }}">الرئيسية</a>
+      <a href="{{ url_for('codes') }}">أكواد التفعيل</a>
+      <a href="{{ url_for('users') }}">المستخدمون</a>
+      <a href="{{ url_for('jobs') }}">الوظائف</a>
+      <a href="{{ url_for('announcements') }}">الإعلانات</a>
+      <a href="{{ url_for('logout') }}" class="logout">تسجيل الخروج</a>
+    </nav>
+    {{ content | safe }}
+  </div>
 </body>
 </html>
 """
@@ -180,15 +380,59 @@ def logout():
 def dashboard():
     jobs = get_admin_jobs(active_only=False)
     anns = get_admin_announcements(active_only=False)
+    recent_apps = admin_stats_applications_recent(12)
+    recent_users = admin_list_users(8)
+    app_rows = []
+    for r in recent_apps:
+        uid = r.get("user_id")
+        user = get_user_by_id(uid) if uid else None
+        name = (user.get("full_name") or "—") if user else "—"
+        app_rows.append(
+            f"<tr><td>{name}</td><td>{(r.get('job_title') or '—')[:60]}</td><td>{(r.get('applied_at') or '—')[:19]}</td></tr>"
+        )
+    user_rows = []
+    for u in recent_users:
+        user_rows.append(
+            f"<tr><td>{(u.get('full_name') or '—')[:40]}</td><td>{u.get('telegram_id') or '—'}</td><td>{(u.get('created_at') or '—')[:19]}</td></tr>"
+        )
     return render_template_string(
         BASE_HTML,
         url_for=url_for,
         content="""
         <div class="card">
-          <h2>الرئيسية</h2>
-          <p>عدد الوظائف المضافة: <strong>""" + str(len(jobs)) + """</strong></p>
-          <p>عدد الإعلانات: <strong>""" + str(len(anns)) + """</strong></p>
-          <p>من القائمة أعلاه يمكنك: توليد أكواد تفعيل، إضافة وظائف، ونشر إعلانات تظهر للمستخدمين في البوت.</p>
+          <h2 style="margin-top:0">ملخص سريع</h2>
+          <div class="stats">
+            <div class="stat"><div class="k">الوظائف</div><div class="v">""" + str(len(jobs)) + """</div></div>
+            <div class="stat"><div class="k">الإعلانات</div><div class="v">""" + str(len(anns)) + """</div></div>
+            <div class="stat"><div class="k">وظائف نشطة</div><div class="v">""" + str(sum(1 for j in jobs if j.get("is_active"))) + """</div></div>
+            <div class="stat"><div class="k">إعلانات نشطة</div><div class="v">""" + str(sum(1 for a in anns if a.get("is_active"))) + """</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">اختصارات الإدارة</h3>
+          <p style="margin-bottom:8px;color:#bcd0f7">• إدارة الاشتراكات: من <strong>أكواد التفعيل</strong></p>
+          <p style="margin-bottom:8px;color:#bcd0f7">• إضافة/إزالة وظائف: من <strong>الوظائف</strong></p>
+          <p style="margin-bottom:0;color:#bcd0f7">• نشر رسائل للمستخدمين: من <strong>الإعلانات</strong></p>
+        </div>
+        <div class="row">
+          <div class="card">
+            <h3 style="margin-top:0">آخر التقديمات</h3>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>المستخدم</th><th>الوظيفة</th><th>الوقت</th></tr></thead>
+                <tbody>""" + ("".join(app_rows) or "<tr><td colspan='3'>لا توجد بيانات.</td></tr>") + """</tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <h3 style="margin-top:0">أحدث المستخدمين</h3>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>الاسم</th><th>Telegram ID</th><th>وقت التسجيل</th></tr></thead>
+                <tbody>""" + ("".join(user_rows) or "<tr><td colspan='3'>لا توجد بيانات.</td></tr>") + """</tbody>
+              </table>
+            </div>
+          </div>
         </div>
         """,
     )
@@ -198,16 +442,22 @@ def dashboard():
 @login_required
 def codes():
     msg = ""
+    generated_codes: list[str] = []
     if request.method == "POST":
         try:
             count = int(request.form.get("count", 49))
             days = int(request.form.get("days", 365))
-            codes_list = generate_codes(count, days)
-            rows = [{"code": c, "subscription_days": days} for c in codes_list]
+            generated_codes = generate_codes(count, days)
+            rows = [{"code": c, "subscription_days": days} for c in generated_codes]
             insert_activation_codes(rows)
             msg = f"تم إضافة {len(rows)} كود بنجاح (اشتراك {days} يوم)."
         except Exception as e:
             msg = f"خطأ: {e}"
+    used_codes = admin_list_activation_codes_used(60)
+    unused_codes = admin_list_activation_codes_unused(120)
+    generated_text = "\n".join(generated_codes)
+    used_text = "\n".join((c.get("code") or "") for c in used_codes if c.get("code"))
+    unused_text = "\n".join((c.get("code") or "") for c in unused_codes if c.get("code"))
     return render_template_string(
         BASE_HTML,
         url_for=url_for,
@@ -222,6 +472,83 @@ def codes():
             <input type="number" name="days" value="365" min="1">
             <button type="submit">توليد وإضافة في Supabase</button>
           </form>
+        </div>
+        <div class="row">
+          <div class="card">
+            <h3 style="margin-top:0">الأكواد المولدة الآن</h3>
+            <div class="small">آخر عملية توليد في نفس الطلب</div>
+            <div id="codes-generated" class="codebox">{generated_text or "لا يوجد توليد في هذه الصفحة بعد."}</div>
+            <button class="inline-btn" onclick="copyById('codes-generated')">نسخ الأكواد المولدة</button>
+          </div>
+          <div class="card">
+            <h3 style="margin-top:0">الأكواد المستخدمة (آخر 60)</h3>
+            <div class="small">تاريخ الاستخدام موجود في قاعدة البيانات</div>
+            <div id="codes-used" class="codebox">{used_text or "لا توجد أكواد مستخدمة."}</div>
+            <button class="inline-btn" onclick="copyById('codes-used')">نسخ الأكواد المستخدمة</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">الأكواد غير المستخدمة (آخر 120)</h3>
+          <div id="codes-unused" class="codebox">{unused_text or "لا توجد أكواد متاحة."}</div>
+          <button class="inline-btn" onclick="copyById('codes-unused')">نسخ الأكواد غير المستخدمة</button>
+        </div>
+        """,
+    )
+
+
+@app.route("/users", methods=["GET", "POST"])
+@login_required
+def users():
+    msg = ""
+    if request.method == "POST":
+        user_id = (request.form.get("user_id") or "").strip()
+        new_email = (request.form.get("new_email") or "").strip()
+        try:
+            admin_update_user_email(user_id, new_email)
+            msg = "تم تحديث البريد بنجاح."
+        except Exception as e:
+            msg = f"خطأ: {e}"
+    users_list = admin_list_users(80)
+    rows = []
+    for u in users_list:
+        uid = str(u.get("id") or "")
+        st = admin_get_user_settings(uid) or {}
+        email = st.get("email") or ""
+        rows.append(
+            f"""
+            <tr>
+              <td>{(u.get("full_name") or "—")[:32]}</td>
+              <td>{u.get("telegram_id") or "—"}</td>
+              <td>{email or "—"}</td>
+              <td>
+                <form method="post" style="display:flex;gap:6px;align-items:center;">
+                  <input type="hidden" name="user_id" value="{uid}">
+                  <input type="email" name="new_email" placeholder="new@email.com" value="{email}" required style="min-width:230px;">
+                  <button type="submit" style="width:auto;">حفظ</button>
+                </form>
+              </td>
+            </tr>
+            """
+        )
+    return render_template_string(
+        BASE_HTML,
+        url_for=url_for,
+        content=f"""
+        <div class="card">
+          <h2 style="margin-top:0">إدارة المستخدمين والبريد</h2>
+          <p class="small">يمكنك تعديل البريد الشخصي للمستخدم مباشرة من هنا.</p>
+          {('<div class="msg">' + msg + '</div>') if msg and not msg.startswith('خطأ') else ''}
+          {('<div class="warn">' + msg + '</div>') if msg.startswith('خطأ') else ''}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>الاسم</th><th>Telegram ID</th><th>البريد الحالي</th><th>تعديل البريد</th></tr>
+              </thead>
+              <tbody>
+                {"".join(rows) if rows else "<tr><td colspan='4'>لا يوجد مستخدمون.</td></tr>"}
+              </tbody>
+            </table>
+          </div>
         </div>
         """,
     )

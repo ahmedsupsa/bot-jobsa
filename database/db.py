@@ -720,6 +720,41 @@ def admin_list_users(limit: int = 50) -> list:
     return r.data or []
 
 
+def admin_get_user_settings(user_id: str) -> dict | None:
+    """جلب إعدادات مستخدم محدد (للوحة الأدمن)."""
+    if _use_rest:
+        return _rest_select_one("user_settings", user_id=user_id)
+    r = get_supabase().table("user_settings").select("*").eq("user_id", user_id).execute()
+    return r.data[0] if r.data else None
+
+
+def admin_update_user_email(user_id: str, email: str) -> None:
+    """
+    تحديث إيميل المستخدم من لوحة الأدمن مباشرة (بدون حد التغيير للمستخدم).
+    مفيد للدعم/التصحيح.
+    """
+    email = (email or "").strip()
+    if not email or "@" not in email:
+        raise ValueError("إيميل غير صالح.")
+    payload = {
+        "email": email,
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+    if _use_rest:
+        row = _rest_select_one("user_settings", user_id=user_id)
+        if row:
+            _rest_update("user_settings", payload, user_id=user_id)
+        else:
+            _rest_insert("user_settings", {"user_id": user_id, **payload})
+        return
+    sb = get_supabase()
+    r = sb.table("user_settings").select("id").eq("user_id", user_id).execute()
+    if r.data:
+        sb.table("user_settings").update(payload).eq("user_id", user_id).execute()
+    else:
+        sb.table("user_settings").insert({"user_id": user_id, **payload}).execute()
+
+
 def delete_user_completely(user_id: str) -> bool:
     """
     حذف المستخدم وكل بياناته من قاعدة البيانات والتخزين:
