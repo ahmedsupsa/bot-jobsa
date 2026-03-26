@@ -49,6 +49,12 @@ _ADMIN_BUTTONS = (
 )
 
 
+def _normalize_btn_text(text: str) -> str:
+    """توحيد نص الزر لتجنب مشاكل variation selector في الإيموجي."""
+    t = (text or "").strip()
+    return t.replace("\ufe0f", "")
+
+
 def admin_reply_keyboard():
     return ReplyKeyboardMarkup(
         [
@@ -98,6 +104,11 @@ async def cmd_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
         await update.message.reply_text("⛔ غير مصرح لك.")
         return
+    # تنظيف أي حالة قديمة + إجبار تحديث الكيبورد لدى تيليجرام
+    for k in list(context.user_data.keys()):
+        if k.startswith("admin_"):
+            context.user_data.pop(k, None)
+    await update.message.reply_text("🔄 تحديث لوحة الأدمن...", reply_markup=ReplyKeyboardRemove())
     await update.message.reply_text(
         "🔐 **لوحة تحكم الأدمن**\n\nاختر من الأزرار في الأسفل:",
         parse_mode="Markdown",
@@ -113,9 +124,9 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
     if not is_admin(update.effective_user.id):
         return
 
-    text = update.message.text.strip()
+    text = _normalize_btn_text(update.message.text)
 
-    if text == "🔑 توليد أكواد":
+    if text == _normalize_btn_text("🔑 توليد أكواد"):
         await update.message.reply_text(
             "🔑 **توليد أكواد تفعيل**\n\n"
             "أرسل سطراً بصيغة:\n"
@@ -127,7 +138,7 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
         context.user_data["admin_awaiting"] = "codes"
         return States.ADMIN_AWAIT_CODES
 
-    elif text == "➕ كود يدوي":
+    elif text == _normalize_btn_text("➕ كود يدوي"):
         await update.message.reply_text(
             "➕ **إضافة كود واحد**\n\n"
             "أرسل سطراً بصيغة:\n"
@@ -139,7 +150,7 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
         context.user_data["admin_awaiting"] = "single_code"
         return States.ADMIN_AWAIT_SINGLE_CODE
 
-    elif text == "💼 إضافة وظيفة":
+    elif text == _normalize_btn_text("💼 إضافة وظيفة"):
         await update.message.reply_text(
             "💼 **إضافة وظيفة (سريع)**\n\n"
             "أرسل كل تفاصيل الوظيفة في **رسالة واحدة** (عدا إيميل التقديم) بصيغة مثل:\n\n"
@@ -154,7 +165,7 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
         context.user_data["admin_awaiting"] = "job_title"
         return States.ADMIN_AWAIT_JOB_TITLE
 
-    elif text == "📢 إضافة إعلان":
+    elif text == _normalize_btn_text("📢 إضافة إعلان"):
         await update.message.reply_text(
             "📢 **إضافة إعلان (سريع)**\n\n"
             "أرسل الإعلان في **رسالة واحدة**:\n"
@@ -168,7 +179,7 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
         return States.ADMIN_AWAIT_ANN_TITLE
 
     # ─── إحصائيات ومشتركين وأكواد ───
-    elif text == "📊 إحصائيات":
+    elif text == _normalize_btn_text("📊 إحصائيات"):
         users = await asyncio.to_thread(admin_stats_users_count)
         apps_total = await asyncio.to_thread(admin_stats_applications_total)
         apps_today = await asyncio.to_thread(admin_stats_applications_today)
@@ -187,7 +198,7 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
         await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=admin_reply_keyboard())
         return ConversationHandler.END
 
-    elif text == "👥 المشتركين":
+    elif text == _normalize_btn_text("👥 المشتركين"):
         users_list = await asyncio.to_thread(admin_list_users, 40)
         if not users_list:
             await update.message.reply_text("لا يوجد مشتركون حتى الآن.", reply_markup=admin_reply_keyboard())
@@ -204,7 +215,7 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
         await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=admin_reply_keyboard())
         return ConversationHandler.END
 
-    elif text == "📊 احصائيات التقديمات":
+    elif text == _normalize_btn_text("📊 احصائيات التقديمات"):
         total = await asyncio.to_thread(admin_stats_applications_total)
         today = await asyncio.to_thread(admin_stats_applications_today)
         recent = await asyncio.to_thread(admin_stats_applications_recent, 15)
@@ -226,7 +237,7 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
         await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=admin_reply_keyboard())
         return ConversationHandler.END
 
-    elif text == "🔑 الأكواد":
+    elif text == _normalize_btn_text("🔑 الأكواد"):
         used = await asyncio.to_thread(admin_stats_activation_codes_used)
         unused = await asyncio.to_thread(admin_stats_activation_codes_unused)
         used_list = await asyncio.to_thread(admin_list_activation_codes_used, 10)
@@ -249,7 +260,7 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
         await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=admin_reply_keyboard())
         return ConversationHandler.END
 
-    elif text == "📋 احصائيات الوظائف":
+    elif text == _normalize_btn_text("📋 احصائيات الوظائف"):
         jobs = await asyncio.to_thread(get_admin_jobs, False)
         if not jobs:
             await update.message.reply_text("لا توجد وظائف مسجلة.", reply_markup=admin_reply_keyboard())
@@ -274,7 +285,7 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
         )
         return ConversationHandler.END
 
-    elif text == "📢 الإعلانات":
+    elif text == _normalize_btn_text("📢 الإعلانات"):
         anns = await asyncio.to_thread(get_admin_announcements, False, False)
         if not anns:
             await update.message.reply_text("لا توجد إعلانات.", reply_markup=admin_reply_keyboard())
@@ -299,7 +310,7 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
         )
         return ConversationHandler.END
 
-    elif text == "🗑 حذف مستخدم":
+    elif text == _normalize_btn_text("🗑 حذف مستخدم"):
         users_list = await asyncio.to_thread(admin_list_users, 25)
         if not users_list:
             await update.message.reply_text("لا يوجد مستخدمون مسجلون.", reply_markup=admin_reply_keyboard())
@@ -319,7 +330,7 @@ async def handle_admin_reply_keyboard(update: Update, context: ContextTypes.DEFA
         await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb))
         return ConversationHandler.END
 
-    elif text == "🌐 لوحة الويب":
+    elif text == _normalize_btn_text("🌐 لوحة الويب") or text.endswith("لوحة الويب"):
         import config
         base_url = (getattr(config, "ADMIN_DASHBOARD_URL", "") or "").strip().rstrip("/")
         if not base_url:
@@ -826,14 +837,14 @@ def setup_admin_handlers(application):
 
     # أزرار الأدمن Reply Keyboard: تُستقبل فقط من حسابات الأدمن (لئلا يلتقط معالج الأدمن ضغطات المستخدمين مثل «التقديمات»)
     admin_buttons = _ADMIN_BUTTONS
-    admin_pattern = "|".join(re.escape(b) for b in admin_buttons)
+    admin_pattern = "|".join(re.escape(_normalize_btn_text(b)) for b in admin_buttons)
     admin_ids = getattr(config, "ADMIN_TELEGRAM_IDS", None) or []
     admin_filter = filters.User(user_id=admin_ids) if admin_ids else filters.ALL
 
     conv_admin = ConversationHandler(
         entry_points=[
             MessageHandler(
-                filters.TEXT & filters.Regex(f"^({admin_pattern})$") & admin_filter,
+                filters.TEXT & admin_filter,
                 handle_admin_reply_keyboard,
             ),
         ],
