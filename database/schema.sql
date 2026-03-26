@@ -42,6 +42,8 @@ CREATE TABLE IF NOT EXISTS user_settings (
 -- دعم الجداول القديمة
 ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS email_change_count INTEGER DEFAULT 0;
 ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS email_change_window_start TIMESTAMPTZ;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS sender_email_alias TEXT;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS sender_email_alias_created_at TIMESTAMPTZ;
 
 -- السير الذاتية (ملف واحد فقط للمستخدم - نتحقق بالكود)
 CREATE TABLE IF NOT EXISTS user_cvs (

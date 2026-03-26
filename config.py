@@ -44,4 +44,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
 RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "").strip()
 RESEND_FROM_NAME = os.getenv("RESEND_FROM_NAME", "Jobsa Bot").strip() or "Jobsa Bot"
+RESEND_ALIAS_DOMAIN = os.getenv("RESEND_ALIAS_DOMAIN", "").strip().lower()
+if not RESEND_ALIAS_DOMAIN and "@" in RESEND_FROM_EMAIL:
+    RESEND_ALIAS_DOMAIN = RESEND_FROM_EMAIL.split("@", 1)[1].strip().lower()
 

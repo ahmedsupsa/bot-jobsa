@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
 import time
+import re
+import uuid
 from datetime import datetime, timedelta
 
 import httpx
@@ -211,6 +213,52 @@ def _compute_email_change_update(existing_row: dict | None, new_email: str) -> d
     return out
 
 
+def _resend_alias_domain() -> str:
+    """نطاق الإيميل الخاص بالمستخدمين (يفضل RESEND_ALIAS_DOMAIN)."""
+    domain = (os.getenv("RESEND_ALIAS_DOMAIN", "") or "").strip().lower()
+    if domain:
+        return domain
+    from_email = (os.getenv("RESEND_FROM_EMAIL", "") or "").strip().lower()
+    if "@" in from_email:
+        return from_email.split("@", 1)[1].strip().lower()
+    return ""
+
+
+def _resend_enabled() -> bool:
+    return bool((os.getenv("RESEND_API_KEY", "") or "").strip() and _resend_alias_domain())
+
+
+def _build_sender_alias_email(personal_email: str, domain: str) -> str:
+    local = (personal_email or "").split("@", 1)[0].strip().lower()
+    local = re.sub(r"[^a-z0-9._-]+", "-", local)
+    local = re.sub(r"[-_.]{2,}", "-", local).strip("-_.")
+    if not local:
+        local = "user"
+    local = local[:24]
+    suffix = uuid.uuid4().hex[:6]
+    return f"{local}-{suffix}@{domain}"
+
+
+def ensure_user_sender_alias(user_id: str, personal_email: str) -> str:
+    """
+    إنشاء/إرجاع إيميل التقديم الخاص بالمستخدم على نطاقنا.
+    لا يُنشأ إلا عند تفعيل Resend وتوفر نطاق صالح.
+    """
+    if not personal_email or not _resend_enabled():
+        return ""
+    row = get_or_create_user_settings(user_id)
+    existing = (row.get("sender_email_alias") or "").strip().lower()
+    if existing:
+        return existing
+    alias = _build_sender_alias_email(personal_email, _resend_alias_domain())
+    update_user_settings(
+        user_id,
+        sender_email_alias=alias,
+        sender_email_alias_created_at=datetime.utcnow().isoformat(),
+    )
+    return alias
+
+
 def save_user_email_password(user_id: str, email: str, app_password: str) -> None:
     """
     حفظ إيميل Gmail وكلمة مرور التطبيق.
@@ -230,6 +278,10 @@ def save_user_email_password(user_id: str, email: str, app_password: str) -> Non
     }
     current = get_or_create_user_settings(user_id)
     payload.update(_compute_email_change_update(current, email))
+    if _resend_enabled():
+        payload["sender_email_alias"] = ensure_user_sender_alias(user_id, email)
+        if not current.get("sender_email_alias_created_at"):
+            payload["sender_email_alias_created_at"] = datetime.utcnow().isoformat()
     if _use_rest:
         rows = _rest_upsert_merge("user_settings", payload, on_conflict="user_id")
         if not rows:
@@ -269,7 +321,12 @@ def save_user_email(user_id: str, email: str) -> None:
         raise ValueError("الإيميل مطلوب.")
     current = get_or_create_user_settings(user_id)
     extra = _compute_email_change_update(current, email)
-    update_user_settings(user_id, email=email, **extra)
+    payload = {"email": email, **extra}
+    if _resend_enabled():
+        payload["sender_email_alias"] = ensure_user_sender_alias(user_id, email)
+        if not current.get("sender_email_alias_created_at"):
+            payload["sender_email_alias_created_at"] = datetime.utcnow().isoformat()
+    update_user_settings(user_id, **payload)
 
 
 def save_user_template(user_id: str, template_type: str) -> None:

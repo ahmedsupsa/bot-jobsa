@@ -49,8 +49,10 @@ async def _settings_header_text(telegram_user_id: int | None) -> str:
         return "⚙️ الإعدادات:\n\nاختر:"
     settings = await asyncio.to_thread(get_or_create_user_settings, user["id"])
     current_email = (settings.get("email") or "").strip()
+    sender_alias = (settings.get("sender_email_alias") or "").strip()
     if current_email:
-        return f"⚙️ الإعدادات:\n\n📧 الإيميل المربوط: {current_email}\n\nاختر:"
+        extra = f"\n📨 إيميل التقديم: {sender_alias}" if sender_alias else ""
+        return f"⚙️ الإعدادات:\n\n📧 الإيميل المربوط: {current_email}{extra}\n\nاختر:"
     return "⚙️ الإعدادات:\n\n📧 الإيميل المربوط: لا يوجد\n\nاختر:"
 
 

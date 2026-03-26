@@ -366,6 +366,8 @@ async def send_email_resend(
     to_email: str,
     subject: str,
     html_body: str,
+    from_email_override: str | None = None,
+    from_name_override: str | None = None,
     reply_to_email: str | None = None,
     cc_email: str | None = None,
     attachment_bytes: bytes | None = None,
@@ -373,12 +375,13 @@ async def send_email_resend(
 ) -> None:
     """إرسال البريد عبر Resend API."""
     api_key = (RESEND_API_KEY or "").strip()
-    from_email = (RESEND_FROM_EMAIL or "").strip()
+    from_email = (from_email_override or RESEND_FROM_EMAIL or "").strip()
     if not api_key or not from_email:
         raise RuntimeError("RESEND_API_KEY أو RESEND_FROM_EMAIL غير معرّف.")
 
+    from_name = (from_name_override or RESEND_FROM_NAME or "").strip() or "Jobsa Bot"
     payload: dict = {
-        "from": f"{RESEND_FROM_NAME} <{from_email}>",
+        "from": f"{from_name} <{from_email}>",
         "to": [to_email],
         "subject": subject,
         "html": html_body,
@@ -414,6 +417,10 @@ async def send_email(
     html_body: str,
     attachment_bytes: bytes | None = None,
     attachment_filename: str | None = None,
+    resend_from_email: str | None = None,
+    resend_from_name: str | None = None,
+    reply_to_email: str | None = None,
+    cc_email: str | None = None,
 ) -> None:
     """إرسال موحد: Resend إذا مفعّل، وإلا SMTP."""
     if (RESEND_API_KEY or "").strip() and (RESEND_FROM_EMAIL or "").strip():
@@ -421,8 +428,10 @@ async def send_email(
             to_email=to_email,
             subject=subject,
             html_body=html_body,
-            reply_to_email=(sender_email or "").strip() or None,
-            cc_email=(sender_email or "").strip() or None,
+            from_email_override=(resend_from_email or "").strip() or None,
+            from_name_override=(resend_from_name or "").strip() or None,
+            reply_to_email=(reply_to_email or sender_email or "").strip() or None,
+            cc_email=(cc_email or sender_email or "").strip() or None,
             attachment_bytes=attachment_bytes,
             attachment_filename=attachment_filename,
         )
@@ -442,6 +451,7 @@ async def send_email(
 
 async def send_template_preview_email(bot, user: dict, settings: dict, template_key: str, chat_id: int) -> None:
     email = settings.get("email")
+    sender_alias = (settings.get("sender_email_alias") or "").strip() or None
     app_password = settings.get("app_password_encrypted")
     resend_enabled = bool((RESEND_API_KEY or "").strip() and (RESEND_FROM_EMAIL or "").strip())
     if not email or (not app_password and not resend_enabled):
@@ -456,12 +466,16 @@ async def send_template_preview_email(bot, user: dict, settings: dict, template_
         to_email=email,
         subject=f"معاينة قالب التقديم - {template_key}",
         html_body=html,
+        resend_from_email=sender_alias,
+        reply_to_email=email,
+        cc_email=email,
     )
 
 
 async def send_welcome_email(user: dict, settings: dict) -> None:
     """إرسال رسالة ترحيبية بعد ربط الإيميل."""
     email = (settings.get("email") or "").strip()
+    sender_alias = (settings.get("sender_email_alias") or "").strip() or None
     if not email:
         raise ValueError("لا يوجد إيميل مربوط للمستخدم.")
     app_password = settings.get("app_password_encrypted")
@@ -500,4 +514,7 @@ async def send_welcome_email(user: dict, settings: dict) -> None:
         to_email=email,
         subject="🎉 أهلاً بك في بوت التقديم على الوظائف",
         html_body=html,
+        resend_from_email=sender_alias,
+        reply_to_email=email,
+        cc_email=email,
     )

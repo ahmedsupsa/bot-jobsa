@@ -63,15 +63,18 @@ async def cb_set_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     user = await asyncio.to_thread(get_user_by_telegram, update.effective_user.id)
     current_email = ""
+    sender_alias = ""
     if user:
         settings = await asyncio.to_thread(get_or_create_user_settings, user["id"])
         current_email = (settings.get("email") or "").strip()
-    current_email_line = f"الإيميل المربوط حالياً: {current_email}\n\n" if current_email else "لا يوجد إيميل مربوط حالياً.\n\n"
+        sender_alias = (settings.get("sender_email_alias") or "").strip()
+    current_email_line = f"الإيميل الشخصي: {current_email}\n" if current_email else "الإيميل الشخصي: لا يوجد\n"
+    alias_line = f"إيميل التقديم الخاص بك: {sender_alias}\n\n" if sender_alias else "\n"
     try:
-        msg = f"📧 ربط الإيميل\n\n{current_email_line}أدخل إيميلك (Gmail فقط حالياً):\n\nأو اضغط «رجوع» للإلغاء."
+        msg = f"📧 ربط الإيميل\n\n{current_email_line}{alias_line}أدخل إيميلك (Gmail فقط حالياً):\n\nأو اضغط «رجوع» للإلغاء."
         if _USES_RESEND:
             msg = (
-                f"📧 ربط الإيميل\n\n{current_email_line}"
+                f"📧 ربط الإيميل\n\n{current_email_line}{alias_line}"
                 "أدخل إيميلك (Gmail فقط حالياً).\n"
                 "لن تحتاج كلمة مرور التطبيق عند استخدام Resend.\n\n"
                 "أو اضغط «رجوع» للإلغاء."
@@ -177,8 +180,11 @@ async def receive_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
         key = _email_flow_key(update)
         if key:
             _awaiting_by_key.pop(key, None)
+        settings = await asyncio.to_thread(get_or_create_user_settings, user["id"])
         await update.message.reply_text(
-            "✅ تم ربط الإيميل بنجاح\nسيتم استخدامه كـ Reply-To واستلام نسخة من التقديم.",
+            "✅ تم ربط الإيميل بنجاح\n"
+            f"📨 إيميل التقديم الخاص بك: {(settings.get('sender_email_alias') or 'سيُنشأ تلقائياً')}\n"
+            "سيتم استخدام إيميلك الشخصي كـ Reply-To واستلام نسخة من التقديم.",
             reply_markup=back_to_settings_keyboard(),
         )
         try:

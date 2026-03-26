@@ -77,6 +77,7 @@ async def run_auto_apply_cycle(bot) -> None:
     from database.db import (
         get_admin_jobs,
         get_or_create_user_settings,
+        ensure_user_sender_alias,
         get_cv,
         get_user_job_preferences,
         get_job_fields,
@@ -195,6 +196,14 @@ async def run_auto_apply_cycle(bot) -> None:
         # قالب تقديم واحد لجميع المستخدمين
         template_type = "normal"
         sender_email = settings["email"]
+        resend_sender_alias = ""
+        if resend_enabled:
+            try:
+                resend_sender_alias = await asyncio.to_thread(
+                    ensure_user_sender_alias, user_id, sender_email
+                )
+            except Exception:
+                resend_sender_alias = ""
         app_password = settings.get("app_password_encrypted")
         remaining = 10 - count_today
 
@@ -244,6 +253,10 @@ async def run_auto_apply_cycle(bot) -> None:
                 await send_email(
                     sender_email, app_password, to_email,
                     subject, html_body, cv_bytes, cv_filename,
+                    resend_from_email=resend_sender_alias or None,
+                    resend_from_name=name,
+                    reply_to_email=sender_email,
+                    cc_email=sender_email,
                 )
                 await asyncio.to_thread(add_application, user_id, job_title, None, job_id)
                 _mark_sent(user_id)
