@@ -374,6 +374,23 @@ def get_cv(user_id: str) -> dict | None:
     return r.data[0] if r.data else None
 
 
+def delete_cv(user_id: str, delete_storage_file: bool = True) -> None:
+    """
+    حذف سجل السيرة للمستخدم، ومعه ملف التخزين إن وُجد.
+    """
+    current = get_cv(user_id)
+    if current and delete_storage_file and current.get("storage_path"):
+        try:
+            from database.storage import delete_object, BUCKET_CVS
+            delete_object(BUCKET_CVS, current["storage_path"])
+        except Exception:
+            pass
+    if _use_rest:
+        _rest_delete("user_cvs", user_id=user_id)
+        return
+    get_supabase().table("user_cvs").delete().eq("user_id", user_id).execute()
+
+
 def get_applications_count(user_id: str) -> int:
     if _use_rest:
         return _rest_count("applications", user_id=user_id)

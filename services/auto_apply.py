@@ -79,6 +79,7 @@ async def run_auto_apply_cycle(bot) -> None:
         get_or_create_user_settings,
         ensure_user_sender_alias,
         get_cv,
+        delete_cv,
         get_user_job_preferences,
         get_job_fields,
         get_applications_count_today,
@@ -87,6 +88,7 @@ async def run_auto_apply_cycle(bot) -> None:
         is_subscription_active,
     )
     from services.cover_letter import generate_cover_letter, extract_text_from_cv
+    from services.cv_guard import validate_cv_text
     from templates.preview import build_application_html, get_preview_html
     from templates.preview import send_email, get_smtp_error_user_message, SMTP_NETWORK_ERROR_HINT
 
@@ -189,6 +191,17 @@ async def run_auto_apply_cycle(bot) -> None:
             cv_text = await asyncio.to_thread(extract_text_from_cv, cv_bytes, cv_filename)
         except Exception:
             cv_text = ""
+        is_valid_cv, cv_reason = await asyncio.to_thread(validate_cv_text, cv_text)
+        if not is_valid_cv:
+            # لا تقديم إطلاقاً إذا السيرة غير حقيقية/غير صالحة
+            await asyncio.to_thread(delete_cv, user_id, True)
+            await _notify_missing_requirements(
+                bot,
+                telegram_id,
+                user_id,
+                [f"رفع سيرة ذاتية مهنية صحيحة (تم رفض الملف الحالي: {cv_reason})"],
+            )
+            continue
 
         name = user.get("full_name") or "المتقدم"
         phone = user.get("phone") or ""

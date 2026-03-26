@@ -10,6 +10,7 @@ from telegram.constants import ChatAction
 from database.db import (
     get_user_by_telegram,
     get_cv,
+    delete_cv,
     save_cv,
     is_subscription_active,
     get_subscription_ends_at,
@@ -106,6 +107,32 @@ async def receive_cv_document(update: Update, context: ContextTypes.DEFAULT_TYPE
         await tg_file.download_to_drive(tmp.name)
         with open(tmp.name, "rb") as f:
             file_bytes = f.read()
+        # تحقق السيرة أولاً قبل اعتمادها في قاعدة البيانات
+        from services.cover_letter import extract_text_from_cv
+        from services.cv_guard import validate_cv_text
+        try:
+            cv_text = await asyncio.to_thread(extract_text_from_cv, file_bytes, file_name)
+        except Exception:
+            cv_text = ""
+        is_valid, reason = await asyncio.to_thread(validate_cv_text, cv_text)
+        if not is_valid:
+            context.user_data.pop("awaiting_cv", None)
+            # حذف أي سجل CV سابق غير صالح (إن وجد) للحفاظ على شرط "لا تقديم بدون CV حقيقي"
+            try:
+                await asyncio.to_thread(delete_cv, user["id"], True)
+            except Exception:
+                pass
+            await update.message.reply_text(
+                "❌ الملف المرسل ليس سيرة ذاتية مهنية معتمدة.\n"
+                "تم رفض الملف وعدم اعتماده للتقديم.\n\n"
+                f"السبب: {reason}\n\n"
+                "يرجى رفع سيرة ذاتية حقيقية تحتوي على بياناتك، الخبرات، المهارات، والتعليم."
+            )
+            try:
+                os.unlink(tmp.name)
+            except Exception:
+                pass
+            return
         try:
             storage_path = await asyncio.to_thread(_upload_and_save_cv, user["id"], file_bytes, file_name, file_id)
         except Exception:
@@ -116,7 +143,7 @@ async def receive_cv_document(update: Update, context: ContextTypes.DEFAULT_TYPE
             except Exception:
                 pass
     context.user_data.pop("awaiting_cv", None)
-    msg = "✅ تم رفع السيرة الذاتية بنجاح. سيتم إرسالها مع التقديمات."
+    msg = "✅ تم رفع السيرة الذاتية بنجاح وتم اعتمادها. سيتم إرسالها مع التقديمات."
     if storage_path:
         msg += "\n(تم حفظها أيضاً في التخزين السحابي)"
     else:

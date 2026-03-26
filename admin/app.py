@@ -11,7 +11,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from flask import Flask, request, redirect, url_for, session, render_template_string
+from flask import Flask, request, redirect, url_for, session, render_template_string, jsonify
 from dotenv import load_dotenv
 from admin.web_access import verify_gate_token
 
@@ -59,6 +59,18 @@ def login_required(f):
         if not session.get("admin_logged_in"):
             return redirect(url_for("login"))
         return f(*args, **kwargs)
+    return inner
+
+
+def api_login_required(f):
+    from functools import wraps
+
+    @wraps(f)
+    def inner(*args, **kwargs):
+        if not session.get("admin_logged_in"):
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+        return f(*args, **kwargs)
+
     return inner
 
 
@@ -552,6 +564,170 @@ def users():
         </div>
         """,
     )
+
+
+@app.route("/api/admin/summary")
+@api_login_required
+def api_admin_summary():
+    jobs = get_admin_jobs(active_only=False)
+    anns = get_admin_announcements(active_only=False)
+    recent_apps = admin_stats_applications_recent(12)
+    recent_users = admin_list_users(8)
+    app_items = []
+    for r in recent_apps:
+        uid = r.get("user_id")
+        u = get_user_by_id(uid) if uid else None
+        app_items.append(
+            {
+                "user_name": (u.get("full_name") if u else "") or "—",
+                "job_title": (r.get("job_title") or "—"),
+                "applied_at": (r.get("applied_at") or "—"),
+            }
+        )
+    users_items = [
+        {
+            "name": (u.get("full_name") or "—"),
+            "telegram_id": u.get("telegram_id"),
+            "created_at": (u.get("created_at") or "—"),
+        }
+        for u in recent_users
+    ]
+    return jsonify(
+        {
+            "ok": True,
+            "stats": {
+                "jobs_total": len(jobs),
+                "announcements_total": len(anns),
+                "jobs_active": sum(1 for j in jobs if j.get("is_active")),
+                "announcements_active": sum(1 for a in anns if a.get("is_active")),
+            },
+            "recent_applications": app_items,
+            "recent_users": users_items,
+        }
+    )
+
+
+@app.route("/api/admin/codes")
+@api_login_required
+def api_admin_codes():
+    used_codes = admin_list_activation_codes_used(120)
+    unused_codes = admin_list_activation_codes_unused(240)
+    return jsonify(
+        {
+            "ok": True,
+            "used_codes": [c.get("code") for c in used_codes if c.get("code")],
+            "unused_codes": [c.get("code") for c in unused_codes if c.get("code")],
+        }
+    )
+
+
+@app.route("/api/admin/users")
+@api_login_required
+def api_admin_users():
+    users_list = admin_list_users(200)
+    rows = []
+    for u in users_list:
+        uid = str(u.get("id") or "")
+        st = admin_get_user_settings(uid) or {}
+        rows.append(
+            {
+                "id": uid,
+                "name": (u.get("full_name") or "—"),
+                "telegram_id": u.get("telegram_id"),
+                "email": (st.get("email") or ""),
+                "created_at": (u.get("created_at") or ""),
+            }
+        )
+    return jsonify({"ok": True, "users": rows})
+
+
+@app.route("/api/admin/users/<user_id>/email", methods=["POST"])
+@api_login_required
+def api_admin_update_user_email(user_id: str):
+    body = request.get_json(silent=True) or {}
+    new_email = (body.get("email") or "").strip()
+    try:
+        admin_update_user_email(user_id, new_email)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@app.route("/api/admin/jobs", methods=["GET", "POST"])
+@api_login_required
+def api_admin_jobs():
+    if request.method == "GET":
+        jobs = get_admin_jobs(active_only=False)
+        return jsonify({"ok": True, "jobs": jobs})
+    body = request.get_json(silent=True) or {}
+    try:
+        row = add_admin_job(
+            title_ar=(body.get("title_ar") or "").strip(),
+            title_en=(body.get("title_en") or "").strip(),
+            description_ar=(body.get("description_ar") or "").strip(),
+            description_en=(body.get("description_en") or "").strip(),
+            company=(body.get("company") or "").strip(),
+            link_url=(body.get("link_url") or "").strip(),
+            application_email=(body.get("application_email") or "").strip(),
+            specializations=(body.get("specializations") or "").strip(),
+        )
+        return jsonify({"ok": True, "job": row})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@app.route("/api/admin/jobs/<job_id>", methods=["DELETE"])
+@api_login_required
+def api_admin_job_delete(job_id: str):
+    try:
+        outcome = delete_admin_job(job_id)
+        return jsonify({"ok": True, "outcome": outcome})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@app.route("/api/admin/announcements", methods=["GET", "POST"])
+@api_login_required
+def api_admin_announcements():
+    if request.method == "GET":
+        rows = get_admin_announcements(active_only=False, only_visible=False)
+        return jsonify({"ok": True, "announcements": rows})
+    body = request.get_json(silent=True) or {}
+    try:
+        row = add_admin_announcement(
+            title=(body.get("title") or "").strip(),
+            body_text=(body.get("body_text") or "").strip(),
+        )
+        return jsonify({"ok": True, "announcement": row})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@app.route("/api/admin/announcements/<ann_id>", methods=["DELETE"])
+@api_login_required
+def api_admin_announcement_delete(ann_id: str):
+    try:
+        delete_admin_announcement(ann_id)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+
+@app.route("/api/admin/codes/generate", methods=["POST"])
+@api_login_required
+def api_admin_codes_generate():
+    body = request.get_json(silent=True) or {}
+    try:
+        count = int(body.get("count") or 49)
+        days = int(body.get("days") or 365)
+        count = min(max(1, count), 500)
+        days = max(1, days)
+        codes_list = generate_codes(count, days)
+        rows = [{"code": c, "subscription_days": days} for c in codes_list]
+        insert_activation_codes(rows)
+        return jsonify({"ok": True, "codes": codes_list, "count": len(codes_list), "days": days})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
 
 
 @app.route("/jobs", methods=["GET", "POST"])
