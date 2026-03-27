@@ -201,15 +201,19 @@ async def refresh_admin_review_panel(bot, bot_data: dict, admin_id: int, preferr
     state_all[str(admin_id)] = {"message_id": msg.message_id, "current_candidate_id": current_id}
 
 
+def _twitter_oauth1_configured() -> bool:
+    return bool(
+        getattr(config, "X_OAUTH1_API_KEY", "")
+        and getattr(config, "X_OAUTH1_API_SECRET", "")
+        and getattr(config, "X_OAUTH1_ACCESS_TOKEN", "")
+        and getattr(config, "X_OAUTH1_ACCESS_TOKEN_SECRET", "")
+    )
+
+
 async def run_twitter_jobs_cycle(bot, bot_data: dict) -> None:
-    # أولوية OAuth 2.0 User Token ثم fallback إلى App Bearer.
-    auth_token = (getattr(config, "X_USER_ACCESS_TOKEN", "") or "").strip() or (
-        getattr(config, "X_BEARER_TOKEN", "") or ""
-    ).strip()
-    if not auth_token or not config.TWITTER_TARGET_CHANNEL_ID:
+    if not config.TWITTER_TARGET_CHANNEL_ID:
         return
 
-    headers = {"Authorization": f"Bearer {auth_token}"}
     params = {
         "query": config.TWITTER_JOB_QUERY,
         "max_results": "20",
@@ -217,31 +221,64 @@ async def run_twitter_jobs_cycle(bot, bot_data: dict) -> None:
     }
     url = "https://api.x.com/2/tweets/search/recent"
 
-    auth_mode = "user_oauth2" if getattr(config, "X_USER_ACCESS_TOKEN", "") else "app_bearer"
+    use_oauth1 = _twitter_oauth1_configured()
+    auth_token = (
+        (getattr(config, "X_USER_ACCESS_TOKEN", "") or "").strip()
+        or (getattr(config, "X_BEARER_TOKEN", "") or "").strip()
+    )
+    if not use_oauth1 and not auth_token:
+        return
+
+    auth_mode = "oauth1" if use_oauth1 else (
+        "user_oauth2" if getattr(config, "X_USER_ACCESS_TOKEN", "") else "app_bearer"
+    )
+
+    def _log_fail(status: int, text: str, err_json: object | None) -> None:
+        detail = (text or "")[:900]
+        if isinstance(err_json, dict):
+            detail = str(
+                err_json.get("errors")
+                or err_json.get("title")
+                or err_json.get("detail")
+                or err_json
+            )[:900]
+        logger.warning("Twitter API HTTP %s (%s): %s", status, auth_mode, detail)
+
     try:
-        async with httpx.AsyncClient(timeout=20) as client:
-            r = await client.get(url, headers=headers, params=params)
-            if r.status_code != 200:
-                detail = (r.text or "")[:900]
-                try:
-                    err = r.json()
-                    if isinstance(err, dict):
-                        detail = str(
-                            err.get("errors")
-                            or err.get("title")
-                            or err.get("detail")
-                            or err
-                        )[:900]
-                except Exception:
-                    pass
-                logger.warning(
-                    "Twitter API HTTP %s (%s): %s",
-                    r.status_code,
-                    auth_mode,
-                    detail,
+        if use_oauth1:
+            def _get_oauth1():
+                import requests
+                from requests_oauthlib import OAuth1
+
+                auth = OAuth1(
+                    config.X_OAUTH1_API_KEY,
+                    client_secret=config.X_OAUTH1_API_SECRET,
+                    resource_owner_key=config.X_OAUTH1_ACCESS_TOKEN,
+                    resource_owner_secret=config.X_OAUTH1_ACCESS_TOKEN_SECRET,
                 )
+                return requests.get(url, params=params, auth=auth, timeout=20)
+
+            r = await asyncio.to_thread(_get_oauth1)
+            if r.status_code != 200:
+                try:
+                    ej = r.json()
+                except Exception:
+                    ej = None
+                _log_fail(r.status_code, r.text, ej)
                 return
             payload = r.json()
+        else:
+            headers = {"Authorization": f"Bearer {auth_token}"}
+            async with httpx.AsyncClient(timeout=20) as client:
+                r = await client.get(url, headers=headers, params=params)
+                if r.status_code != 200:
+                    try:
+                        ej = r.json()
+                    except Exception:
+                        ej = None
+                    _log_fail(r.status_code, r.text, ej)
+                    return
+                payload = r.json()
     except Exception as e:
         logger.warning("Twitter ingest failed: %s", e)
         return

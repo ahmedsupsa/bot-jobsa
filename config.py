@@ -57,6 +57,11 @@ _jo = os.getenv("JOBS_SOURCE_CHANNEL_ID", "").strip()
 JOBS_SOURCE_CHANNEL_ID = int(_jo) if _jo and _jo.lstrip("-").isdigit() else None
 
 # Twitter/X jobs ingest (optional)
+# OAuth 1.0a (من Keys and tokens): الأربعة معاً يفعّلون التوقيع بدل Bearer.
+X_OAUTH1_API_KEY = _normalize_api_token(os.getenv("X_OAUTH1_API_KEY"))
+X_OAUTH1_API_SECRET = _normalize_api_token(os.getenv("X_OAUTH1_API_SECRET"))
+X_OAUTH1_ACCESS_TOKEN = _normalize_api_token(os.getenv("X_OAUTH1_ACCESS_TOKEN"))
+X_OAUTH1_ACCESS_TOKEN_SECRET = _normalize_api_token(os.getenv("X_OAUTH1_ACCESS_TOKEN_SECRET"))
 X_BEARER_TOKEN = _normalize_api_token(os.getenv("X_BEARER_TOKEN"))
 X_USER_ACCESS_TOKEN = _normalize_api_token(os.getenv("X_USER_ACCESS_TOKEN"))
 TWITTER_JOB_QUERY = (
@@ -72,6 +77,23 @@ TWITTER_TARGET_CHANNEL_ID = (
     if _tw_target and _tw_target.lstrip("-").isdigit()
     else JOBS_SOURCE_CHANNEL_ID
 )
+
+
+def twitter_x_ingest_configured() -> bool:
+    """هل يوجد أي طريقة مصادقة + قناة هدف لدورة وظائف X؟"""
+    if TWITTER_TARGET_CHANNEL_ID is None:
+        return False
+    if (
+        X_OAUTH1_API_KEY
+        and X_OAUTH1_API_SECRET
+        and X_OAUTH1_ACCESS_TOKEN
+        and X_OAUTH1_ACCESS_TOKEN_SECRET
+    ):
+        return True
+    if X_USER_ACCESS_TOKEN or X_BEARER_TOKEN:
+        return True
+    return False
+
 
 # مفتاح جيميني: يُستخدم في التقديم التلقائي لتوليد رسالة التغطية وقراءة السيرة من الصور (OCR)
 # من https://aistudio.google.com/apikey — إن لم يُضف، التقديم يعمل برسالة عامة وبدون قراءة الصور
