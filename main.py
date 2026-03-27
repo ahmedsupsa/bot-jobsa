@@ -88,7 +88,10 @@ def main():
             first=90,
             name="announcements_cycle",
         )
-        if getattr(config, "X_BEARER_TOKEN", "") and getattr(config, "TWITTER_TARGET_CHANNEL_ID", None):
+        if (
+            (getattr(config, "X_USER_ACCESS_TOKEN", "") or getattr(config, "X_BEARER_TOKEN", ""))
+            and getattr(config, "TWITTER_TARGET_CHANNEL_ID", None)
+        ):
             job_queue.run_repeating(
                 twitter_jobs_job,
                 interval=300,  # كل 5 دقائق

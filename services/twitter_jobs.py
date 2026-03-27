@@ -15,6 +15,47 @@ from services.channel_job_parser import parse_job_posts_text
 logger = logging.getLogger(__name__)
 
 _EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}", re.I)
+_URL_RE = re.compile(r"https?://\S+", re.I)
+
+_JOB_WORDS = (
+    "وظيفة", "وظائف", "فرصة وظيفية", "شاغر", "مطلوب", "career", "careers", "job", "hiring", "vacancy",
+)
+_APPLY_WORDS = (
+    "التقديم", "ارسال السيرة", "ارسل السيرة", "أرسل السيرة", "قدم الآن", "apply", "send cv", "submit cv",
+)
+_NON_JOB_WORDS = (
+    "مسابقة", "خصم", "كوبون", "عرض", "بيع", "شراء", "توصيل", "تابعنا", "اعلان ممول", "giveaway", "promo",
+)
+
+
+def _tweet_signal_score(text: str) -> int:
+    t = (text or "").lower()
+    score = 0
+    if any(k in t for k in _JOB_WORDS):
+        score += 1
+    if any(k in t for k in _APPLY_WORDS):
+        score += 1
+    if _EMAIL_RE.search(t):
+        score += 2
+    if _URL_RE.search(t):
+        score += 1
+    if any(k in t for k in _NON_JOB_WORDS):
+        score -= 2
+    return score
+
+
+def _is_relevant_tweet(text: str, require_email: bool, allow_link_apply: bool, min_score: int) -> bool:
+    t = (text or "").strip()
+    if len(t) < 30:
+        return False
+    has_email = bool(_EMAIL_RE.search(t))
+    has_url = bool(_URL_RE.search(t))
+    # في وضعك الافتراضي: لازم إيميل، ونرفض رابط بدون إيميل.
+    if require_email and not has_email:
+        return False
+    if not allow_link_apply and has_url and not has_email:
+        return False
+    return _tweet_signal_score(t) >= max(1, int(min_score or 1))
 
 
 def _format_post(fields: dict, email: str) -> str:
@@ -44,11 +85,131 @@ def _format_post(fields: dict, email: str) -> str:
     return "\n".join(lines).strip()
 
 
-async def run_twitter_jobs_cycle(bot, bot_data: dict) -> None:
-    if not config.X_BEARER_TOKEN or not config.TWITTER_TARGET_CHANNEL_ID:
+def _sorted_pending_ids(bot_data: dict) -> list[str]:
+    pending: dict = bot_data.setdefault("twitter_pending_jobs", {})
+    rows: list[tuple[str, str]] = []
+    for cid, item in pending.items():
+        created = str((item or {}).get("created_at") or "")
+        rows.append((cid, created))
+    rows.sort(key=lambda x: x[1], reverse=True)
+    return [cid for cid, _ in rows]
+
+
+def _review_text(bot_data: dict, candidate_id: str, status_line: str = "") -> str:
+    pending: dict = bot_data.setdefault("twitter_pending_jobs", {})
+    item = pending.get(candidate_id) or {}
+    fields = item.get("fields") or {}
+    email = (item.get("email") or "").strip()
+    tweet_url = (item.get("tweet_url") or "").strip()
+    ids = _sorted_pending_ids(bot_data)
+    total = len(ids)
+    pos = (ids.index(candidate_id) + 1) if candidate_id in ids else 1
+    final_post = _format_post(fields, email)
+    final_post = final_post[:2600]
+    parts = [
+        "مراجعة وظائف تويتر (سلايدر)",
+        f"العنصر: {pos}/{max(total, 1)}",
+    ]
+    if status_line:
+        parts.append(status_line[:180])
+    parts.extend([
+        "",
+        "المعاينة النهائية للنشر:",
+        "--------------------",
+        final_post,
+        "--------------------",
+    ])
+    if tweet_url:
+        parts.append(f"المصدر: {tweet_url}")
+    return "\n".join(parts)[:3900]
+
+
+def _review_keyboard(bot_data: dict, candidate_id: str) -> InlineKeyboardMarkup:
+    ids = _sorted_pending_ids(bot_data)
+    idx = ids.index(candidate_id) if candidate_id in ids else 0
+    has_prev = idx > 0
+    has_next = idx < (len(ids) - 1)
+    row = [
+        InlineKeyboardButton("⬅️ السابق", callback_data=f"twjob_nav:{candidate_id}:prev"),
+        InlineKeyboardButton("✅ اعتماد", callback_data=f"twjob_appr:{candidate_id}"),
+        InlineKeyboardButton("🗑 رفض", callback_data=f"twjob_rej:{candidate_id}"),
+        InlineKeyboardButton("التالي ➡️", callback_data=f"twjob_nav:{candidate_id}:next"),
+    ]
+    if not has_prev:
+        row[0] = InlineKeyboardButton("·", callback_data=f"twjob_noop:{candidate_id}")
+    if not has_next:
+        row[3] = InlineKeyboardButton("·", callback_data=f"twjob_noop:{candidate_id}")
+    return InlineKeyboardMarkup([row])
+
+
+def get_next_candidate_id(bot_data: dict, current_candidate_id: str, direction: str) -> str | None:
+    ids = _sorted_pending_ids(bot_data)
+    if not ids:
+        return None
+    if current_candidate_id not in ids:
+        return ids[0]
+    idx = ids.index(current_candidate_id)
+    if direction == "prev":
+        return ids[idx - 1] if idx > 0 else ids[0]
+    return ids[idx + 1] if idx < (len(ids) - 1) else ids[-1]
+
+
+def build_review_view(bot_data: dict, candidate_id: str, status_line: str = "") -> tuple[str, InlineKeyboardMarkup]:
+    return _review_text(bot_data, candidate_id, status_line=status_line), _review_keyboard(bot_data, candidate_id)
+
+
+async def refresh_admin_review_panel(bot, bot_data: dict, admin_id: int, preferred_candidate_id: str | None = None, status_line: str = "") -> None:
+    pending_ids = _sorted_pending_ids(bot_data)
+    state_all: dict = bot_data.setdefault("twitter_review_state", {})
+    state = state_all.get(str(admin_id)) or {}
+    message_id = state.get("message_id")
+    if not pending_ids:
+        if message_id:
+            try:
+                await bot.edit_message_text(
+                    chat_id=admin_id,
+                    message_id=message_id,
+                    text="لا توجد وظائف تويتر معلّقة للمراجعة حالياً.",
+                )
+            except Exception:
+                pass
+        state_all[str(admin_id)] = {}
         return
 
-    headers = {"Authorization": f"Bearer {config.X_BEARER_TOKEN}"}
+    current_id = preferred_candidate_id if preferred_candidate_id in pending_ids else (state.get("current_candidate_id") if state.get("current_candidate_id") in pending_ids else pending_ids[0])
+    text, kb = build_review_view(bot_data, current_id, status_line=status_line)
+    if message_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=admin_id,
+                message_id=message_id,
+                text=text,
+                reply_markup=kb,
+                disable_web_page_preview=True,
+            )
+            state_all[str(admin_id)] = {"message_id": message_id, "current_candidate_id": current_id}
+            return
+        except Exception:
+            pass
+
+    msg = await bot.send_message(
+        chat_id=admin_id,
+        text=text,
+        reply_markup=kb,
+        disable_web_page_preview=True,
+    )
+    state_all[str(admin_id)] = {"message_id": msg.message_id, "current_candidate_id": current_id}
+
+
+async def run_twitter_jobs_cycle(bot, bot_data: dict) -> None:
+    # أولوية OAuth 2.0 User Token ثم fallback إلى App Bearer.
+    auth_token = (getattr(config, "X_USER_ACCESS_TOKEN", "") or "").strip() or (
+        getattr(config, "X_BEARER_TOKEN", "") or ""
+    ).strip()
+    if not auth_token or not config.TWITTER_TARGET_CHANNEL_ID:
+        return
+
+    headers = {"Authorization": f"Bearer {auth_token}"}
     params = {
         "query": config.TWITTER_JOB_QUERY,
         "max_results": "20",
@@ -85,6 +246,14 @@ async def run_twitter_jobs_cycle(bot, bot_data: dict) -> None:
         if len(text) < 20:
             seen.add(tid)
             continue
+        if not _is_relevant_tweet(
+            text=text,
+            require_email=getattr(config, "TWITTER_REQUIRE_EMAIL", True),
+            allow_link_apply=getattr(config, "TWITTER_ALLOW_LINK_APPLY", False),
+            min_score=getattr(config, "TWITTER_MIN_SIGNAL_SCORE", 3),
+        ):
+            seen.add(tid)
+            continue
 
         tweet_url = f"https://x.com/i/web/status/{tid}"
         # dedup persisted by tweet URL link
@@ -118,42 +287,18 @@ async def run_twitter_jobs_cycle(bot, bot_data: dict) -> None:
             }
             queued_any = True
 
-            title = (fields.get("title_ar") or fields.get("title_en") or "وظيفة").strip()
-            company = (fields.get("company") or "").strip()
-            city = (fields.get("city") or "").strip()
-            review_msg = (
-                "طلب اعتماد وظيفة من تويتر\n\n"
-                f"المعرف: `{candidate_id}`\n"
-                f"المسمى: {title}\n"
-                f"{'الشركة: ' + company + chr(10) if company else ''}"
-                f"{'المدينة: ' + city + chr(10) if city else ''}"
-                f"{'التقديم: ' + email + chr(10) if email else ''}"
-                f"المصدر: {tweet_url}\n\n"
-                "اعتماد = نشر بالقناة + حفظ بقاعدة البيانات\n"
-                "رفض = تجاهل الوظيفة"
-            )
-            kb = InlineKeyboardMarkup([[
-                InlineKeyboardButton("اعتماد", callback_data=f"twjob_appr:{candidate_id}"),
-                InlineKeyboardButton("رفض", callback_data=f"twjob_rej:{candidate_id}"),
-            ]])
-            for admin_id in (config.ADMIN_TELEGRAM_IDS or []):
-                try:
-                    await bot.send_message(
-                        chat_id=admin_id,
-                        text=review_msg,
-                        parse_mode="Markdown",
-                        reply_markup=kb,
-                        disable_web_page_preview=True,
-                    )
-                except Exception:
-                    logger.warning("Failed sending twitter review card to admin %s", admin_id)
-
         seen.add(tid)
         if queued_any:
             pending_tweet_ids.add(tid)
         if len(seen) > 4000:
             # keep memory bounded
             bot_data["twitter_seen_ids"] = set(list(seen)[-1500:])
+
+    for admin_id in (config.ADMIN_TELEGRAM_IDS or []):
+        try:
+            await refresh_admin_review_panel(bot, bot_data, admin_id)
+        except Exception:
+            logger.warning("Failed refreshing twitter review panel for admin %s", admin_id)
 
 
 async def publish_pending_twitter_job(bot, bot_data: dict, candidate_id: str) -> tuple[bool, str]:

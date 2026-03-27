@@ -200,7 +200,7 @@ def _parse_single_job_text(raw: str) -> dict[str, str]:
             import google.generativeai as genai
 
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-2.0-flash")
+            model = genai.GenerativeModel("gemini-1.5-flash")
             prompt = f"""استخرج بيانات وظيفة واحدة من النص التالي.
 أعد JSON فقط بالمفاتيح:
 title_ar, title_en, company, city, employment_type, salary, requirements, application_email, link_url, specializations, summary_ar, summary_en

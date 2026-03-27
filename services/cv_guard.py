@@ -74,7 +74,7 @@ def validate_cv_text(text: str) -> tuple[bool, str]:
             import google.generativeai as genai
 
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-2.0-flash")
+            model = genai.GenerativeModel("gemini-1.5-flash")
             prompt = f"""صنّف النص التالي:
 هل هو "سيرة ذاتية مهنية حقيقية لشخص" أم لا؟
 

@@ -39,10 +39,14 @@ JOBS_SOURCE_CHANNEL_ID = int(_jo) if _jo and _jo.lstrip("-").isdigit() else None
 
 # Twitter/X jobs ingest (optional)
 X_BEARER_TOKEN = os.getenv("X_BEARER_TOKEN", "").strip()
+X_USER_ACCESS_TOKEN = os.getenv("X_USER_ACCESS_TOKEN", "").strip()
 TWITTER_JOB_QUERY = (
     os.getenv("TWITTER_JOB_QUERY", "").strip()
     or '(وظيفة OR وظائف OR "فرصة وظيفية" OR مطلوب) (email OR ايميل OR careers OR apply) -is:retweet -is:reply'
 )
+TWITTER_REQUIRE_EMAIL = os.getenv("TWITTER_REQUIRE_EMAIL", "true").strip().lower() in ("1", "true", "yes")
+TWITTER_ALLOW_LINK_APPLY = os.getenv("TWITTER_ALLOW_LINK_APPLY", "false").strip().lower() in ("1", "true", "yes")
+TWITTER_MIN_SIGNAL_SCORE = int(os.getenv("TWITTER_MIN_SIGNAL_SCORE", "3") or "3")
 _tw_target = os.getenv("TWITTER_TARGET_CHANNEL_ID", "").strip()
 TWITTER_TARGET_CHANNEL_ID = (
     int(_tw_target)

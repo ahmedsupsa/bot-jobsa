@@ -88,7 +88,7 @@ def suggest_job_field_ids_from_cv(cv_text: str, fields: list[dict], max_items: i
         import google.generativeai as genai
 
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        model = genai.GenerativeModel("gemini-1.5-flash")
         fields_blob = _build_field_blob(fields)
         prompt = f"""أنت مساعد توظيف.
 حلّل نص السيرة الذاتية ثم اختر أنسب المجالات الوظيفية من القائمة المتاحة فقط.

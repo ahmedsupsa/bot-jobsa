@@ -838,13 +838,14 @@ async def cb_admin_twitter_approve(update: Update, context: ContextTypes.DEFAULT
     candidate_id = (query.data or "").split(":", 1)[-1].strip()
     if not candidate_id:
         return
-    from services.twitter_jobs import publish_pending_twitter_job
+    from services.twitter_jobs import publish_pending_twitter_job, refresh_admin_review_panel
     ok, msg = await publish_pending_twitter_job(context.bot, context.application.bot_data, candidate_id)
-    prefix = "✅" if ok else "⚠️"
-    try:
-        await query.edit_message_text(f"{prefix} {msg}")
-    except Exception:
-        pass
+    await refresh_admin_review_panel(
+        context.bot,
+        context.application.bot_data,
+        update.effective_user.id,
+        status_line=("✅ " if ok else "⚠️ ") + msg,
+    )
 
 
 async def cb_admin_twitter_reject(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -857,13 +858,50 @@ async def cb_admin_twitter_reject(update: Update, context: ContextTypes.DEFAULT_
     candidate_id = (query.data or "").split(":", 1)[-1].strip()
     if not candidate_id:
         return
-    from services.twitter_jobs import reject_pending_twitter_job
+    from services.twitter_jobs import reject_pending_twitter_job, refresh_admin_review_panel
     ok, msg = reject_pending_twitter_job(context.application.bot_data, candidate_id)
-    prefix = "🗑" if ok else "⚠️"
+    await refresh_admin_review_panel(
+        context.bot,
+        context.application.bot_data,
+        update.effective_user.id,
+        status_line=("🗑 " if ok else "⚠️ ") + msg,
+    )
+
+
+async def cb_admin_twitter_nav(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query or not update.effective_user or not is_admin(update.effective_user.id):
+        if query:
+            await query.answer()
+        return
+    await query.answer()
     try:
-        await query.edit_message_text(f"{prefix} {msg}")
+        _, current_id, direction = (query.data or "").split(":", 2)
+    except Exception:
+        return
+    from services.twitter_jobs import get_next_candidate_id, build_review_view
+    next_id = get_next_candidate_id(context.application.bot_data, current_id, direction)
+    if not next_id:
+        try:
+            await query.edit_message_text("لا توجد وظائف تويتر معلّقة للمراجعة حالياً.")
+        except Exception:
+            pass
+        return
+    text, kb = build_review_view(context.application.bot_data, next_id)
+    try:
+        await query.edit_message_text(
+            text=text,
+            reply_markup=kb,
+            disable_web_page_preview=True,
+        )
     except Exception:
         pass
+
+
+async def cb_admin_twitter_noop(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if query:
+        await query.answer()
 
 
 def setup_admin_handlers(application):
@@ -941,5 +979,7 @@ def setup_admin_handlers(application):
     application.add_handler(CallbackQueryHandler(cb_admin_del_user, pattern="^admin_del_user:"))
     application.add_handler(CallbackQueryHandler(cb_admin_del_user_confirm, pattern="^admin_del_user_confirm:"))
     application.add_handler(CallbackQueryHandler(cb_admin_del_user_cancel, pattern="^admin_del_user_cancel$"))
+    application.add_handler(CallbackQueryHandler(cb_admin_twitter_nav, pattern="^twjob_nav:"))
+    application.add_handler(CallbackQueryHandler(cb_admin_twitter_noop, pattern="^twjob_noop:"))
     application.add_handler(CallbackQueryHandler(cb_admin_twitter_approve, pattern="^twjob_appr:"))
     application.add_handler(CallbackQueryHandler(cb_admin_twitter_reject, pattern="^twjob_rej:"))
