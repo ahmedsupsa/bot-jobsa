@@ -37,6 +37,19 @@ if USE_WEBHOOK and not WEBHOOK_URL:
 _jo = os.getenv("JOBS_SOURCE_CHANNEL_ID", "").strip()
 JOBS_SOURCE_CHANNEL_ID = int(_jo) if _jo and _jo.lstrip("-").isdigit() else None
 
+# Twitter/X jobs ingest (optional)
+X_BEARER_TOKEN = os.getenv("X_BEARER_TOKEN", "").strip()
+TWITTER_JOB_QUERY = (
+    os.getenv("TWITTER_JOB_QUERY", "").strip()
+    or '(وظيفة OR وظائف OR "فرصة وظيفية" OR مطلوب) (email OR ايميل OR careers OR apply) -is:retweet -is:reply'
+)
+_tw_target = os.getenv("TWITTER_TARGET_CHANNEL_ID", "").strip()
+TWITTER_TARGET_CHANNEL_ID = (
+    int(_tw_target)
+    if _tw_target and _tw_target.lstrip("-").isdigit()
+    else JOBS_SOURCE_CHANNEL_ID
+)
+
 # مفتاح جيميني: يُستخدم في التقديم التلقائي لتوليد رسالة التغطية وقراءة السيرة من الصور (OCR)
 # من https://aistudio.google.com/apikey — إن لم يُضف، التقديم يعمل برسالة عامة وبدون قراءة الصور
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()

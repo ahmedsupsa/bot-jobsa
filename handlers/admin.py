@@ -828,6 +828,44 @@ async def cb_admin_del_user_cancel(update: Update, context: ContextTypes.DEFAULT
         await query.edit_message_text("تم الإلغاء.")
 
 
+async def cb_admin_twitter_approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query or not update.effective_user or not is_admin(update.effective_user.id):
+        if query:
+            await query.answer()
+        return
+    await query.answer()
+    candidate_id = (query.data or "").split(":", 1)[-1].strip()
+    if not candidate_id:
+        return
+    from services.twitter_jobs import publish_pending_twitter_job
+    ok, msg = await publish_pending_twitter_job(context.bot, context.application.bot_data, candidate_id)
+    prefix = "✅" if ok else "⚠️"
+    try:
+        await query.edit_message_text(f"{prefix} {msg}")
+    except Exception:
+        pass
+
+
+async def cb_admin_twitter_reject(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query or not update.effective_user or not is_admin(update.effective_user.id):
+        if query:
+            await query.answer()
+        return
+    await query.answer()
+    candidate_id = (query.data or "").split(":", 1)[-1].strip()
+    if not candidate_id:
+        return
+    from services.twitter_jobs import reject_pending_twitter_job
+    ok, msg = reject_pending_twitter_job(context.application.bot_data, candidate_id)
+    prefix = "🗑" if ok else "⚠️"
+    try:
+        await query.edit_message_text(f"{prefix} {msg}")
+    except Exception:
+        pass
+
+
 def setup_admin_handlers(application):
     from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, filters
     import re
@@ -903,3 +941,5 @@ def setup_admin_handlers(application):
     application.add_handler(CallbackQueryHandler(cb_admin_del_user, pattern="^admin_del_user:"))
     application.add_handler(CallbackQueryHandler(cb_admin_del_user_confirm, pattern="^admin_del_user_confirm:"))
     application.add_handler(CallbackQueryHandler(cb_admin_del_user_cancel, pattern="^admin_del_user_cancel$"))
+    application.add_handler(CallbackQueryHandler(cb_admin_twitter_approve, pattern="^twjob_appr:"))
+    application.add_handler(CallbackQueryHandler(cb_admin_twitter_reject, pattern="^twjob_rej:"))

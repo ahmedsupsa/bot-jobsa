@@ -538,6 +538,22 @@ def add_admin_job(
     return r.data[0] if r.data else {}
 
 
+def admin_job_exists_by_link(link_url: str) -> bool:
+    link = (link_url or "").strip()
+    if not link:
+        return False
+    if _use_rest:
+        return _rest_count("admin_jobs", link_url=link) > 0
+    sb = get_supabase()
+    r = (
+        sb.table("admin_jobs")
+        .select("*", count="exact", head=True)
+        .eq("link_url", link)
+        .execute()
+    )
+    return (getattr(r, "count", None) or 0) > 0
+
+
 def deactivate_admin_job(job_id: str) -> None:
     """إخفاء الوظيفة من القائمة دون حذف الصف (مطلوب عند وجود تقديمات مرتبطة بـ job_id)."""
     if _use_rest:
