@@ -19,7 +19,7 @@ from services.cover_letter import extract_text_from_image
 
 logger = logging.getLogger(__name__)
 _STORE_URL = "https://ahmedsup.com/VDPvOWx"
-_BOT_PROMO = "🤖 اشترك في بوت التقديم الذكي"
+_BOT_PROMO = "اشترك في بوت التقديم الذكي"
 
 
 def _extract_first_url(text: str) -> str:
@@ -30,8 +30,22 @@ def _extract_first_url(text: str) -> str:
 def _clean_text_block(text: str) -> str:
     t = (text or "").strip()
     t = re.sub(r"\[[^\]]+\]\([^)]+\)", "", t)  # remove markdown links
+    # إزالة الإيموجي والرموز الزخرفية الشائعة
+    t = re.sub(r"[\U0001F300-\U0001FAFF\u2600-\u27BF]+", " ", t)
     t = re.sub(r"\s+", " ", t).strip()
     return t
+
+
+def _normalize_job_title(title: str) -> str:
+    t = _clean_text_block(title)
+    # إزالة بادئات مثل: "الوظيفة الثالثة:" أو "وظيفة رقم 2:"
+    t = re.sub(
+        r"^\s*(?:الوظيفة\s+(?:الأولى|الثانية|الثالثة|الرابعة|الخامسة|السادسة|السابعة|الثامنة|التاسعة|العاشرة|\d+)|وظيفة(?:\s+رقم)?\s*\d*)\s*[:\-–—]*\s*",
+        "",
+        t,
+        flags=re.I,
+    )
+    return t.strip(" -:") or "وظيفة"
 
 
 def _pick_requirement_points(req: str) -> list[str]:
@@ -55,33 +69,33 @@ def _pick_requirement_points(req: str) -> list[str]:
 
 
 def _build_custom_post(fields: dict, email: str) -> str:
-    title = (fields.get("title_ar") or fields.get("title_en") or "وظيفة").strip()
-    company = (fields.get("company") or "").strip()
-    city = (fields.get("city") or "").strip()
-    emp = (fields.get("employment_type") or "").strip()
-    salary = (fields.get("salary") or "").strip()
+    title = _normalize_job_title((fields.get("title_ar") or fields.get("title_en") or "وظيفة").strip())
+    company = _clean_text_block((fields.get("company") or "").strip())
+    city = _clean_text_block((fields.get("city") or "").strip())
+    emp = _clean_text_block((fields.get("employment_type") or "").strip())
+    salary = _clean_text_block((fields.get("salary") or "").strip())
     req = (fields.get("requirements") or fields.get("description_ar") or "").strip()
 
     lines = [
-        "✨ فرصة وظيفية جديدة",
+        "فرصة وظيفية جديدة",
         "",
         f"المسمى: {title}",
     ]
     if company:
-        lines.append(f"🏢 الشركة: {company}")
+        lines.append(f"الشركة: {company}")
     if city:
-        lines.append(f"📍 المدينة: {city}")
+        lines.append(f"المدينة: {city}")
     if emp:
-        lines.append(f"🕒 نوع الدوام: {emp}")
+        lines.append(f"نوع الدوام: {emp}")
     if salary:
-        lines.append(f"💰 الراتب: {salary}")
+        lines.append(f"الراتب: {salary}")
 
-    lines.append("✅ المتطلبات:")
+    lines.append("المتطلبات:")
     for p in _pick_requirement_points(req):
         lines.append(f"• {p[:220]}")
 
     if email:
-        lines.append(f"📩 التقديم: {email}")
+        lines.append(f"التقديم: {email}")
     lines.extend(["", _BOT_PROMO])
     return "\n".join(lines).strip()
 
@@ -155,7 +169,7 @@ async def handle_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE
                 text=formatted,
                 disable_web_page_preview=True,
                 reply_markup=InlineKeyboardMarkup(
-                    [[InlineKeyboardButton("🔗 رابط الاشتراك", url=_STORE_URL)]]
+                    [[InlineKeyboardButton("رابط الاشتراك", url=_STORE_URL)]]
                 ),
             )
         except Exception:
