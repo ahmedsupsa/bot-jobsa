@@ -14,10 +14,12 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from database.db import add_admin_job
-from services.channel_job_parser import parse_job_post_text
+from services.channel_job_parser import parse_job_posts_text
 from services.cover_letter import extract_text_from_image
 
 logger = logging.getLogger(__name__)
+_FMT_MARK = "#jb_fmt_v1"
+_BOT_PROMO = "🤖 للتقديم التلقائي الذكي: راسل البوت وفعّل حسابك."
 
 
 def _extract_first_url(text: str) -> str:
@@ -59,31 +61,76 @@ async def handle_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE
     raw = await _raw_text_from_channel_post(update, context)
     if not raw or len(raw) < 5:
         return
+    if _FMT_MARK in raw:
+        # منشور منسق سابقاً بواسطة الخدمة — نتجنب حلقة إعادة المعالجة.
+        return
 
     try:
-        fields = await asyncio.to_thread(parse_job_post_text, raw)
+        jobs = await asyncio.to_thread(parse_job_posts_text, raw)
     except Exception as e:
         logger.exception("فشل تحليل منشور الوظيفة: %s", e)
         return
 
-    if not fields:
+    if not jobs:
         return
 
-    link = fields.get("link_url") or _extract_first_url(raw)
-    try:
-        await asyncio.to_thread(
-            add_admin_job,
-            title_ar=fields.get("title_ar") or "وظيفة",
-            title_en=fields.get("title_en") or "",
-            description_ar=fields.get("description_ar") or "",
-            description_en=fields.get("description_en") or "",
-            company=fields.get("company") or "",
-            link_url=link,
-            application_email=fields.get("application_email") or "",
-            specializations=fields.get("specializations") or "",
-        )
-    except Exception:
-        logger.exception("فشل إدراج وظيفة من القناة في قاعدة البيانات")
+    for fields in jobs[:20]:
+        email = (fields.get("application_email") or "").strip()
+        # نحفظ/نعرض إيميل التقديم فقط.
+        if email and not re.search(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$", email):
+            email = ""
+        link = fields.get("link_url") or _extract_first_url(raw)
+
+        req = (fields.get("requirements") or fields.get("description_ar") or "").strip()
+        if not req:
+            req = "غير مذكورة بوضوح في الإعلان."
+        lines = [
+            f"المسمى: {(fields.get('title_ar') or fields.get('title_en') or 'وظيفة').strip()}",
+        ]
+        company = (fields.get("company") or "").strip()
+        if company:
+            lines.append(f"🏢 الشركة: {company}")
+        city = (fields.get("city") or "").strip()
+        if city:
+            lines.append(f"📍 المدينة: {city}")
+        emp = (fields.get("employment_type") or "").strip()
+        if emp:
+            lines.append(f"🕒 نوع الدوام: {emp}")
+        salary = (fields.get("salary") or "").strip()
+        if salary:
+            lines.append(f"💰 الراتب: {salary}")
+        lines.append(f"✅ المتطلبات: {req[:1600]}")
+        if email:
+            lines.append(f"📩 التقديم: {email}")
+        lines.append("")
+        lines.append(_BOT_PROMO)
+        lines.append(_FMT_MARK)
+        formatted = "\n".join(lines).strip()
+
+        # انشر النسخة المنسقة كرسالة مستقلة في نفس القناة.
+        try:
+            await context.bot.send_message(
+                chat_id=update.channel_post.chat_id,
+                text=formatted,
+            )
+        except Exception:
+            logger.exception("فشل نشر الوظيفة المنسقة في القناة")
+
+        # احفظ النسخة المنسقة في admin_jobs لاستخدامها بالتقديم التلقائي.
+        try:
+            await asyncio.to_thread(
+                add_admin_job,
+                title_ar=fields.get("title_ar") or "وظيفة",
+                title_en=fields.get("title_en") or "",
+                description_ar=formatted[:4000],
+                description_en=fields.get("description_en") or "",
+                company=company,
+                link_url=link,
+                application_email=email,
+                specializations=fields.get("specializations") or "",
+            )
+        except Exception:
+            logger.exception("فشل إدراج وظيفة من القناة في قاعدة البيانات")
 
 
 def setup_channel_jobs_handlers(application):

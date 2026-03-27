@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-استخراج حقول وظيفة من منشور قناة (نص/تعليق) عبر Gemini عند توفر المفتاح،
-مع fallback بسيط (سطر أول + باقي النص + إيميل/رابط) بدون API.
+استخراج وظيفة أو عدة وظائف من منشور قناة (نص/تعليق) عبر Gemini عند توفر المفتاح،
+مع fallback بسيط بدون API.
 """
 from __future__ import annotations
 
@@ -57,6 +57,10 @@ def _fallback_parse(raw: str) -> dict[str, Any]:
         "title_ar": title_ar,
         "title_en": "",
         "company": "",
+        "city": "",
+        "employment_type": "",
+        "salary": "",
+        "requirements": description_ar,
         "application_email": emails[0] if emails else "",
         "link_url": _extract_first_url(text),
         "specializations": "",
@@ -70,6 +74,10 @@ def _coerce_parsed(data: dict[str, Any], raw: str) -> dict[str, Any]:
     title_ar = str(data.get("title_ar") or "").strip()[:300] or fb.get("title_ar", "")
     title_en = str(data.get("title_en") or "").strip()[:300]
     company = str(data.get("company") or "").strip()[:200]
+    city = str(data.get("city") or "").strip()[:160]
+    employment_type = str(data.get("employment_type") or "").strip()[:120]
+    salary = str(data.get("salary") or "").strip()[:200]
+    requirements = str(data.get("requirements") or "").strip()[:4000]
     application_email = str(data.get("application_email") or "").strip()[:320]
     if application_email and not _EMAIL_RE.search(application_email):
         application_email = ""
@@ -85,12 +93,18 @@ def _coerce_parsed(data: dict[str, Any], raw: str) -> dict[str, Any]:
     summary_en = str(data.get("summary_en") or "").strip()[:4000]
     if not summary_ar:
         summary_ar = fb.get("summary_ar", "") or (raw or "").strip()[:4000]
+    if not requirements:
+        requirements = summary_ar
     if not title_ar:
         title_ar = (raw or "").strip()[:300] or "وظيفة"
     return {
         "title_ar": title_ar,
         "title_en": title_en,
         "company": company,
+        "city": city,
+        "employment_type": employment_type,
+        "salary": salary,
+        "requirements": requirements,
         "application_email": application_email,
         "link_url": link_url,
         "specializations": specializations,
@@ -99,18 +113,34 @@ def _coerce_parsed(data: dict[str, Any], raw: str) -> dict[str, Any]:
     }
 
 
-def parse_job_post_text(raw_text: str) -> dict[str, str]:
+def _single_from_merged(merged: dict[str, Any]) -> dict[str, str]:
+    return {
+        "title_ar": merged["title_ar"],
+        "title_en": merged["title_en"],
+        "description_ar": merged["summary_ar"],
+        "description_en": merged["summary_en"],
+        "company": merged["company"],
+        "city": merged.get("city", ""),
+        "employment_type": merged.get("employment_type", ""),
+        "salary": merged.get("salary", ""),
+        "requirements": merged.get("requirements", ""),
+        "link_url": merged["link_url"],
+        "application_email": merged["application_email"],
+        "specializations": merged["specializations"],
+    }
+
+
+def parse_job_posts_text(raw_text: str) -> list[dict[str, str]]:
     """
-    يعيد حقولاً جاهزة لـ add_admin_job:
-    title_ar, title_en, description_ar, description_en, company,
-    application_email, link_url, specializations
+    يعيد قائمة وظائف جاهزة للإدراج/النشر الموحد.
+    يدعم رسالة فيها عدة وظائف.
     """
     raw = (raw_text or "").strip()
     if len(raw) < 5:
-        return {}
+        return []
 
     api_key = _gemini_api_key()
-    parsed: dict[str, Any] = {}
+    parsed_jobs: list[dict[str, Any]] = []
 
     if api_key:
         try:
@@ -118,43 +148,72 @@ def parse_job_post_text(raw_text: str) -> dict[str, str]:
 
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel("gemini-2.0-flash")
-            prompt = f"""أنت تستخرج معلومات من منشور وظيفة (عربي/إنجليزي/مختلط).
+            prompt = f"""حلّل النص التالي واستخرج كل الوظائف المذكورة فيه (قد تكون وظيفة واحدة أو عدة وظائف).
+
+أعد JSON فقط بهذا الشكل:
+{{
+  "jobs": [
+    {{
+      "title_ar": "",
+      "title_en": "",
+      "company": "",
+      "city": "",
+      "employment_type": "",
+      "salary": "",
+      "requirements": "",
+      "application_email": "",
+      "link_url": "",
+      "specializations": "",
+      "summary_ar": "",
+      "summary_en": ""
+    }}
+  ]
+}}
 
 قواعد:
-- لا تخترع معلومات غير ظاهرة في النص.
-- إن غاب حقل اتركه كسلسلة فارغة "".
-- application_email: بريد التقديم فقط إن وُجد صراحة.
-- link_url: رابط http/https واحد الأنسب للتقديم أو تفاصيل الإعلان.
-- specializations: التخصص أو المجال (مفصول بفواصل إن تعدد).
-- summary_ar: ملخص منظم بالعربية (المسمى، الشركة إن وُجدت، الموقع/العمل عن بُعد، المؤهلات، الخبرة، المهارات، الراتب إن وُجد، طريقة التقديم) — فقط ما ورد في النص.
-- summary_en: ملخص إنجليزي قصير إن كان الإعلان إنجليزياً أساساً وإلا "".
-
-أعد **JSON فقط** بدون markdown، بالمفاتيح:
-title_ar, title_en, company, application_email, link_url, specializations, summary_ar, summary_en
+- لا تخترع بيانات غير موجودة.
+- application_email يجب أن يكون إيميل فقط (بدون نص إضافي).
+- لو حقل غير موجود اتركه فارغاً.
+- لو النص يحتوي عدة وظائف، افصلها داخل jobs.
+- summary_ar يكون ملخصاً موجزاً من النص نفسه.
 
 النص:
 ---
-{raw[:12000]}
+{raw[:14000]}
 ---
 """
             response = model.generate_content(prompt)
             text_out = (response.text or "").strip()
-            parsed = json.loads(_strip_code_fence(text_out))
-        except json.JSONDecodeError as e:
-            logger.warning("تعذر تحليل JSON من جيميني لوظيفة القناة: %s", e)
-            parsed = {}
+            data = json.loads(_strip_code_fence(text_out))
+            jobs_raw = data.get("jobs") if isinstance(data, dict) else []
+            if isinstance(jobs_raw, list):
+                parsed_jobs = [x for x in jobs_raw if isinstance(x, dict)]
         except Exception as e:
-            logger.warning("خطأ جيميني عند تحليل منشور وظيفة: %s", e)
-            parsed = {}
+            logger.warning("خطأ جيميني عند تحليل وظائف القناة المتعددة: %s", e)
+            parsed_jobs = []
 
-    merged = _coerce_parsed(parsed if isinstance(parsed, dict) else {}, raw)
-    return {
-        "title_ar": merged["title_ar"],
-        "title_en": merged["title_en"],
-        "description_ar": merged["summary_ar"],
-        "description_en": merged["summary_en"],
-        "company": merged["company"],
-        "link_url": merged["link_url"],
-        "application_email": merged["application_email"],
-        "specializations": merged["specializations"],
-    }
+    if not parsed_jobs:
+        # fallback: محاولة تقسيم يدوي بسيط حسب فواصل كبيرة
+        blocks = re.split(r"\n\s*\n\s*\n+|\n[-=]{3,}\n", raw)
+        blocks = [b.strip() for b in blocks if len(b.strip()) >= 20]
+        if len(blocks) <= 1:
+            blocks = [raw]
+        out = []
+        for b in blocks[:12]:
+            merged = _coerce_parsed({}, b)
+            out.append(_single_from_merged(merged))
+        return out
+
+    out: list[dict[str, str]] = []
+    for item in parsed_jobs[:20]:
+        merged = _coerce_parsed(item, raw)
+        out.append(_single_from_merged(merged))
+    return out
+
+
+def parse_job_post_text(raw_text: str) -> dict[str, str]:
+    """
+    للتوافق مع الكود القديم: يعيد أول وظيفة فقط.
+    """
+    jobs = parse_job_posts_text(raw_text)
+    return jobs[0] if jobs else {}
