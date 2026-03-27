@@ -182,6 +182,7 @@ def job_fields_keyboard(fields: list, selected_ids: list, category: str, page: i
         nav.append(InlineKeyboardButton("التالي ▶️", callback_data=f"job_page_{category}_{page+1}"))
     if nav:
         buttons.append(nav)
+    buttons.append([InlineKeyboardButton("✨ اقتراح ذكي من السيرة", callback_data="job_ai_suggest")])
     buttons.append([InlineKeyboardButton("🔍 بحث", callback_data="job_search")])
     buttons.append([InlineKeyboardButton("✅ حفظ التفضيلات", callback_data="job_save_prefs")])
     buttons.append([InlineKeyboardButton("⬅️ الرجوع", callback_data="back_to_applications")])

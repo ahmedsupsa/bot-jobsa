@@ -24,6 +24,7 @@ from keyboards import (
     job_categories_reply_keyboard,
 )
 from services.cover_letter import generate_cover_letter, extract_text_from_cv
+from services.job_prefs_ai import suggest_job_field_ids_from_cv
 from templates.preview import send_email_smtp, build_application_html
 
 
@@ -225,6 +226,105 @@ async def cb_job_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["awaiting_job_search"] = True
 
 
+async def cb_job_ai_suggest(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query or not update.effective_user:
+        return
+    await query.answer("جاري تحليل السيرة واستخراج التفضيلات...")
+    user = await asyncio.to_thread(get_user_by_telegram, update.effective_user.id)
+    if not user or not is_subscription_active(user):
+        await query.edit_message_text("انتهى اشتراكك.")
+        return
+    user_id = context.user_data.get("job_prefs_user_id") or user["id"]
+    cv = await asyncio.to_thread(get_cv, user_id)
+    if not cv:
+        await query.edit_message_text(
+            "❌ لا توجد سيرة ذاتية مرفوعة.\n"
+            "ارفع السيرة أولاً من: 👤 حسابي → 📎 السيرة الذاتية\n"
+            "ثم اضغط «اقتراح ذكي من السيرة».",
+            reply_markup=applications_menu_keyboard(),
+        )
+        return
+
+    file_id = (cv.get("file_id") or "").strip()
+    file_name = (cv.get("file_name") or "cv.pdf").strip()
+    if not file_id:
+        await query.edit_message_text(
+            "تعذر قراءة ملف السيرة الحالي. ارفع السيرة من جديد ثم حاول.",
+            reply_markup=applications_menu_keyboard(),
+        )
+        return
+
+    try:
+        tg_file = await context.bot.get_file(file_id)
+        suffix = os.path.splitext(file_name)[1] or ".bin"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            await tg_file.download_to_drive(tmp.name)
+            with open(tmp.name, "rb") as f:
+                file_bytes = f.read()
+        try:
+            os.unlink(tmp.name)
+        except Exception:
+            pass
+    except Exception as e:
+        await query.edit_message_text(
+            f"تعذر تنزيل السيرة لتحليلها: {e}",
+            reply_markup=applications_menu_keyboard(),
+        )
+        return
+
+    try:
+        cv_text = await asyncio.to_thread(extract_text_from_cv, file_bytes, file_name)
+    except Exception:
+        cv_text = ""
+    if not cv_text or len(cv_text.strip()) < 80:
+        await query.edit_message_text(
+            "تعذر استخراج نص كافٍ من السيرة.\n"
+            "ارفع نسخة أوضح (PDF نصي أو صورة بجودة أعلى) ثم أعد المحاولة.",
+            reply_markup=applications_menu_keyboard(),
+        )
+        return
+
+    category = context.user_data.get("job_prefs_category", "both")
+    if category == "general":
+        fields = await asyncio.to_thread(get_job_fields, "general")
+    elif category == "specific":
+        fields = await asyncio.to_thread(get_job_fields, "specific")
+    else:
+        fields = await asyncio.to_thread(get_job_fields)
+
+    suggested_ids = await asyncio.to_thread(suggest_job_field_ids_from_cv, cv_text, fields, 12)
+    if not suggested_ids:
+        await query.edit_message_text(
+            "لم أستطع استخراج تفضيلات واضحة من السيرة.\n"
+            "يمكنك اختيار التفضيلات يدويًا أو رفع سيرة أكثر تفصيلاً.",
+            reply_markup=job_fields_keyboard(fields, [], category, 0, ""),
+        )
+        return
+
+    # نعتمد الاقتراحات مباشرة، وبعدها المستخدم يقدر يزيد/يحذف يدويًا.
+    await asyncio.to_thread(set_user_job_preferences, user_id, suggested_ids)
+    context.user_data["job_prefs_user_id"] = user_id
+    context.user_data["job_prefs_page"] = 0
+    context.user_data["job_prefs_search"] = ""
+
+    selected_names = []
+    by_id = {str(f.get("id")): (f.get("name_ar") or f.get("name_en") or str(f.get("id"))) for f in fields}
+    for sid in suggested_ids[:8]:
+        n = by_id.get(str(sid))
+        if n:
+            selected_names.append(f"• {n}")
+
+    msg = "✅ تم اعتماد تفضيلات مقترحة من السيرة الذاتية.\n"
+    if selected_names:
+        msg += "\nأبرز المقترحات:\n" + "\n".join(selected_names)
+    msg += "\n\nيمكنك الآن التعديل عليها يدويًا (إضافة/حذف) ثم اضغط حفظ."
+    await query.edit_message_text(
+        msg,
+        reply_markup=job_fields_keyboard(fields, [str(x) for x in suggested_ids], category, 0, ""),
+    )
+
+
 def get_next_auto_apply_message(context: ContextTypes.DEFAULT_TYPE) -> str:
     """رسالة مفاجأة: متى ستكون دورة التقديم التلقائي القادمة."""
     next_at = context.application.bot_data.get("next_auto_apply_at")
@@ -316,6 +416,7 @@ def setup_applications_handlers(application):
     application.add_handler(CallbackQueryHandler(cb_job_cat, pattern="^job_cat_"))
     application.add_handler(CallbackQueryHandler(cb_job_page, pattern="^job_page_"))
     application.add_handler(CallbackQueryHandler(cb_job_toggle, pattern="^job_toggle_"))
+    application.add_handler(CallbackQueryHandler(cb_job_ai_suggest, pattern="^job_ai_suggest$"))
     application.add_handler(CallbackQueryHandler(cb_job_search, pattern="^job_search$"))
     application.add_handler(CallbackQueryHandler(cb_job_save_prefs, pattern="^job_save_prefs$"))
     # نص خاص: البحث عن مجال أو (إن لم يكن في وضع بحث) إعادة لوحة المفاتيح
