@@ -45,6 +45,46 @@ def _strip_code_fence(s: str) -> str:
     return s.strip()
 
 
+def _split_job_blocks(raw: str) -> list[str]:
+    text = (raw or "").strip()
+    if len(text) < 10:
+        return []
+
+    # 1) فواصل واضحة بين الوظائف
+    by_gap = re.split(r"\n\s*\n\s*\n+|\n[-=]{3,}\n", text)
+    by_gap = [b.strip() for b in by_gap if len(b.strip()) >= 20]
+    if len(by_gap) > 1:
+        return by_gap[:30]
+
+    # 2) تقسيم حسب بداية سطر "المسمى/وظيفة/job title"
+    lines = text.splitlines()
+    starts: list[int] = []
+    start_re = re.compile(
+        r"^\s*(?:\d+[\)\.\-]\s*)?(?:المسمى|الوظيفة|وظيفة|job\s*title|position|vacancy)\b",
+        re.I,
+    )
+    for i, ln in enumerate(lines):
+        if start_re.search(ln or ""):
+            starts.append(i)
+    if len(starts) > 1:
+        blocks: list[str] = []
+        starts.append(len(lines))
+        for a, b in zip(starts, starts[1:]):
+            chunk = "\n".join(lines[a:b]).strip()
+            if len(chunk) >= 20:
+                blocks.append(chunk)
+        if blocks:
+            return blocks[:30]
+
+    # 3) تقسيم تقريبي حسب الترقيم المتسلسل داخل نص واحد طويل
+    numbered = re.split(r"(?:(?<=\n)|^)\s*\d+\s*[\)\.\-]\s+", text)
+    numbered = [b.strip() for b in numbered if len(b.strip()) >= 20]
+    if len(numbered) > 1:
+        return numbered[:30]
+
+    return [text]
+
+
 def _fallback_parse(raw: str) -> dict[str, Any]:
     text = (raw or "").strip()
     if len(text) < 5:
@@ -130,6 +170,44 @@ def _single_from_merged(merged: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def _parse_single_job_text(raw: str) -> dict[str, str]:
+    """تحليل وظيفة واحدة (AI + fallback)."""
+    raw = (raw or "").strip()
+    if len(raw) < 5:
+        return {}
+
+    api_key = _gemini_api_key()
+    parsed: dict[str, Any] = {}
+    if api_key:
+        try:
+            import google.generativeai as genai
+
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("gemini-2.0-flash")
+            prompt = f"""استخرج بيانات وظيفة واحدة من النص التالي.
+أعد JSON فقط بالمفاتيح:
+title_ar, title_en, company, city, employment_type, salary, requirements, application_email, link_url, specializations, summary_ar, summary_en
+
+قواعد:
+- لا تخترع أي قيمة غير موجودة.
+- application_email بريد فقط إن وجد.
+- إن كان الحقل غير موجود اتركه فارغاً.
+
+النص:
+---
+{raw[:9000]}
+---
+"""
+            out = (model.generate_content(prompt).text or "").strip()
+            parsed = json.loads(_strip_code_fence(out))
+        except Exception as e:
+            logger.warning("Single-job AI parse failed: %s", e)
+            parsed = {}
+
+    merged = _coerce_parsed(parsed if isinstance(parsed, dict) else {}, raw)
+    return _single_from_merged(merged)
+
+
 def parse_job_posts_text(raw_text: str) -> list[dict[str, str]]:
     """
     يعيد قائمة وظائف جاهزة للإدراج/النشر الموحد.
@@ -139,76 +217,20 @@ def parse_job_posts_text(raw_text: str) -> list[dict[str, str]]:
     if len(raw) < 5:
         return []
 
-    api_key = _gemini_api_key()
-    parsed_jobs: list[dict[str, Any]] = []
+    # نعتمد أولاً على التقسيم اليدوي، ثم تحليل كل وظيفة على حدة.
+    blocks = _split_job_blocks(raw)
+    out: list[dict[str, str]] = []
+    for b in blocks[:30]:
+        item = _parse_single_job_text(b)
+        if not item:
+            continue
+        out.append(item)
 
-    if api_key:
-        try:
-            import google.generativeai as genai
-
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-2.0-flash")
-            prompt = f"""حلّل النص التالي واستخرج كل الوظائف المذكورة فيه (قد تكون وظيفة واحدة أو عدة وظائف).
-
-أعد JSON فقط بهذا الشكل:
-{{
-  "jobs": [
-    {{
-      "title_ar": "",
-      "title_en": "",
-      "company": "",
-      "city": "",
-      "employment_type": "",
-      "salary": "",
-      "requirements": "",
-      "application_email": "",
-      "link_url": "",
-      "specializations": "",
-      "summary_ar": "",
-      "summary_en": ""
-    }}
-  ]
-}}
-
-قواعد:
-- لا تخترع بيانات غير موجودة.
-- application_email يجب أن يكون إيميل فقط (بدون نص إضافي).
-- لو حقل غير موجود اتركه فارغاً.
-- لو النص يحتوي عدة وظائف، افصلها داخل jobs.
-- summary_ar يكون ملخصاً موجزاً من النص نفسه.
-
-النص:
----
-{raw[:14000]}
----
-"""
-            response = model.generate_content(prompt)
-            text_out = (response.text or "").strip()
-            data = json.loads(_strip_code_fence(text_out))
-            jobs_raw = data.get("jobs") if isinstance(data, dict) else []
-            if isinstance(jobs_raw, list):
-                parsed_jobs = [x for x in jobs_raw if isinstance(x, dict)]
-        except Exception as e:
-            logger.warning("خطأ جيميني عند تحليل وظائف القناة المتعددة: %s", e)
-            parsed_jobs = []
-
-    if not parsed_jobs:
-        # fallback: محاولة تقسيم يدوي بسيط حسب فواصل كبيرة
-        blocks = re.split(r"\n\s*\n\s*\n+|\n[-=]{3,}\n", raw)
-        blocks = [b.strip() for b in blocks if len(b.strip()) >= 20]
-        if len(blocks) <= 1:
-            blocks = [raw]
-        out = []
-        for b in blocks[:12]:
-            merged = _coerce_parsed({}, b)
-            out.append(_single_from_merged(merged))
+    if out:
         return out
 
-    out: list[dict[str, str]] = []
-    for item in parsed_jobs[:20]:
-        merged = _coerce_parsed(item, raw)
-        out.append(_single_from_merged(merged))
-    return out
+    merged = _coerce_parsed({}, raw)
+    return [_single_from_merged(merged)]
 
 
 def parse_job_post_text(raw_text: str) -> dict[str, str]:

@@ -19,7 +19,7 @@ from services.cover_letter import extract_text_from_image
 
 logger = logging.getLogger(__name__)
 _FMT_MARK = "#jb_fmt_v1"
-_BOT_PROMO = "🤖 للتقديم التلقائي الذكي: راسل البوت وفعّل حسابك."
+_BOT_PROMO = "🤖 اشترك في بوت التقديم الذكي: https://ahmedsup.com/VDPvOWx"
 
 
 def _extract_first_url(text: str) -> str:
