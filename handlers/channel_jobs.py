@@ -10,7 +10,7 @@ import re
 import asyncio
 
 import config
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from database.db import add_admin_job
@@ -18,8 +18,8 @@ from services.channel_job_parser import parse_job_posts_text
 from services.cover_letter import extract_text_from_image
 
 logger = logging.getLogger(__name__)
-_FMT_MARK = "#jb_fmt_v1"
-_BOT_PROMO = "🤖 اشترك في بوت التقديم الذكي: https://ahmedsup.com/VDPvOWx"
+_STORE_URL = "https://ahmedsup.com/VDPvOWx"
+_BOT_PROMO = "🤖 اشترك في بوت التقديم الذكي"
 
 
 def _extract_first_url(text: str) -> str:
@@ -82,7 +82,7 @@ def _build_custom_post(fields: dict, email: str) -> str:
 
     if email:
         lines.append(f"📩 التقديم: {email}")
-    lines.extend(["", _BOT_PROMO, _FMT_MARK])
+    lines.extend(["", _BOT_PROMO])
     return "\n".join(lines).strip()
 
 
@@ -116,23 +116,13 @@ async def handle_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
     if update.channel_post.chat_id != config.JOBS_SOURCE_CHANNEL_ID:
         return
+    # تجاهل الرسائل التي نشرها البوت نفسه لتفادي أي حلقة معالجة.
+    if update.channel_post.from_user and update.channel_post.from_user.id == context.bot.id:
+        return
 
     raw = await _raw_text_from_channel_post(update, context)
     if not raw or len(raw) < 5:
         return
-    if _FMT_MARK in raw:
-        # منشور منسق سابقاً بواسطة الخدمة — نتجنب حلقة إعادة المعالجة.
-        return
-
-    progress_msg = None
-    try:
-        # لا يوجد "typing" واضح في القنوات؛ نرسل رسالة مؤقتة للحالة.
-        progress_msg = await context.bot.send_message(
-            chat_id=update.channel_post.chat_id,
-            text="⏳ جاري تحليل الرسالة وتجهيز الوظائف...",
-        )
-    except Exception:
-        progress_msg = None
 
     common_email_match = re.search(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}", raw or "", re.I)
     common_email = (common_email_match.group(0).strip() if common_email_match else "")
@@ -163,6 +153,10 @@ async def handle_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE
             await context.bot.send_message(
                 chat_id=update.channel_post.chat_id,
                 text=formatted,
+                disable_web_page_preview=True,
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("🔗 رابط الاشتراك", url=_STORE_URL)]]
+                ),
             )
         except Exception:
             logger.exception("فشل نشر الوظيفة المنسقة في القناة")
@@ -182,16 +176,6 @@ async def handle_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
         except Exception:
             logger.exception("فشل إدراج وظيفة من القناة في قاعدة البيانات")
-
-    # حذف الرسالة المؤقتة
-    if progress_msg:
-        try:
-            await context.bot.delete_message(
-                chat_id=update.channel_post.chat_id,
-                message_id=progress_msg.message_id,
-            )
-        except Exception:
-            pass
 
     # حذف رسالة الإدخال الأصلية بعد نجاح النشر (يتطلب صلاحية delete messages للبوت)
     try:
