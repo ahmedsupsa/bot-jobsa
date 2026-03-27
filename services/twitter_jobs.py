@@ -217,10 +217,30 @@ async def run_twitter_jobs_cycle(bot, bot_data: dict) -> None:
     }
     url = "https://api.x.com/2/tweets/search/recent"
 
+    auth_mode = "user_oauth2" if getattr(config, "X_USER_ACCESS_TOKEN", "") else "app_bearer"
     try:
         async with httpx.AsyncClient(timeout=20) as client:
             r = await client.get(url, headers=headers, params=params)
-            r.raise_for_status()
+            if r.status_code != 200:
+                detail = (r.text or "")[:900]
+                try:
+                    err = r.json()
+                    if isinstance(err, dict):
+                        detail = str(
+                            err.get("errors")
+                            or err.get("title")
+                            or err.get("detail")
+                            or err
+                        )[:900]
+                except Exception:
+                    pass
+                logger.warning(
+                    "Twitter API HTTP %s (%s): %s",
+                    r.status_code,
+                    auth_mode,
+                    detail,
+                )
+                return
             payload = r.json()
     except Exception as e:
         logger.warning("Twitter ingest failed: %s", e)

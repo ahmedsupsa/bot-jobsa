@@ -1,8 +1,27 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
+
 import os
+from urllib.parse import unquote
+
 from dotenv import load_dotenv
 
 load_dotenv()
+
+
+def _normalize_api_token(raw: str | None) -> str:
+    """Quit quotes/whitespace and one-pass URL-decode (tokens pasted from browser often include %3D)."""
+    s = (raw or "").strip()
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in "\"'":
+        s = s[1:-1].strip()
+    if "%" in s:
+        try:
+            u = unquote(s)
+            if u != s:
+                s = u.strip()
+        except Exception:
+            pass
+    return s
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://vnbaksiabcdnnnoglycr.supabase.co")
@@ -38,8 +57,8 @@ _jo = os.getenv("JOBS_SOURCE_CHANNEL_ID", "").strip()
 JOBS_SOURCE_CHANNEL_ID = int(_jo) if _jo and _jo.lstrip("-").isdigit() else None
 
 # Twitter/X jobs ingest (optional)
-X_BEARER_TOKEN = os.getenv("X_BEARER_TOKEN", "").strip()
-X_USER_ACCESS_TOKEN = os.getenv("X_USER_ACCESS_TOKEN", "").strip()
+X_BEARER_TOKEN = _normalize_api_token(os.getenv("X_BEARER_TOKEN"))
+X_USER_ACCESS_TOKEN = _normalize_api_token(os.getenv("X_USER_ACCESS_TOKEN"))
 TWITTER_JOB_QUERY = (
     os.getenv("TWITTER_JOB_QUERY", "").strip()
     or '(وظيفة OR وظائف OR "فرصة وظيفية" OR مطلوب) (email OR ايميل OR careers OR apply) -is:retweet -is:reply'
