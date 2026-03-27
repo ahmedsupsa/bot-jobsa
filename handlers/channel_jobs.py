@@ -27,6 +27,65 @@ def _extract_first_url(text: str) -> str:
     return (url.group(0).rstrip(".,)") if url else "")
 
 
+def _clean_text_block(text: str) -> str:
+    t = (text or "").strip()
+    t = re.sub(r"\[[^\]]+\]\([^)]+\)", "", t)  # remove markdown links
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
+
+
+def _pick_requirement_points(req: str) -> list[str]:
+    raw = (req or "").strip()
+    if not raw:
+        return ["مذكورة في الإعلان."]
+    lines = [x.strip(" -*•\t") for x in re.split(r"[\r\n]+", raw) if x.strip()]
+    points = []
+    for ln in lines:
+        if len(ln) < 6:
+            continue
+        # تجاهل عناوين عامة
+        if re.search(r"^(الوصف|الشروط|المتطلبات|طريقة التقديم)\b", ln, re.I):
+            continue
+        points.append(_clean_text_block(ln))
+        if len(points) >= 4:
+            break
+    if points:
+        return points
+    return [_clean_text_block(raw)[:220]]
+
+
+def _build_custom_post(fields: dict, email: str) -> str:
+    title = (fields.get("title_ar") or fields.get("title_en") or "وظيفة").strip()
+    company = (fields.get("company") or "").strip()
+    city = (fields.get("city") or "").strip()
+    emp = (fields.get("employment_type") or "").strip()
+    salary = (fields.get("salary") or "").strip()
+    req = (fields.get("requirements") or fields.get("description_ar") or "").strip()
+
+    lines = [
+        "✨ فرصة وظيفية جديدة",
+        "",
+        f"المسمى: {title}",
+    ]
+    if company:
+        lines.append(f"🏢 الشركة: {company}")
+    if city:
+        lines.append(f"📍 المدينة: {city}")
+    if emp:
+        lines.append(f"🕒 نوع الدوام: {emp}")
+    if salary:
+        lines.append(f"💰 الراتب: {salary}")
+
+    lines.append("✅ المتطلبات:")
+    for p in _pick_requirement_points(req):
+        lines.append(f"• {p[:220]}")
+
+    if email:
+        lines.append(f"📩 التقديم: {email}")
+    lines.extend(["", _BOT_PROMO, _FMT_MARK])
+    return "\n".join(lines).strip()
+
+
 async def _raw_text_from_channel_post(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> str:
@@ -65,6 +124,19 @@ async def handle_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE
         # منشور منسق سابقاً بواسطة الخدمة — نتجنب حلقة إعادة المعالجة.
         return
 
+    progress_msg = None
+    try:
+        # لا يوجد "typing" واضح في القنوات؛ نرسل رسالة مؤقتة للحالة.
+        progress_msg = await context.bot.send_message(
+            chat_id=update.channel_post.chat_id,
+            text="⏳ جاري تحليل الرسالة وتجهيز الوظائف...",
+        )
+    except Exception:
+        progress_msg = None
+
+    common_email_match = re.search(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}", raw or "", re.I)
+    common_email = (common_email_match.group(0).strip() if common_email_match else "")
+
     try:
         jobs = await asyncio.to_thread(parse_job_posts_text, raw)
     except Exception as e:
@@ -76,36 +148,15 @@ async def handle_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     for fields in jobs[:20]:
         email = (fields.get("application_email") or "").strip()
+        if not email and common_email:
+            email = common_email
         # نحفظ/نعرض إيميل التقديم فقط.
         if email and not re.search(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$", email):
             email = ""
         link = fields.get("link_url") or _extract_first_url(raw)
 
-        req = (fields.get("requirements") or fields.get("description_ar") or "").strip()
-        if not req:
-            req = "غير مذكورة بوضوح في الإعلان."
-        lines = [
-            f"المسمى: {(fields.get('title_ar') or fields.get('title_en') or 'وظيفة').strip()}",
-        ]
         company = (fields.get("company") or "").strip()
-        if company:
-            lines.append(f"🏢 الشركة: {company}")
-        city = (fields.get("city") or "").strip()
-        if city:
-            lines.append(f"📍 المدينة: {city}")
-        emp = (fields.get("employment_type") or "").strip()
-        if emp:
-            lines.append(f"🕒 نوع الدوام: {emp}")
-        salary = (fields.get("salary") or "").strip()
-        if salary:
-            lines.append(f"💰 الراتب: {salary}")
-        lines.append(f"✅ المتطلبات: {req[:1600]}")
-        if email:
-            lines.append(f"📩 التقديم: {email}")
-        lines.append("")
-        lines.append(_BOT_PROMO)
-        lines.append(_FMT_MARK)
-        formatted = "\n".join(lines).strip()
+        formatted = _build_custom_post(fields, email)
 
         # انشر النسخة المنسقة كرسالة مستقلة في نفس القناة.
         try:
@@ -131,6 +182,25 @@ async def handle_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
         except Exception:
             logger.exception("فشل إدراج وظيفة من القناة في قاعدة البيانات")
+
+    # حذف الرسالة المؤقتة
+    if progress_msg:
+        try:
+            await context.bot.delete_message(
+                chat_id=update.channel_post.chat_id,
+                message_id=progress_msg.message_id,
+            )
+        except Exception:
+            pass
+
+    # حذف رسالة الإدخال الأصلية بعد نجاح النشر (يتطلب صلاحية delete messages للبوت)
+    try:
+        await context.bot.delete_message(
+            chat_id=update.channel_post.chat_id,
+            message_id=update.channel_post.message_id,
+        )
+    except Exception as e:
+        logger.warning("تعذر حذف رسالة الإدخال الأصلية من القناة: %s", e)
 
 
 def setup_channel_jobs_handlers(application):

@@ -60,7 +60,7 @@ def _split_job_blocks(raw: str) -> list[str]:
     lines = text.splitlines()
     starts: list[int] = []
     start_re = re.compile(
-        r"^\s*(?:\d+[\)\.\-]\s*)?(?:المسمى|الوظيفة|وظيفة|job\s*title|position|vacancy)\b",
+        r"^\s*(?:[^\w\u0600-\u06FF]+)?(?:\d+[\)\.\-]\s*)?(?:المسمى|الوظيفة|وظيفة|job\s*title|position|vacancy)\b",
         re.I,
     )
     for i, ln in enumerate(lines):
@@ -76,7 +76,24 @@ def _split_job_blocks(raw: str) -> list[str]:
         if blocks:
             return blocks[:30]
 
-    # 3) تقسيم تقريبي حسب الترقيم المتسلسل داخل نص واحد طويل
+    # 3) نمط شائع: "الوظيفة الأولى/الثانية/الثالثة..."
+    marker_re = re.compile(
+        r"(?:^|\n)\s*(?:[^\w\u0600-\u06FF]+)?الوظيفة\s+(?:الأولى|الثانية|الثالثة|الرابعة|الخامسة|السادسة|السابعة|الثامنة|التاسعة|العاشرة|\d+)\s*[:：\-]",
+        re.I,
+    )
+    markers = list(marker_re.finditer(text))
+    if len(markers) > 1:
+        blocks = []
+        for idx, m in enumerate(markers):
+            start = m.start()
+            end = markers[idx + 1].start() if idx + 1 < len(markers) else len(text)
+            chunk = text[start:end].strip()
+            if len(chunk) >= 20:
+                blocks.append(chunk)
+        if blocks:
+            return blocks[:30]
+
+    # 4) تقسيم تقريبي حسب الترقيم المتسلسل داخل نص واحد طويل
     numbered = re.split(r"(?:(?<=\n)|^)\s*\d+\s*[\)\.\-]\s+", text)
     numbered = [b.strip() for b in numbered if len(b.strip()) >= 20]
     if len(numbered) > 1:
