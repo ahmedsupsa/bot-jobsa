@@ -323,7 +323,7 @@ async def cb_tpl_preview(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     from templates.preview import send_template_preview_email, get_smtp_error_user_message
     try:
-        await send_template_preview_email(context.bot, user, settings, "normal", update.effective_chat.id)
+        await send_template_preview_email(context.bot, user, settings)
         await query.edit_message_text(
             "تم إرسال معاينة القالب إلى إيميلك.",
             reply_markup=templates_menu_keyboard(),

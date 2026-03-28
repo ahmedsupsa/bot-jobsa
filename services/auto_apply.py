@@ -4,7 +4,7 @@
 - يعمل دورياً في الخلفية بدون تدخل المستخدم
 - يمنع التقديم المكرر على نفس الوظيفة
 - فاصل زمني 45 ثانية بين كل تقديم لكل مستخدم
-- يستخدم قالب المستخدم المختار
+- يستخدم قالب HTML موحّد لرسالة التقديم
 - يحلل السيرة الذاتية بالذكاء الاصطناعي
 """
 import asyncio
@@ -90,7 +90,7 @@ async def run_auto_apply_cycle(bot) -> None:
     from services.cover_letter import generate_cover_letter, extract_text_from_cv
     from services.cv_guard import validate_cv_text
     from services.apply_eligibility import infer_applicant_gender_from_cv, applicant_matches_job_gender
-    from templates.preview import build_application_html, get_preview_html
+    from templates.preview import build_application_html
     from templates.preview import send_email, get_smtp_error_user_message, SMTP_NETWORK_ERROR_HINT
 
     # جلب كل الوظائف النشطة التي لها إيميل
@@ -214,8 +214,6 @@ async def run_auto_apply_cycle(bot) -> None:
         name = user.get("full_name") or "المتقدم"
         phone = user.get("phone") or ""
         lang = user.get("application_language") or "ar"
-        # قالب تقديم واحد لجميع المستخدمين
-        template_type = "normal"
         sender_email = settings["email"]
         resend_sender_alias = ""
         if resend_enabled:
@@ -253,7 +251,7 @@ async def run_auto_apply_cycle(bot) -> None:
             except Exception:
                 cover = ""
 
-            # بناء HTML بالقالب المختار + إظهار أن الرسالة نُشئت من السيرة إن وُجد نصها
+            # بناء HTML (قالب واحد) + إظهار أن الرسالة نُشئت من السيرة إن وُجد نصها
             html_body = build_application_html(
                 name=name,
                 phone=phone,
@@ -261,7 +259,6 @@ async def run_auto_apply_cycle(bot) -> None:
                 company=company,
                 cover_letter=cover,
                 lang=lang,
-                template_type=template_type,
                 cv_used_for_letter=len((cv_text or "").strip()) > 80,
             )
 
