@@ -20,7 +20,7 @@ from keyboards import (
 )
 from services.cover_letter import generate_cover_letter, extract_text_from_cv
 from services.job_prefs_ai import apply_preferences_from_cv_text
-from templates.preview import send_email_smtp, build_application_html
+from templates.preview import send_email_smtp
 
 
 async def download_cv_text_for_user(bot, user_id: str) -> tuple[str, str]:
