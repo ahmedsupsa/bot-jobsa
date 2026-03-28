@@ -9,12 +9,11 @@ from telegram import (
 # ─────────────────────────────────────────────
 
 def main_reply_keyboard():
-    """القائمة الرئيسية - تظهر دائماً (5 خيارات)."""
+    """القائمة الرئيسية - تظهر دائماً (4 خيارات). الإعلانات تُرسل تلقائياً ولا تحتاج زراً."""
     return ReplyKeyboardMarkup(
         [
             [KeyboardButton("📄 التقديمات"), KeyboardButton("👤 حسابي")],
-            [KeyboardButton("🎯 تفضيلات الوظائف"), KeyboardButton("📢 الإعلانات")],
-            [KeyboardButton("⚙️ الإعدادات")],
+            [KeyboardButton("🎯 تفضيلات الوظائف"), KeyboardButton("⚙️ الإعدادات")],
         ],
         resize_keyboard=True,
         input_field_placeholder="اختر من القائمة...",
@@ -161,6 +160,14 @@ def job_categories_reply_keyboard():
         ],
         resize_keyboard=True,
     )
+
+
+def job_prefs_ai_actions_keyboard():
+    """بعد تحليل التفضيلات بالذكاء الاصطناعي (بدون اختيار يدوي للمجالات)."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔄 إعادة التحليل من السيرة", callback_data="job_ai_suggest")],
+        [InlineKeyboardButton("⬅️ الرجوع للتقديمات", callback_data="back_to_applications")],
+    ])
 
 
 def job_fields_keyboard(fields: list, selected_ids: list, category: str, page: int = 0, search: str = ""):

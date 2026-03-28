@@ -30,9 +30,9 @@ _last_missing_requirements_notification: dict[str, float] = {}  # user_id -> tim
 
 
 def _job_matches_user(job: dict, user_field_names: list[str]) -> bool:
-    """تحقق إذا كانت الوظيفة تطابق تفضيلات المستخدم."""
+    """تحقق إذا كانت الوظيفة تطابق تفضيلات المستخدم (المملوءة من تحليل السيرة)."""
     if not user_field_names:
-        return True
+        return False
     job_specs = (job.get("specializations") or "").lower()
     if not job_specs:
         return True
@@ -89,6 +89,7 @@ async def run_auto_apply_cycle(bot) -> None:
     )
     from services.cover_letter import generate_cover_letter, extract_text_from_cv
     from services.cv_guard import validate_cv_text
+    from services.apply_eligibility import infer_applicant_gender_from_cv, applicant_matches_job_gender
     from templates.preview import build_application_html, get_preview_html
     from templates.preview import send_email, get_smtp_error_user_message, SMTP_NETWORK_ERROR_HINT
 
@@ -145,31 +146,7 @@ async def run_auto_apply_cycle(bot) -> None:
             await _notify_missing_requirements(bot, telegram_id, user_id, ["رفع السيرة الذاتية"])
             continue
 
-        # جلب تفضيلات الوظائف
-        pref_ids = await asyncio.to_thread(get_user_job_preferences, user_id)
-        user_field_names = [
-            f.get("name_ar") or f.get("name_en") or ""
-            for f in all_fields if str(f["id"]) in [str(x) for x in pref_ids]
-        ]
-
-        # الوظائف المطابقة التي لم يتقدم عليها بعد
-        jobs_to_apply = []
-        for job in jobs_with_email:
-            job_id = job.get("id")
-            if not job_id:
-                continue
-            job_id = str(job_id)
-            already = await asyncio.to_thread(has_applied_to_job, user_id, job_id)
-            if already:
-                continue
-            if not _job_matches_user(job, user_field_names):
-                continue
-            jobs_to_apply.append(job)
-
-        if not jobs_to_apply:
-            continue
-
-        # تحميل السيرة الذاتية مرة واحدة لهذا المستخدم
+        # تحميل السيرة واستخراج النص أولاً (مطلوب للتحقق والتفضيلات والجنس)
         try:
             tg_file = await bot.get_file(cv["file_id"])
             cv_suffix = os.path.splitext(cv.get("file_name") or "cv.pdf")[1] or ".pdf"
@@ -185,7 +162,6 @@ async def run_auto_apply_cycle(bot) -> None:
             logger.warning("فشل تحميل السيرة للمستخدم %s: %s", telegram_id, e)
             continue
 
-        # استخراج نص السيرة الذاتية (PDF، DOCX، أو صورة عبر جيميني)
         cv_filename = cv.get("file_name") or "cv.pdf"
         try:
             cv_text = await asyncio.to_thread(extract_text_from_cv, cv_bytes, cv_filename)
@@ -193,7 +169,6 @@ async def run_auto_apply_cycle(bot) -> None:
             cv_text = ""
         is_valid_cv, cv_reason = await asyncio.to_thread(validate_cv_text, cv_text)
         if not is_valid_cv:
-            # لا تقديم إطلاقاً إذا السيرة غير حقيقية/غير صالحة
             await asyncio.to_thread(delete_cv, user_id, True)
             await _notify_missing_requirements(
                 bot,
@@ -201,6 +176,39 @@ async def run_auto_apply_cycle(bot) -> None:
                 user_id,
                 [f"رفع سيرة ذاتية مهنية صحيحة (تم رفض الملف الحالي: {cv_reason})"],
             )
+            continue
+
+        cv_gender = await asyncio.to_thread(infer_applicant_gender_from_cv, cv_text)
+
+        from services.job_prefs_ai import apply_preferences_from_cv_text
+
+        pref_ids = await asyncio.to_thread(get_user_job_preferences, user_id)
+        if not pref_ids and len((cv_text or "").strip()) >= 80:
+            new_ids = await asyncio.to_thread(apply_preferences_from_cv_text, user_id, cv_text)
+            if new_ids:
+                pref_ids = new_ids
+
+        user_field_names = [
+            f.get("name_ar") or f.get("name_en") or ""
+            for f in all_fields if str(f["id"]) in [str(x) for x in pref_ids]
+        ]
+
+        jobs_to_apply = []
+        for job in jobs_with_email:
+            job_id = job.get("id")
+            if not job_id:
+                continue
+            job_id = str(job_id)
+            already = await asyncio.to_thread(has_applied_to_job, user_id, job_id)
+            if already:
+                continue
+            if not applicant_matches_job_gender(cv_gender, job):
+                continue
+            if not _job_matches_user(job, user_field_names):
+                continue
+            jobs_to_apply.append(job)
+
+        if not jobs_to_apply:
             continue
 
         name = user.get("full_name") or "المتقدم"

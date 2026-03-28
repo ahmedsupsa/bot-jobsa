@@ -30,6 +30,15 @@ def _gemini_api_key() -> str:
         return os.getenv("GEMINI_API_KEY", "").strip()
 
 
+def _gemini_model_flash() -> str:
+    try:
+        from config import GEMINI_MODEL_FLASH
+
+        return (GEMINI_MODEL_FLASH or "").strip() or "gemini-2.5-flash"
+    except ImportError:
+        return "gemini-2.5-flash"
+
+
 def _extract_first_url(text: str) -> str:
     m = _URL_RE.search(text or "")
     if not m:
@@ -126,10 +135,17 @@ def _fallback_parse(raw: str) -> dict[str, Any]:
     }
 
 
-def _coerce_parsed(data: dict[str, Any], raw: str) -> dict[str, Any]:
-    fb = _fallback_parse(raw)
-    title_ar = str(data.get("title_ar") or "").strip()[:300] or fb.get("title_ar", "")
+def _coerce_parsed(data: dict[str, Any], raw: str, *, tweet_merge: bool = False) -> dict[str, Any]:
+    rt = (raw or "").strip()
+    fb = None if tweet_merge else _fallback_parse(rt)
+
+    title_ar = str(data.get("title_ar") or "").strip()[:300]
     title_en = str(data.get("title_en") or "").strip()[:300]
+    if not title_ar and title_en:
+        title_ar = title_en
+    if fb:
+        title_ar = title_ar or str(fb.get("title_ar") or "").strip()[:300]
+
     company = str(data.get("company") or "").strip()[:200]
     city = str(data.get("city") or "").strip()[:160]
     employment_type = str(data.get("employment_type") or "").strip()[:120]
@@ -138,22 +154,25 @@ def _coerce_parsed(data: dict[str, Any], raw: str) -> dict[str, Any]:
     application_email = str(data.get("application_email") or "").strip()[:320]
     if application_email and not _EMAIL_RE.search(application_email):
         application_email = ""
+    emails = _EMAIL_RE.findall(rt)
+    fe = emails[0] if emails else ""
+    flink = _extract_first_url(rt)
     if not application_email:
-        application_email = fb.get("application_email", "") or ""
+        application_email = (str(fb.get("application_email") or "").strip()[:320] if fb else "") or fe
     link_url = str(data.get("link_url") or "").strip()[:2000]
     if link_url and not link_url.startswith("http"):
         link_url = ""
     if not link_url:
-        link_url = fb.get("link_url", "") or ""
+        link_url = (str(fb.get("link_url") or "").strip()[:2000] if fb else "") or flink
     specializations = str(data.get("specializations") or "").strip()[:1000]
     summary_ar = str(data.get("summary_ar") or "").strip()[:4000]
     summary_en = str(data.get("summary_en") or "").strip()[:4000]
     if not summary_ar:
-        summary_ar = fb.get("summary_ar", "") or (raw or "").strip()[:4000]
+        summary_ar = (str(fb.get("summary_ar") or "").strip()[:4000] if fb else "") or rt[:4000]
     if not requirements:
         requirements = summary_ar
-    if not title_ar:
-        title_ar = (raw or "").strip()[:300] or "وظيفة"
+    if not tweet_merge and not title_ar:
+        title_ar = rt[:300] or "وظيفة"
     return {
         "title_ar": title_ar,
         "title_en": title_en,
@@ -187,12 +206,13 @@ def _single_from_merged(merged: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def _parse_single_job_text(raw: str) -> dict[str, str]:
-    """تحليل وظيفة واحدة (AI + fallback)."""
+def _parse_single_job_text(raw: str, source: str = "channel") -> dict[str, str]:
+    """تحليل وظيفة واحدة (AI + fallback للقناة؛ للتغريدات: AI فقط إن وُجد مفتاح)."""
     raw = (raw or "").strip()
     if len(raw) < 5:
         return {}
 
+    is_tweet = source == "tweet"
     api_key = _gemini_api_key()
     parsed: dict[str, Any] = {}
     if api_key:
@@ -200,8 +220,28 @@ def _parse_single_job_text(raw: str) -> dict[str, str]:
             import google.generativeai as genai
 
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            prompt = f"""استخرج بيانات وظيفة واحدة من النص التالي.
+            model = genai.GenerativeModel(_gemini_model_flash())
+            if is_tweet:
+                prompt = f"""أنت تستخرج إعلان وظيفة من تغريدة (X/Twitter) — نص قد يكون قصيراً ويحوي روابط مختصرة وهاشتاقات ومنشنات.
+
+أعد JSON فقط بالمفاتيح:
+title_ar, title_en, company, city, employment_type, salary, requirements, application_email, link_url, specializations, summary_ar, summary_en
+
+قواعد صارمة:
+- إن لم يكن النص يصف وظيفة واضحة (مسمى/شركة/مدينة أو طريقة تقديم)، اجعل title_ar و title_en والحقول الأخرى فارغة "" (لا تملأ عنواناً من السطر الأول إن لم يكن وظيفة).
+- لا تخترع بريداً أو شركة من الهاشتاق أو المنشن.
+- application_email فقط إن وُجد بريد صريح في النص.
+- link_url: رابط التقديم أو صفحة الوظيفة إن وُجد (واحد الأنسب).
+- requirements: جملة أو سطران من نص التغريدة فقط.
+- city: المدينة أو الدولة إن ذُكرت صراحة (مثلاً الرياض، دبي، الكويت).
+
+النص:
+---
+{raw[:6000]}
+---
+"""
+            else:
+                prompt = f"""استخرج بيانات وظيفة واحدة من النص التالي.
 أعد JSON فقط بالمفاتيح:
 title_ar, title_en, company, city, employment_type, salary, requirements, application_email, link_url, specializations, summary_ar, summary_en
 
@@ -221,8 +261,24 @@ title_ar, title_en, company, city, employment_type, salary, requirements, applic
             logger.warning("Single-job AI parse failed: %s", e)
             parsed = {}
 
-    merged = _coerce_parsed(parsed if isinstance(parsed, dict) else {}, raw)
+    if is_tweet:
+        if not api_key or not parsed or not isinstance(parsed, dict):
+            return {}
+        if not str(parsed.get("title_ar") or parsed.get("title_en") or "").strip():
+            return {}
+        merged = _coerce_parsed(parsed, raw, tweet_merge=True)
+    else:
+        merged = _coerce_parsed(parsed if isinstance(parsed, dict) else {}, raw)
     return _single_from_merged(merged)
+
+
+def parse_tweet_jobs_text(raw_text: str) -> list[dict[str, str]]:
+    """تغريدة واحدة ككتلة واحدة + مخرجات AI مخصصة (لا تقسيم كقناة طويلة)."""
+    raw = (raw_text or "").strip()
+    if len(raw) < 10:
+        return []
+    item = _parse_single_job_text(raw, source="tweet")
+    return [item] if item else []
 
 
 def parse_job_posts_text(raw_text: str) -> list[dict[str, str]]:

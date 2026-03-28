@@ -65,7 +65,11 @@ def extract_text_from_image(image_bytes: bytes, mime_type: str = "image/jpeg") -
         from PIL import Image
         import google.generativeai as genai
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-pro")
+        try:
+            from config import GEMINI_MODEL_PRO as _gm
+        except ImportError:
+            _gm = "gemini-2.5-flash"
+        model = genai.GenerativeModel((_gm or "").strip() or "gemini-2.5-flash")
         img = Image.open(io.BytesIO(image_bytes))
         if img.mode == "RGBA":
             img = img.convert("RGB")
@@ -162,7 +166,11 @@ def analyze_cv_and_generate_letter(
     try:
         import google.generativeai as genai
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-pro")
+        try:
+            from config import GEMINI_MODEL_PRO as _gm
+        except ImportError:
+            _gm = "gemini-2.5-flash"
+        model = genai.GenerativeModel((_gm or "").strip() or "gemini-2.5-flash")
 
         has_cv = cv_text and len(cv_text.strip()) > 80
 

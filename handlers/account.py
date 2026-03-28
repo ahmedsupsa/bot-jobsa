@@ -148,6 +148,14 @@ async def receive_cv_document(update: Update, context: ContextTypes.DEFAULT_TYPE
         msg += "\n(تم حفظها أيضاً في التخزين السحابي)"
     else:
         msg += "\n(لم يتم الرفع إلى السحابة—تحقق من سياسات bucket «cvs» في Supabase)"
+    try:
+        from services.job_prefs_ai import apply_preferences_from_cv_text
+
+        pref_ids = await asyncio.to_thread(apply_preferences_from_cv_text, str(user["id"]), cv_text)
+        if pref_ids:
+            msg += f"\n\n🎯 تم تحديث تفضيلات الوظائف تلقائياً من السيرة ({len(pref_ids)} مجال)."
+    except Exception:
+        pass
     from keyboards import cv_reply_keyboard
     await update.message.reply_text(msg, reply_markup=cv_reply_keyboard())
 

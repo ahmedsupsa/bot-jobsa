@@ -8,7 +8,6 @@ from database.db import (
     get_user_by_telegram,
     get_or_create_user_settings,
     is_subscription_active,
-    get_admin_announcements,
     is_admin,
 )
 from handlers.settings import clear_email_flow_state
@@ -23,7 +22,8 @@ from keyboards import (
 # نص الأزرار لكل القوائم - يُستخدم في الـ Regex
 _ALL_BUTTONS = (
     # رئيسية
-    "📄 التقديمات", "👤 حسابي", "📢 الإعلانات", "⚙️ الإعدادات",
+    "📄 التقديمات", "👤 حسابي", "⚙️ الإعدادات",
+    "📢 الإعلانات",  # قديم: رد توضيحي فقط
     # تقديمات
     "📌 التقديمات المرسلة", "📅 سجل التقديمات",
     "🎯 تفضيلات الوظائف",
@@ -111,6 +111,15 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     # ──── القائمة الرئيسية ────
+    if text == "📢 الإعلانات":
+        await update.message.reply_text(
+            "📢 الإعلانات تصلك **تلقائياً** من الإدارة في هذه المحادثة عند النشر.\n"
+            "تم إزالة زر الإعلانات من القائمة — لا تحتاج تضغط شيئاً لاستلامها.",
+            parse_mode="Markdown",
+            reply_markup=main_reply_keyboard(),
+        )
+        return
+
     # قبول "التقديمات" مع أو بدون إيموجي (بعض الأجهزة ترسل إيموجي مختلف أو مع variation selector)
     if text == "📄 التقديمات" or (text.endswith("التقديمات") and "احصائيات" not in text and "المرسلة" not in text and "سجل" not in text):
         await update.message.reply_text("📄 التقديمات:\n\nاختر:", reply_markup=applications_reply_keyboard())
@@ -118,89 +127,22 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
     elif text == "👤 حسابي":
         await update.message.reply_text("👤 حسابي:\n\nاختر:", reply_markup=account_reply_keyboard())
 
-    elif text == "📢 الإعلانات":
-        anns = await asyncio.to_thread(get_admin_announcements, True, True)
-        if not anns:
-            await update.message.reply_text("📢 لا توجد إعلانات حالياً.", reply_markup=main_reply_keyboard())
-            return
-        await update.message.reply_text("📢 الإعلانات:", reply_markup=main_reply_keyboard())
-        for a in anns[:10]:
-            title = (a.get("title") or "إعلان")[:100]
-            body = (a.get("body_text") or "")[:900]
-            caption = f"**{title}**\n\n{body}" if title else body
-            if len(caption) > 1024:
-                caption = caption[:1020] + "..."
-            image_id = a.get("image_file_id")
-            if image_id:
-                try:
-                    await context.bot.send_photo(
-                        chat_id=update.effective_chat.id,
-                        photo=image_id, caption=caption, parse_mode="Markdown",
-                    )
-                except Exception:
-                    await context.bot.send_message(
-                        chat_id=update.effective_chat.id, text=caption, parse_mode="Markdown",
-                    )
-            else:
-                await context.bot.send_message(
-                    chat_id=update.effective_chat.id, text=caption, parse_mode="Markdown",
-                )
-
     elif text == "⚙️ الإعدادات":
         header = await _settings_header_text(update.effective_user.id if update.effective_user else None)
         await update.message.reply_text(header, reply_markup=settings_reply_keyboard())
 
-    # ──── تفضيلات الوظائف (من القائمة الرئيسية أو من قائمة التقديمات) ────
+    # ──── تفضيلات الوظائف: تحليل السيرة بالذكاء الاصطناعي فقط ────
     elif text == "🎯 تفضيلات الوظائف":
-        from keyboards import job_categories_reply_keyboard
-        context.user_data["job_prefs_user_id"] = user["id"]
-        await update.message.reply_text(
-            "🎯 تفضيلات الوظائف\n\nاختر نوع المجالات (عامة، خاصة، أو الاثنين):",
-            reply_markup=job_categories_reply_keyboard(),
-        )
+        from handlers.applications import run_job_prefs_ai_from_reply
+
+        await run_job_prefs_ai_from_reply(update, context, user)
 
     elif text in ("مجالات عامة", "مجالات خاصة", "الاثنين"):
-        from database.db import get_job_fields, get_user_job_preferences, set_user_job_preferences
-        from keyboards import job_fields_keyboard
-
-        user_id = context.user_data.get("job_prefs_user_id") or user["id"]
-        if text == "مجالات عامة":
-            category = "general"
-        elif text == "مجالات خاصة":
-            category = "specific"
-        else:
-            category = None
-
-        try:
-            if category:
-                fields = await asyncio.to_thread(get_job_fields, category=category)
-                selected_ids = await asyncio.to_thread(get_user_job_preferences, user_id)
-            else:
-                fields = await asyncio.to_thread(get_job_fields)
-                # عند اختيار "الاثنين": نحدد كل المجالات فعلياً للمستخدم
-                all_ids = [str(f.get("id")) for f in fields if f.get("id")]
-                await asyncio.to_thread(set_user_job_preferences, user_id, all_ids)
-                selected_ids = all_ids
-        except Exception as e:
-            await update.message.reply_text(f"حدث خطأ أثناء جلب مجالات الوظائف: {e}")
-            return
-
-        selected = [str(x) for x in selected_ids]
-        context.user_data["job_prefs_user_id"] = user_id
-        context.user_data["job_prefs_category"] = category or "both"
-        context.user_data["job_prefs_page"] = 0
-        context.user_data["job_prefs_search"] = ""
-        if text == "الاثنين":
-            await update.message.reply_text(
-                "✅ تم تحديد كل الخيارات (عامة + خاصة) فعلياً.\n"
-                "⚠️ لا ننصح بهذا الخيار لأنه قد يسبب تقديمات كثيرة غير مناسبة. الأفضل تحديد مجالات دقيقة.",
-                reply_markup=job_fields_keyboard(fields, selected, category or "both", 0, ""),
-            )
-        else:
-            await update.message.reply_text(
-                "اختر المجالات (اضغط على المجال لإضافته أو إزالته):",
-                reply_markup=job_fields_keyboard(fields, selected, category or "both", 0, ""),
-            )
+        await update.message.reply_text(
+            "ℹ️ التفضيلات تُحدَّث تلقائياً من السيرة بالذكاء الاصطناعي.\n"
+            "اضغط **🎯 تفضيلات الوظائف** لتحليل السيرة وتحديث المجالات.",
+            reply_markup=main_reply_keyboard(),
+        )
 
     # ──── التقديمات ────
     elif text == "📌 التقديمات المرسلة":
@@ -317,8 +259,9 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
             "📘 **دليل البدء السريع**\n\n"
             "1) من الإعدادات اضغط **📧 ربط الإيميل** وأدخل بريدك الشخصي.\n"
             "2) ارفع السيرة من **👤 حسابي → 📎 السيرة الذاتية**.\n"
-            "3) حدد مجالاتك من **🚀/📄 التقديمات → 🎯 تفضيلات الوظائف**.\n"
-            "4) التقديم التلقائي يبدأ ويصلك إشعار عند كل تقديم.\n\n"
+            "3) بعد رفع السيرة تُحدَّث **تفضيلات الوظائف تلقائياً** بالذكاء الاصطناعي؛ أو اضغط **🎯 تفضيلات الوظائف** لإعادة التحليل.\n"
+            "4) التقديم التلقائي يطابق السيرة والجنس عند الإعلانات المخصصة، ويصلك إشعار عند كل تقديم.\n"
+            "5) **إعلانات الإدارة** تُرسل لك تلقائياً في المحادثة (لا يوجد زر للإعلانات في القائمة).\n\n"
             "📨 الردود من الشركات تصلك على إيميلك الشخصي المربوط.\n"
             "📨 إيميل التقديم الخاص من نطاقنا يظهر لك داخل الإعدادات.",
             parse_mode="Markdown",
@@ -422,43 +365,6 @@ async def cb_menu_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def cb_menu_announcements(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    if not query:
-        return
-    await query.answer()
-    user = await asyncio.to_thread(get_user_by_telegram, update.effective_user.id) if update.effective_user else None
-    if not user or not is_subscription_active(user):
-        await query.edit_message_text("انتهى اشتراكك.")
-        return
-    anns = await asyncio.to_thread(get_admin_announcements, True, True)
-    if not anns:
-        await query.edit_message_text("📢 لا توجد إعلانات حالياً.")
-        return
-    await query.edit_message_text("📢 الإعلانات:")
-    for a in anns[:10]:
-        title = (a.get("title") or "إعلان")[:100]
-        body = (a.get("body_text") or "")[:900]
-        caption = f"**{title}**\n\n{body}" if title else body
-        if len(caption) > 1024:
-            caption = caption[:1020] + "..."
-        image_id = a.get("image_file_id")
-        if image_id:
-            try:
-                await context.bot.send_photo(
-                    chat_id=update.effective_chat.id,
-                    photo=image_id, caption=caption, parse_mode="Markdown",
-                )
-            except Exception:
-                await context.bot.send_message(
-                    chat_id=update.effective_chat.id, text=caption, parse_mode="Markdown",
-                )
-        else:
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id, text=caption, parse_mode="Markdown",
-            )
-
-
 async def handle_applications_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """معالج بديل لزر التقديمات عندما لا يطابق الـ Regex الرئيسي (مثلاً اختلاف ترميز الإيموجي)."""
     if not update.message or not update.effective_user:
@@ -480,7 +386,6 @@ def setup_main_menu_handlers(application):
     application.add_handler(CallbackQueryHandler(cb_menu_applications, pattern="^menu_applications$"))
     application.add_handler(CallbackQueryHandler(cb_menu_account, pattern="^menu_account$"))
     application.add_handler(CallbackQueryHandler(cb_menu_settings, pattern="^menu_settings$"))
-    application.add_handler(CallbackQueryHandler(cb_menu_announcements, pattern="^menu_announcements$"))
     application.add_handler(CallbackQueryHandler(cb_back_to_applications, pattern="^back_to_applications$"))
     application.add_handler(CallbackQueryHandler(cb_back_to_settings, pattern="^back_to_settings$"))
 

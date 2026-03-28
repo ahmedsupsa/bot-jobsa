@@ -817,7 +817,7 @@ def announcements():
         content=f"""
         <div class="card">
           <h2>نشر إعلان جديد</h2>
-          <p>الإعلانات تظهر للمستخدمين في البوت (قسم الإعلانات).</p>
+          <p>الإعلانات تُرسل للمستخدمين <strong>تلقائياً</strong> في تليجرام (دون زر في القائمة).</p>
           {('<div class="msg">' + msg + '</div>') if msg else ''}
           <form method="post">
             <label>عنوان الإعلان</label>

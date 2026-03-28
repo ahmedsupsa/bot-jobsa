@@ -10,7 +10,7 @@ import httpx
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 import config
-from services.channel_job_parser import parse_job_posts_text
+from services.channel_job_parser import parse_tweet_jobs_text
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +42,15 @@ def _tweet_signal_score(text: str) -> int:
     if any(k in t for k in _NON_JOB_WORDS):
         score -= 2
     return score
+
+
+def _tweet_excluded_by_config(text: str) -> bool:
+    t = (text or "").lower()
+    for sub in getattr(config, "TWITTER_EXCLUDE_SUBSTRINGS", None) or []:
+        s = (sub or "").strip().lower()
+        if s and s in t:
+            return True
+    return False
 
 
 def _is_relevant_tweet(text: str, require_email: bool, allow_link_apply: bool, min_score: int) -> bool:
@@ -243,6 +252,11 @@ async def run_twitter_jobs_cycle(bot, bot_data: dict) -> None:
                 or err_json
             )[:900]
         logger.warning("Twitter API HTTP %s (%s): %s", status, auth_mode, detail)
+        if status == 401 and auth_mode == "user_oauth2":
+            logger.warning(
+                "Twitter OAuth2: إن كان المفروض OAuth 1.0a، احذف أو صفّر X_USER_ACCESS_TOKEN في البيئة "
+                "وأكمل مفاتيح X_OAUTH1_* الأربعة؛ Bearer منتهي أو غير مخوّل يسبب 401."
+            )
 
     try:
         if use_oauth1:
@@ -303,6 +317,9 @@ async def run_twitter_jobs_cycle(bot, bot_data: dict) -> None:
         if len(text) < 20:
             seen.add(tid)
             continue
+        if _tweet_excluded_by_config(text):
+            seen.add(tid)
+            continue
         if not _is_relevant_tweet(
             text=text,
             require_email=getattr(config, "TWITTER_REQUIRE_EMAIL", True),
@@ -319,7 +336,7 @@ async def run_twitter_jobs_cycle(bot, bot_data: dict) -> None:
             seen.add(tid)
             continue
 
-        jobs = await asyncio.to_thread(parse_job_posts_text, text)
+        jobs = await asyncio.to_thread(parse_tweet_jobs_text, text)
         if not jobs:
             seen.add(tid)
             continue

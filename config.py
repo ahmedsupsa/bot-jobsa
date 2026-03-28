@@ -98,6 +98,13 @@ def twitter_x_ingest_configured() -> bool:
 # مفتاح جيميني: يُستخدم في التقديم التلقائي لتوليد رسالة التغطية وقراءة السيرة من الصور (OCR)
 # من https://aistudio.google.com/apikey — إن لم يُضف، التقديم يعمل برسالة عامة وبدون قراءة الصور
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+# نموذج جيميني الوحيد في البوت (لا يُقرأ من البيئة)
+GEMINI_MODEL_FLASH = "gemini-2.5-flash"
+GEMINI_MODEL_PRO = "gemini-2.5-flash"
+
+# تويتر: تجاهل تغريدة إن وُجد كلمة من القائمة (مفصولة بفاصلة، مطابقة جزئية غير حساسة لحالة الأحرف)
+_texc = os.getenv("TWITTER_EXCLUDE_SUBSTRINGS", "").strip()
+TWITTER_EXCLUDE_SUBSTRINGS: list[str] = [x.strip().lower() for x in _texc.split(",") if x.strip()]
 
 # Resend (اختياري): عند تعيينه سيُستخدم بدل Gmail SMTP
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
