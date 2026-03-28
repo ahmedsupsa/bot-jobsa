@@ -29,7 +29,7 @@ async def download_cv_text_for_user(bot, user_id: str) -> tuple[str, str]:
     if not cv:
         return "", (
             "❌ لا توجد سيرة ذاتية مرفوعة.\n"
-            "ارفع السيرة من: 👤 حسابي → 📎 السيرة الذاتية\n"
+            "ارفع السيرة من: 👤 حسابي وإعدادات → 📎 السيرة الذاتية\n"
             "ثم اضغط 🎯 تفضيلات الوظائف."
         )
     file_id = (cv.get("file_id") or "").strip()

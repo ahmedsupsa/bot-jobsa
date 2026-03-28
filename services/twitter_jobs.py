@@ -11,6 +11,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 import config
 from services.channel_job_parser import parse_tweet_jobs_text
+from services.job_post_format import build_job_channel_post, subscription_reply_markup
 
 logger = logging.getLogger(__name__)
 
@@ -67,33 +68,6 @@ def _is_relevant_tweet(text: str, require_email: bool, allow_link_apply: bool, m
     return _tweet_signal_score(t) >= max(1, int(min_score or 1))
 
 
-def _format_post(fields: dict, email: str) -> str:
-    title = (fields.get("title_ar") or fields.get("title_en") or "وظيفة").strip()
-    title = re.sub(r"^\s*(?:الوظيفة\s+\S+)\s*[:\-–—]*\s*", "", title, flags=re.I).strip() or "وظيفة"
-    company = (fields.get("company") or "").strip()
-    city = (fields.get("city") or "").strip()
-    emp = (fields.get("employment_type") or "").strip()
-    salary = (fields.get("salary") or "").strip()
-    req = (fields.get("requirements") or fields.get("description_ar") or "").strip() or "مذكورة في نص الإعلان."
-
-    lines = ["فرصة وظيفية جديدة", "", f"المسمى: {title}"]
-    if company:
-        lines.append(f"الشركة: {company}")
-    if city:
-        lines.append(f"المدينة: {city}")
-    if emp:
-        lines.append(f"نوع الدوام: {emp}")
-    if salary:
-        lines.append(f"الراتب: {salary}")
-    lines.append("المتطلبات:")
-    for p in [x.strip(" -*•\t") for x in req.splitlines() if x.strip()][:4]:
-        lines.append(f"• {p[:220]}")
-    if email:
-        lines.append(f"التقديم: {email}")
-    lines.extend(["", "اشترك في بوت التقديم الذكي"])
-    return "\n".join(lines).strip()
-
-
 def _sorted_pending_ids(bot_data: dict) -> list[str]:
     pending: dict = bot_data.setdefault("twitter_pending_jobs", {})
     rows: list[tuple[str, str]] = []
@@ -113,7 +87,7 @@ def _review_text(bot_data: dict, candidate_id: str, status_line: str = "") -> st
     ids = _sorted_pending_ids(bot_data)
     total = len(ids)
     pos = (ids.index(candidate_id) + 1) if candidate_id in ids else 1
-    final_post = _format_post(fields, email)
+    final_post = build_job_channel_post(fields, email)
     final_post = final_post[:2600]
     parts = [
         "مراجعة وظائف تويتر (سلايدر)",
@@ -394,12 +368,13 @@ async def publish_pending_twitter_job(bot, bot_data: dict, candidate_id: str) ->
         pending.pop(candidate_id, None)
         return False, "تم تجاهل الطلب لأنه موجود مسبقاً."
 
-    post_text = _format_post(fields, email)
+    post_text = build_job_channel_post(fields, email)
     try:
         await bot.send_message(
             chat_id=config.TWITTER_TARGET_CHANNEL_ID,
             text=post_text,
             disable_web_page_preview=True,
+            reply_markup=subscription_reply_markup(),
         )
     except Exception as e:
         return False, f"فشل نشر القناة: {e}"

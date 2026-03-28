@@ -10,94 +10,20 @@ import re
 import asyncio
 
 import config
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from telegram.ext import ContextTypes
 
 from database.db import add_admin_job
 from services.channel_job_parser import parse_job_posts_text
 from services.cover_letter import extract_text_from_image
+from services.job_post_format import build_job_channel_post, subscription_reply_markup
 
 logger = logging.getLogger(__name__)
-_STORE_URL = "https://ahmedsup.com/VDPvOWx"
-_BOT_PROMO = "اشترك في بوت التقديم الذكي"
 
 
 def _extract_first_url(text: str) -> str:
     url = re.search(r"https?://[^\s]+", text or "")
     return (url.group(0).rstrip(".,)") if url else "")
-
-
-def _clean_text_block(text: str) -> str:
-    t = (text or "").strip()
-    t = re.sub(r"\[[^\]]+\]\([^)]+\)", "", t)  # remove markdown links
-    # إزالة الإيموجي والرموز الزخرفية الشائعة
-    t = re.sub(r"[\U0001F300-\U0001FAFF\u2600-\u27BF]+", " ", t)
-    t = re.sub(r"\s+", " ", t).strip()
-    return t
-
-
-def _normalize_job_title(title: str) -> str:
-    t = _clean_text_block(title)
-    # إزالة بادئات مثل: "الوظيفة الثالثة:" أو "وظيفة رقم 2:"
-    t = re.sub(
-        r"^\s*(?:الوظيفة\s+(?:الأولى|الثانية|الثالثة|الرابعة|الخامسة|السادسة|السابعة|الثامنة|التاسعة|العاشرة|\d+)|وظيفة(?:\s+رقم)?\s*\d*)\s*[:\-–—]*\s*",
-        "",
-        t,
-        flags=re.I,
-    )
-    return t.strip(" -:") or "وظيفة"
-
-
-def _pick_requirement_points(req: str) -> list[str]:
-    raw = (req or "").strip()
-    if not raw:
-        return ["مذكورة في الإعلان."]
-    lines = [x.strip(" -*•\t") for x in re.split(r"[\r\n]+", raw) if x.strip()]
-    points = []
-    for ln in lines:
-        if len(ln) < 6:
-            continue
-        # تجاهل عناوين عامة
-        if re.search(r"^(الوصف|الشروط|المتطلبات|طريقة التقديم)\b", ln, re.I):
-            continue
-        points.append(_clean_text_block(ln))
-        if len(points) >= 4:
-            break
-    if points:
-        return points
-    return [_clean_text_block(raw)[:220]]
-
-
-def _build_custom_post(fields: dict, email: str) -> str:
-    title = _normalize_job_title((fields.get("title_ar") or fields.get("title_en") or "وظيفة").strip())
-    company = _clean_text_block((fields.get("company") or "").strip())
-    city = _clean_text_block((fields.get("city") or "").strip())
-    emp = _clean_text_block((fields.get("employment_type") or "").strip())
-    salary = _clean_text_block((fields.get("salary") or "").strip())
-    req = (fields.get("requirements") or fields.get("description_ar") or "").strip()
-
-    lines = [
-        "فرصة وظيفية جديدة",
-        "",
-        f"المسمى: {title}",
-    ]
-    if company:
-        lines.append(f"الشركة: {company}")
-    if city:
-        lines.append(f"المدينة: {city}")
-    if emp:
-        lines.append(f"نوع الدوام: {emp}")
-    if salary:
-        lines.append(f"الراتب: {salary}")
-
-    lines.append("المتطلبات:")
-    for p in _pick_requirement_points(req):
-        lines.append(f"• {p[:220]}")
-
-    if email:
-        lines.append(f"التقديم: {email}")
-    lines.extend(["", _BOT_PROMO])
-    return "\n".join(lines).strip()
 
 
 async def _raw_text_from_channel_post(
@@ -160,7 +86,7 @@ async def handle_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE
         link = fields.get("link_url") or _extract_first_url(raw)
 
         company = (fields.get("company") or "").strip()
-        formatted = _build_custom_post(fields, email)
+        formatted = build_job_channel_post(fields, email)
 
         # انشر النسخة المنسقة كرسالة مستقلة في نفس القناة.
         try:
@@ -168,9 +94,7 @@ async def handle_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE
                 chat_id=update.channel_post.chat_id,
                 text=formatted,
                 disable_web_page_preview=True,
-                reply_markup=InlineKeyboardMarkup(
-                    [[InlineKeyboardButton("رابط الاشتراك", url=_STORE_URL)]]
-                ),
+                reply_markup=subscription_reply_markup(),
             )
         except Exception:
             logger.exception("فشل نشر الوظيفة المنسقة في القناة")

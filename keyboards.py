@@ -9,11 +9,11 @@ from telegram import (
 # ─────────────────────────────────────────────
 
 def main_reply_keyboard():
-    """القائمة الرئيسية - تظهر دائماً (4 خيارات). الإعلانات تُرسل تلقائياً ولا تحتاج زراً."""
+    """القائمة الرئيسية — حسابي والإعدادات في زر واحد. الإعلانات تُرسل تلقائياً."""
     return ReplyKeyboardMarkup(
         [
-            [KeyboardButton("📄 التقديمات"), KeyboardButton("👤 حسابي")],
-            [KeyboardButton("🎯 تفضيلات الوظائف"), KeyboardButton("⚙️ الإعدادات")],
+            [KeyboardButton("📄 التقديمات"), KeyboardButton("👤 حسابي وإعدادات")],
+            [KeyboardButton("🎯 تفضيلات الوظائف")],
         ],
         resize_keyboard=True,
         input_field_placeholder="اختر من القائمة...",
@@ -31,15 +31,26 @@ def applications_reply_keyboard():
     )
 
 
-def account_reply_keyboard():
+def account_settings_reply_keyboard():
+    """حسابي + إعدادات في لوحة واحدة."""
     return ReplyKeyboardMarkup(
         [
             [KeyboardButton("📄 بياناتي"), KeyboardButton("📎 السيرة الذاتية")],
             [KeyboardButton("📊 حالة الاشتراك")],
+            [KeyboardButton("📧 ربط الإيميل"), KeyboardButton("📘 دليل البدء")],
+            [KeyboardButton("📞 تواصل معنا")],
             [KeyboardButton("⬅️ الرئيسية")],
         ],
         resize_keyboard=True,
     )
+
+
+def account_reply_keyboard():
+    return account_settings_reply_keyboard()
+
+
+def settings_reply_keyboard():
+    return account_settings_reply_keyboard()
 
 
 def cv_reply_keyboard():
@@ -47,17 +58,6 @@ def cv_reply_keyboard():
         [
             [KeyboardButton("➕ رفع سيرة ذاتية"), KeyboardButton("👁️ معاينة السيرة")],
             [KeyboardButton("⬅️ حسابي")],
-        ],
-        resize_keyboard=True,
-    )
-
-
-def settings_reply_keyboard():
-    return ReplyKeyboardMarkup(
-        [
-            [KeyboardButton("📧 ربط الإيميل"), KeyboardButton("📘 دليل البدء")],
-            [KeyboardButton("📞 تواصل معنا")],
-            [KeyboardButton("⬅️ الرئيسية")],
         ],
         resize_keyboard=True,
     )

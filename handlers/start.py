@@ -75,13 +75,13 @@ async def receive_activation_code(update: Update, context: ContextTypes.DEFAULT_
     # إذا كان النص يبدو إيميلاً أو كلمة مرور تطبيق، لا نعتبره كود تفعيل ونهدي المحادثة
     if "@" in code and ("gmail" in code.lower() or "." in code):
         await update.message.reply_text(
-            "يبدو أنك أدخلت إيميلاً. لربط الإيميل: القائمة الرئيسية ← الإعدادات ← ربط الإيميل.",
+            "يبدو أنك أدخلت إيميلاً. لربط الإيميل: القائمة الرئيسية ← 👤 حسابي وإعدادات ← 📧 ربط الإيميل.",
             reply_markup=back_to_main_start_keyboard(),
         )
         return ConversationHandler.END
     if len(code.split()) >= 3 and all(len(w) <= 6 for w in code.split()):
         await update.message.reply_text(
-            "يبدو أنك أدخلت كلمة مرور التطبيق. لربط الإيميل: الإعدادات ← ربط الإيميل.",
+            "يبدو أنك أدخلت كلمة مرور التطبيق. لربط الإيميل: 👤 حسابي وإعدادات ← 📧 ربط الإيميل.",
             reply_markup=back_to_main_start_keyboard(),
         )
         return ConversationHandler.END

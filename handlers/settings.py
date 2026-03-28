@@ -118,6 +118,8 @@ _EMAIL_IGNORE_BUTTONS = (
     "🖼️ قوالب التقديم",
     "📞 تواصل معنا",
     "⚙️ الإعدادات",
+    "👤 حسابي وإعدادات",
+    "👤 حسابي",
 )
 
 _USES_RESEND = bool((RESEND_API_KEY or "").strip() and (RESEND_FROM_EMAIL or "").strip())
@@ -141,7 +143,9 @@ async def receive_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await cancel_email_flow(update, context, "القائمة الرئيسية:", main_reply_keyboard())
         return
     if email == _EMAIL_CANCEL_ACCOUNT:
-        await cancel_email_flow(update, context, "👤 حسابي:", account_reply_keyboard())
+        from handlers.main_menu import _account_settings_header_text
+        header = await _account_settings_header_text(update.effective_user.id if update.effective_user else None)
+        await cancel_email_flow(update, context, header, account_reply_keyboard())
         return
     # إذا ضغط زر من القائمة بدل كتابة الإيميل نطلب منه الكتابة فقط
     if email in _EMAIL_IGNORE_BUTTONS:
@@ -221,7 +225,9 @@ async def receive_app_password(update: Update, context: ContextTypes.DEFAULT_TYP
         await cancel_email_flow(update, context, "القائمة الرئيسية:", main_reply_keyboard())
         return
     if raw == _EMAIL_CANCEL_ACCOUNT:
-        await cancel_email_flow(update, context, "👤 حسابي:", account_reply_keyboard())
+        from handlers.main_menu import _account_settings_header_text
+        header = await _account_settings_header_text(update.effective_user.id if update.effective_user else None)
+        await cancel_email_flow(update, context, header, account_reply_keyboard())
         return
     password = raw
     user = await asyncio.to_thread(get_user_by_telegram, update.effective_user.id)
@@ -389,7 +395,7 @@ async def cb_back_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if query:
         await query.answer()
-        await query.edit_message_text("⚙️ الإعدادات\n\nاختر:", reply_markup=settings_menu_keyboard())
+        await query.edit_message_text("👤 حسابي وإعدادات\n\nاختر:", reply_markup=settings_menu_keyboard())
     return ConversationHandler.END
 
 

@@ -22,7 +22,8 @@ from keyboards import (
 # نص الأزرار لكل القوائم - يُستخدم في الـ Regex
 _ALL_BUTTONS = (
     # رئيسية
-    "📄 التقديمات", "👤 حسابي", "⚙️ الإعدادات",
+    "📄 التقديمات", "👤 حسابي وإعدادات",
+    "👤 حسابي", "⚙️ الإعدادات",  # لوحات قديمة
     "📢 الإعلانات",  # قديم: رد توضيحي فقط
     # تقديمات
     "📌 التقديمات المرسلة", "📅 سجل التقديمات",
@@ -54,6 +55,18 @@ async def _settings_header_text(telegram_user_id: int | None) -> str:
         extra = f"\n📨 إيميل التقديم: {sender_alias}" if sender_alias else ""
         return f"⚙️ الإعدادات:\n\n📧 الإيميل المربوط: {current_email}{extra}\n\nاختر:"
     return "⚙️ الإعدادات:\n\n📧 الإيميل المربوط: لا يوجد\n\nاختر:"
+
+
+async def _account_settings_header_text(telegram_user_id: int | None) -> str:
+    """نفس محتوى الإعدادات مع عنوان موحّد (حسابي + إعدادات)."""
+    t = await _settings_header_text(telegram_user_id)
+    return t.replace("⚙️ الإعدادات:", "👤 حسابي وإعدادات:", 1)
+
+
+async def _reply_account_settings_screen(update: Update) -> None:
+    uid = update.effective_user.id if update.effective_user else None
+    header = await _account_settings_header_text(uid)
+    await update.message.reply_text(header, reply_markup=account_reply_keyboard())
 
 
 async def _check_user(update: Update) -> dict | None:
@@ -94,7 +107,7 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
             clear_email_flow_state(update.effective_user.id, update.effective_chat.id)
         context.user_data.pop("awaiting", None)
         context.user_data.pop("temp_email", None)
-        await update.message.reply_text("👤 حسابي:", reply_markup=account_reply_keyboard())
+        await _reply_account_settings_screen(update)
         return
 
     if text == "⬅️ رجوع":
@@ -124,12 +137,12 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
     if text == "📄 التقديمات" or (text.endswith("التقديمات") and "احصائيات" not in text and "المرسلة" not in text and "سجل" not in text):
         await update.message.reply_text("📄 التقديمات:\n\nاختر:", reply_markup=applications_reply_keyboard())
 
-    elif text == "👤 حسابي":
-        await update.message.reply_text("👤 حسابي:\n\nاختر:", reply_markup=account_reply_keyboard())
-
-    elif text == "⚙️ الإعدادات":
-        header = await _settings_header_text(update.effective_user.id if update.effective_user else None)
-        await update.message.reply_text(header, reply_markup=settings_reply_keyboard())
+    elif text in ("👤 حسابي وإعدادات", "👤 حسابي", "⚙️ الإعدادات"):
+        if update.effective_user and update.effective_chat:
+            clear_email_flow_state(update.effective_user.id, update.effective_chat.id)
+        context.user_data.pop("awaiting", None)
+        context.user_data.pop("temp_email", None)
+        await _reply_account_settings_screen(update)
 
     # ──── تفضيلات الوظائف: تحليل السيرة بالذكاء الاصطناعي فقط ────
     elif text == "🎯 تفضيلات الوظائف":
@@ -257,13 +270,13 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
     elif text == "📘 دليل البدء":
         await update.message.reply_text(
             "📘 **دليل البدء السريع**\n\n"
-            "1) من الإعدادات اضغط **📧 ربط الإيميل** وأدخل بريدك الشخصي.\n"
-            "2) ارفع السيرة من **👤 حسابي → 📎 السيرة الذاتية**.\n"
+            "1) من **👤 حسابي وإعدادات** اضغط **📧 ربط الإيميل** وأدخل بريدك الشخصي.\n"
+            "2) ارفع السيرة من **📎 السيرة الذاتية** في نفس القائمة.\n"
             "3) بعد رفع السيرة تُحدَّث **تفضيلات الوظائف تلقائياً** بالذكاء الاصطناعي؛ أو اضغط **🎯 تفضيلات الوظائف** لإعادة التحليل.\n"
             "4) التقديم التلقائي يطابق السيرة والجنس عند الإعلانات المخصصة، ويصلك إشعار عند كل تقديم.\n"
             "5) **إعلانات الإدارة** تُرسل لك تلقائياً في المحادثة (لا يوجد زر للإعلانات في القائمة).\n\n"
             "📨 الردود من الشركات تصلك على إيميلك الشخصي المربوط.\n"
-            "📨 إيميل التقديم الخاص من نطاقنا يظهر لك داخل الإعدادات.",
+            "📨 إيميل التقديم الخاص من نطاقنا يظهر في أعلى شاشة **👤 حسابي وإعدادات**.",
             parse_mode="Markdown",
             reply_markup=settings_reply_keyboard(),
         )
@@ -310,13 +323,14 @@ async def cb_back_to_applications(update: Update, context: ContextTypes.DEFAULT_
 
 async def cb_back_to_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    if not query:
+    if not query or not update.effective_user:
         return
     await query.answer()
-    await query.edit_message_text("⚙️ الإعدادات:")
+    header = await _account_settings_header_text(update.effective_user.id)
+    await query.edit_message_text("👤 حسابي وإعدادات:")
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="اختر:",
+        text=header,
         reply_markup=settings_reply_keyboard(),
     )
 
@@ -334,20 +348,8 @@ async def cb_menu_applications(update: Update, context: ContextTypes.DEFAULT_TYP
     )
 
 
-async def cb_menu_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    if not query:
-        return
-    await query.answer()
-    await query.edit_message_text("👤 حسابي:")
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text="اختر:",
-        reply_markup=account_reply_keyboard(),
-    )
-
-
-async def cb_menu_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def _cb_menu_account_or_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """قائمة موحّدة لحسابي والإعدادات (من زرين قديمين في Inline إن وُجدت)."""
     query = update.callback_query
     if not query or not update.effective_user or not update.effective_chat:
         return
@@ -356,13 +358,21 @@ async def cb_menu_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     clear_email_flow_state(update.effective_user.id, update.effective_chat.id)
     context.user_data.pop("awaiting", None)
     context.user_data.pop("temp_email", None)
-    header = await _settings_header_text(update.effective_user.id if update.effective_user else None)
-    await query.edit_message_text("⚙️ الإعدادات:")
+    header = await _account_settings_header_text(update.effective_user.id)
+    await query.edit_message_text("👤 حسابي وإعدادات:")
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=header,
-        reply_markup=settings_reply_keyboard(),
+        reply_markup=account_reply_keyboard(),
     )
+
+
+async def cb_menu_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _cb_menu_account_or_settings(update, context)
+
+
+async def cb_menu_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _cb_menu_account_or_settings(update, context)
 
 
 async def handle_applications_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE):
