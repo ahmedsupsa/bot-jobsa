@@ -57,15 +57,6 @@ async def announcements_job(context: ContextTypes.DEFAULT_TYPE) -> None:
         logger.error("❌ خطأ في دورة الإعلانات: %s", e)
 
 
-async def twitter_jobs_job(context: ContextTypes.DEFAULT_TYPE) -> None:
-    """مهمة دورية: جلب وظائف من Twitter/X ونشرها بالقناة."""
-    from services.twitter_jobs import run_twitter_jobs_cycle
-    try:
-        await run_twitter_jobs_cycle(context.bot, context.application.bot_data)
-    except Exception as e:
-        logger.error("❌ خطأ في دورة وظائف تويتر: %s", e)
-
-
 def main():
     app = Application.builder().token(config.BOT_TOKEN).build()
     setup_all_handlers(app)
@@ -88,14 +79,6 @@ def main():
             first=90,
             name="announcements_cycle",
         )
-        if config.twitter_x_ingest_configured():
-            job_queue.run_repeating(
-                twitter_jobs_job,
-                interval=300,  # كل 5 دقائق
-                first=150,
-                name="twitter_jobs_cycle",
-            )
-            logger.info("🐦 Twitter ingest مُفعّل: كل 5 دقائق.")
         logger.info("📅 Scheduler مُفعَّل: تقديم تلقائي كل 30 دقيقة.")
         if getattr(config, "GEMINI_API_KEY", ""):
             logger.info("🔑 GEMINI_API_KEY معرّف — التقديم التلقائي يستخدم جيميني لرسالة التغطية وقراءة السيرة (PDF/صور).")
