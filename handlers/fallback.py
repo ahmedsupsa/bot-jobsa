@@ -16,7 +16,6 @@ _KNOWN_BUTTONS = {
     # main/user menus
     "📄 التقديمات", "👤 حسابي وإعدادات", "👤 حسابي", "⚙️ الإعدادات", "📢 الإعلانات",
     "📌 التقديمات المرسلة", "📅 سجل التقديمات", "🎯 تفضيلات الوظائف",
-    "مجالات عامة", "مجالات خاصة", "الاثنين",
     "📄 بياناتي", "📎 السيرة الذاتية", "📊 حالة الاشتراك",
     "➕ رفع سيرة ذاتية", "👁️ معاينة السيرة",
     "📧 ربط الإيميل", "🖼️ قوالب التقديم", "📞 تواصل معنا",
@@ -46,8 +45,6 @@ async def handle_unknown_text(update: Update, context: ContextTypes.DEFAULT_TYPE
     if context.user_data.get("awaiting") in {
         "email", "app_password", "activation_code", "register_name", "register_phone", "register_age", "register_city"
     }:
-        return
-    if context.user_data.get("awaiting_job_search"):
         return
     if context.user_data.get("awaiting_cv"):
         return

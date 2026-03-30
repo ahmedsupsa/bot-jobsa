@@ -266,7 +266,7 @@ def setup_start_handlers(application):
         ],
     )
     application.add_handler(CommandHandler("start", cmd_start))
-    # group=-1 حتى تُعالج رسالة كود التفعيل قبل msg_job_search (group 0) الذي يلتقط كل النصوص
+    # group=-1 لإعطاء أولوية لمسار التسجيل/كود التفعيل على بقية معالجات النص.
     application.add_handler(conv, group=-1)
     application.add_handler(CallbackQueryHandler(cb_start_subscribe, pattern="^start_subscribe$"))
     application.add_handler(CallbackQueryHandler(cb_main_start, pattern="^main_start$"))

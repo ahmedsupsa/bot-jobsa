@@ -205,41 +205,6 @@ async def cb_app_job_prefs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def cb_job_cat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    if not query:
-        return
-    await query.answer()
-    await query.edit_message_text(
-        "التفضيلات تُحدَّث تلقائياً من السيرة بالذكاء الاصطناعي.\n"
-        "افتح 🎯 تفضيلات الوظائف من القائمة أو التقديمات.",
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("⬅️ الرجوع للتقديمات", callback_data="back_to_applications")]],
-        ),
-    )
-
-
-async def cb_job_page(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    if not query:
-        return
-    await query.answer("هذه القائمة قديمة. استخدم 🎯 تفضيلات الوظائف من القائمة الرئيسية.", show_alert=True)
-
-
-async def cb_job_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    if not query:
-        return
-    await query.answer("التفضيلات تُضبط تلقائياً من السيرة. استخدم 🎯 تفضيلات الوظائف.", show_alert=True)
-
-
-async def cb_job_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    if not query:
-        return
-    await query.answer("استخدم 🎯 تفضيلات الوظائف لتحليل السيرة.", show_alert=True)
-
-
 async def cb_job_ai_suggest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if not query or not update.effective_user:
@@ -291,9 +256,6 @@ async def cb_job_save_prefs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from handlers.main_menu import cb_back_to_applications
 
     context.user_data.pop("job_prefs_user_id", None)
-    context.user_data.pop("job_prefs_category", None)
-    context.user_data.pop("job_prefs_page", None)
-    context.user_data.pop("awaiting_job_search", None)
     await cb_back_to_applications(update, context)
     try:
         msg = get_next_auto_apply_message(context)
@@ -302,44 +264,16 @@ async def cb_job_save_prefs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pass
 
 
-async def msg_job_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message:
-        return
-    context.user_data["awaiting_job_search"] = False
-    from keyboards import main_reply_keyboard
-
-    await update.message.reply_text(
-        "تم إلغاء البحث القديم.\n"
-        "التفضيلات تُحدَّث من السيرة تلقائياً: اضغط **🎯 تفضيلات الوظائف** من القائمة.",
-        reply_markup=main_reply_keyboard(),
-    )
-
-
 async def route_text_after_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """مسار قديم للبحث النصي: لا يتدخل إلا عند انتظار بحث فعلي."""
-    if not update.message or not update.message.text:
-        return
-    if context.user_data.get("awaiting_job_search"):
-        await msg_job_search(update, context)
-        return
-    # لا شيء: نترك الرسائل غير المعروفة لمعالج fallback الأخير فقط (group=2).
+    """مسار متروك للتوافق — لا يتدخل في أي نص."""
     return
 
 
 def setup_applications_handlers(application):
-    from telegram.ext import CallbackQueryHandler, MessageHandler, filters
+    from telegram.ext import CallbackQueryHandler
     application.add_handler(CallbackQueryHandler(cb_app_sent, pattern="^app_sent$"))
     application.add_handler(CallbackQueryHandler(cb_app_log, pattern="^app_log$"))
     application.add_handler(CallbackQueryHandler(cb_app_admin_jobs, pattern="^app_admin_jobs$"))
     application.add_handler(CallbackQueryHandler(cb_app_job_prefs, pattern="^app_job_prefs$"))
-    application.add_handler(CallbackQueryHandler(cb_job_cat, pattern="^job_cat_"))
-    application.add_handler(CallbackQueryHandler(cb_job_page, pattern="^job_page_"))
-    application.add_handler(CallbackQueryHandler(cb_job_toggle, pattern="^job_toggle_"))
     application.add_handler(CallbackQueryHandler(cb_job_ai_suggest, pattern="^job_ai_suggest$"))
-    application.add_handler(CallbackQueryHandler(cb_job_search, pattern="^job_search$"))
     application.add_handler(CallbackQueryHandler(cb_job_save_prefs, pattern="^job_save_prefs$"))
-    # نص خاص: البحث عن مجال أو (إن لم يكن في وضع بحث) إعادة لوحة المفاتيح
-    application.add_handler(MessageHandler(
-        filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE,
-        route_text_after_settings,
-    ))

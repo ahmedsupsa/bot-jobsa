@@ -28,8 +28,6 @@ _ALL_BUTTONS = (
     # تقديمات
     "📌 التقديمات المرسلة", "📅 سجل التقديمات",
     "🎯 تفضيلات الوظائف",
-    # تفضيلات الوظائف (Reply Keyboard)
-    "مجالات عامة", "مجالات خاصة", "الاثنين",
     # حسابي
     "📄 بياناتي", "📎 السيرة الذاتية", "📊 حالة الاشتراك",
     # سيرة ذاتية
@@ -113,9 +111,6 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
     if text == "⬅️ رجوع":
         # رجوع لقائمة التقديمات من تفضيلات الوظائف
         context.user_data.pop("job_prefs_user_id", None)
-        context.user_data.pop("job_prefs_category", None)
-        context.user_data.pop("job_prefs_page", None)
-        context.user_data.pop("job_prefs_search", None)
         await update.message.reply_text("📄 التقديمات:\n\nاختر:", reply_markup=applications_reply_keyboard())
         return
 
@@ -149,13 +144,6 @@ async def handle_reply_keyboard(update: Update, context: ContextTypes.DEFAULT_TY
         from handlers.applications import run_job_prefs_ai_from_reply
 
         await run_job_prefs_ai_from_reply(update, context, user)
-
-    elif text in ("مجالات عامة", "مجالات خاصة", "الاثنين"):
-        await update.message.reply_text(
-            "ℹ️ التفضيلات تُحدَّث تلقائياً من السيرة بالذكاء الاصطناعي.\n"
-            "اضغط **🎯 تفضيلات الوظائف** لتحليل السيرة وتحديث المجالات.",
-            reply_markup=main_reply_keyboard(),
-        )
 
     # ──── التقديمات ────
     elif text == "📌 التقديمات المرسلة":

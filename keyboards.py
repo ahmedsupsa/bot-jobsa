@@ -141,56 +141,9 @@ def lang_menu_keyboard():
     ])
 
 
-def job_categories_keyboard():
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("مجالات عامة", callback_data="job_cat_general")],
-        [InlineKeyboardButton("مجالات خاصة", callback_data="job_cat_specific")],
-        [InlineKeyboardButton("الاثنين", callback_data="job_cat_both")],
-        [InlineKeyboardButton("⬅️ الرجوع", callback_data="back_to_applications")],
-    ])
-
-
-def job_categories_reply_keyboard():
-    return ReplyKeyboardMarkup(
-        [
-            [KeyboardButton("مجالات عامة")],
-            [KeyboardButton("مجالات خاصة")],
-            [KeyboardButton("الاثنين")],
-            [KeyboardButton("⬅️ رجوع")],
-        ],
-        resize_keyboard=True,
-    )
-
-
 def job_prefs_ai_actions_keyboard():
     """بعد تحليل التفضيلات بالذكاء الاصطناعي (بدون اختيار يدوي للمجالات)."""
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🔄 إعادة التحليل من السيرة", callback_data="job_ai_suggest")],
         [InlineKeyboardButton("⬅️ الرجوع للتقديمات", callback_data="back_to_applications")],
     ])
-
-
-def job_fields_keyboard(fields: list, selected_ids: list, category: str, page: int = 0, search: str = ""):
-    per_page = 8
-    start = page * per_page
-    end = start + per_page
-    chunk = fields[start:end]
-    buttons = []
-    for f in chunk:
-        sid = str(f["id"])
-        label = f.get("name_ar") or f.get("name_en") or sid
-        if sid in selected_ids:
-            label = "✅ " + label
-        buttons.append([InlineKeyboardButton(label, callback_data=f"job_toggle_{f['id']}")])
-    nav = []
-    if page > 0:
-        nav.append(InlineKeyboardButton("◀️ السابق", callback_data=f"job_page_{category}_{page-1}"))
-    if end < len(fields):
-        nav.append(InlineKeyboardButton("التالي ▶️", callback_data=f"job_page_{category}_{page+1}"))
-    if nav:
-        buttons.append(nav)
-    buttons.append([InlineKeyboardButton("✨ اقتراح ذكي من السيرة", callback_data="job_ai_suggest")])
-    buttons.append([InlineKeyboardButton("🔍 بحث", callback_data="job_search")])
-    buttons.append([InlineKeyboardButton("✅ حفظ التفضيلات", callback_data="job_save_prefs")])
-    buttons.append([InlineKeyboardButton("⬅️ الرجوع", callback_data="back_to_applications")])
-    return InlineKeyboardMarkup(buttons)
