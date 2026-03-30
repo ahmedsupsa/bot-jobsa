@@ -27,19 +27,9 @@ def build_application_html(
     """
     HTML موحّد لرسالة التقديم (قالب واحد في البوت — لا formal/professional منفصلة).
     company: يُعرض إن وُجد (مثل اسم صاحب العمل).
-    cv_used_for_letter: إذا True يُضاف سطر يوضح أن رسالة التغطية وُلت من تحليل السيرة.
+    cv_used_for_letter: مُهمل حالياً للتوافق فقط (لا نعرض أي سطر إضافي).
     """
     cv_note_html = ""
-    if cv_used_for_letter:
-        cv_note_html = (
-            '<p style="font-size:12px;color:#64748b;margin:0 0 12px 0;line-height:1.6;">'
-            "ℹ️ تم إنشاء نص التقديم بمساعدة تحليل السيرة الذاتية المرفوعة."
-            "</p>"
-        ) if lang == "ar" else (
-            '<p style="font-size:12px;color:#64748b;margin:0 0 12px 0;line-height:1.6;">'
-            "ℹ️ Cover letter generated with assistance from your uploaded CV."
-            "</p>"
-        )
 
     cover_html = cover_letter.replace("\n", "<br>") if cover_letter else ""
     is_ar = (lang or "ar").strip().lower() == "ar"

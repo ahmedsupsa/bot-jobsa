@@ -316,18 +316,14 @@ async def msg_job_search(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def route_text_after_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    بعد معالج ربط الإيميل (نفس المجموعة 0):
-    - إن كان المستخدم في وضع البحث عن مجال → msg_job_search
-    - وإلا → إعادة لوحة المفاتيح مع رسالة توضيحية (لم يعد msg_job_search يلتقط كل النصوص بصمت)
-    """
+    """مسار قديم للبحث النصي: لا يتدخل إلا عند انتظار بحث فعلي."""
     if not update.message or not update.message.text:
         return
     if context.user_data.get("awaiting_job_search"):
         await msg_job_search(update, context)
         return
-    from handlers.fallback import handle_unknown_text
-    await handle_unknown_text(update, context)
+    # لا شيء: نترك الرسائل غير المعروفة لمعالج fallback الأخير فقط (group=2).
+    return
 
 
 def setup_applications_handlers(application):

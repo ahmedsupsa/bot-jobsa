@@ -191,6 +191,7 @@ async def receive_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "سيتم استخدام إيميلك الشخصي كـ Reply-To واستلام نسخة من التقديم.",
             reply_markup=back_to_settings_keyboard(),
         )
+        context.user_data["_suppress_unknown_once"] = True
         try:
             from templates.preview import send_welcome_email
             settings = await asyncio.to_thread(get_or_create_user_settings, user["id"])
@@ -268,6 +269,7 @@ async def receive_app_password(update: Update, context: ContextTypes.DEFAULT_TYP
         "✅ تم ربط الإيميل بنجاح\nسيتم الإرسال من إيميلك مباشرة",
         reply_markup=back_to_settings_keyboard(),
     )
+    context.user_data["_suppress_unknown_once"] = True
     try:
         from templates.preview import send_welcome_email
         settings = await asyncio.to_thread(get_or_create_user_settings, user["id"])

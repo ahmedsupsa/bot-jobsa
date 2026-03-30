@@ -193,6 +193,8 @@ async def receive_register_city(update: Update, context: ContextTypes.DEFAULT_TY
         return ConversationHandler.END
     for k in ["activation_code", "register_name", "register_phone", "register_age", "awaiting"]:
         context.user_data.pop(k, None)
+    # منع fallback من إظهار "لم أفهم" لنفس رسالة المدينة بعد إتمام التسجيل مباشرة.
+    context.user_data["_suppress_unknown_once"] = True
     await update.message.reply_text(
         "✅ تم حفظ بياناتك بنجاح!\n\n"
         "يمكنك الآن استخدام البوت من الأزرار في الأسفل 👇",

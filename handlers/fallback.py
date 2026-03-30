@@ -39,6 +39,9 @@ async def handle_unknown_text(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
     if text in _KNOWN_BUTTONS:
         return
+    # بعد بعض المعالجات النصية (مثل إتمام التسجيل/ربط الإيميل) نتخطى fallback مرة واحدة.
+    if context.user_data.pop("_suppress_unknown_once", False):
+        return
     # لا نتدخل أثناء خطوات الإدخال المتوقعة
     if context.user_data.get("awaiting") in {
         "email", "app_password", "activation_code", "register_name", "register_phone", "register_age", "register_city"

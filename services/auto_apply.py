@@ -12,6 +12,7 @@ import logging
 import tempfile
 import os
 import time
+import re
 from config import RESEND_API_KEY, RESEND_FROM_EMAIL
 
 logger = logging.getLogger(__name__)
@@ -30,13 +31,40 @@ _last_missing_requirements_notification: dict[str, float] = {}  # user_id -> tim
 
 
 def _job_matches_user(job: dict, user_field_names: list[str]) -> bool:
-    """تحقق إذا كانت الوظيفة تطابق تفضيلات المستخدم (المملوءة من تحليل السيرة)."""
+    """تحقق صارم: لا تقديم إلا عند وجود إشارة واضحة لتفضيلات المستخدم داخل نص الوظيفة."""
     if not user_field_names:
         return False
-    job_specs = (job.get("specializations") or "").lower()
-    if not job_specs:
-        return True
-    return any(name.lower() in job_specs for name in user_field_names if name)
+    job_blob = " ".join([
+        str(job.get("specializations") or ""),
+        str(job.get("title_ar") or ""),
+        str(job.get("title_en") or ""),
+        str(job.get("description_ar") or ""),
+        str(job.get("description_en") or ""),
+    ]).lower()
+    if not job_blob.strip():
+        return False
+
+    # 1) تطابق عبارة المجال كاملة (الأدق).
+    for name in user_field_names:
+        n = (name or "").strip().lower()
+        if n and n in job_blob:
+            return True
+
+    # 2) تطابق كلمات دلالية من أسماء المجالات (fallback) — نطلب كلمتين على الأقل لتقليل العشوائية.
+    words: set[str] = set()
+    for name in user_field_names:
+        n = (name or "").strip().lower()
+        if not n:
+            continue
+        for w in re.split(r"[\s\-/_,()]+", n):
+            w = w.strip()
+            if len(w) >= 4:
+                words.add(w)
+
+    if not words:
+        return False
+    hits = sum(1 for w in words if w in job_blob)
+    return hits >= 2
 
 
 def _can_send_now(user_id: str) -> bool:
