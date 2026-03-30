@@ -30,6 +30,13 @@ _MISSING_REQUIREMENTS_COOLDOWN_SECONDS = 86400  # 24 ساعة
 _last_missing_requirements_notification: dict[str, float] = {}  # user_id -> time.time()
 
 
+def _strip_emojis(text: str) -> str:
+    s = (text or "")
+    s = re.sub(r"[\U0001F300-\U0001FAFF\U0001F1E6-\U0001F1FF\u2600-\u27BF]+", "", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
 def _job_matches_user(job: dict, user_field_names: list[str]) -> bool:
     """تحقق صارم: لا تقديم إلا عند وجود إشارة واضحة لتفضيلات المستخدم داخل نص الوظيفة."""
     if not user_field_names:
@@ -278,6 +285,7 @@ async def run_auto_apply_cycle(bot) -> None:
                 )
             except Exception:
                 cover = ""
+            cover = _strip_emojis(cover)
 
             # بناء HTML (قالب واحد) + إظهار أن الرسالة نُشئت من السيرة إن وُجد نصها
             html_body = build_application_html(
@@ -290,9 +298,10 @@ async def run_auto_apply_cycle(bot) -> None:
                 cv_used_for_letter=len((cv_text or "").strip()) > 80,
             )
 
+            clean_job_title = _strip_emojis(job_title)
             subject = (
-                f"التقديم على وظيفة: {job_title}" if lang == "ar"
-                else f"Application for: {job_title}"
+                f"التقديم على وظيفة: {clean_job_title}" if lang == "ar"
+                else f"Application for: {clean_job_title}"
             )
 
             try:

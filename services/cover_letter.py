@@ -5,9 +5,18 @@
 """
 import os
 import io
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
+
+
+def _strip_emojis(text: str) -> str:
+    """حذف الإيموجي/الرموز التصويرية من النص مع الحفاظ على العربية والإنجليزية."""
+    s = (text or "")
+    s = re.sub(r"[\U0001F300-\U0001FAFF\U0001F1E6-\U0001F1FF\u2600-\u27BF]+", "", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
 
 def _gemini_api_key() -> str:
     """مفتاح جيميني من config أو من متغير البيئة (للتقديم التلقائي وقراءة الصور)."""
@@ -249,11 +258,11 @@ Write the letter now:"""
 
         response = model.generate_content(prompt)
         if response and response.text:
-            return response.text.strip()
+            return _strip_emojis(response.text.strip())
     except Exception:
         pass
 
-    return _fallback_cover(job_title, applicant_name, company, lang)
+    return _strip_emojis(_fallback_cover(job_title, applicant_name, company, lang))
 
 
 def generate_cover_letter(
