@@ -1,16 +1,26 @@
 # Jobsa Telegram Bot
 
-A Telegram bot for job applications (Arabic language), with a Flask admin panel and a Next.js admin frontend dashboard.
+A Telegram bot for job applications (Arabic language), with a Flask admin panel, Next.js admin dashboard, and a user-facing web portal.
 
 ## Architecture
 
 - **`main.py`** — Telegram bot entry point (python-telegram-bot v21, polling or webhook mode)
-- **`admin/app.py`** — Flask admin web panel (port 8080)
-- **`admin_frontend/`** — Next.js admin dashboard (port 5000, proxies API calls to Flask)
+- **`admin/app.py`** — Flask admin web panel + user portal API (port 8080)
+- **`admin/portal_api.py`** — Flask Blueprint for user portal REST API (`/api/portal/*`)
+- **`admin_frontend/`** — Next.js admin dashboard + user portal (port 5000, proxies API calls to Flask)
+- **`admin_frontend/app/portal/`** — User-facing web portal (login, dashboard, applications, CV, settings)
+- **`admin_frontend/lib/portal-auth.ts`** — JWT token management for user portal
 - **`database/`** — Supabase database layer
 - **`handlers/`** — Telegram bot command/message handlers
 - **`services/`** — Business logic (auto-apply, cover letters, announcements, etc.)
 - **`config.py`** — Configuration loaded from environment variables
+
+## User Portal
+
+- URL: `/portal/` (login at `/portal/login`)
+- Auth: JWT token stored in localStorage, signed with ADMIN_SECRET
+- Login: activation code (same codes from admin panel)
+- Pages: dashboard, applications, profile, CV upload, email settings
 
 ## Workflows
 

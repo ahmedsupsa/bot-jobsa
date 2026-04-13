@@ -17,6 +17,13 @@ html, body {
   width: 5px;
   height: 5px;
 }
+
+/* Portal responsive layout */
+@media (max-width: 768px) {
+  .portal-sidebar { display: none !important; }
+  .portal-bottom-nav { display: flex !important; }
+  .portal-main { padding: 20px 16px 90px !important; }
+}
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
   background: #1a2d52;

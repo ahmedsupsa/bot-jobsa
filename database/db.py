@@ -104,6 +104,25 @@ def validate_activation_code(code: str) -> dict | None:
     return None
 
 
+def get_activation_code_any(code: str) -> dict | None:
+    """جلب كود التفعيل بغض النظر عن حالة الاستخدام (للويب بوابة المستخدمين)."""
+    if _use_rest:
+        rows = _rest_select_all("activation_codes", code=code.strip())
+        return rows[0] if rows else None
+    sb = get_supabase()
+    r = sb.table("activation_codes").select("*").eq("code", code.strip()).execute()
+    return r.data[0] if r.data else None
+
+
+def get_activation_code_by_id(code_id: str) -> dict | None:
+    """جلب كود التفعيل بالـ ID."""
+    if _use_rest:
+        return _rest_select_one("activation_codes", id=code_id)
+    sb = get_supabase()
+    r = sb.table("activation_codes").select("*").eq("id", code_id).execute()
+    return r.data[0] if r.data else None
+
+
 def use_activation_code(code_id: str, user_id: str) -> None:
     if _use_rest:
         _rest_update("activation_codes", {

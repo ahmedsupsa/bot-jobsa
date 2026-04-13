@@ -36,6 +36,9 @@ from database.db import (
 
 app = Flask(__name__)
 app.secret_key = os.getenv("ADMIN_SECRET", "change-me-in-production")
+
+from admin.portal_api import portal_bp
+app.register_blueprint(portal_bp)
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 _raw_admin_ids = (os.getenv("ADMIN_TELEGRAM_IDS") or "").strip()
 ADMIN_TELEGRAM_IDS = {
