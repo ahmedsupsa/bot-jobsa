@@ -326,46 +326,37 @@ BASE_HTML = """
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    # الوصول لصفحة تسجيل الدخول مسموح فقط عبر رابط بوابة آمن من تليجرام الأدمن.
+    # إذا كان المستخدم مسجّلاً بالفعل، انتقل للوحة
+    if session.get("admin_logged_in"):
+        return redirect(url_for("dashboard"))
+
+    # دعم gate token من البوت (اختياري — للتوافق مع الإصدار القديم)
     if request.method == "GET":
         gate = (request.args.get("gate") or "").strip()
-        payload = verify_gate_token(gate)
-        if not payload:
-            return render_template_string(
-                BASE_HTML, url_for=url_for, content="""
-                <div class="card">
-                  <h2>وصول غير مصرح</h2>
-                  <p>افتح لوحة الويب من زر الأدمن داخل تليجرام أولاً.</p>
-                </div>
-                """
-            ), 403
-        aid = int(payload.get("aid") or 0)
-        if ADMIN_TELEGRAM_IDS and aid not in ADMIN_TELEGRAM_IDS:
-            return render_template_string(
-                BASE_HTML, url_for=url_for, content="""
-                <div class="card"><p style="color:#c0392b;">لا تملك صلاحية الوصول.</p></div>
-                """
-            ), 403
-        session["admin_gate_ok"] = True
-        session["admin_gate_aid"] = aid
-        session["admin_gate_exp"] = int(payload.get("exp") or 0)
+        if gate:
+            payload = verify_gate_token(gate)
+            if payload:
+                aid = int(payload.get("aid") or 0)
+                session["admin_gate_ok"] = True
+                session["admin_gate_aid"] = aid
 
     if request.method == "POST":
-        if not session.get("admin_gate_ok"):
-            return redirect(url_for("login"))
-        if request.form.get("password") == ADMIN_PASSWORD:
+        password = request.form.get("password", "")
+        if password == ADMIN_PASSWORD:
             session["admin_logged_in"] = True
+            session["admin_gate_ok"] = True
             return redirect(url_for("dashboard"))
         return render_template_string(BASE_HTML, url_for=url_for, content="""
             <div class="card">
               <p style="color: #c0392b;">كلمة المرور غير صحيحة.</p>
               <form method="post">
                 <label>كلمة المرور</label>
-                <input type="password" name="password" required>
+                <input type="password" name="password" required autofocus>
                 <button type="submit">دخول</button>
               </form>
             </div>
             """)
+
     return render_template_string(BASE_HTML, url_for=url_for, content="""
         <div class="card">
           <h2>تسجيل الدخول</h2>
