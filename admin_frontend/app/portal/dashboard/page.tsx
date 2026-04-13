@@ -3,24 +3,18 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PortalShell } from "@/components/portal-shell";
 import { portalFetch, clearToken } from "@/lib/portal-auth";
+import {
+  Send, CalendarDays, Mail, AlertCircle, ArrowRight,
+  FileText, Settings, User, ClipboardList, TrendingUp,
+} from "lucide-react";
 
 interface UserData {
-  full_name: string;
-  phone: string;
-  city: string;
-  subscription_active: boolean;
-  days_left: number;
-  subscription_ends_at: string;
-  email: string;
-  sender_email_alias: string;
-  applications_count: number;
+  full_name: string; phone: string; city: string;
+  subscription_active: boolean; days_left: number;
+  subscription_ends_at: string; email: string;
+  sender_email_alias: string; applications_count: number;
 }
-
-interface Application {
-  id: string;
-  job_title: string;
-  applied_at: string;
-}
+interface Application { id: string; job_title: string; applied_at: string; }
 
 export default function Dashboard() {
   const router = useRouter();
@@ -31,21 +25,14 @@ export default function Dashboard() {
   useEffect(() => {
     async function load() {
       try {
-        const [meRes, appsRes] = await Promise.all([
-          portalFetch("/me"),
-          portalFetch("/applications"),
-        ]);
+        const [meRes, appsRes] = await Promise.all([portalFetch("/me"), portalFetch("/applications")]);
         if (meRes.status === 401) { clearToken(); router.replace("/portal/login"); return; }
         const me = await meRes.json();
         const appsData = await appsRes.json();
         setUser(me);
         setApps((appsData.applications || []).slice(0, 5));
-      } catch {
-        clearToken();
-        router.replace("/portal/login");
-      } finally {
-        setLoading(false);
-      }
+      } catch { clearToken(); router.replace("/portal/login"); }
+      finally { setLoading(false); }
     }
     load();
   }, [router]);
@@ -53,105 +40,113 @@ export default function Dashboard() {
   if (loading) return <PortalShell><Loader /></PortalShell>;
   if (!user) return null;
 
+  const stats = [
+    { icon: <Send size={20} strokeWidth={1.5} />, value: user.applications_count, label: "تقديمات مرسلة", key: "apps" },
+    { icon: <CalendarDays size={20} strokeWidth={1.5} />, value: user.days_left, label: "أيام الاشتراك", key: "days" },
+    { icon: <Mail size={20} strokeWidth={1.5} />, value: user.email ? "مربوط" : "غير مربوط", label: "الإيميل", key: "email" },
+  ];
+
+  const quickLinks = [
+    { icon: <FileText size={18} strokeWidth={1.5} />, label: "رفع السيرة", sub: "PDF أو صورة", href: "/portal/cv" },
+    { icon: <Mail size={18} strokeWidth={1.5} />, label: "ربط الإيميل", sub: "Gmail فقط", href: "/portal/settings" },
+    { icon: <User size={18} strokeWidth={1.5} />, label: "بياناتي", sub: "الاسم والجوال", href: "/portal/profile" },
+    { icon: <ClipboardList size={18} strokeWidth={1.5} />, label: "التقديمات", sub: `${user.applications_count} تقديم`, href: "/portal/applications" },
+  ];
+
   return (
     <PortalShell>
       <div style={s.page}>
-        {/* Hero header */}
-        <div style={s.hero}>
-          <div style={s.heroLeft}>
-            <p style={s.heroGreeting}>مرحباً، {user.full_name.split(" ")[0]} 👋</p>
-            <p style={s.heroSub}>{user.city} · {new Date().toLocaleDateString("ar-SA", { weekday: "long", month: "long", day: "numeric" })}</p>
+        {/* Header */}
+        <div style={s.header}>
+          <div style={s.headerLeft}>
+            <div style={s.avatar}>{user.full_name.charAt(0)}</div>
+            <div>
+              <h1 style={s.greeting}>مرحباً، {user.full_name.split(" ")[0]}</h1>
+              <p style={s.greetingSub}>{user.city} · {new Date().toLocaleDateString("ar-SA", { weekday: "long", month: "long", day: "numeric" })}</p>
+            </div>
           </div>
           <div style={{
-            ...s.heroBadge,
-            background: user.subscription_active ? "#ecfdf5" : "#fef2f2",
-            color: user.subscription_active ? "#059669" : "#dc2626",
-            border: `1.5px solid ${user.subscription_active ? "#6ee7b7" : "#fca5a5"}`,
+            ...s.subBadge,
+            background: user.subscription_active ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.08)",
+            borderColor: user.subscription_active ? "#22c55e22" : "#ef444422",
+            color: user.subscription_active ? "#22c55e" : "#ef4444",
           }}>
-            {user.subscription_active ? `✅ ${user.days_left} يوم متبقي` : "❌ الاشتراك منتهٍ"}
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }} />
+            {user.subscription_active ? `${user.days_left} يوم متبقي` : "الاشتراك منتهٍ"}
           </div>
         </div>
 
         {/* Stats */}
-        <div style={s.statsGrid}>
-          <StatCard
-            icon="📤" value={user.applications_count}
-            label="تقديمات مرسلة"
-            grad="linear-gradient(135deg, #6366f1, #8b5cf6)"
-            lightBg="#f5f3ff" lightText="#6366f1"
-          />
-          <StatCard
-            icon="📅" value={user.days_left}
-            label="أيام الاشتراك"
-            grad="linear-gradient(135deg, #10b981, #059669)"
-            lightBg="#ecfdf5" lightText="#059669"
-          />
-          <StatCard
-            icon="📧" value={user.email ? "مربوط ✓" : "غير مربوط"}
-            label="الإيميل"
-            grad={user.email ? "linear-gradient(135deg, #f59e0b, #d97706)" : "linear-gradient(135deg, #ef4444, #dc2626)"}
-            lightBg={user.email ? "#fffbeb" : "#fef2f2"}
-            lightText={user.email ? "#d97706" : "#dc2626"}
-          />
+        <div style={s.statsRow}>
+          {stats.map(({ icon, value, label, key }) => (
+            <div key={key} style={s.statCard}>
+              <div style={s.statIconWrap}>{icon}</div>
+              <p style={s.statValue}>{value}</p>
+              <p style={s.statLabel}>{label}</p>
+            </div>
+          ))}
         </div>
 
         {/* Alert */}
         {!user.email && (
           <div style={s.alert} onClick={() => router.push("/portal/settings")}>
-            <span style={{ fontSize: 24 }}>💡</span>
+            <AlertCircle size={20} strokeWidth={1.5} color="#f59e0b" style={{ flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <p style={s.alertTitle}>اربط إيميلك لبدء التقديم التلقائي</p>
-              <p style={s.alertSub}>خطوة واحدة تكفي لتشغيل التقديم بالذكاء الاصطناعي</p>
+              <p style={s.alertSub}>لن يعمل البوت بدون إيميل مربوط</p>
             </div>
-            <button style={s.alertBtn}>اربط الآن ←</button>
+            <ArrowRight size={18} strokeWidth={1.5} color="#f59e0b" />
           </div>
         )}
 
         <div style={s.twoCol}>
-          {/* Recent applications */}
+          {/* Recent apps */}
           <div style={s.card}>
             <div style={s.cardHeader}>
-              <h2 style={s.cardTitle}>📋 آخر التقديمات</h2>
-              <button style={s.viewAll} onClick={() => router.push("/portal/applications")}>عرض الكل ←</button>
+              <div style={s.cardTitleRow}>
+                <TrendingUp size={18} strokeWidth={1.5} color="#fff" />
+                <span style={s.cardTitle}>آخر التقديمات</span>
+              </div>
+              <button style={s.viewAll} onClick={() => router.push("/portal/applications")}>
+                عرض الكل <ArrowRight size={14} strokeWidth={2} />
+              </button>
             </div>
             {apps.length === 0 ? (
               <div style={s.empty}>
-                <p style={{ fontSize: 40, margin: "0 0 8px" }}>📭</p>
-                <p style={s.emptyTitle}>لا توجد تقديمات حتى الآن</p>
+                <Send size={32} strokeWidth={1} color="#333" />
+                <p style={s.emptyTitle}>لا توجد تقديمات بعد</p>
                 <p style={s.emptySub}>البوت يعمل كل 30 دقيقة</p>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {apps.map((a) => (
                   <div key={a.id} style={s.appRow}>
-                    <div style={s.appDot} />
+                    <div style={s.appBullet} />
                     <div style={{ flex: 1 }}>
                       <p style={s.appTitle}>{a.job_title || "وظيفة"}</p>
                       <p style={s.appDate}>{fmtDate(a.applied_at)}</p>
                     </div>
-                    <span style={s.appBadge}>✓ مُرسَل</span>
+                    <span style={s.sentTag}>مُرسَل</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Quick actions */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <h2 style={s.cardTitle}>⚡ إجراءات سريعة</h2>
-            {[
-              { icon: "📎", label: "رفع السيرة الذاتية", sub: "PDF أو صورة", href: "/portal/cv", color: "#8b5cf6" },
-              { icon: "📧", label: "ربط الإيميل", sub: "Gmail فقط", href: "/portal/settings", color: "#6366f1" },
-              { icon: "👤", label: "بياناتي", sub: "الاسم والجوال", href: "/portal/profile", color: "#10b981" },
-              { icon: "📋", label: "سجل التقديمات", sub: `${user.applications_count} تقديم`, href: "/portal/applications", color: "#f59e0b" },
-            ].map(({ icon, label, sub, href, color }) => (
-              <button key={href} style={s.quickAction} onClick={() => router.push(href)}>
-                <div style={{ ...s.qaIcon, background: color + "18", color }}>{icon}</div>
+          {/* Quick links */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={s.cardTitleRow}>
+              <Settings size={16} strokeWidth={1.5} color="#888" />
+              <span style={{ color: "#888", fontSize: 13, fontWeight: 500 }}>إجراءات سريعة</span>
+            </div>
+            {quickLinks.map(({ icon, label, sub, href }) => (
+              <button key={href} style={s.quickBtn} onClick={() => router.push(href)}>
+                <div style={s.quickIcon}>{icon}</div>
                 <div style={{ flex: 1, textAlign: "right" }}>
-                  <p style={s.qaLabel}>{label}</p>
-                  <p style={s.qaSub}>{sub}</p>
+                  <p style={s.quickLabel}>{label}</p>
+                  <p style={s.quickSub}>{sub}</p>
                 </div>
-                <span style={{ color: "#9ca3af" }}>←</span>
+                <ArrowRight size={15} strokeWidth={1.5} color="#444" />
               </button>
             ))}
           </div>
@@ -161,28 +156,10 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ icon, value, label, grad, lightBg, lightText }: {
-  icon: string; value: string | number; label: string;
-  grad: string; lightBg: string; lightText: string;
-}) {
-  return (
-    <div style={{ background: "#fff", borderRadius: 18, padding: "22px 20px", boxShadow: "0 2px 16px rgba(99,102,241,0.08)", border: "1px solid #ede9fe" }}>
-      <div style={{ width: 46, height: 46, borderRadius: 14, background: grad, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 14 }}>
-        {icon}
-      </div>
-      <p style={{ fontSize: 24, fontWeight: 800, color: lightText, margin: "0 0 4px" }}>{value}</p>
-      <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>{label}</p>
-    </div>
-  );
-}
-
 function Loader() {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
-      <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 36, marginBottom: 12 }}>⏳</div>
-        <p style={{ color: "#8b5cf6", fontSize: 15 }}>جاري التحميل…</p>
-      </div>
+      <p style={{ color: "#555", fontSize: 15 }}>جاري التحميل…</p>
     </div>
   );
 }
@@ -194,50 +171,77 @@ function fmtDate(iso: string): string {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  page: { maxWidth: 900, margin: "0 auto" },
-  hero: {
+  page: { maxWidth: 860, margin: "0 auto" },
+  header: {
     display: "flex", alignItems: "center", justifyContent: "space-between",
-    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-    borderRadius: 20, padding: "28px 32px", marginBottom: 28,
-    flexWrap: "wrap", gap: 16,
+    padding: "28px 32px", background: "#111", border: "1px solid #1f1f1f",
+    borderRadius: 18, marginBottom: 24, flexWrap: "wrap", gap: 16,
   },
-  heroLeft: {},
-  heroGreeting: { color: "#fff", fontSize: 24, fontWeight: 800, margin: 0 },
-  heroSub: { color: "rgba(255,255,255,0.8)", fontSize: 14, margin: "4px 0 0" },
-  heroBadge: { padding: "8px 18px", borderRadius: 24, fontSize: 13, fontWeight: 600 },
-  statsGrid: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 24 },
+  headerLeft: { display: "flex", alignItems: "center", gap: 16 },
+  avatar: {
+    width: 52, height: 52, borderRadius: 14, background: "#fff",
+    color: "#0a0a0a", fontSize: 22, fontWeight: 800,
+    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+  },
+  greeting: { color: "#fff", fontSize: 22, fontWeight: 700, margin: 0 },
+  greetingSub: { color: "#666", fontSize: 13, margin: "3px 0 0" },
+  subBadge: {
+    display: "flex", alignItems: "center", gap: 8,
+    padding: "8px 16px", borderRadius: 24,
+    border: "1px solid", fontSize: 13, fontWeight: 600,
+  },
+  statsRow: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 20 },
+  statCard: {
+    background: "#111", border: "1px solid #1f1f1f", borderRadius: 16, padding: "22px 20px",
+  },
+  statIconWrap: {
+    width: 40, height: 40, borderRadius: 12, background: "#1a1a1a",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    color: "#fff", marginBottom: 14,
+  },
+  statValue: { color: "#fff", fontSize: 24, fontWeight: 800, margin: "0 0 4px" },
+  statLabel: { color: "#666", fontSize: 12, margin: 0 },
   alert: {
     display: "flex", alignItems: "center", gap: 14,
-    background: "#fffbeb", border: "1.5px solid #fcd34d",
-    borderRadius: 16, padding: "16px 20px", marginBottom: 28, cursor: "pointer",
+    background: "#0f0d00", border: "1px solid #f59e0b22",
+    borderRadius: 14, padding: "16px 20px", marginBottom: 24, cursor: "pointer",
   },
-  alertTitle: { color: "#92400e", fontWeight: 700, margin: 0, fontSize: 14 },
+  alertTitle: { color: "#f59e0b", fontWeight: 600, fontSize: 14, margin: 0 },
   alertSub: { color: "#a16207", fontSize: 12, margin: "2px 0 0" },
-  alertBtn: {
-    background: "#f59e0b", color: "#fff", border: "none",
-    borderRadius: 10, padding: "8px 16px", fontSize: 13, fontWeight: 600,
-    cursor: "pointer", flexShrink: 0,
-  },
-  twoCol: { display: "grid", gridTemplateColumns: "1fr 280px", gap: 20, alignItems: "start" },
-  card: { background: "#fff", borderRadius: 18, padding: "24px", boxShadow: "0 2px 16px rgba(99,102,241,0.07)", border: "1px solid #ede9fe" },
+  twoCol: { display: "grid", gridTemplateColumns: "1fr 260px", gap: 20, alignItems: "start" },
+  card: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 16, padding: "22px" },
   cardHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 },
-  cardTitle: { color: "#1e1b4b", fontSize: 16, fontWeight: 700, margin: 0 },
-  viewAll: { background: "transparent", border: "none", color: "#6366f1", fontSize: 13, cursor: "pointer", fontWeight: 600 },
-  empty: { textAlign: "center", padding: "32px 20px" },
-  emptyTitle: { color: "#4b5563", fontSize: 15, fontWeight: 600, margin: "0 0 4px" },
-  emptySub: { color: "#9ca3af", fontSize: 13, margin: 0 },
-  appRow: { display: "flex", alignItems: "center", gap: 12, padding: "12px", background: "#fafafa", borderRadius: 12 },
-  appDot: { width: 10, height: 10, borderRadius: "50%", background: "linear-gradient(135deg, #6366f1, #8b5cf6)", flexShrink: 0 },
-  appTitle: { color: "#1e1b4b", fontSize: 13, fontWeight: 600, margin: 0 },
-  appDate: { color: "#9ca3af", fontSize: 12, margin: "2px 0 0" },
-  appBadge: { background: "#ecfdf5", color: "#059669", border: "1px solid #6ee7b7", borderRadius: 8, padding: "3px 10px", fontSize: 11, fontWeight: 600 },
-  quickAction: {
-    display: "flex", alignItems: "center", gap: 12,
-    background: "#fff", border: "1px solid #ede9fe",
-    borderRadius: 14, padding: "14px 16px", cursor: "pointer",
-    boxShadow: "0 1px 8px rgba(99,102,241,0.06)", width: "100%",
+  cardTitleRow: { display: "flex", alignItems: "center", gap: 8 },
+  cardTitle: { color: "#fff", fontSize: 15, fontWeight: 600 },
+  viewAll: {
+    background: "transparent", border: "none", color: "#666",
+    fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
   },
-  qaIcon: { width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 },
-  qaLabel: { color: "#1e1b4b", fontSize: 13, fontWeight: 600, margin: 0 },
-  qaSub: { color: "#9ca3af", fontSize: 11, margin: "2px 0 0" },
+  empty: { textAlign: "center", padding: "32px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 },
+  emptyTitle: { color: "#555", fontSize: 14, fontWeight: 600, margin: 0 },
+  emptySub: { color: "#444", fontSize: 12, margin: 0 },
+  appRow: {
+    display: "flex", alignItems: "center", gap: 12,
+    padding: "12px 14px", background: "#161616", borderRadius: 12,
+  },
+  appBullet: { width: 6, height: 6, borderRadius: "50%", background: "#fff", flexShrink: 0 },
+  appTitle: { color: "#fff", fontSize: 13, fontWeight: 500, margin: 0 },
+  appDate: { color: "#555", fontSize: 12, margin: "2px 0 0" },
+  sentTag: {
+    background: "#0a1f0a", color: "#22c55e",
+    border: "1px solid #22c55e22", borderRadius: 8,
+    padding: "3px 10px", fontSize: 11, fontWeight: 600, flexShrink: 0,
+  },
+  quickBtn: {
+    display: "flex", alignItems: "center", gap: 12,
+    background: "#111", border: "1px solid #1f1f1f",
+    borderRadius: 14, padding: "14px 16px", cursor: "pointer", width: "100%",
+  },
+  quickIcon: {
+    width: 38, height: 38, borderRadius: 10, background: "#1a1a1a",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    color: "#fff", flexShrink: 0,
+  },
+  quickLabel: { color: "#fff", fontSize: 13, fontWeight: 600, margin: 0 },
+  quickSub: { color: "#555", fontSize: 11, margin: "2px 0 0" },
 };

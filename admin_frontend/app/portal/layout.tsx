@@ -1,15 +1,24 @@
-"use client";
 import type { Metadata } from "next";
-import "../globals.css";
 
-export default function PortalLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export const metadata: Metadata = { title: "جبسا | بوابة المستخدمين" };
+
+export default function PortalLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}>
+    <>
+      <link
+        rel="preconnect"
+        href="https://fonts.googleapis.com"
+      />
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800;900&display=swap"
+      />
+      <style dangerouslySetInnerHTML={{ __html: `
+        .portal-root, .portal-root * {
+          font-family: 'Rubik', system-ui, sans-serif !important;
+        }
+      `}} />
       {children}
-    </div>
+    </>
   );
 }

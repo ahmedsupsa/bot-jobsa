@@ -1,16 +1,17 @@
 "use client";
 import { useRouter, usePathname } from "next/navigation";
 import { clearToken } from "@/lib/portal-auth";
+import {
+  Home, ClipboardList, FileText, User, Settings, LogOut, Briefcase,
+} from "lucide-react";
 
 const NAV = [
-  { href: "/portal/dashboard", icon: "🏠", label: "الرئيسية" },
-  { href: "/portal/applications", icon: "📋", label: "التقديمات" },
-  { href: "/portal/cv", icon: "📎", label: "السيرة" },
-  { href: "/portal/profile", icon: "👤", label: "حسابي" },
-  { href: "/portal/settings", icon: "⚙️", label: "الإعدادات" },
+  { href: "/portal/dashboard", icon: Home, label: "الرئيسية" },
+  { href: "/portal/applications", icon: ClipboardList, label: "التقديمات" },
+  { href: "/portal/cv", icon: FileText, label: "السيرة" },
+  { href: "/portal/profile", icon: User, label: "حسابي" },
+  { href: "/portal/settings", icon: Settings, label: "الإعدادات" },
 ];
-
-const GRAD = "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)";
 
 export function PortalShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -23,36 +24,40 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div style={s.root} className="portal-root">
-      {/* Sidebar — desktop */}
+      {/* Sidebar */}
       <aside style={s.sidebar} className="portal-sidebar">
         <div style={s.logo}>
-          <div style={s.logoIcon}>💼</div>
+          <div style={s.logoIcon}>
+            <Briefcase size={20} strokeWidth={1.5} color="#0a0a0a" />
+          </div>
           <div>
             <p style={s.logoName}>جبسا</p>
             <p style={s.logoSub}>بوابة المستخدمين</p>
           </div>
         </div>
 
-        <nav style={s.nav}>
-          {NAV.map(({ href, icon, label }) => {
+        <nav style={{ flex: 1 }}>
+          {NAV.map(({ href, icon: Icon, label }) => {
             const active = pathname === href;
             return (
               <button
                 key={href}
-                style={{ ...s.navItem, ...(active ? s.navItemActive : {}) }}
+                style={{ ...s.navItem, ...(active ? s.navActive : {}) }}
                 onClick={() => router.push(href)}
               >
-                <span style={s.navIcon}>{icon}</span>
-                <span>{label}</span>
-                {active && <div style={s.activeBar} />}
+                <Icon size={18} strokeWidth={active ? 2 : 1.5} color={active ? "#fff" : "#666"} />
+                <span style={{ color: active ? "#fff" : "#666", fontWeight: active ? 600 : 400 }}>
+                  {label}
+                </span>
+                {active && <div style={s.activeDot} />}
               </button>
             );
           })}
         </nav>
 
         <button style={s.logoutBtn} onClick={logout}>
-          <span>🚪</span>
-          <span>تسجيل الخروج</span>
+          <LogOut size={16} strokeWidth={1.5} color="#555" />
+          <span style={{ color: "#555" }}>تسجيل الخروج</span>
         </button>
       </aside>
 
@@ -61,18 +66,18 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {/* Bottom nav — mobile */}
+      {/* Mobile bottom nav */}
       <nav style={s.bottomNav} className="portal-bottom-nav">
-        {NAV.map(({ href, icon, label }) => {
+        {NAV.map(({ href, icon: Icon, label }) => {
           const active = pathname === href;
           return (
             <button
               key={href}
-              style={{ ...s.bottomNavItem, ...(active ? s.bottomNavActive : {}) }}
+              style={{ ...s.bottomItem, color: active ? "#fff" : "#555" }}
               onClick={() => router.push(href)}
             >
-              <span style={{ fontSize: 22 }}>{icon}</span>
-              <span style={{ fontSize: 10 }}>{label}</span>
+              <Icon size={22} strokeWidth={active ? 2 : 1.5} />
+              <span style={{ fontSize: 10, marginTop: 2 }}>{label}</span>
             </button>
           );
         })}
@@ -83,90 +88,61 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
 
 const s: Record<string, React.CSSProperties> = {
   root: {
-    minHeight: "100vh",
-    background: "#f5f3ff",
-    display: "flex",
-    direction: "rtl",
-    fontFamily: "system-ui, -apple-system, sans-serif",
+    minHeight: "100vh", background: "#0a0a0a",
+    display: "flex", direction: "rtl",
   },
   sidebar: {
-    width: 240,
-    minHeight: "100vh",
-    background: "#fff",
-    borderLeft: "1px solid #ede9fe",
-    display: "flex",
-    flexDirection: "column",
-    padding: "24px 16px",
-    position: "sticky",
-    top: 0,
-    height: "100vh",
-    flexShrink: 0,
-    boxShadow: "2px 0 20px rgba(99,102,241,0.06)",
+    width: 230, minHeight: "100vh",
+    background: "#0f0f0f", borderLeft: "1px solid #1f1f1f",
+    display: "flex", flexDirection: "column",
+    padding: "24px 16px", position: "sticky",
+    top: 0, height: "100vh", flexShrink: 0,
   },
   logo: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 32,
-    paddingBottom: 24,
-    borderBottom: "1px solid #ede9fe",
+    display: "flex", alignItems: "center", gap: 12,
+    marginBottom: 32, paddingBottom: 24, borderBottom: "1px solid #1f1f1f",
   },
   logoIcon: {
-    width: 44, height: 44, borderRadius: 12,
-    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: 22, flexShrink: 0,
+    width: 40, height: 40, borderRadius: 12, background: "#fff",
+    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
-  logoName: { color: "#1e1b4b", fontSize: 16, fontWeight: 700, margin: 0 },
-  logoSub: { color: "#a78bfa", fontSize: 11, margin: "2px 0 0" },
-  nav: { display: "flex", flexDirection: "column", gap: 4, flex: 1 },
+  logoName: { color: "#fff", fontSize: 16, fontWeight: 700, margin: 0 },
+  logoSub: { color: "#555", fontSize: 11, margin: "2px 0 0" },
   navItem: {
-    display: "flex", alignItems: "center", gap: 12,
-    padding: "12px 14px", borderRadius: 12,
+    display: "flex", alignItems: "center", gap: 10,
+    width: "100%", padding: "11px 12px", borderRadius: 10,
     background: "transparent", border: "none",
-    color: "#6b7280", fontSize: 14, fontWeight: 500,
     cursor: "pointer", textAlign: "right",
-    transition: "all 0.15s", width: "100%",
+    transition: "background 0.15s", marginBottom: 2,
     position: "relative",
   },
-  navItemActive: {
-    background: "#f5f3ff",
-    color: "#6366f1",
-    fontWeight: 700,
-  },
-  navIcon: { fontSize: 18 },
-  activeBar: {
-    position: "absolute", left: 0, top: "50%",
+  navActive: { background: "#1a1a1a" },
+  activeDot: {
+    position: "absolute", left: 8, top: "50%",
     transform: "translateY(-50%)",
-    width: 3, height: 20,
-    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-    borderRadius: 4,
+    width: 4, height: 4, borderRadius: "50%", background: "#fff",
   },
   logoutBtn: {
     display: "flex", alignItems: "center", gap: 10,
-    padding: "12px 14px", borderRadius: 12,
-    background: "#fef2f2", border: "none",
-    color: "#dc2626", fontSize: 13, fontWeight: 500,
-    cursor: "pointer", textAlign: "right",
-    marginTop: 16, width: "100%",
+    width: "100%", padding: "11px 12px", borderRadius: 10,
+    background: "transparent", border: "1px solid #1f1f1f",
+    cursor: "pointer", marginTop: 8,
   },
   main: {
     flex: 1, padding: "32px 28px 80px",
-    minHeight: "100vh", maxWidth: "100%",
+    minHeight: "100vh",
   },
   bottomNav: {
-    display: "none",
-    position: "fixed", bottom: 0, left: 0, right: 0,
-    background: "#fff", borderTop: "1px solid #ede9fe",
-    zIndex: 100, padding: "8px 0 4px",
-    boxShadow: "0 -4px 20px rgba(99,102,241,0.08)",
+    display: "none", position: "fixed",
+    bottom: 0, left: 0, right: 0,
+    background: "#0f0f0f", borderTop: "1px solid #1f1f1f",
+    zIndex: 100, padding: "8px 0 6px",
   },
-  bottomNavItem: {
+  bottomItem: {
     flex: 1, display: "flex", flexDirection: "column",
     alignItems: "center", gap: 2,
     background: "transparent", border: "none",
-    color: "#9ca3af", cursor: "pointer", padding: "4px 8px",
-    fontSize: 10,
+    cursor: "pointer", padding: "4px 8px",
+    fontFamily: "inherit",
   },
-  bottomNavActive: { color: "#6366f1" },
 };

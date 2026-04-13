@@ -2,6 +2,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { setToken } from "@/lib/portal-auth";
+import {
+  KeyRound, ArrowRight, Briefcase, Bot, PenLine, BarChart3, Loader2,
+  User, Phone, MapPin, Calendar, ChevronLeft,
+} from "lucide-react";
 
 type Step = "code" | "register";
 
@@ -17,8 +21,7 @@ export default function PortalLogin() {
 
   async function handleCodeSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    setLoading(true);
+    setError(""); setLoading(true);
     try {
       const res = await fetch("/api/portal/login", {
         method: "POST",
@@ -27,25 +30,15 @@ export default function PortalLogin() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "خطأ"); return; }
-      if (data.status === "ok") {
-        setToken(data.token);
-        router.replace("/portal/dashboard");
-      } else if (data.status === "needs_registration") {
-        setCodeId(data.code_id);
-        setSubDays(data.subscription_days || 30);
-        setStep("register");
-      }
-    } catch {
-      setError("خطأ في الاتصال بالخادم");
-    } finally {
-      setLoading(false);
-    }
+      if (data.status === "ok") { setToken(data.token); router.replace("/portal/dashboard"); }
+      else if (data.status === "needs_registration") { setCodeId(data.code_id); setSubDays(data.subscription_days || 30); setStep("register"); }
+    } catch { setError("خطأ في الاتصال بالخادم"); }
+    finally { setLoading(false); }
   }
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    setLoading(true);
+    setError(""); setLoading(true);
     try {
       const res = await fetch("/api/portal/register", {
         method: "POST",
@@ -54,84 +47,100 @@ export default function PortalLogin() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "خطأ"); return; }
-      setToken(data.token);
-      router.replace("/portal/dashboard");
-    } catch {
-      setError("خطأ في الاتصال بالخادم");
-    } finally {
-      setLoading(false);
-    }
+      setToken(data.token); router.replace("/portal/dashboard");
+    } catch { setError("خطأ في الاتصال بالخادم"); }
+    finally { setLoading(false); }
   }
+
+  const features = [
+    { icon: <Bot size={18} strokeWidth={1.5} />, text: "تقديم تلقائي كل 30 دقيقة" },
+    { icon: <PenLine size={18} strokeWidth={1.5} />, text: "رسائل تغطية بالذكاء الاصطناعي" },
+    { icon: <BarChart3 size={18} strokeWidth={1.5} />, text: "تتبع جميع تقديماتك" },
+  ];
+
+  const regFields = [
+    { key: "full_name", label: "الاسم الكامل", placeholder: "أحمد محمد", icon: <User size={16} strokeWidth={1.5} /> },
+    { key: "phone", label: "رقم الجوال", placeholder: "05xxxxxxxx", icon: <Phone size={16} strokeWidth={1.5} />, dir: "ltr" },
+    { key: "age", label: "العمر", placeholder: "25", icon: <Calendar size={16} strokeWidth={1.5} />, type: "number" },
+    { key: "city", label: "المدينة", placeholder: "الرياض", icon: <MapPin size={16} strokeWidth={1.5} /> },
+  ];
 
   return (
     <div style={s.page} className="portal-root">
-      {/* Left decorative panel */}
+      {/* Left panel — branding */}
       <div style={s.leftPanel}>
-        <div style={s.leftContent}>
-          <div style={s.brandIcon}>💼</div>
-          <h1 style={s.brandTitle}>جبسا</h1>
-          <p style={s.brandTagline}>التقديم التلقائي على الوظائف بالذكاء الاصطناعي</p>
-          <div style={s.features}>
-            {[
-              { icon: "🤖", text: "تقديم تلقائي كل 30 دقيقة" },
-              { icon: "✍️", text: "رسائل تغطية مخصصة بالذكاء الاصطناعي" },
-              { icon: "📊", text: "تتبع جميع تقديماتك بسهولة" },
-            ].map((f, i) => (
-              <div key={i} style={s.featureItem}>
-                <span style={s.featureIcon}>{f.icon}</span>
-                <span style={s.featureText}>{f.text}</span>
-              </div>
-            ))}
+        <div style={s.brand}>
+          <div style={s.brandLogo}>
+            <Briefcase size={28} strokeWidth={1.5} color="#0a0a0a" />
           </div>
+          <h1 style={s.brandName}>جبسا</h1>
         </div>
-        <div style={s.blob1} />
-        <div style={s.blob2} />
+        <p style={s.brandTagline}>التقديم التلقائي على الوظائف<br />بالذكاء الاصطناعي</p>
+        <div style={s.featureList}>
+          {features.map((f, i) => (
+            <div key={i} style={s.featureRow}>
+              <div style={s.featureIconWrap}>{f.icon}</div>
+              <span style={s.featureText}>{f.text}</span>
+            </div>
+          ))}
+        </div>
+        {/* Decorative grid */}
+        <div style={s.grid} />
       </div>
 
-      {/* Right form panel */}
+      {/* Right panel — form */}
       <div style={s.rightPanel}>
-        <div style={s.formCard}>
+        <div style={s.formBox}>
           {step === "code" ? (
             <>
-              <h2 style={s.formTitle}>مرحباً بك 👋</h2>
+              <div style={s.formIcon}>
+                <KeyRound size={22} strokeWidth={1.5} color="#0a0a0a" />
+              </div>
+              <h2 style={s.formTitle}>مرحباً بك</h2>
               <p style={s.formSub}>أدخل كود التفعيل للدخول إلى حسابك</p>
-              <form onSubmit={handleCodeSubmit}>
+              <form onSubmit={handleCodeSubmit} style={{ marginTop: 28 }}>
                 <label style={s.label}>كود التفعيل</label>
-                <input
-                  style={s.input}
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="أدخل الكود هنا…"
-                  autoFocus
-                  dir="ltr"
-                />
+                <div style={s.inputWrap}>
+                  <KeyRound size={16} strokeWidth={1.5} color="#555" style={s.inputIcon} />
+                  <input
+                    style={s.input}
+                    value={code}
+                    onChange={e => setCode(e.target.value)}
+                    placeholder="أدخل الكود هنا"
+                    autoFocus
+                    dir="ltr"
+                  />
+                </div>
                 {error && <div style={s.error}>{error}</div>}
                 <button style={s.btn} type="submit" disabled={loading || !code.trim()}>
-                  {loading ? "جاري التحقق…" : "دخول ←"}
+                  {loading ? <Loader2 size={16} strokeWidth={2} style={{ animation: "spin 1s linear infinite" }} /> : null}
+                  {loading ? "جاري التحقق…" : "دخول"}
+                  {!loading && <ArrowRight size={16} strokeWidth={2} />}
                 </button>
               </form>
             </>
           ) : (
             <>
-              <h2 style={s.formTitle}>أكمل التسجيل ✨</h2>
+              <div style={s.formIcon}>
+                <User size={22} strokeWidth={1.5} color="#0a0a0a" />
+              </div>
+              <h2 style={s.formTitle}>أكمل التسجيل</h2>
               <p style={s.formSub}>اشتراك {subDays} يوم — أدخل بياناتك للبدء</p>
-              <form onSubmit={handleRegister}>
-                {[
-                  { key: "full_name", label: "الاسم الكامل", placeholder: "أحمد محمد" },
-                  { key: "phone", label: "رقم الجوال", placeholder: "05xxxxxxxx", dir: "ltr" },
-                  { key: "age", label: "العمر", placeholder: "25", type: "number" },
-                  { key: "city", label: "المدينة", placeholder: "الرياض" },
-                ].map(({ key, label, placeholder, dir, type }) => (
+              <form onSubmit={handleRegister} style={{ marginTop: 24 }}>
+                {regFields.map(({ key, label, placeholder, icon, dir, type }) => (
                   <div key={key} style={{ marginBottom: 16 }}>
                     <label style={s.label}>{label}</label>
-                    <input
-                      style={s.input}
-                      type={type || "text"}
-                      dir={dir as any}
-                      placeholder={placeholder}
-                      value={form[key as keyof typeof form]}
-                      onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                    />
+                    <div style={s.inputWrap}>
+                      <span style={s.inputIcon}>{icon}</span>
+                      <input
+                        style={s.input}
+                        type={type || "text"}
+                        dir={dir as any}
+                        placeholder={placeholder}
+                        value={form[key as keyof typeof form]}
+                        onChange={e => setForm({ ...form, [key]: e.target.value })}
+                      />
+                    </div>
                   </div>
                 ))}
                 {error && <div style={s.error}>{error}</div>}
@@ -140,103 +149,106 @@ export default function PortalLogin() {
                   type="submit"
                   disabled={loading || !form.full_name || !form.phone || !form.city}
                 >
-                  {loading ? "جاري الإنشاء…" : "إنشاء الحساب ✓"}
+                  {loading ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> : null}
+                  {loading ? "جاري الإنشاء…" : "إنشاء الحساب"}
+                  {!loading && <ArrowRight size={16} strokeWidth={2} />}
                 </button>
                 <button style={s.btnBack} type="button" onClick={() => { setStep("code"); setError(""); }}>
-                  ← رجوع
+                  <ChevronLeft size={16} strokeWidth={2} />
+                  رجوع
                 </button>
               </form>
             </>
           )}
         </div>
       </div>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        input::placeholder { color: #444; }
+        input:focus { border-color: #444 !important; outline: none; }
+      `}</style>
     </div>
   );
 }
 
-const GRAD = "linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%)";
-
 const s: Record<string, React.CSSProperties> = {
   page: {
-    minHeight: "100vh",
-    display: "flex",
-    direction: "rtl",
-    fontFamily: "system-ui, -apple-system, sans-serif",
-    background: "#f5f3ff",
+    minHeight: "100vh", display: "flex", direction: "rtl",
+    background: "#0a0a0a",
   },
   leftPanel: {
-    flex: 1,
-    background: GRAD,
-    padding: "60px 48px",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "center",
-    position: "relative",
-    overflow: "hidden",
-    minWidth: 320,
+    flex: 1, background: "#111", borderLeft: "1px solid #1f1f1f",
+    padding: "60px 52px", display: "flex", flexDirection: "column",
+    justifyContent: "center", position: "relative", overflow: "hidden",
+    minWidth: 300,
   },
-  leftContent: { position: "relative", zIndex: 2 },
-  brandIcon: { fontSize: 56, marginBottom: 16 },
-  brandTitle: { color: "#fff", fontSize: 40, fontWeight: 800, margin: "0 0 8px" },
-  brandTagline: { color: "rgba(255,255,255,0.85)", fontSize: 16, margin: "0 0 40px", lineHeight: 1.6 },
-  features: { display: "flex", flexDirection: "column", gap: 16 },
-  featureItem: {
-    display: "flex", alignItems: "center", gap: 12,
-    background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)",
-    borderRadius: 12, padding: "12px 16px",
+  brand: { display: "flex", alignItems: "center", gap: 14, marginBottom: 24 },
+  brandLogo: {
+    width: 52, height: 52, borderRadius: 14, background: "#fff",
+    display: "flex", alignItems: "center", justifyContent: "center",
   },
-  featureIcon: { fontSize: 20 },
-  featureText: { color: "#fff", fontSize: 14, fontWeight: 500 },
-  blob1: {
-    position: "absolute", top: -80, left: -80, width: 300, height: 300,
-    borderRadius: "50%", background: "rgba(255,255,255,0.08)", zIndex: 1,
+  brandName: { color: "#fff", fontSize: 32, fontWeight: 800, margin: 0 },
+  brandTagline: { color: "#888", fontSize: 16, lineHeight: 1.7, margin: "0 0 40px" },
+  featureList: { display: "flex", flexDirection: "column", gap: 14 },
+  featureRow: {
+    display: "flex", alignItems: "center", gap: 14,
+    background: "#1a1a1a", border: "1px solid #2a2a2a",
+    borderRadius: 12, padding: "14px 18px",
   },
-  blob2: {
-    position: "absolute", bottom: -60, right: -60, width: 220, height: 220,
-    borderRadius: "50%", background: "rgba(255,255,255,0.06)", zIndex: 1,
+  featureIconWrap: {
+    width: 36, height: 36, borderRadius: 10, background: "#222",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    color: "#fff", flexShrink: 0,
+  },
+  featureText: { color: "#ccc", fontSize: 14, fontWeight: 500 },
+  grid: {
+    position: "absolute", bottom: 0, left: 0, right: 0, top: 0,
+    backgroundImage: "radial-gradient(circle, #222 1px, transparent 1px)",
+    backgroundSize: "28px 28px",
+    opacity: 0.25, zIndex: 0, pointerEvents: "none",
   },
   rightPanel: {
-    width: 460,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "40px 32px",
-    background: "#f5f3ff",
-    flexShrink: 0,
+    width: 480, display: "flex", alignItems: "center", justifyContent: "center",
+    padding: "40px 48px", background: "#0a0a0a", flexShrink: 0,
   },
-  formCard: {
-    width: "100%",
-    background: "#fff",
-    borderRadius: 20,
-    padding: "40px 36px",
-    boxShadow: "0 8px 40px rgba(99,102,241,0.12)",
+  formBox: { width: "100%" },
+  formIcon: {
+    width: 52, height: 52, borderRadius: 14, background: "#fff",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    marginBottom: 20,
   },
-  formTitle: { color: "#1e1b4b", fontSize: 26, fontWeight: 700, margin: "0 0 6px" },
-  formSub: { color: "#7c3aed", fontSize: 14, margin: "0 0 28px" },
-  label: { display: "block", color: "#4c1d95", fontSize: 13, fontWeight: 600, marginBottom: 8 },
+  formTitle: { color: "#fff", fontSize: 26, fontWeight: 700, margin: "0 0 6px" },
+  formSub: { color: "#888", fontSize: 14, margin: 0 },
+  label: { display: "block", color: "#aaa", fontSize: 13, fontWeight: 500, marginBottom: 8 },
+  inputWrap: { position: "relative", display: "flex", alignItems: "center", marginBottom: 4 },
+  inputIcon: {
+    position: "absolute", right: 14, color: "#444",
+    display: "flex", alignItems: "center",
+  } as any,
   input: {
-    width: "100%", padding: "13px 16px",
-    border: "2px solid #ede9fe", borderRadius: 12,
-    fontSize: 15, color: "#1e1b4b", outline: "none",
-    background: "#faf9ff", boxSizing: "border-box",
+    width: "100%", padding: "13px 42px 13px 16px",
+    background: "#141414", border: "1px solid #2a2a2a",
+    borderRadius: 12, color: "#fff", fontSize: 14,
+    outline: "none", boxSizing: "border-box",
     transition: "border-color 0.2s",
   },
   btn: {
-    width: "100%", padding: "14px",
-    background: GRAD, color: "#fff",
-    border: "none", borderRadius: 12, fontSize: 15,
-    fontWeight: 700, cursor: "pointer", marginTop: 20,
-    boxShadow: "0 4px 16px rgba(99,102,241,0.35)",
+    width: "100%", padding: "14px", marginTop: 20,
+    background: "#fff", color: "#0a0a0a",
+    border: "none", borderRadius: 12,
+    fontSize: 15, fontWeight: 700, cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+    transition: "opacity 0.2s",
   },
   btnBack: {
-    width: "100%", padding: "12px",
-    background: "transparent", border: "2px solid #ede9fe",
-    borderRadius: 12, color: "#7c3aed", fontSize: 14,
-    cursor: "pointer", marginTop: 10, fontWeight: 500,
+    width: "100%", padding: "12px", marginTop: 10,
+    background: "transparent", border: "1px solid #2a2a2a",
+    borderRadius: 12, color: "#888", fontSize: 14, cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
   },
   error: {
-    background: "#fef2f2", color: "#dc2626",
-    border: "1px solid #fecaca", borderRadius: 10,
+    background: "#1a0a0a", color: "#f87171",
+    border: "1px solid #3f1515", borderRadius: 10,
     padding: "10px 14px", fontSize: 13, margin: "10px 0",
   },
 };

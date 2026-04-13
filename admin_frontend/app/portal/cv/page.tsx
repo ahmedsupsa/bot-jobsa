@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PortalShell } from "@/components/portal-shell";
 import { portalFetch, clearToken, authHeaders } from "@/lib/portal-auth";
+import { Upload, Trash2, FileText, CheckCircle, XCircle, Bot, Search, Send } from "lucide-react";
 
 interface CVInfo { has_cv: boolean; file_name?: string; updated_at?: string; }
 
@@ -13,6 +14,7 @@ export default function CVPage() {
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
+  const [drag, setDrag] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function loadCV() {
@@ -20,11 +22,8 @@ export default function CVPage() {
       const res = await portalFetch("/cv");
       if (res.status === 401) { clearToken(); router.replace("/portal/login"); return; }
       setCV(await res.json());
-    } catch {
-      clearToken(); router.replace("/portal/login");
-    } finally {
-      setLoading(false);
-    }
+    } catch { clearToken(); router.replace("/portal/login"); }
+    finally { setLoading(false); }
   }
 
   useEffect(() => { loadCV(); }, []);
@@ -39,14 +38,10 @@ export default function CVPage() {
       const res = await fetch("/api/portal/cv/upload", { method: "POST", headers: authHeaders(), body: form });
       const d = await res.json();
       if (!res.ok) { setMsg({ text: d.error || "فشل الرفع", type: "err" }); return; }
-      setMsg({ text: "✓ تم رفع السيرة بنجاح!", type: "ok" });
+      setMsg({ text: "تم رفع السيرة بنجاح", type: "ok" });
       await loadCV();
-    } catch {
-      setMsg({ text: "خطأ في الاتصال", type: "err" });
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
-    }
+    } catch { setMsg({ text: "خطأ في الاتصال", type: "err" }); }
+    finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
   }
 
   async function handleDelete() {
@@ -55,91 +50,107 @@ export default function CVPage() {
     try {
       const res = await portalFetch("/cv/delete", { method: "DELETE" });
       const d = await res.json();
-      if (!res.ok) { setMsg({ text: d.error || "فشل", type: "err" }); return; }
+      if (!res.ok) { setMsg({ text: d.error || "فشل الحذف", type: "err" }); return; }
       setMsg({ text: "تم حذف السيرة الذاتية", type: "ok" });
       await loadCV();
-    } catch {
-      setMsg({ text: "خطأ في الاتصال", type: "err" });
-    } finally {
-      setDeleting(false);
-    }
+    } catch { setMsg({ text: "خطأ في الاتصال", type: "err" }); }
+    finally { setDeleting(false); }
   }
+
+  const steps = [
+    { icon: <Search size={16} strokeWidth={1.5} />, text: "يقرأ الذكاء الاصطناعي سيرتك ويستخرج مجالاتك ومهاراتك" },
+    { icon: <Bot size={16} strokeWidth={1.5} />, text: "كل 30 دقيقة يبحث عن وظائف جديدة تناسب تخصصك" },
+    { icon: <Send size={16} strokeWidth={1.5} />, text: "يكتب رسالة تغطية مخصصة ويرسلها باسمك للشركة" },
+  ];
 
   return (
     <PortalShell>
       <div style={s.page}>
         <div style={s.header}>
+          <div style={s.headerIcon}><FileText size={22} strokeWidth={1.5} color="#fff" /></div>
           <div>
             <h1 style={s.title}>السيرة الذاتية</h1>
             <p style={s.sub}>ارفع سيرتك ليقرأها الذكاء الاصطناعي ويقدّم باسمك</p>
           </div>
-          <div style={s.headerIcon}>📎</div>
         </div>
 
-        {loading ? (
-          <p style={{ color: "#8b5cf6", padding: 40, textAlign: "center" }}>⏳ جاري التحميل…</p>
-        ) : (
+        {loading ? <p style={{ color: "#555", padding: 40, textAlign: "center" }}>جاري التحميل…</p> : (
           <>
             {msg && (
               <div style={{
                 ...s.msg,
-                background: msg.type === "ok" ? "#ecfdf5" : "#fef2f2",
-                color: msg.type === "ok" ? "#059669" : "#dc2626",
-                border: `1.5px solid ${msg.type === "ok" ? "#6ee7b7" : "#fca5a5"}`,
+                background: msg.type === "ok" ? "#0a1f0a" : "#1a0a0a",
+                color: msg.type === "ok" ? "#22c55e" : "#f87171",
+                border: `1px solid ${msg.type === "ok" ? "#22c55e22" : "#f8717122"}`,
               }}>
-                {msg.type === "ok" ? "✅" : "❌"} {msg.text}
+                {msg.type === "ok"
+                  ? <CheckCircle size={16} strokeWidth={1.5} />
+                  : <XCircle size={16} strokeWidth={1.5} />
+                }
+                {msg.text}
               </div>
             )}
 
             {cv?.has_cv && (
               <div style={s.cvCard}>
-                <div style={s.cvIconWrap}>📄</div>
+                <div style={s.cvIcon}><FileText size={24} strokeWidth={1.5} color="#fff" /></div>
                 <div style={{ flex: 1 }}>
                   <p style={s.cvName}>{cv.file_name}</p>
                   {cv.updated_at && (
-                    <p style={s.cvDate}>
-                      آخر تحديث: {new Date(cv.updated_at).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" })}
-                    </p>
+                    <p style={s.cvDate}>آخر تحديث: {new Date(cv.updated_at).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" })}</p>
                   )}
-                  <span style={s.cvBadge}>✓ مرفوعة ونشطة</span>
                 </div>
+                <div style={s.cvBadge}><CheckCircle size={13} strokeWidth={2} /> مرفوعة</div>
               </div>
             )}
 
-            {/* Upload zone */}
+            {/* Drop zone */}
             <div
-              style={{ ...s.uploadZone, ...(uploading ? s.uploadZoneActive : {}) }}
+              style={{ ...s.dropZone, ...(drag ? s.dropActive : {}), ...(uploading ? s.dropUploading : {}) }}
               onClick={() => !uploading && fileRef.current?.click()}
+              onDragOver={e => { e.preventDefault(); setDrag(true); }}
+              onDragLeave={() => setDrag(false)}
+              onDrop={e => {
+                e.preventDefault(); setDrag(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file && fileRef.current) {
+                  const dt = new DataTransfer(); dt.items.add(file);
+                  fileRef.current.files = dt.files;
+                  handleUpload({ target: fileRef.current } as any);
+                }
+              }}
             >
-              <div style={s.uploadIconWrap}>{uploading ? "⏳" : "⬆️"}</div>
-              <p style={s.uploadTitle}>
-                {uploading ? "جاري الرفع…" : cv?.has_cv ? "اضغط لاستبدال السيرة" : "اضغط لرفع سيرتك الذاتية"}
+              <div style={s.dropIcon}>
+                <Upload size={28} strokeWidth={1.5} color={drag ? "#fff" : "#555"} />
+              </div>
+              <p style={s.dropTitle}>
+                {uploading ? "جاري الرفع…" : cv?.has_cv ? "اسحب ملفاً أو اضغط لاستبدال السيرة" : "اسحب ملفاً أو اضغط للرفع"}
               </p>
-              <p style={s.uploadSub}>PDF أو صورة (JPG, PNG) — حتى 10 ميغابايت</p>
+              <p style={s.dropSub}>PDF · JPG · PNG — حتى 10 ميغابايت</p>
               <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: "none" }} onChange={handleUpload} disabled={uploading} />
             </div>
 
             {cv?.has_cv && (
               <button style={s.deleteBtn} onClick={handleDelete} disabled={deleting}>
-                {deleting ? "جاري الحذف…" : "🗑️ حذف السيرة الذاتية"}
+                <Trash2 size={15} strokeWidth={1.5} />
+                {deleting ? "جاري الحذف…" : "حذف السيرة الذاتية"}
               </button>
             )}
 
-            {/* Info box */}
-            <div style={s.infoBox}>
-              <h3 style={s.infoTitle}>🤖 كيف يعمل الذكاء الاصطناعي؟</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {[
-                  { step: "1", text: "يقرأ الذكاء الاصطناعي محتوى سيرتك ويستخرج مجالاتك ومهاراتك" },
-                  { step: "2", text: "كل 30 دقيقة يبحث عن وظائف جديدة تناسب تخصصك" },
-                  { step: "3", text: "يكتب رسالة تغطية مخصصة ويرسلها باسمك إلى الشركة" },
-                ].map(({ step, text }) => (
-                  <div key={step} style={s.step}>
-                    <div style={s.stepNum}>{step}</div>
-                    <p style={s.stepText}>{text}</p>
-                  </div>
-                ))}
+            {/* How it works */}
+            <div style={s.infoCard}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+                <Bot size={18} strokeWidth={1.5} color="#fff" />
+                <span style={{ color: "#fff", fontSize: 14, fontWeight: 600 }}>كيف يعمل الذكاء الاصطناعي؟</span>
               </div>
+              {steps.map((step, i) => (
+                <div key={i} style={s.step}>
+                  <div style={s.stepNum}>
+                    <span style={{ color: "#fff" }}>{step.icon}</span>
+                  </div>
+                  <p style={s.stepText}>{step.text}</p>
+                </div>
+              ))}
             </div>
           </>
         )}
@@ -149,52 +160,66 @@ export default function CVPage() {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  page: { maxWidth: 640, margin: "0 auto" },
+  page: { maxWidth: 620, margin: "0 auto" },
   header: {
-    display: "flex", alignItems: "center", justifyContent: "space-between",
-    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-    borderRadius: 20, padding: "24px 28px", marginBottom: 24,
+    display: "flex", alignItems: "center", gap: 16,
+    background: "#111", border: "1px solid #1f1f1f",
+    borderRadius: 18, padding: "24px 28px", marginBottom: 24,
   },
-  title: { color: "#fff", fontSize: 22, fontWeight: 800, margin: 0 },
-  sub: { color: "rgba(255,255,255,0.8)", fontSize: 13, margin: "4px 0 0" },
-  headerIcon: { fontSize: 44 },
-  msg: { padding: "14px 18px", borderRadius: 12, marginBottom: 18, fontSize: 14, fontWeight: 500 },
+  headerIcon: {
+    width: 52, height: 52, borderRadius: 14, background: "#1a1a1a",
+    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+  },
+  title: { color: "#fff", fontSize: 20, fontWeight: 700, margin: 0 },
+  sub: { color: "#666", fontSize: 13, margin: "4px 0 0" },
+  msg: {
+    display: "flex", alignItems: "center", gap: 8,
+    padding: "13px 16px", borderRadius: 12, marginBottom: 16, fontSize: 13, fontWeight: 500,
+  },
   cvCard: {
     display: "flex", alignItems: "center", gap: 16,
-    background: "#fff", border: "1.5px solid #6ee7b7",
-    borderRadius: 16, padding: "20px 24px", marginBottom: 20,
-    boxShadow: "0 4px 16px rgba(16,185,129,0.1)",
+    background: "#111", border: "1px solid #22c55e22",
+    borderRadius: 14, padding: "18px 22px", marginBottom: 16,
   },
-  cvIconWrap: { fontSize: 40 },
-  cvName: { color: "#1e1b4b", fontSize: 14, fontWeight: 700, margin: 0 },
-  cvDate: { color: "#9ca3af", fontSize: 12, margin: "4px 0 8px" },
+  cvIcon: {
+    width: 44, height: 44, borderRadius: 12, background: "#1a1a1a",
+    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+  },
+  cvName: { color: "#fff", fontSize: 14, fontWeight: 600, margin: 0 },
+  cvDate: { color: "#555", fontSize: 12, margin: "4px 0 0" },
   cvBadge: {
-    display: "inline-block", background: "#ecfdf5", color: "#059669",
-    border: "1px solid #6ee7b7", borderRadius: 8, padding: "3px 12px", fontSize: 11, fontWeight: 600,
+    display: "flex", alignItems: "center", gap: 6,
+    background: "#0a1f0a", color: "#22c55e",
+    border: "1px solid #22c55e22", borderRadius: 8,
+    padding: "5px 12px", fontSize: 12, fontWeight: 600,
   },
-  uploadZone: {
-    background: "#fff", border: "2.5px dashed #c4b5fd", borderRadius: 18,
-    padding: "44px 28px", textAlign: "center", cursor: "pointer",
-    marginBottom: 16, transition: "all 0.2s",
+  dropZone: {
+    background: "#111", border: "1.5px dashed #2a2a2a",
+    borderRadius: 16, padding: "44px 28px",
+    textAlign: "center", cursor: "pointer", marginBottom: 14,
+    transition: "all 0.2s",
   },
-  uploadZoneActive: { background: "#f5f3ff", borderColor: "#6366f1" },
-  uploadIconWrap: { fontSize: 40, marginBottom: 12 },
-  uploadTitle: { color: "#1e1b4b", fontSize: 16, fontWeight: 700, margin: "0 0 6px" },
-  uploadSub: { color: "#9ca3af", fontSize: 13, margin: 0 },
-  deleteBtn: {
-    width: "100%", padding: "12px",
-    background: "#fef2f2", border: "1.5px solid #fca5a5",
-    borderRadius: 12, color: "#dc2626", fontSize: 13,
-    fontWeight: 600, cursor: "pointer", marginBottom: 24,
-  },
-  infoBox: { background: "#f5f3ff", border: "1px solid #ede9fe", borderRadius: 18, padding: "24px" },
-  infoTitle: { color: "#4c1d95", fontSize: 15, fontWeight: 700, margin: "0 0 18px" },
-  step: { display: "flex", alignItems: "flex-start", gap: 12 },
-  stepNum: {
-    width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-    color: "#fff", fontSize: 13, fontWeight: 700,
+  dropActive: { borderColor: "#fff", background: "#1a1a1a" },
+  dropUploading: { opacity: 0.6, cursor: "not-allowed" },
+  dropIcon: {
+    width: 56, height: 56, borderRadius: 16, background: "#1a1a1a",
     display: "flex", alignItems: "center", justifyContent: "center",
+    margin: "0 auto 14px",
   },
-  stepText: { color: "#4c1d95", fontSize: 13, margin: 0, lineHeight: 1.6 },
+  dropTitle: { color: "#ccc", fontSize: 15, fontWeight: 600, margin: "0 0 6px" },
+  dropSub: { color: "#555", fontSize: 13, margin: 0 },
+  deleteBtn: {
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+    width: "100%", padding: "12px",
+    background: "#1a0a0a", border: "1px solid #3f1515",
+    borderRadius: 12, color: "#f87171", fontSize: 13, fontWeight: 600,
+    cursor: "pointer", marginBottom: 20,
+  },
+  infoCard: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 16, padding: "22px" },
+  step: { display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14 },
+  stepNum: {
+    width: 32, height: 32, borderRadius: 10, background: "#1a1a1a",
+    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+  },
+  stepText: { color: "#888", fontSize: 13, margin: 0, lineHeight: 1.6, paddingTop: 6 },
 };
