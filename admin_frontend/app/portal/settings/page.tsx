@@ -5,10 +5,8 @@ import { PortalShell } from "@/components/portal-shell";
 import { portalFetch, clearToken } from "@/lib/portal-auth";
 
 interface Settings {
-  email: string;
-  sender_email_alias: string;
-  template_type: string;
-  application_language: string;
+  email: string; sender_email_alias: string;
+  template_type: string; application_language: string;
   job_preferences_count: number;
 }
 
@@ -38,8 +36,7 @@ export default function SettingsPage() {
 
   async function handleSaveEmail(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
-    setMsg(null);
+    setSaving(true); setMsg(null);
     try {
       const res = await portalFetch("/settings/email", {
         method: "POST",
@@ -47,7 +44,7 @@ export default function SettingsPage() {
       });
       const d = await res.json();
       if (!res.ok) { setMsg({ text: d.error || "خطأ", type: "err" }); return; }
-      setMsg({ text: d.sender_alias ? `✓ تم الربط! إيميل التقديم: ${d.sender_alias}` : "✓ تم حفظ الإيميل", type: "ok" });
+      setMsg({ text: d.sender_alias ? `تم الربط! إيميل التقديم: ${d.sender_alias}` : "تم حفظ الإيميل", type: "ok" });
       await loadSettings();
     } catch {
       setMsg({ text: "خطأ في الاتصال", type: "err" });
@@ -58,34 +55,43 @@ export default function SettingsPage() {
 
   return (
     <PortalShell>
-      <div style={s.container}>
-        <h1 style={s.title}>⚙️ الإعدادات</h1>
+      <div style={s.page}>
+        <div style={s.header}>
+          <div>
+            <h1 style={s.title}>الإعدادات</h1>
+            <p style={s.sub}>إعداد إيميلك لتفعيل التقديم التلقائي</p>
+          </div>
+          <div style={s.headerIcon}>⚙️</div>
+        </div>
 
         {loading ? (
-          <p style={s.loading}>جاري التحميل…</p>
+          <p style={{ color: "#8b5cf6", padding: 40, textAlign: "center" }}>⏳ جاري التحميل…</p>
         ) : (
           <>
             {msg && (
               <div style={{
-                ...s.msg,
-                background: msg.type === "ok" ? "rgba(52,211,153,0.1)" : "rgba(248,113,113,0.1)",
-                color: msg.type === "ok" ? "#34d399" : "#f87171",
-                border: `1px solid ${msg.type === "ok" ? "rgba(52,211,153,0.3)" : "rgba(248,113,113,0.3)"}`,
+                ...s.msgBox,
+                background: msg.type === "ok" ? "#ecfdf5" : "#fef2f2",
+                color: msg.type === "ok" ? "#059669" : "#dc2626",
+                border: `1.5px solid ${msg.type === "ok" ? "#6ee7b7" : "#fca5a5"}`,
               }}>
-                {msg.text}
+                {msg.type === "ok" ? "✅" : "❌"} {msg.text}
               </div>
             )}
 
-            {/* ربط الإيميل */}
+            {/* Email setup */}
             <div style={s.card}>
-              <h2 style={s.cardTitle}>📧 ربط الإيميل</h2>
-              <p style={s.cardDesc}>
-                اربط إيميل Gmail الخاص بك لتقديم على الوظائف باسمك تلقائياً.
-              </p>
+              <div style={s.cardTop}>
+                <div style={s.cardIconWrap}>📧</div>
+                <div>
+                  <h2 style={s.cardTitle}>ربط إيميل Gmail</h2>
+                  <p style={s.cardSub}>مطلوب لإرسال طلبات التوظيف باسمك</p>
+                </div>
+              </div>
 
               {settings?.sender_email_alias && (
                 <div style={s.aliasBadge}>
-                  <span style={{ fontSize: 18 }}>✅</span>
+                  <span style={{ fontSize: 20 }}>🎉</span>
                   <div>
                     <p style={s.aliasLabel}>إيميل التقديم الخاص بك</p>
                     <p style={s.aliasValue} dir="ltr">{settings.sender_email_alias}</p>
@@ -95,48 +101,58 @@ export default function SettingsPage() {
 
               <form onSubmit={handleSaveEmail}>
                 <label style={s.fieldLabel}>إيميل Gmail الشخصي</label>
-                <input
-                  style={s.input}
-                  type="email"
-                  dir="ltr"
-                  placeholder="example@gmail.com"
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                />
-                <button
-                  style={s.btn}
-                  type="submit"
-                  disabled={saving || !emailInput.trim()}
-                >
-                  {saving ? "جاري الحفظ…" : settings?.email ? "تحديث الإيميل" : "ربط الإيميل"}
+                <div style={s.inputWrap}>
+                  <input
+                    style={s.input}
+                    type="email"
+                    dir="ltr"
+                    placeholder="example@gmail.com"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                  />
+                </div>
+                <button style={s.btn} type="submit" disabled={saving || !emailInput.trim()}>
+                  {saving ? "جاري الحفظ…" : settings?.email ? "تحديث الإيميل ✓" : "ربط الإيميل ←"}
                 </button>
               </form>
 
-              <div style={s.infoBox}>
-                <p style={s.infoTitle}>💡 ملاحظة</p>
-                <p style={s.infoText}>
-                  بعد ربط الإيميل، يُنشئ النظام تلقائياً عنوان إرسال خاص بك (alias) يُستخدم لإرسال طلبات التوظيف باسمك دون الكشف عن إيميلك الشخصي.
+              <div style={s.note}>
+                <span style={{ fontSize: 16 }}>💡</span>
+                <p style={s.noteText}>
+                  سيُنشئ النظام عنوان إرسال خاص بك يُستخدم لإرسال الطلبات دون الكشف عن إيميلك الشخصي.
                 </p>
               </div>
             </div>
 
-            {/* إحصائيات */}
+            {/* Account info */}
             <div style={s.card}>
-              <h2 style={s.cardTitle}>📊 معلومات الحساب</h2>
-              <InfoRow label="الإيميل الشخصي" value={settings?.email || "غير مربوط"} dir={settings?.email ? "ltr" : undefined} />
-              <InfoRow label="إيميل التقديم" value={settings?.sender_email_alias || "—"} dir={settings?.sender_email_alias ? "ltr" : undefined} />
-              <InfoRow label="لغة التقديم" value={settings?.application_language === "en" ? "English" : "العربية"} />
-              <InfoRow label="مجالات الوظائف" value={`${settings?.job_preferences_count || 0} مجال`} />
+              <div style={s.cardTop}>
+                <div style={s.cardIconWrap}>📊</div>
+                <div>
+                  <h2 style={s.cardTitle}>معلومات الحساب</h2>
+                </div>
+              </div>
+              <div style={s.infoList}>
+                <InfoRow label="الإيميل المربوط" value={settings?.email || "—"} dir={settings?.email ? "ltr" : undefined} />
+                <InfoRow label="إيميل التقديم" value={settings?.sender_email_alias || "—"} dir={settings?.sender_email_alias ? "ltr" : undefined} />
+                <InfoRow label="لغة التقديم" value={settings?.application_language === "en" ? "English" : "العربية"} />
+                <InfoRow label="مجالات الوظائف" value={`${settings?.job_preferences_count || 0} مجال`} />
+              </div>
             </div>
 
-            {/* روابط سريعة */}
-            <div style={s.card}>
-              <h2 style={s.cardTitle}>🔗 روابط سريعة</h2>
-              <div style={s.quickLinks}>
-                <QuickLink icon="📎" label="رفع السيرة الذاتية" onClick={() => router.push("/portal/cv")} />
-                <QuickLink icon="👤" label="بياناتي" onClick={() => router.push("/portal/profile")} />
-                <QuickLink icon="📋" label="التقديمات" onClick={() => router.push("/portal/applications")} />
-              </div>
+            {/* Quick nav */}
+            <div style={s.quickNav}>
+              {[
+                { icon: "📎", label: "السيرة الذاتية", href: "/portal/cv" },
+                { icon: "👤", label: "حسابي", href: "/portal/profile" },
+                { icon: "📋", label: "التقديمات", href: "/portal/applications" },
+              ].map(({ icon, label, href }) => (
+                <button key={href} style={s.quickNavBtn} onClick={() => router.push(href)}>
+                  <span style={{ fontSize: 20 }}>{icon}</span>
+                  <span style={{ fontWeight: 600 }}>{label}</span>
+                  <span style={{ marginRight: "auto", color: "#9ca3af" }}>←</span>
+                </button>
+              ))}
             </div>
           </>
         )}
@@ -147,55 +163,70 @@ export default function SettingsPage() {
 
 function InfoRow({ label, value, dir }: { label: string; value: string; dir?: string }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #1a2d52" }}>
-      <span style={{ color: "#7a9cc5", fontSize: 13 }}>{label}</span>
-      <span style={{ color: "#e8f0ff", fontSize: 13, fontWeight: 500, direction: dir as any }}>{value || "—"}</span>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderBottom: "1px solid #f3f4f6" }}>
+      <span style={{ color: "#9ca3af", fontSize: 12 }}>{label}</span>
+      <span style={{ color: "#1e1b4b", fontSize: 13, fontWeight: 600, direction: dir as any }}>{value || "—"}</span>
     </div>
   );
 }
 
-function QuickLink({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
-  return (
-    <button style={{
-      display: "flex", alignItems: "center", gap: 10,
-      width: "100%", padding: "12px 0", background: "transparent",
-      border: "none", color: "#4f8ef7", fontSize: 14, cursor: "pointer", textAlign: "right",
-    }} onClick={onClick}>
-      <span>{icon}</span><span>{label}</span><span style={{ marginRight: "auto" }}>←</span>
-    </button>
-  );
-}
-
 const s: Record<string, React.CSSProperties> = {
-  container: { maxWidth: 600, margin: "0 auto" },
-  title: { color: "#e8f0ff", fontSize: 22, fontWeight: 700, marginBottom: 24 },
-  loading: { color: "#7a9cc5", textAlign: "center", padding: 60 },
-  msg: { padding: "12px 16px", borderRadius: 10, marginBottom: 20, fontSize: 14 },
-  card: { background: "#0d1628", border: "1px solid #1a2d52", borderRadius: 16, padding: "22px 24px", marginBottom: 20 },
-  cardTitle: { color: "#c0d4f0", fontSize: 15, fontWeight: 600, margin: "0 0 8px" },
-  cardDesc: { color: "#7a9cc5", fontSize: 13, margin: "0 0 20px", lineHeight: 1.6 },
-  aliasBadge: {
-    display: "flex", alignItems: "center", gap: 12,
-    background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.25)",
-    borderRadius: 10, padding: "12px 16px", marginBottom: 20,
+  page: { maxWidth: 640, margin: "0 auto" },
+  header: {
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+    borderRadius: 20, padding: "24px 28px", marginBottom: 24,
   },
-  aliasLabel: { color: "#7a9cc5", fontSize: 12, margin: 0 },
-  aliasValue: { color: "#34d399", fontSize: 14, fontWeight: 600, margin: "2px 0 0" },
-  fieldLabel: { color: "#8aa8cc", fontSize: 13, display: "block", marginBottom: 8 },
+  title: { color: "#fff", fontSize: 22, fontWeight: 800, margin: 0 },
+  sub: { color: "rgba(255,255,255,0.8)", fontSize: 13, margin: "4px 0 0" },
+  headerIcon: { fontSize: 44 },
+  msgBox: { padding: "14px 18px", borderRadius: 12, marginBottom: 18, fontSize: 14, fontWeight: 500 },
+  card: {
+    background: "#fff", borderRadius: 20, padding: "24px",
+    boxShadow: "0 2px 20px rgba(99,102,241,0.08)", border: "1px solid #ede9fe", marginBottom: 20,
+  },
+  cardTop: { display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 20 },
+  cardIconWrap: {
+    width: 48, height: 48, borderRadius: 14, background: "#f5f3ff",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontSize: 22, flexShrink: 0,
+  },
+  cardTitle: { color: "#1e1b4b", fontSize: 16, fontWeight: 700, margin: 0 },
+  cardSub: { color: "#9ca3af", fontSize: 12, margin: "4px 0 0" },
+  aliasBadge: {
+    display: "flex", alignItems: "center", gap: 14,
+    background: "#ecfdf5", border: "1.5px solid #6ee7b7",
+    borderRadius: 14, padding: "14px 18px", marginBottom: 20,
+  },
+  aliasLabel: { color: "#059669", fontSize: 11, fontWeight: 600, margin: 0 },
+  aliasValue: { color: "#065f46", fontSize: 14, fontWeight: 700, margin: "2px 0 0" },
+  fieldLabel: { display: "block", color: "#4c1d95", fontSize: 13, fontWeight: 600, marginBottom: 8 },
+  inputWrap: { marginBottom: 16 },
   input: {
-    width: "100%", padding: "12px 14px",
-    background: "#111e38", border: "1px solid #1a2d52",
-    borderRadius: 10, color: "#e8f0ff", fontSize: 14,
-    outline: "none", boxSizing: "border-box", marginBottom: 12,
+    width: "100%", padding: "13px 16px",
+    border: "2px solid #ede9fe", borderRadius: 12,
+    fontSize: 14, color: "#1e1b4b", outline: "none",
+    background: "#faf9ff", boxSizing: "border-box",
   },
   btn: {
-    width: "100%", padding: "12px",
-    background: "#4f8ef7", color: "#fff",
-    border: "none", borderRadius: 10, fontSize: 14,
-    fontWeight: 600, cursor: "pointer",
+    width: "100%", padding: "14px",
+    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+    color: "#fff", border: "none", borderRadius: 12,
+    fontSize: 14, fontWeight: 700, cursor: "pointer",
+    boxShadow: "0 4px 14px rgba(99,102,241,0.3)",
   },
-  infoBox: { background: "rgba(79,142,247,0.06)", border: "1px solid rgba(79,142,247,0.15)", borderRadius: 10, padding: "12px 16px", marginTop: 16 },
-  infoTitle: { color: "#4f8ef7", fontSize: 13, fontWeight: 600, margin: "0 0 4px" },
-  infoText: { color: "#7a9cc5", fontSize: 12, margin: 0, lineHeight: 1.6 },
-  quickLinks: { display: "flex", flexDirection: "column" },
+  note: {
+    display: "flex", alignItems: "flex-start", gap: 10,
+    background: "#f5f3ff", borderRadius: 12, padding: "12px 16px", marginTop: 16,
+  },
+  noteText: { color: "#6d28d9", fontSize: 12, margin: 0, lineHeight: 1.6 },
+  infoList: {},
+  quickNav: { display: "flex", flexDirection: "column", gap: 10 },
+  quickNavBtn: {
+    display: "flex", alignItems: "center", gap: 12,
+    background: "#fff", border: "1px solid #ede9fe",
+    borderRadius: 14, padding: "14px 18px", cursor: "pointer",
+    boxShadow: "0 1px 8px rgba(99,102,241,0.06)", color: "#1e1b4b",
+    fontSize: 14, width: "100%",
+  },
 };

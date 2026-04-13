@@ -64,143 +64,179 @@ export default function PortalLogin() {
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <div style={styles.logo}>
-          <span style={styles.logoIcon}>💼</span>
-          <h1 style={styles.logoText}>جبسا</h1>
-          <p style={styles.logoSub}>بوابة المستخدمين</p>
-        </div>
-
-        {step === "code" ? (
-          <form onSubmit={handleCodeSubmit}>
-            <p style={styles.label}>أدخل كود التفعيل</p>
-            <input
-              style={styles.input}
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="مثال: ABC-12345"
-              autoFocus
-              dir="ltr"
-            />
-            {error && <p style={styles.error}>{error}</p>}
-            <button style={styles.btn} type="submit" disabled={loading || !code.trim()}>
-              {loading ? "جاري التحقق…" : "متابعة ←"}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleRegister}>
-            <p style={styles.label}>أكمل بيانات التسجيل</p>
-            <p style={styles.subLabel}>اشتراك {subDays} يوم</p>
+    <div style={s.page} className="portal-root">
+      {/* Left decorative panel */}
+      <div style={s.leftPanel}>
+        <div style={s.leftContent}>
+          <div style={s.brandIcon}>💼</div>
+          <h1 style={s.brandTitle}>جبسا</h1>
+          <p style={s.brandTagline}>التقديم التلقائي على الوظائف بالذكاء الاصطناعي</p>
+          <div style={s.features}>
             {[
-              { key: "full_name", label: "الاسم الكامل", placeholder: "أحمد محمد العمري" },
-              { key: "phone", label: "رقم الجوال", placeholder: "05xxxxxxxx", dir: "ltr" },
-              { key: "age", label: "العمر", placeholder: "25", type: "number" },
-              { key: "city", label: "المدينة", placeholder: "الرياض" },
-            ].map(({ key, label, placeholder, dir, type }) => (
-              <div key={key} style={{ marginBottom: 14 }}>
-                <label style={styles.fieldLabel}>{label}</label>
-                <input
-                  style={styles.input}
-                  type={type || "text"}
-                  dir={dir as any}
-                  placeholder={placeholder}
-                  value={form[key as keyof typeof form]}
-                  onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                />
+              { icon: "🤖", text: "تقديم تلقائي كل 30 دقيقة" },
+              { icon: "✍️", text: "رسائل تغطية مخصصة بالذكاء الاصطناعي" },
+              { icon: "📊", text: "تتبع جميع تقديماتك بسهولة" },
+            ].map((f, i) => (
+              <div key={i} style={s.featureItem}>
+                <span style={s.featureIcon}>{f.icon}</span>
+                <span style={s.featureText}>{f.text}</span>
               </div>
             ))}
-            {error && <p style={styles.error}>{error}</p>}
-            <button
-              style={styles.btn}
-              type="submit"
-              disabled={loading || !form.full_name || !form.phone || !form.city}
-            >
-              {loading ? "جاري التسجيل…" : "إنشاء الحساب ✓"}
-            </button>
-            <button
-              style={styles.btnBack}
-              type="button"
-              onClick={() => { setStep("code"); setError(""); }}
-            >
-              ← رجوع
-            </button>
-          </form>
-        )}
+          </div>
+        </div>
+        <div style={s.blob1} />
+        <div style={s.blob2} />
+      </div>
+
+      {/* Right form panel */}
+      <div style={s.rightPanel}>
+        <div style={s.formCard}>
+          {step === "code" ? (
+            <>
+              <h2 style={s.formTitle}>مرحباً بك 👋</h2>
+              <p style={s.formSub}>أدخل كود التفعيل للدخول إلى حسابك</p>
+              <form onSubmit={handleCodeSubmit}>
+                <label style={s.label}>كود التفعيل</label>
+                <input
+                  style={s.input}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="أدخل الكود هنا…"
+                  autoFocus
+                  dir="ltr"
+                />
+                {error && <div style={s.error}>{error}</div>}
+                <button style={s.btn} type="submit" disabled={loading || !code.trim()}>
+                  {loading ? "جاري التحقق…" : "دخول ←"}
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <h2 style={s.formTitle}>أكمل التسجيل ✨</h2>
+              <p style={s.formSub}>اشتراك {subDays} يوم — أدخل بياناتك للبدء</p>
+              <form onSubmit={handleRegister}>
+                {[
+                  { key: "full_name", label: "الاسم الكامل", placeholder: "أحمد محمد" },
+                  { key: "phone", label: "رقم الجوال", placeholder: "05xxxxxxxx", dir: "ltr" },
+                  { key: "age", label: "العمر", placeholder: "25", type: "number" },
+                  { key: "city", label: "المدينة", placeholder: "الرياض" },
+                ].map(({ key, label, placeholder, dir, type }) => (
+                  <div key={key} style={{ marginBottom: 16 }}>
+                    <label style={s.label}>{label}</label>
+                    <input
+                      style={s.input}
+                      type={type || "text"}
+                      dir={dir as any}
+                      placeholder={placeholder}
+                      value={form[key as keyof typeof form]}
+                      onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                    />
+                  </div>
+                ))}
+                {error && <div style={s.error}>{error}</div>}
+                <button
+                  style={s.btn}
+                  type="submit"
+                  disabled={loading || !form.full_name || !form.phone || !form.city}
+                >
+                  {loading ? "جاري الإنشاء…" : "إنشاء الحساب ✓"}
+                </button>
+                <button style={s.btnBack} type="button" onClick={() => { setStep("code"); setError(""); }}>
+                  ← رجوع
+                </button>
+              </form>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
+const GRAD = "linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%)";
+
+const s: Record<string, React.CSSProperties> = {
   page: {
     minHeight: "100vh",
-    background: "#060b18",
+    display: "flex",
+    direction: "rtl",
+    fontFamily: "system-ui, -apple-system, sans-serif",
+    background: "#f5f3ff",
+  },
+  leftPanel: {
+    flex: 1,
+    background: GRAD,
+    padding: "60px 48px",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    position: "relative",
+    overflow: "hidden",
+    minWidth: 320,
+  },
+  leftContent: { position: "relative", zIndex: 2 },
+  brandIcon: { fontSize: 56, marginBottom: 16 },
+  brandTitle: { color: "#fff", fontSize: 40, fontWeight: 800, margin: "0 0 8px" },
+  brandTagline: { color: "rgba(255,255,255,0.85)", fontSize: 16, margin: "0 0 40px", lineHeight: 1.6 },
+  features: { display: "flex", flexDirection: "column", gap: 16 },
+  featureItem: {
+    display: "flex", alignItems: "center", gap: 12,
+    background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)",
+    borderRadius: 12, padding: "12px 16px",
+  },
+  featureIcon: { fontSize: 20 },
+  featureText: { color: "#fff", fontSize: 14, fontWeight: 500 },
+  blob1: {
+    position: "absolute", top: -80, left: -80, width: 300, height: 300,
+    borderRadius: "50%", background: "rgba(255,255,255,0.08)", zIndex: 1,
+  },
+  blob2: {
+    position: "absolute", bottom: -60, right: -60, width: 220, height: 220,
+    borderRadius: "50%", background: "rgba(255,255,255,0.06)", zIndex: 1,
+  },
+  rightPanel: {
+    width: 460,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: 20,
-    fontFamily: "system-ui, -apple-system, sans-serif",
-    direction: "rtl",
+    padding: "40px 32px",
+    background: "#f5f3ff",
+    flexShrink: 0,
   },
-  card: {
-    background: "#0d1628",
-    border: "1px solid #1a2d52",
-    borderRadius: 16,
+  formCard: {
+    width: "100%",
+    background: "#fff",
+    borderRadius: 20,
     padding: "40px 36px",
-    width: "100%",
-    maxWidth: 420,
-    boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+    boxShadow: "0 8px 40px rgba(99,102,241,0.12)",
   },
-  logo: { textAlign: "center", marginBottom: 32 },
-  logoIcon: { fontSize: 48 },
-  logoText: { color: "#fff", fontSize: 28, fontWeight: 700, margin: "8px 0 4px" },
-  logoSub: { color: "#7a9cc5", fontSize: 14, margin: 0 },
-  label: { color: "#c0d4f0", fontSize: 16, marginBottom: 16, fontWeight: 600 },
-  subLabel: { color: "#4f8ef7", fontSize: 13, marginBottom: 20, marginTop: -10 },
-  fieldLabel: { color: "#8aa8cc", fontSize: 13, display: "block", marginBottom: 6 },
+  formTitle: { color: "#1e1b4b", fontSize: 26, fontWeight: 700, margin: "0 0 6px" },
+  formSub: { color: "#7c3aed", fontSize: 14, margin: "0 0 28px" },
+  label: { display: "block", color: "#4c1d95", fontSize: 13, fontWeight: 600, marginBottom: 8 },
   input: {
-    width: "100%",
-    padding: "12px 14px",
-    background: "#111e38",
-    border: "1px solid #1a2d52",
-    borderRadius: 10,
-    color: "#e8f0ff",
-    fontSize: 15,
-    outline: "none",
-    boxSizing: "border-box",
-    marginBottom: 4,
+    width: "100%", padding: "13px 16px",
+    border: "2px solid #ede9fe", borderRadius: 12,
+    fontSize: 15, color: "#1e1b4b", outline: "none",
+    background: "#faf9ff", boxSizing: "border-box",
+    transition: "border-color 0.2s",
   },
   btn: {
-    width: "100%",
-    padding: "13px",
-    background: "#4f8ef7",
-    color: "#fff",
-    border: "none",
-    borderRadius: 10,
-    fontSize: 15,
-    fontWeight: 600,
-    cursor: "pointer",
-    marginTop: 16,
-    transition: "opacity 0.2s",
+    width: "100%", padding: "14px",
+    background: GRAD, color: "#fff",
+    border: "none", borderRadius: 12, fontSize: 15,
+    fontWeight: 700, cursor: "pointer", marginTop: 20,
+    boxShadow: "0 4px 16px rgba(99,102,241,0.35)",
   },
   btnBack: {
-    width: "100%",
-    padding: "11px",
-    background: "transparent",
-    color: "#7a9cc5",
-    border: "1px solid #1a2d52",
-    borderRadius: 10,
-    fontSize: 14,
-    cursor: "pointer",
-    marginTop: 10,
+    width: "100%", padding: "12px",
+    background: "transparent", border: "2px solid #ede9fe",
+    borderRadius: 12, color: "#7c3aed", fontSize: 14,
+    cursor: "pointer", marginTop: 10, fontWeight: 500,
   },
   error: {
-    color: "#f87171",
-    fontSize: 13,
-    margin: "8px 0",
-    padding: "10px 14px",
-    background: "rgba(248,113,113,0.1)",
-    borderRadius: 8,
+    background: "#fef2f2", color: "#dc2626",
+    border: "1px solid #fecaca", borderRadius: 10,
+    padding: "10px 14px", fontSize: 13, margin: "10px 0",
   },
 };

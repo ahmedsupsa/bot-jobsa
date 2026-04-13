@@ -4,11 +4,7 @@ import { useRouter } from "next/navigation";
 import { PortalShell } from "@/components/portal-shell";
 import { portalFetch, clearToken, authHeaders } from "@/lib/portal-auth";
 
-interface CVInfo {
-  has_cv: boolean;
-  file_name?: string;
-  updated_at?: string;
-}
+interface CVInfo { has_cv: boolean; file_name?: string; updated_at?: string; }
 
 export default function CVPage() {
   const router = useRouter();
@@ -36,19 +32,14 @@ export default function CVPage() {
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploading(true);
-    setMsg(null);
+    setUploading(true); setMsg(null);
     try {
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch("/api/portal/cv/upload", {
-        method: "POST",
-        headers: authHeaders(),
-        body: form,
-      });
+      const res = await fetch("/api/portal/cv/upload", { method: "POST", headers: authHeaders(), body: form });
       const d = await res.json();
       if (!res.ok) { setMsg({ text: d.error || "فشل الرفع", type: "err" }); return; }
-      setMsg({ text: "✓ تم رفع السيرة بنجاح", type: "ok" });
+      setMsg({ text: "✓ تم رفع السيرة بنجاح!", type: "ok" });
       await loadCV();
     } catch {
       setMsg({ text: "خطأ في الاتصال", type: "err" });
@@ -59,14 +50,13 @@ export default function CVPage() {
   }
 
   async function handleDelete() {
-    if (!confirm("هل أنت متأكد من حذف السيرة الذاتية؟")) return;
-    setDeleting(true);
-    setMsg(null);
+    if (!confirm("هل أنت متأكد من حذف السيرة؟")) return;
+    setDeleting(true); setMsg(null);
     try {
       const res = await portalFetch("/cv/delete", { method: "DELETE" });
       const d = await res.json();
-      if (!res.ok) { setMsg({ text: d.error || "فشل الحذف", type: "err" }); return; }
-      setMsg({ text: "تم حذف السيرة", type: "ok" });
+      if (!res.ok) { setMsg({ text: d.error || "فشل", type: "err" }); return; }
+      setMsg({ text: "تم حذف السيرة الذاتية", type: "ok" });
       await loadCV();
     } catch {
       setMsg({ text: "خطأ في الاتصال", type: "err" });
@@ -77,84 +67,79 @@ export default function CVPage() {
 
   return (
     <PortalShell>
-      <div style={s.container}>
-        <h1 style={s.title}>📎 السيرة الذاتية</h1>
+      <div style={s.page}>
+        <div style={s.header}>
+          <div>
+            <h1 style={s.title}>السيرة الذاتية</h1>
+            <p style={s.sub}>ارفع سيرتك ليقرأها الذكاء الاصطناعي ويقدّم باسمك</p>
+          </div>
+          <div style={s.headerIcon}>📎</div>
+        </div>
 
         {loading ? (
-          <p style={s.loading}>جاري التحميل…</p>
+          <p style={{ color: "#8b5cf6", padding: 40, textAlign: "center" }}>⏳ جاري التحميل…</p>
         ) : (
           <>
             {msg && (
-              <div style={{ ...s.msg, background: msg.type === "ok" ? "rgba(52,211,153,0.1)" : "rgba(248,113,113,0.1)", color: msg.type === "ok" ? "#34d399" : "#f87171", border: `1px solid ${msg.type === "ok" ? "rgba(52,211,153,0.3)" : "rgba(248,113,113,0.3)"}` }}>
-                {msg.text}
+              <div style={{
+                ...s.msg,
+                background: msg.type === "ok" ? "#ecfdf5" : "#fef2f2",
+                color: msg.type === "ok" ? "#059669" : "#dc2626",
+                border: `1.5px solid ${msg.type === "ok" ? "#6ee7b7" : "#fca5a5"}`,
+              }}>
+                {msg.type === "ok" ? "✅" : "❌"} {msg.text}
               </div>
             )}
 
-            {cv?.has_cv ? (
+            {cv?.has_cv && (
               <div style={s.cvCard}>
-                <div style={s.cvIcon}>📄</div>
+                <div style={s.cvIconWrap}>📄</div>
                 <div style={{ flex: 1 }}>
-                  <p style={s.cvName}>{cv.file_name || "السيرة الذاتية"}</p>
+                  <p style={s.cvName}>{cv.file_name}</p>
                   {cv.updated_at && (
                     <p style={s.cvDate}>
                       آخر تحديث: {new Date(cv.updated_at).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" })}
                     </p>
                   )}
-                  <div style={s.cvStatusBadge}>✓ مرفوعة</div>
+                  <span style={s.cvBadge}>✓ مرفوعة ونشطة</span>
                 </div>
-              </div>
-            ) : (
-              <div style={s.emptyCard}>
-                <p style={{ fontSize: 48 }}>📂</p>
-                <p style={s.emptyTitle}>لا توجد سيرة ذاتية مرفوعة</p>
-                <p style={s.emptySub}>ارفع سيرتك لبدء التقديم التلقائي بالذكاء الاصطناعي</p>
               </div>
             )}
 
-            {/* Upload area */}
+            {/* Upload zone */}
             <div
-              style={s.uploadArea}
-              onClick={() => fileRef.current?.click()}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                const file = e.dataTransfer.files?.[0];
-                if (file && fileRef.current) {
-                  const dt = new DataTransfer();
-                  dt.items.add(file);
-                  fileRef.current.files = dt.files;
-                  handleUpload({ target: fileRef.current } as any);
-                }
-              }}
+              style={{ ...s.uploadZone, ...(uploading ? s.uploadZoneActive : {}) }}
+              onClick={() => !uploading && fileRef.current?.click()}
             >
-              <span style={{ fontSize: 32 }}>⬆️</span>
-              <p style={s.uploadText}>
-                {uploading ? "جاري الرفع…" : cv?.has_cv ? "اضغط لاستبدال السيرة الذاتية" : "اضغط لرفع السيرة الذاتية"}
+              <div style={s.uploadIconWrap}>{uploading ? "⏳" : "⬆️"}</div>
+              <p style={s.uploadTitle}>
+                {uploading ? "جاري الرفع…" : cv?.has_cv ? "اضغط لاستبدال السيرة" : "اضغط لرفع سيرتك الذاتية"}
               </p>
-              <p style={s.uploadSub}>PDF أو صورة (JPG, PNG) — الحد الأقصى 10 ميغابايت</p>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
-                style={{ display: "none" }}
-                onChange={handleUpload}
-                disabled={uploading}
-              />
+              <p style={s.uploadSub}>PDF أو صورة (JPG, PNG) — حتى 10 ميغابايت</p>
+              <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: "none" }} onChange={handleUpload} disabled={uploading} />
             </div>
 
             {cv?.has_cv && (
-              <button
-                style={s.deleteBtn}
-                onClick={handleDelete}
-                disabled={deleting}
-              >
+              <button style={s.deleteBtn} onClick={handleDelete} disabled={deleting}>
                 {deleting ? "جاري الحذف…" : "🗑️ حذف السيرة الذاتية"}
               </button>
             )}
 
+            {/* Info box */}
             <div style={s.infoBox}>
-              <p style={s.infoTitle}>💡 كيف يعمل التقديم التلقائي؟</p>
-              <p style={s.infoText}>بعد رفع سيرتك، يقرأ الذكاء الاصطناعي محتواها ويستخرج مجالاتك المهنية. ثم يقدّم تلقائياً على الوظائف المناسبة كل 30 دقيقة بإيميل مخصص باسمك.</p>
+              <h3 style={s.infoTitle}>🤖 كيف يعمل الذكاء الاصطناعي؟</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {[
+                  { step: "1", text: "يقرأ الذكاء الاصطناعي محتوى سيرتك ويستخرج مجالاتك ومهاراتك" },
+                  { step: "2", text: "كل 30 دقيقة يبحث عن وظائف جديدة تناسب تخصصك" },
+                  { step: "3", text: "يكتب رسالة تغطية مخصصة ويرسلها باسمك إلى الشركة" },
+                ].map(({ step, text }) => (
+                  <div key={step} style={s.step}>
+                    <div style={s.stepNum}>{step}</div>
+                    <p style={s.stepText}>{text}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </>
         )}
@@ -164,45 +149,52 @@ export default function CVPage() {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  container: { maxWidth: 600, margin: "0 auto" },
-  title: { color: "#e8f0ff", fontSize: 22, fontWeight: 700, marginBottom: 24 },
-  loading: { color: "#7a9cc5", textAlign: "center", padding: 60 },
-  msg: { padding: "12px 16px", borderRadius: 10, marginBottom: 20, fontSize: 14 },
+  page: { maxWidth: 640, margin: "0 auto" },
+  header: {
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+    borderRadius: 20, padding: "24px 28px", marginBottom: 24,
+  },
+  title: { color: "#fff", fontSize: 22, fontWeight: 800, margin: 0 },
+  sub: { color: "rgba(255,255,255,0.8)", fontSize: 13, margin: "4px 0 0" },
+  headerIcon: { fontSize: 44 },
+  msg: { padding: "14px 18px", borderRadius: 12, marginBottom: 18, fontSize: 14, fontWeight: 500 },
   cvCard: {
     display: "flex", alignItems: "center", gap: 16,
-    background: "linear-gradient(135deg, #111e38, #0d1628)",
-    border: "1px solid rgba(52,211,153,0.3)", borderRadius: 14,
-    padding: "20px 24px", marginBottom: 20,
+    background: "#fff", border: "1.5px solid #6ee7b7",
+    borderRadius: 16, padding: "20px 24px", marginBottom: 20,
+    boxShadow: "0 4px 16px rgba(16,185,129,0.1)",
   },
-  cvIcon: { fontSize: 40 },
-  cvName: { color: "#e8f0ff", fontSize: 15, fontWeight: 600, margin: 0 },
-  cvDate: { color: "#7a9cc5", fontSize: 12, margin: "4px 0 8px" },
-  cvStatusBadge: { display: "inline-block", padding: "4px 12px", background: "rgba(52,211,153,0.12)", color: "#34d399", borderRadius: 8, fontSize: 12 },
-  emptyCard: {
-    background: "#0d1628", border: "1px solid #1a2d52", borderRadius: 14,
-    padding: "32px 24px", textAlign: "center", marginBottom: 20,
+  cvIconWrap: { fontSize: 40 },
+  cvName: { color: "#1e1b4b", fontSize: 14, fontWeight: 700, margin: 0 },
+  cvDate: { color: "#9ca3af", fontSize: 12, margin: "4px 0 8px" },
+  cvBadge: {
+    display: "inline-block", background: "#ecfdf5", color: "#059669",
+    border: "1px solid #6ee7b7", borderRadius: 8, padding: "3px 12px", fontSize: 11, fontWeight: 600,
   },
-  emptyTitle: { color: "#c0d4f0", fontSize: 15, fontWeight: 600, margin: "8px 0 4px" },
-  emptySub: { color: "#7a9cc5", fontSize: 13, margin: 0 },
-  uploadArea: {
-    background: "#0d1628",
-    border: "2px dashed #1a2d52",
-    borderRadius: 14,
-    padding: "36px 24px",
-    textAlign: "center",
-    cursor: "pointer",
-    marginBottom: 16,
-    transition: "border-color 0.2s",
+  uploadZone: {
+    background: "#fff", border: "2.5px dashed #c4b5fd", borderRadius: 18,
+    padding: "44px 28px", textAlign: "center", cursor: "pointer",
+    marginBottom: 16, transition: "all 0.2s",
   },
-  uploadText: { color: "#c0d4f0", fontSize: 15, fontWeight: 500, margin: "10px 0 4px" },
-  uploadSub: { color: "#7a9cc5", fontSize: 12, margin: 0 },
+  uploadZoneActive: { background: "#f5f3ff", borderColor: "#6366f1" },
+  uploadIconWrap: { fontSize: 40, marginBottom: 12 },
+  uploadTitle: { color: "#1e1b4b", fontSize: 16, fontWeight: 700, margin: "0 0 6px" },
+  uploadSub: { color: "#9ca3af", fontSize: 13, margin: 0 },
   deleteBtn: {
     width: "100%", padding: "12px",
-    background: "rgba(248,113,113,0.1)",
-    border: "1px solid rgba(248,113,113,0.3)",
-    borderRadius: 10, color: "#f87171", fontSize: 14, cursor: "pointer", marginBottom: 20,
+    background: "#fef2f2", border: "1.5px solid #fca5a5",
+    borderRadius: 12, color: "#dc2626", fontSize: 13,
+    fontWeight: 600, cursor: "pointer", marginBottom: 24,
   },
-  infoBox: { background: "rgba(79,142,247,0.08)", border: "1px solid rgba(79,142,247,0.2)", borderRadius: 12, padding: "16px 20px" },
-  infoTitle: { color: "#4f8ef7", fontSize: 14, fontWeight: 600, margin: "0 0 6px" },
-  infoText: { color: "#7a9cc5", fontSize: 13, margin: 0, lineHeight: 1.6 },
+  infoBox: { background: "#f5f3ff", border: "1px solid #ede9fe", borderRadius: 18, padding: "24px" },
+  infoTitle: { color: "#4c1d95", fontSize: 15, fontWeight: 700, margin: "0 0 18px" },
+  step: { display: "flex", alignItems: "flex-start", gap: 12 },
+  stepNum: {
+    width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+    color: "#fff", fontSize: 13, fontWeight: 700,
+    display: "flex", alignItems: "center", justifyContent: "center",
+  },
+  stepText: { color: "#4c1d95", fontSize: 13, margin: 0, lineHeight: 1.6 },
 };
