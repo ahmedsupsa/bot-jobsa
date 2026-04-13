@@ -2,12 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
-html,
-body {
-  background: radial-gradient(1000px 600px at 80% -20%, #1d2f63 0%, #070b17 55%);
-  color: #ecf2ff;
+html, body {
+  background: #060b18;
+  color: #dce8ff;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  min-height: 100vh;
 }
 
 * {
   box-sizing: border-box;
 }
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #1a2d52;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: #2a4070; }
