@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "جبسا | بوابة المستخدمين" };
+export const metadata: Metadata = { title: "Jobsa | بوابة المستخدمين" };
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -31,7 +31,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
             <Briefcase size={20} strokeWidth={1.5} color="#0a0a0a" />
           </div>
           <div>
-            <p style={s.logoName}>جبسا</p>
+            <p style={s.logoName}>Jobsa</p>
             <p style={s.logoSub}>بوابة المستخدمين</p>
           </div>
         </div>

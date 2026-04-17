@@ -44,7 +44,7 @@ export default function LandingPage() {
             <div style={s.logoIcon}>
               <Briefcase size={20} strokeWidth={1.5} color="#0a0a0a" />
             </div>
-            <span style={s.logoText}>جبسا</span>
+            <span style={s.logoText}>Jobsa</span>
           </div>
           <div style={s.navLinks}>
             <Link href="/portal/login" style={s.navBtn}>
@@ -65,7 +65,7 @@ export default function LandingPage() {
           <span style={s.heroAccent}>تلقائياً وبذكاء</span>
         </h1>
         <p style={s.heroSub}>
-          منصة جبسا تقدّم عنك على المئات من الوظائف تلقائياً يومياً<br />
+          Jobsa يقدّم عنك على المئات من الوظائف تلقائياً يومياً<br />
           بينما أنت مرتاح — بدون جهد وبنتائج حقيقية
         </p>
         <div style={s.heroCtas}>
@@ -130,7 +130,7 @@ export default function LandingPage() {
         <div style={s.ctaBannerInner}>
           <CheckCircle2 size={40} strokeWidth={1} color="#fff" style={{ opacity: 0.4, marginBottom: 20 }} />
           <h2 style={s.ctaBannerTitle}>جاهز تبدأ رحلة البحث عن وظيفة؟</h2>
-          <p style={s.ctaBannerSub}>سجّل دخولك الآن وخلّ جبسا يشتغل عنك</p>
+          <p style={s.ctaBannerSub}>سجّل دخولك الآن وخلّ Jobsa يشتغل عنك</p>
           <Link href="/portal/login" style={s.ctaBannerBtn}>
             ابدأ الآن
             <ArrowLeft size={17} strokeWidth={2} />
@@ -145,14 +145,14 @@ export default function LandingPage() {
             <div style={s.logoIcon}>
               <Briefcase size={16} strokeWidth={1.5} color="#0a0a0a" />
             </div>
-            <span style={{ ...s.logoText, fontSize: 16 }}>جبسا</span>
+            <span style={{ ...s.logoText, fontSize: 16 }}>Jobsa</span>
           </div>
           <div style={s.footerLinks}>
             <Link href="/portal/login" style={s.footerLink}>دخول المشترك</Link>
             <span style={{ color: "#333" }}>·</span>
             <Link href="/login" style={s.footerLink}>لوحة الإدارة</Link>
           </div>
-          <div style={s.footerCopy}>© 2025 جبسا. جميع الحقوق محفوظة.</div>
+          <div style={s.footerCopy}>© 2025 Jobsa. جميع الحقوق محفوظة.</div>
         </div>
       </footer>
 

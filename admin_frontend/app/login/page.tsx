@@ -39,7 +39,7 @@ export default function AdminLogin() {
       <div style={s.leftPanel}>
         <div style={s.brand}>
           <div style={s.brandLogo}><Briefcase size={28} strokeWidth={1.5} color="#0a0a0a" /></div>
-          <h1 style={s.brandName}>جبسا</h1>
+          <h1 style={s.brandName}>Jobsa</h1>
         </div>
         <p style={s.brandTagline}>لوحة تحكم الإدارة<br />أدِر المنصة بكل سهولة</p>
         <div style={s.featureList}>
