@@ -125,7 +125,7 @@ async def _generate_cover_letter(job_title: str, name: str, company: str, desc: 
     try:
         async with httpx.AsyncClient(timeout=20) as client:
             r = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}",
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key={GEMINI_API_KEY}",
                 json={"contents": [{"parts": [{"text": prompt}]}]},
             )
             data = r.json()
