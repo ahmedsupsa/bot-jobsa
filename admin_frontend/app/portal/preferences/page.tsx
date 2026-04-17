@@ -65,17 +65,31 @@ export default function PreferencesPage() {
       const d = await res.json();
       if (!res.ok) { setMsg({ text: d.error || "فشل التحليل", type: "err" }); return; }
 
-      // Update fields list with AI-generated ones + reload full list
+      const newIds: string[] = d.matched_ids.map(String);
+
+      // Update fields list with AI-generated ones
       if (d.all_fields?.length) setFields(prev => {
         const existingIds = new Set(prev.map((f: Field) => String(f.id)));
         const newOnes = d.all_fields.filter((f: Field) => !existingIds.has(String(f.id)));
         return [...prev, ...newOnes];
       });
-      // Auto-select matched IDs
-      setSelected(new Set(d.matched_ids.map(String)));
+
+      setSelected(new Set(newIds));
       setAiTitles(d.job_titles || []);
       setAiSummary(d.summary || "");
-      setMsg({ text: `اقترح الذكاء الاصطناعي ${d.matched_ids.length} مسمى وظيفي من سيرتك — اضغط حفظ للتأكيد`, type: "info" });
+
+      // Auto-save immediately to DB
+      const saveRes = await portalFetch("/preferences", {
+        method: "POST",
+        body: JSON.stringify({ field_ids: newIds }),
+      });
+      const saveData = await saveRes.json();
+
+      if (saveRes.ok) {
+        setMsg({ text: `تم استخراج ${newIds.length} مسمى وظيفي وحفظها تلقائياً ✓`, type: "ok" });
+      } else {
+        setMsg({ text: saveData.error || "استُخرجت المسميات لكن فشل الحفظ، اضغط حفظ يدوياً", type: "info" });
+      }
     } catch { setMsg({ text: "خطأ في الاتصال", type: "err" }); }
     finally { setExtracting(false); }
   }
