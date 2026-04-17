@@ -35,15 +35,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "فشل تحميل السيرة الذاتية" }, { status: 500 });
   }
 
-  // 3. Get all job_fields from DB
-  const { data: allFields } = await supabase
-    .from("job_fields")
-    .select("id, name_ar")
-    .order("name_ar");
-
-  const fieldsList = (allFields || []).map((f: any) => `${f.id}: ${f.name_ar}`).join("\n");
-
-  // 4. Build Gemini request
+  // 3. Build Gemini request
   const ext = (cv.file_name || "").split(".").pop()?.toLowerCase() || "pdf";
   const mimeMap: Record<string, string> = {
     pdf: "application/pdf",
@@ -52,33 +44,26 @@ export async function POST(req: Request) {
     png: "image/png",
   };
   const mimeType = mimeMap[ext] || "application/pdf";
-
   const arrayBuffer = await fileData.arrayBuffer();
   const base64 = Buffer.from(arrayBuffer).toString("base64");
 
-  const prompt = `أنت مساعد متخصص في تحليل السير الذاتية للوظائف في السوق العربية.
+  const prompt = `أنت خبير موارد بشرية متخصص في السوق العربية والسعودية.
 
-قائمة مجالات الوظائف المتاحة:
-${fieldsList}
+اقرأ السيرة الذاتية المرفقة بعناية، ثم:
+1. استخرج كل المسميات الوظيفية والتخصصات الممكنة لصاحب هذه السيرة
+2. اقترح على الأقل 20 مسمى وظيفي أو تخصص مناسب له
+3. اكتب ملخصاً قصيراً لخبرة الشخص
 
-المطلوب:
-1. اقرأ السيرة الذاتية المرفقة
-2. استخرج أهم 20 مسمى وظيفي أو تخصص يناسب صاحب هذه السيرة
-3. طابق كل مسمى مع أقرب مجال من القائمة أعلاه
-4. أرجع النتيجة بصيغة JSON فقط بدون أي نص إضافي
-
-الصيغة المطلوبة:
+أرجع الإجابة بصيغة JSON فقط بدون أي شرح:
 {
-  "matched_ids": [1, 2, 3],
-  "job_titles": ["مسمى 1", "مسمى 2", "..."],
-  "summary": "ملخص قصير عن خبرة المتقدم بجملة أو اثنتين"
+  "job_titles": ["مسمى 1", "مسمى 2", "مسمى 3", ...],
+  "summary": "ملخص خبرة الشخص بجملتين"
 }
 
-القواعد:
-- matched_ids: أرقام IDs من القائمة المتاحة فقط (حتى 20)
-- job_titles: مسميات وظيفية مقترحة من السيرة (حتى 20)
-- إذا لم تجد تطابقاً جيداً اختر الأقرب
-- أرجع JSON فقط`;
+ملاحظات:
+- job_titles يجب أن تحتوي على 15-25 مسمى بالعربية
+- المسميات يجب أن تكون واقعية ومناسبة للسوق السعودي
+- أرجع JSON فقط بدون أي نص إضافي`;
 
   const body = {
     contents: [
@@ -89,7 +74,7 @@ ${fieldsList}
         ],
       },
     ],
-    generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
+    generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
   };
 
   const gemRes = await fetch(
@@ -105,24 +90,52 @@ ${fieldsList}
 
   const gemData = await gemRes.json();
   const rawText = gemData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  console.log("Gemini raw:", rawText.slice(0, 300));
 
-  // Robust JSON extraction: find first { to last }
+  // Robust JSON extraction
   const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-  let parsed: any = {};
+  let parsed: { job_titles?: string[]; summary?: string } = {};
   if (jsonMatch) {
-    try { parsed = JSON.parse(jsonMatch[0]); } catch { /* fall through to defaults */ }
+    try { parsed = JSON.parse(jsonMatch[0]); } catch { /* ignore */ }
   }
-  // If no valid JSON found, try to extract fields we need from raw text
-  if (!parsed.matched_ids && !parsed.job_titles) {
-    console.error("Gemini raw response:", rawText);
-    // Return empty but valid response so the page still works
-    parsed = { matched_ids: [], job_titles: [], summary: "" };
+
+  const jobTitles: string[] = parsed.job_titles || [];
+  const summary: string = parsed.summary || "";
+
+  if (jobTitles.length === 0) {
+    console.error("No job titles extracted. Raw:", rawText);
+    return NextResponse.json({ error: "لم يتمكن الذكاء الاصطناعي من استخراج المسميات — تأكد من وضوح السيرة" }, { status: 422 });
+  }
+
+  // 4. Upsert job titles into job_fields (if not already there)
+  const insertedIds: string[] = [];
+  for (const title of jobTitles) {
+    const trimmed = title.trim();
+    if (!trimmed) continue;
+
+    // Check if already exists
+    const { data: existing } = await supabase
+      .from("job_fields")
+      .select("id")
+      .eq("name_ar", trimmed)
+      .limit(1);
+
+    if (existing?.[0]) {
+      insertedIds.push(String(existing[0].id));
+    } else {
+      const { data: inserted } = await supabase
+        .from("job_fields")
+        .insert({ name_ar: trimmed })
+        .select("id")
+        .single();
+      if (inserted?.id) insertedIds.push(String(inserted.id));
+    }
   }
 
   return NextResponse.json({
-    matched_ids: (parsed.matched_ids || []).map(String),
-    job_titles: parsed.job_titles || [],
-    summary: parsed.summary || "",
-    all_fields: allFields || [],
+    matched_ids: insertedIds,
+    job_titles: jobTitles,
+    summary,
+    all_fields: jobTitles.map((t, i) => ({ id: insertedIds[i] || String(i), name_ar: t })),
   });
 }

@@ -65,11 +65,17 @@ export default function PreferencesPage() {
       const d = await res.json();
       if (!res.ok) { setMsg({ text: d.error || "فشل التحليل", type: "err" }); return; }
 
+      // Update fields list with AI-generated ones + reload full list
+      if (d.all_fields?.length) setFields(prev => {
+        const existingIds = new Set(prev.map((f: Field) => String(f.id)));
+        const newOnes = d.all_fields.filter((f: Field) => !existingIds.has(String(f.id)));
+        return [...prev, ...newOnes];
+      });
       // Auto-select matched IDs
       setSelected(new Set(d.matched_ids.map(String)));
       setAiTitles(d.job_titles || []);
       setAiSummary(d.summary || "");
-      setMsg({ text: `اقترح الذكاء الاصطناعي ${d.matched_ids.length} مجال بناءً على سيرتك`, type: "info" });
+      setMsg({ text: `اقترح الذكاء الاصطناعي ${d.matched_ids.length} مسمى وظيفي من سيرتك — اضغط حفظ للتأكيد`, type: "info" });
     } catch { setMsg({ text: "خطأ في الاتصال", type: "err" }); }
     finally { setExtracting(false); }
   }
