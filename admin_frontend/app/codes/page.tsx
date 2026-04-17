@@ -3,7 +3,24 @@
 import Shell from "@/components/shell";
 import { apiGet, apiSend } from "@/lib/api";
 import { useEffect, useState } from "react";
-import { Zap, Copy, CheckCheck, Hash, Calendar } from "lucide-react";
+import { Zap, Copy, CheckCheck, Hash, Calendar, Search, User, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+
+type LookupResult = {
+  ok: boolean;
+  status: "used" | "unused";
+  code: string;
+  subscription_days: number;
+  used_at?: string;
+  user?: {
+    id: string;
+    full_name: string;
+    phone: string;
+    city: string;
+    age: number;
+    email: string;
+    subscription_ends_at: string;
+  } | null;
+};
 
 export default function CodesPage() {
   const [used, setUsed] = useState<string[]>([]);
@@ -14,6 +31,11 @@ export default function CodesPage() {
   const [msg, setMsg] = useState("");
   const [msgType, setMsgType] = useState<"ok" | "err">("ok");
   const [loading, setLoading] = useState(false);
+
+  const [lookupCode, setLookupCode] = useState("");
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupResult, setLookupResult] = useState<LookupResult | null>(null);
+  const [lookupError, setLookupError] = useState("");
 
   const load = async () => {
     const r = await apiGet<{ ok: boolean; used_codes: string[]; unused_codes: string[] }>(
@@ -47,6 +69,26 @@ export default function CodesPage() {
     }
   };
 
+  const lookup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lookupCode.trim()) return;
+    setLookupLoading(true);
+    setLookupResult(null);
+    setLookupError("");
+    try {
+      const res = await fetch(`/api/admin/codes/lookup?code=${encodeURIComponent(lookupCode.trim().toUpperCase())}`, {
+        credentials: "include",
+      });
+      const data: LookupResult = await res.json();
+      if (!res.ok) { setLookupError((data as any).error || "خطأ"); return; }
+      setLookupResult(data);
+    } catch {
+      setLookupError("خطأ في الاتصال");
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
   const copy = async (text: string) => navigator.clipboard.writeText(text);
 
   return (
@@ -56,7 +98,79 @@ export default function CodesPage() {
         <p className="text-sm text-slate-400 mt-0.5">توليد وإدارة أكواد الاشتراك للمستخدمين</p>
       </div>
 
-      {/* Generator */}
+      {/* ── Code Lookup ── */}
+      <div className="mb-5 rounded-2xl border border-line/70 bg-panel shadow-card p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Search size={17} className="text-accent" />
+          <h2 className="font-semibold text-white">البحث عن كود</h2>
+        </div>
+        <form onSubmit={lookup} className="flex gap-3">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              value={lookupCode}
+              onChange={e => setLookupCode(e.target.value)}
+              placeholder="أدخل الكود هنا..."
+              dir="ltr"
+              className="w-full rounded-xl border border-line/70 bg-panel2 pr-9 pl-3 py-2.5 text-sm placeholder:text-slate-500 focus:border-accent/50 focus:outline-none uppercase"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={lookupLoading || !lookupCode.trim()}
+            className="flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/15 px-5 py-2.5 text-sm text-accent font-medium hover:bg-accent/25 transition-colors disabled:opacity-50"
+          >
+            {lookupLoading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+            بحث
+          </button>
+        </form>
+
+        {lookupError && (
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-red-500/25 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+            <XCircle size={15} /> {lookupError}
+          </div>
+        )}
+
+        {lookupResult && (
+          <div className={`mt-3 rounded-xl border p-4 ${
+            lookupResult.status === "used"
+              ? "border-emerald-500/25 bg-emerald-950/20"
+              : "border-yellow-500/25 bg-yellow-950/20"
+          }`}>
+            <div className="flex items-center gap-2 mb-3">
+              {lookupResult.status === "used"
+                ? <CheckCircle2 size={16} className="text-emerald-400" />
+                : <XCircle size={16} className="text-yellow-400" />}
+              <span className={`text-sm font-semibold ${lookupResult.status === "used" ? "text-emerald-300" : "text-yellow-300"}`}>
+                {lookupResult.status === "used" ? "كود مستخدم" : "كود غير مستخدم"}
+              </span>
+              <span className="mr-auto text-xs text-slate-500 font-mono">{lookupResult.code}</span>
+            </div>
+            {lookupResult.status === "unused" && (
+              <p className="text-sm text-slate-400">اشتراك {lookupResult.subscription_days} يوم — لم يُستخدم بعد</p>
+            )}
+            {lookupResult.status === "used" && lookupResult.user && (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {[
+                  { label: "الاسم", val: lookupResult.user.full_name },
+                  { label: "الجوال", val: lookupResult.user.phone },
+                  { label: "المدينة", val: lookupResult.user.city },
+                  { label: "العمر", val: lookupResult.user.age },
+                  { label: "البريد", val: lookupResult.user.email || "—" },
+                  { label: "ينتهي في", val: lookupResult.user.subscription_ends_at ? new Date(lookupResult.user.subscription_ends_at).toLocaleDateString("ar") : "—" },
+                ].map(({ label, val }) => (
+                  <div key={label} className="rounded-lg bg-white/5 px-3 py-2">
+                    <div className="text-xs text-slate-500 mb-0.5">{label}</div>
+                    <div className="text-sm text-white font-medium">{String(val)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Generator ── */}
       <div className="mb-5 rounded-2xl border border-line/70 bg-panel shadow-card p-5">
         <div className="flex items-center gap-2 mb-4">
           <Zap size={17} className="text-accent" />
