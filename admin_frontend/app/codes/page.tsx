@@ -31,7 +31,7 @@ export default function CodesPage() {
     setLoading(true);
     try {
       const r = await apiSend<{ ok: boolean; codes: string[] }>(
-        "/api/admin/codes/generate",
+        "/api/admin/codes",
         "POST",
         { count, days }
       );
