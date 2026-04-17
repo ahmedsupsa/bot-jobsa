@@ -36,32 +36,46 @@ export async function POST(req: Request) {
     });
 
   if (uploadErr) {
-    console.error("Storage upload error:", uploadErr);
+    console.error("Storage upload error:", JSON.stringify(uploadErr));
+    return NextResponse.json({ error: `فشل رفع الملف: ${uploadErr.message}` }, { status: 500 });
   }
 
-  const { data: existing } = await supabase
+  const { data: existing, error: selectErr } = await supabase
     .from("user_cvs")
     .select("id")
     .eq("user_id", uid)
     .limit(1);
 
+  if (selectErr) {
+    console.error("user_cvs select error:", JSON.stringify(selectErr));
+    return NextResponse.json({ error: `خطأ في قراءة البيانات: ${selectErr.message}` }, { status: 500 });
+  }
+
   const now = new Date().toISOString();
   if (existing?.[0]) {
-    await supabase.from("user_cvs").update({
+    const { error: updateErr } = await supabase.from("user_cvs").update({
       file_name: file.name,
       file_id: "web_upload",
-      storage_path: uploadErr ? null : storagePath,
+      storage_path: storagePath,
       updated_at: now,
     }).eq("user_id", uid);
+    if (updateErr) {
+      console.error("user_cvs update error:", JSON.stringify(updateErr));
+      return NextResponse.json({ error: `فشل حفظ البيانات: ${updateErr.message}` }, { status: 500 });
+    }
   } else {
-    await supabase.from("user_cvs").insert({
+    const { error: insertErr } = await supabase.from("user_cvs").insert({
       user_id: uid,
       file_name: file.name,
       file_id: "web_upload",
-      storage_path: uploadErr ? null : storagePath,
+      storage_path: storagePath,
       created_at: now,
       updated_at: now,
     });
+    if (insertErr) {
+      console.error("user_cvs insert error:", JSON.stringify(insertErr));
+      return NextResponse.json({ error: `فشل حفظ البيانات: ${insertErr.message}` }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ status: "ok", file_name: file.name });
