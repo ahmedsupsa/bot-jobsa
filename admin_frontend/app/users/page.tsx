@@ -3,7 +3,7 @@
 import Shell from "@/components/shell";
 import { apiGet, apiSend } from "@/lib/api";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Save, User, FileText, Upload, Check, Loader2 } from "lucide-react";
+import { Search, Save, User, FileText, Upload, Check, Loader2, ChevronDown, ChevronUp, Tags } from "lucide-react";
 
 type UserRow = {
   id: string;
@@ -15,6 +15,8 @@ type UserRow = {
   subscription_ends_at?: string;
   created_at: string;
 };
+
+type Field = { id: string; name_ar: string };
 
 export default function UsersPage() {
   const [rows, setRows] = useState<UserRow[]>([]);
@@ -51,14 +53,19 @@ export default function UsersPage() {
     const res = await fetch(`/api/admin/users/${id}/cv`, { method: "POST", body: fd, credentials: "include" });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
-    setMsg(`تم رفع السيرة لـ ${file.name} ✓`); setMsgType("ok");
+    setMsg(`تم رفع السيرة: ${file.name} ✓`); setMsgType("ok");
+  };
+
+  const savePrefs = async (id: string, field_ids: string[]) => {
+    await apiSend(`/api/admin/users/${id}/preferences`, "POST", { field_ids });
+    setMsg("تم حفظ التفضيلات ✓"); setMsgType("ok");
   };
 
   return (
     <Shell>
       <div className="mb-5">
         <h1 className="text-xl font-bold text-white">المستخدمون</h1>
-        <p className="text-sm text-slate-400 mt-0.5">إدارة حسابات المشتركين — البريد والسيرة الذاتية</p>
+        <p className="text-sm text-slate-400 mt-0.5">إدارة حسابات المشتركين — البريد والسيرة وتفضيلات الوظائف</p>
       </div>
 
       {msg && (
@@ -91,7 +98,13 @@ export default function UsersPage() {
             <div className="px-5 py-10 text-center text-sm text-slate-400">لا توجد نتائج</div>
           ) : (
             filtered.map((u) => (
-              <UserCard key={u.id} user={u} onSaveEmail={updateEmail} onUploadCv={uploadCv} />
+              <UserCard
+                key={u.id}
+                user={u}
+                onSaveEmail={updateEmail}
+                onUploadCv={uploadCv}
+                onSavePrefs={savePrefs}
+              />
             ))
           )}
         </div>
@@ -104,10 +117,12 @@ function UserCard({
   user,
   onSaveEmail,
   onUploadCv,
+  onSavePrefs,
 }: {
   user: UserRow;
   onSaveEmail: (id: string, email: string) => Promise<void>;
   onUploadCv: (id: string, file: File) => Promise<void>;
+  onSavePrefs: (id: string, field_ids: string[]) => Promise<void>;
 }) {
   const [email, setEmail] = useState(user.email || "");
   const [savingEmail, setSavingEmail] = useState(false);
@@ -116,6 +131,44 @@ function UserCard({
   const [cvName, setCvName] = useState("");
   const [err, setErr] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [showPrefs, setShowPrefs] = useState(false);
+  const [fields, setFields] = useState<Field[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [loadingPrefs, setLoadingPrefs] = useState(false);
+  const [savingPrefs, setSavingPrefs] = useState(false);
+  const [prefsSaved, setPrefsSaved] = useState(false);
+
+  const loadPrefs = async () => {
+    setLoadingPrefs(true);
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/preferences`, { credentials: "include" });
+      const data = await res.json();
+      setFields(data.all_fields || []);
+      setSelectedIds(data.selected_ids || []);
+    } finally {
+      setLoadingPrefs(false);
+    }
+  };
+
+  const togglePrefs = () => {
+    if (!showPrefs && fields.length === 0) loadPrefs();
+    setShowPrefs(v => !v);
+  };
+
+  const toggleField = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleSavePrefs = async () => {
+    setSavingPrefs(true); setErr("");
+    try {
+      await onSavePrefs(user.id, selectedIds);
+      setPrefsSaved(true);
+      setTimeout(() => setPrefsSaved(false), 2500);
+    } catch (e) { setErr(String(e)); }
+    finally { setSavingPrefs(false); }
+  };
 
   const handleSaveEmail = async () => {
     setSavingEmail(true); setErr("");
@@ -163,7 +216,6 @@ function UserCard({
 
       {/* Email + CV row */}
       <div className="flex flex-col gap-2 sm:flex-row">
-        {/* Email */}
         <div className="flex gap-2 flex-1">
           <input
             value={email}
@@ -177,32 +229,76 @@ function UserCard({
             disabled={savingEmail}
             className="flex items-center gap-1.5 rounded-xl border border-accent/30 bg-accent/15 px-3 py-2 text-xs text-accent font-medium hover:bg-accent/25 transition-colors disabled:opacity-50 whitespace-nowrap"
           >
-            {savingEmail
-              ? <Loader2 size={12} className="animate-spin" />
-              : emailSaved
-                ? <Check size={12} className="text-emerald-400" />
-                : <Save size={12} />}
+            {savingEmail ? <Loader2 size={12} className="animate-spin" /> : emailSaved ? <Check size={12} className="text-emerald-400" /> : <Save size={12} />}
             {savingEmail ? "..." : emailSaved ? "تم" : "حفظ"}
           </button>
         </div>
 
-        {/* CV Upload */}
-        <div>
+        <div className="flex gap-2">
           <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={handleCvChange} />
           <button
             onClick={() => fileRef.current?.click()}
             disabled={uploadingCv}
-            className="flex items-center gap-1.5 rounded-xl border border-line/70 bg-panel2 px-3 py-2 text-xs text-slate-300 hover:border-accent/40 hover:text-accent transition-colors disabled:opacity-50 whitespace-nowrap w-full sm:w-auto justify-center"
+            className="flex items-center gap-1.5 rounded-xl border border-line/70 bg-panel2 px-3 py-2 text-xs text-slate-300 hover:border-accent/40 hover:text-accent transition-colors disabled:opacity-50 whitespace-nowrap"
           >
-            {uploadingCv
-              ? <Loader2 size={12} className="animate-spin" />
-              : cvName
-                ? <FileText size={12} className="text-emerald-400" />
-                : <Upload size={12} />}
-            {uploadingCv ? "جاري الرفع..." : cvName ? `تم: ${cvName.slice(0, 15)}...` : "رفع سيرة ذاتية"}
+            {uploadingCv ? <Loader2 size={12} className="animate-spin" /> : cvName ? <FileText size={12} className="text-emerald-400" /> : <Upload size={12} />}
+            {uploadingCv ? "جاري الرفع..." : cvName ? "تم الرفع ✓" : "رفع سيرة"}
+          </button>
+
+          <button
+            onClick={togglePrefs}
+            className="flex items-center gap-1.5 rounded-xl border border-line/70 bg-panel2 px-3 py-2 text-xs text-slate-300 hover:border-accent/40 hover:text-accent transition-colors whitespace-nowrap"
+          >
+            <Tags size={12} />
+            التفضيلات
+            {showPrefs ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
           </button>
         </div>
       </div>
+
+      {/* Job Preferences Panel */}
+      {showPrefs && (
+        <div className="rounded-xl border border-line/60 bg-panel2 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-slate-300">تفضيلات مجالات الوظائف</span>
+            <button
+              onClick={handleSavePrefs}
+              disabled={savingPrefs}
+              className="flex items-center gap-1.5 rounded-lg border border-accent/30 bg-accent/15 px-3 py-1.5 text-xs text-accent font-medium hover:bg-accent/25 transition-colors disabled:opacity-50"
+            >
+              {savingPrefs ? <Loader2 size={11} className="animate-spin" /> : prefsSaved ? <Check size={11} className="text-emerald-400" /> : <Save size={11} />}
+              {savingPrefs ? "..." : prefsSaved ? "تم الحفظ" : "حفظ"}
+            </button>
+          </div>
+          {loadingPrefs ? (
+            <div className="flex items-center gap-2 text-xs text-slate-500 py-3">
+              <Loader2 size={13} className="animate-spin" /> جاري التحميل...
+            </div>
+          ) : fields.length === 0 ? (
+            <p className="text-xs text-slate-500">لا توجد مجالات محددة في النظام</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {fields.map((f) => {
+                const active = selectedIds.includes(String(f.id));
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => toggleField(String(f.id))}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-medium border transition-all ${
+                      active
+                        ? "bg-white/15 border-white/30 text-white"
+                        : "bg-transparent border-line/60 text-slate-500 hover:border-slate-400 hover:text-slate-300"
+                    }`}
+                  >
+                    {active ? "✓ " : ""}{f.name_ar}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <div className="mt-2 text-xs text-slate-600">{selectedIds.length} مجال محدد</div>
+        </div>
+      )}
     </div>
   );
 }
