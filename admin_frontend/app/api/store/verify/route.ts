@@ -74,7 +74,26 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ ok: true, order: { ...order, status: "paid" } });
+    // Assign an unused activation code to this order
+    let activation_code: string | null = null;
+    try {
+      const { data: codeRow } = await supabase
+        .from("activation_codes")
+        .select("code, subscription_days")
+        .eq("used", false)
+        .limit(1)
+        .single();
+
+      if (codeRow) {
+        await supabase
+          .from("activation_codes")
+          .update({ used: true, used_at: new Date().toISOString() })
+          .eq("code", codeRow.code);
+        activation_code = codeRow.code;
+      }
+    } catch {}
+
+    return NextResponse.json({ ok: true, activation_code, order: { ...order, status: "paid" } });
   } catch (err) {
     console.error("Verify error:", err);
     return NextResponse.json({ ok: false, error: "خطأ في التحقق من الدفع" }, { status: 500 });
