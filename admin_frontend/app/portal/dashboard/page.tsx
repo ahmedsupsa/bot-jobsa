@@ -115,6 +115,7 @@ export default function Dashboard() {
   const [user, setUser] = useState<UserData | null>(null);
   const [apps, setApps] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const [todayLabel, setTodayLabel] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -129,6 +130,9 @@ export default function Dashboard() {
   }, [router]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    setTodayLabel(new Date().toLocaleDateString("ar-SA", { weekday: "long", month: "long", day: "numeric" }));
+  }, []);
 
   if (loading) return <PortalShell><Loader /></PortalShell>;
   if (!user) return null;
@@ -156,7 +160,7 @@ export default function Dashboard() {
             <div>
               <h1 style={s.greeting}>مرحباً، {user.full_name.split(" ")[0]}</h1>
               <p style={s.greetingSub}>
-                {user.city} · {new Date().toLocaleDateString("ar-SA", { weekday: "long", month: "long", day: "numeric" })}
+                {user.city}{todayLabel ? ` · ${todayLabel}` : ""}
               </p>
             </div>
           </div>
