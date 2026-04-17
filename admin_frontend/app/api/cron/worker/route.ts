@@ -248,7 +248,7 @@ async function runCycle(): Promise<{ applied: number; users: number; errors: str
     const cvBytes = storagePath ? await downloadCv(storagePath) : null;
     const cvName = String(cv.file_name || "cv.pdf");
 
-    const prefIds = new Set(prefsRows.map((p) => String(p.field_id)).filter(Boolean));
+    const prefIds = new Set(prefsRows.map((p) => String(p.job_field_id)).filter(Boolean));
     const fieldNames = fieldsRaw
       .filter((f) => prefIds.has(String(f.id)))
       .map((f) => String(f.name_ar || f.name_en || ""));

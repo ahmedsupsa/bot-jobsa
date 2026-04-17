@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const uid = payload.user_id;
 
   const [{ data: prefs, error: prefsErr }, { data: fields, error: fieldsErr }] = await Promise.all([
-    supabase.from("user_job_preferences").select("field_id").eq("user_id", uid),
+    supabase.from("user_job_preferences").select("job_field_id").eq("user_id", uid),
     supabase.from("job_fields").select("*").order("name_ar"),
   ]);
 
@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   if (fieldsErr) console.error("fields GET error:", JSON.stringify(fieldsErr));
 
   return NextResponse.json({
-    selected_ids: (prefs || []).map((p: any) => String(p.field_id)),
+    selected_ids: (prefs || []).map((p: any) => String(p.job_field_id)),
     all_fields: (fields || []).map((f: any) => ({ ...f, id: String(f.id) })),
   });
 }
@@ -31,7 +31,6 @@ export async function POST(req: Request) {
   const uid = payload.user_id;
 
   const body = await req.json().catch(() => ({}));
-  // IDs are UUIDs (strings)
   const ids: string[] = (body.field_ids || [])
     .map((id: any) => String(id).trim())
     .filter((id: string) => id.length > 0);
@@ -49,7 +48,7 @@ export async function POST(req: Request) {
   if (ids.length > 0) {
     const { error: insErr } = await supabase
       .from("user_job_preferences")
-      .insert(ids.map((fid) => ({ user_id: uid, field_id: fid })));
+      .insert(ids.map((fid) => ({ user_id: uid, job_field_id: fid })));
 
     if (insErr) {
       console.error("prefs INSERT error:", JSON.stringify(insErr));
