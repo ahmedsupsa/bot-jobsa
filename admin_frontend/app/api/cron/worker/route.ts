@@ -302,6 +302,28 @@ async function runCycle(): Promise<{ applied: number; users: number; errors: str
   return { applied: totalApplied, users: activeUsers, errors };
 }
 
+async function logWorkerRun(data: {
+  applied_count: number;
+  active_users: number;
+  errors: string[];
+  duration_ms: number;
+  status: string;
+}) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/worker_logs`, {
+      method: "POST",
+      headers: SB_HEADERS,
+      body: JSON.stringify({
+        ...data,
+        errors: JSON.stringify(data.errors),
+        ran_at: new Date().toISOString(),
+      }),
+    });
+  } catch (e) {
+    console.error("[worker] فشل حفظ السجل:", e);
+  }
+}
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
@@ -309,11 +331,17 @@ export async function GET(request: Request) {
   }
 
   console.log("[worker] بدء دورة التقديم التلقائي");
+  const startTime = Date.now();
   try {
     const result = await runCycle();
+    const duration_ms = Date.now() - startTime;
+    const status = result.errors.length === 0 ? "success" : result.applied > 0 ? "partial" : "error";
+    await logWorkerRun({ ...result, applied_count: result.applied, duration_ms, status });
     console.log("[worker] انتهت الدورة:", result);
-    return NextResponse.json({ ok: true, ...result });
+    return NextResponse.json({ ok: true, ...result, duration_ms });
   } catch (e) {
+    const duration_ms = Date.now() - startTime;
+    await logWorkerRun({ applied_count: 0, active_users: 0, errors: [String(e)], duration_ms, status: "error" });
     console.error("[worker] خطأ:", e);
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }

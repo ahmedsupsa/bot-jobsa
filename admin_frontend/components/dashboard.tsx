@@ -1,8 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Users, BriefcaseBusiness, Megaphone, Activity, TrendingUp, Clock, Bot, FileText, CheckCircle2, XCircle, Zap } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  Users, BriefcaseBusiness, Megaphone, Activity, TrendingUp, Clock,
+  Bot, FileText, Zap, AlertTriangle, CheckCircle2, RefreshCw, Timer, XCircle
+} from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
 import { API_BASE } from "@/lib/api";
 
 type Summary = {
@@ -26,6 +29,16 @@ type BotStatus = {
   users_with_cv: number;
 };
 
+type WorkerLog = {
+  id: number;
+  ran_at: string;
+  applied_count: number;
+  active_users: number;
+  errors: string[];
+  duration_ms: number;
+  status: "success" | "partial" | "error";
+};
+
 function StatCard({ label, value, icon: Icon, delay }: { label: string; value: number; icon: React.ElementType; delay: number }) {
   return (
     <motion.div
@@ -47,28 +60,86 @@ function StatCard({ label, value, icon: Icon, delay }: { label: string; value: n
   );
 }
 
+function StatusBadge({ status }: { status: string }) {
+  if (status === "success") return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+      <CheckCircle2 size={10} /> ناجح
+    </span>
+  );
+  if (status === "partial") return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-yellow-950/60 border border-yellow-500/30 px-2 py-0.5 text-[10px] font-medium text-yellow-400">
+      <AlertTriangle size={10} /> جزئي
+    </span>
+  );
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-red-950/60 border border-red-500/30 px-2 py-0.5 text-[10px] font-medium text-red-400">
+      <XCircle size={10} /> خطأ
+    </span>
+  );
+}
+
 export default function Dashboard() {
   const [data, setData] = useState<Summary | null>(null);
   const [bot, setBot] = useState<BotStatus | null>(null);
+  const [logs, setLogs] = useState<WorkerLog[]>([]);
   const [error, setError] = useState("");
+  const [triggeringWorker, setTriggeringWorker] = useState(false);
+  const [workerMsg, setWorkerMsg] = useState("");
+  const [expandedLog, setExpandedLog] = useState<number | null>(null);
 
-  useEffect(() => {
-    const run = async () => {
-      try {
-        const [r1, r2] = await Promise.all([
-          fetch(`${API_BASE}/api/admin/summary`, { credentials: "include" }),
-          fetch(`${API_BASE}/api/admin/bot-status`, { credentials: "include" }),
-        ]);
-        if (!r1.ok) throw new Error("Unauthorized or API not reachable");
-        const [j1, j2] = await Promise.all([r1.json(), r2.json()]);
-        setData(j1);
-        setBot(j2);
-      } catch (e) {
-        setError((e as Error).message);
-      }
-    };
-    run();
+  const loadData = useCallback(async () => {
+    try {
+      const [r1, r2, r3] = await Promise.all([
+        fetch(`${API_BASE}/api/admin/summary`, { credentials: "include" }),
+        fetch(`${API_BASE}/api/admin/bot-status`, { credentials: "include" }),
+        fetch(`${API_BASE}/api/admin/worker-logs`, { credentials: "include" }),
+      ]);
+      if (!r1.ok) throw new Error("Unauthorized or API not reachable");
+      const [j1, j2, j3] = await Promise.all([r1.json(), r2.json(), r3.json()]);
+      setData(j1);
+      setBot(j2);
+      setLogs(j3.logs || []);
+    } catch (e) {
+      setError((e as Error).message);
+    }
   }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const triggerWorker = async () => {
+    setTriggeringWorker(true);
+    setWorkerMsg("");
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/trigger-worker`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const j = await r.json();
+      if (j.ok) {
+        setWorkerMsg(`✅ تمّ: ${j.applied} تقديم، ${j.users} مستخدم نشط (${j.duration_ms}ms)`);
+      } else {
+        setWorkerMsg(`❌ فشل: ${j.error || "خطأ غير معروف"}`);
+      }
+      await loadData();
+    } catch (e) {
+      setWorkerMsg(`❌ فشل: ${e}`);
+    } finally {
+      setTriggeringWorker(false);
+    }
+  };
+
+  const formatMinutes = (m: number | null) => {
+    if (m === null) return "لا توجد بيانات";
+    if (m < 60) return `منذ ${m} دقيقة`;
+    return `منذ ${Math.floor(m / 60)} ساعة`;
+  };
+
+  const formatDuration = (ms: number) => {
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
+  };
+
+  const errorsOnly = logs.filter((l) => l.errors?.length > 0);
 
   if (error) {
     return (
@@ -97,16 +168,10 @@ export default function Dashboard() {
     { label: "إعلانات نشطة", value: data.stats.announcements_active, icon: Activity },
   ];
 
-  const formatMinutes = (m: number | null) => {
-    if (m === null) return "لا توجد بيانات";
-    if (m < 60) return `منذ ${m} دقيقة`;
-    return `منذ ${Math.floor(m / 60)} ساعة`;
-  };
-
   return (
     <div className="space-y-6">
 
-      {/* ── Bot Status Banner ── */}
+      {/* ── Worker Status Banner ── */}
       {bot && (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -115,21 +180,21 @@ export default function Dashboard() {
           className={`rounded-2xl border p-5 ${
             bot.is_active
               ? "border-emerald-500/25 bg-emerald-950/20"
-              : "border-red-500/25 bg-red-950/20"
+              : "border-amber-500/25 bg-amber-950/20"
           }`}
         >
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
               <div className={`flex h-11 w-11 items-center justify-center rounded-xl border ${
-                bot.is_active ? "bg-emerald-950/50 border-emerald-500/30" : "bg-red-950/50 border-red-500/30"
+                bot.is_active ? "bg-emerald-950/50 border-emerald-500/30" : "bg-amber-950/50 border-amber-500/30"
               }`}>
-                <Bot size={20} className={bot.is_active ? "text-emerald-400" : "text-red-400"} />
+                <Bot size={20} className={bot.is_active ? "text-emerald-400" : "text-amber-400"} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <div className={`h-2 w-2 rounded-full ${bot.is_active ? "bg-emerald-400 animate-pulse" : "bg-red-400"}`} />
-                  <span className={`text-sm font-bold ${bot.is_active ? "text-emerald-300" : "text-red-300"}`}>
-                    {bot.is_active ? "البوت يعمل ويقدّم" : "البوت متوقف أو لم يُشغَّل"}
+                  <div className={`h-2 w-2 rounded-full ${bot.is_active ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
+                  <span className={`text-sm font-bold ${bot.is_active ? "text-emerald-300" : "text-amber-300"}`}>
+                    {bot.is_active ? "Worker يعمل وآخر تقديم حديث" : "Worker لم يقدّم منذ فترة"}
                   </span>
                 </div>
                 <div className="text-xs text-slate-500 mt-1">
@@ -139,7 +204,7 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-            <div className="flex gap-4 flex-wrap">
+            <div className="flex items-center gap-4 flex-wrap">
               {[
                 { icon: Zap, label: "تقديمات اليوم", val: bot.apps_today },
                 { icon: TrendingUp, label: "إجمالي التقديمات", val: bot.apps_total },
@@ -162,6 +227,125 @@ export default function Dashboard() {
           <StatCard key={s.label} {...s} delay={(i + 1) * 0.07} />
         ))}
       </div>
+
+      {/* ── Worker Monitoring ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.28 }}
+        className="rounded-2xl border border-line bg-panel shadow-card overflow-hidden"
+      >
+        <div className="flex items-center justify-between border-b border-line px-5 py-4 flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <RefreshCw size={16} className="text-slate-400" />
+            <h3 className="font-semibold text-white text-sm">سجل تشغيل الـ Worker</h3>
+            <span className="text-xs text-slate-600">({logs.length} دورة)</span>
+          </div>
+          <div className="flex items-center gap-3">
+            {workerMsg && (
+              <span className="text-xs text-slate-400">{workerMsg}</span>
+            )}
+            <button
+              onClick={triggerWorker}
+              disabled={triggeringWorker}
+              className="flex items-center gap-1.5 rounded-lg bg-white/8 border border-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/12 transition disabled:opacity-50"
+            >
+              <RefreshCw size={12} className={triggeringWorker ? "animate-spin" : ""} />
+              {triggeringWorker ? "يشتغل..." : "تشغيل الآن"}
+            </button>
+          </div>
+        </div>
+
+        {logs.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm text-slate-500">
+            لا توجد دورات مسجّلة بعد — سيظهر السجل بعد أول تشغيل للـ Worker
+          </div>
+        ) : (
+          <div className="divide-y divide-line">
+            {logs.slice(0, 20).map((log) => (
+              <div key={log.id}>
+                <button
+                  onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
+                  className="w-full px-5 py-3 flex items-center justify-between gap-3 hover:bg-white/4 transition text-right"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <StatusBadge status={log.status} />
+                    <div className="min-w-0">
+                      <div className="text-xs text-slate-400">
+                        {new Date(log.ran_at).toLocaleString("ar-SA")}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 shrink-0">
+                    <div className="text-center">
+                      <div className="text-sm font-bold text-white">{log.applied_count}</div>
+                      <div className="text-[10px] text-slate-600">تقديم</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-sm font-bold text-white">{log.active_users}</div>
+                      <div className="text-[10px] text-slate-600">مستخدم</div>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-slate-600">
+                      <Timer size={11} />
+                      {formatDuration(log.duration_ms)}
+                    </div>
+                    {log.errors?.length > 0 && (
+                      <div className="flex items-center gap-1 text-xs text-red-400">
+                        <AlertTriangle size={11} />
+                        {log.errors.length}
+                      </div>
+                    )}
+                  </div>
+                </button>
+                {expandedLog === log.id && log.errors?.length > 0 && (
+                  <div className="border-t border-line bg-red-950/10 px-5 py-3">
+                    <div className="text-xs font-medium text-red-400 mb-2">الأخطاء:</div>
+                    <div className="space-y-1">
+                      {log.errors.map((err, i) => (
+                        <div key={i} className="text-xs text-red-300/80 bg-red-950/30 rounded px-3 py-1.5 font-mono break-all">
+                          {err}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </motion.div>
+
+      {/* ── Errors Summary ── */}
+      {errorsOnly.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.32 }}
+          className="rounded-2xl border border-red-500/20 bg-red-950/10 shadow-card overflow-hidden"
+        >
+          <div className="flex items-center gap-2 border-b border-red-500/15 px-5 py-4">
+            <AlertTriangle size={16} className="text-red-400" />
+            <h3 className="font-semibold text-red-300 text-sm">الأخطاء التشغيلية الأخيرة</h3>
+            <span className="text-xs text-red-500">({errorsOnly.reduce((s, l) => s + l.errors.length, 0)} خطأ)</span>
+          </div>
+          <div className="divide-y divide-red-500/10">
+            {errorsOnly.slice(0, 5).map((log) => (
+              <div key={log.id} className="px-5 py-3">
+                <div className="text-[10px] text-red-500 mb-2">
+                  {new Date(log.ran_at).toLocaleString("ar-SA")}
+                </div>
+                <div className="space-y-1">
+                  {log.errors.map((err, i) => (
+                    <div key={i} className="text-xs text-red-300/80 font-mono bg-red-950/30 rounded px-3 py-1.5 break-all">
+                      {err}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* Tables */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
