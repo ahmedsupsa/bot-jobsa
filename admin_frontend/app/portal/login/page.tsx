@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { setToken } from "@/lib/portal-auth";
 import {
-  KeyRound, ArrowRight, Briefcase, Bot, PenLine, BarChart3, Loader2,
+  KeyRound, ArrowRight, Briefcase, Zap, PenLine, BarChart3, Loader2,
   User, Phone, MapPin, Calendar, ChevronLeft, Mail,
 } from "lucide-react";
 
@@ -73,9 +73,9 @@ export default function PortalLogin() {
   }
 
   const features = [
-    { icon: <Bot size={18} strokeWidth={1.5} />, text: "تقديم تلقائي كل 30 دقيقة" },
-    { icon: <PenLine size={18} strokeWidth={1.5} />, text: "رسائل تغطية بالذكاء الاصطناعي" },
-    { icon: <BarChart3 size={18} strokeWidth={1.5} />, text: "تتبع جميع تقديماتك" },
+    { icon: <Zap size={18} strokeWidth={1.5} />, text: "تقديم تلقائي كل 30 دقيقة بدون تدخل" },
+    { icon: <PenLine size={18} strokeWidth={1.5} />, text: "رسائل تغطية مخصصة بالذكاء الاصطناعي" },
+    { icon: <BarChart3 size={18} strokeWidth={1.5} />, text: "تتبّع جميع تقديماتك من مكان واحد" },
   ];
 
   const regFields = [
