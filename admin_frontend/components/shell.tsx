@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Key, BriefcaseBusiness, Megaphone, LogOut, Bot } from "lucide-react";
+import { LayoutDashboard, Users, Key, BriefcaseBusiness, Megaphone, LogOut, Briefcase } from "lucide-react";
 import { useState } from "react";
 
 const links = [
@@ -23,19 +23,19 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       <aside
         className={`
           fixed inset-y-0 right-0 z-40 flex w-60 flex-col bg-sidebar shadow-sidebar
-          border-l border-line/60 transition-transform duration-300
+          border-l border-line transition-transform duration-300
           ${mobileOpen ? "translate-x-0" : "translate-x-full"}
           md:translate-x-0 md:static md:z-auto
         `}
       >
         {/* Logo */}
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-line/60">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/20 border border-accent/30">
-            <Bot size={20} className="text-accent" />
+        <div className="flex items-center gap-3 px-5 py-5 border-b border-line">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white">
+            <Briefcase size={18} className="text-black" strokeWidth={1.5} />
           </div>
           <div>
-            <div className="text-sm font-bold text-white">Jobsa Bot</div>
-            <div className="text-xs text-slate-400">لوحة الإدارة</div>
+            <div className="text-sm font-bold text-white">جبسا</div>
+            <div className="text-xs text-slate-500">لوحة الإدارة</div>
           </div>
         </div>
 
@@ -51,12 +51,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 className={`
                   flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all
                   ${active
-                    ? "bg-accent/15 text-accent border border-accent/25"
-                    : "text-slate-300 hover:bg-panel2 hover:text-white border border-transparent"
+                    ? "bg-white/10 text-white border border-white/20"
+                    : "text-slate-400 hover:bg-panel2 hover:text-white border border-transparent"
                   }
                 `}
               >
-                <l.icon size={17} className={active ? "text-accent" : "text-slate-400"} />
+                <l.icon size={17} className={active ? "text-white" : "text-slate-500"} />
                 {l.label}
               </Link>
             );
@@ -64,13 +64,13 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Footer */}
-        <div className="px-3 py-4 border-t border-line/60">
+        <div className="px-3 py-4 border-t border-line">
           <button
             onClick={async () => {
               await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
               window.location.href = "/login";
             }}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-300 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
           >
             <LogOut size={17} />
             تسجيل الخروج
@@ -89,18 +89,23 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Top bar (mobile) */}
-        <header className="flex items-center justify-between border-b border-line/60 bg-panel/80 px-4 py-3 md:hidden">
-          <div className="text-sm font-semibold">Jobsa Bot Admin</div>
+        <header className="flex items-center justify-between border-b border-line bg-sidebar px-4 py-3 md:hidden">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white">
+              <Briefcase size={14} className="text-black" strokeWidth={1.5} />
+            </div>
+            <span className="text-sm font-semibold text-white">جبسا</span>
+          </div>
           <button
             onClick={() => setMobileOpen(true)}
-            className="rounded-lg border border-line p-2 text-slate-300"
+            className="rounded-lg border border-line p-2 text-slate-400 hover:text-white"
           >
             ☰
           </button>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-bg">
           {children}
         </main>
       </div>
