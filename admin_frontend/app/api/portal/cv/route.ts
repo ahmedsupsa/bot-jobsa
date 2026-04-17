@@ -19,11 +19,20 @@ export async function GET(req: Request) {
   const cv = rows?.[0];
   if (!cv) return NextResponse.json({ has_cv: false });
 
+  let preview_url = "";
+  if (cv.storage_path) {
+    const { data: signed } = await supabase.storage
+      .from("cvs")
+      .createSignedUrl(cv.storage_path, 3600);
+    preview_url = signed?.signedUrl || "";
+  }
+
   return NextResponse.json({
     has_cv: true,
     file_name: cv.file_name || "cv.pdf",
     storage_path: cv.storage_path || "",
     updated_at: cv.updated_at || cv.created_at || "",
+    preview_url,
   });
 }
 

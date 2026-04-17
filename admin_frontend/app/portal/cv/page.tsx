@@ -3,9 +3,17 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PortalShell } from "@/components/portal-shell";
 import { portalFetch, clearToken, authHeaders } from "@/lib/portal-auth";
-import { Upload, Trash2, FileText, CheckCircle, XCircle, Bot, Search, Send } from "lucide-react";
+import {
+  Upload, Trash2, FileText, CheckCircle, XCircle,
+  Bot, Search, Send, Eye, RefreshCw, Calendar,
+} from "lucide-react";
 
-interface CVInfo { has_cv: boolean; file_name?: string; updated_at?: string; }
+interface CVInfo {
+  has_cv: boolean;
+  file_name?: string;
+  updated_at?: string;
+  preview_url?: string;
+}
 
 export default function CVPage() {
   const router = useRouter();
@@ -15,6 +23,7 @@ export default function CVPage() {
   const [deleting, setDeleting] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
   const [drag, setDrag] = useState(false);
+  const [showReplace, setShowReplace] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function loadCV() {
@@ -38,7 +47,8 @@ export default function CVPage() {
       const res = await fetch("/api/portal/cv/upload", { method: "POST", headers: authHeaders(), body: form });
       const d = await res.json();
       if (!res.ok) { setMsg({ text: d.error || "فشل الرفع", type: "err" }); return; }
-      setMsg({ text: "تم رفع السيرة بنجاح", type: "ok" });
+      setMsg({ text: "تم رفع السيرة بنجاح ✓", type: "ok" });
+      setShowReplace(false);
       await loadCV();
     } catch { setMsg({ text: "خطأ في الاتصال", type: "err" }); }
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
@@ -52,6 +62,7 @@ export default function CVPage() {
       const d = await res.json();
       if (!res.ok) { setMsg({ text: d.error || "فشل الحذف", type: "err" }); return; }
       setMsg({ text: "تم حذف السيرة الذاتية", type: "ok" });
+      setShowReplace(false);
       await loadCV();
     } catch { setMsg({ text: "خطأ في الاتصال", type: "err" }); }
     finally { setDeleting(false); }
@@ -63,9 +74,14 @@ export default function CVPage() {
     { icon: <Send size={16} strokeWidth={1.5} />, text: "يكتب رسالة تغطية مخصصة ويرسلها باسمك للشركة" },
   ];
 
+  const uploadedAt = cv?.updated_at
+    ? new Date(cv.updated_at).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" })
+    : null;
+
   return (
     <PortalShell>
       <div style={s.page}>
+        {/* Header */}
         <div style={s.header}>
           <div style={s.headerIcon}><FileText size={22} strokeWidth={1.5} color="#fff" /></div>
           <div>
@@ -74,7 +90,9 @@ export default function CVPage() {
           </div>
         </div>
 
-        {loading ? <p style={{ color: "#555", padding: 40, textAlign: "center" }}>جاري التحميل…</p> : (
+        {loading ? (
+          <p style={{ color: "#555", padding: 40, textAlign: "center" }}>جاري التحميل…</p>
+        ) : (
           <>
             {msg && (
               <div style={{
@@ -83,58 +101,112 @@ export default function CVPage() {
                 color: msg.type === "ok" ? "#22c55e" : "#f87171",
                 border: `1px solid ${msg.type === "ok" ? "#22c55e22" : "#f8717122"}`,
               }}>
-                {msg.type === "ok"
-                  ? <CheckCircle size={16} strokeWidth={1.5} />
-                  : <XCircle size={16} strokeWidth={1.5} />
-                }
+                {msg.type === "ok" ? <CheckCircle size={16} strokeWidth={1.5} /> : <XCircle size={16} strokeWidth={1.5} />}
                 {msg.text}
               </div>
             )}
 
-            {cv?.has_cv && (
-              <div style={s.cvCard}>
-                <div style={s.cvIcon}><FileText size={24} strokeWidth={1.5} color="#fff" /></div>
-                <div style={{ flex: 1 }}>
-                  <p style={s.cvName}>{cv.file_name}</p>
-                  {cv.updated_at && (
-                    <p style={s.cvDate}>آخر تحديث: {new Date(cv.updated_at).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" })}</p>
-                  )}
+            {/* ── CV EXISTS STATE ── */}
+            {cv?.has_cv ? (
+              <>
+                {/* Big confirmation card */}
+                <div style={s.cvBigCard}>
+                  <div style={s.cvBigIcon}>
+                    <FileText size={32} strokeWidth={1.2} color="#22c55e" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={s.cvBigBadge}>
+                      <CheckCircle size={13} strokeWidth={2} color="#22c55e" />
+                      <span>سيرتك الذاتية مرفوعة وجاهزة</span>
+                    </div>
+                    <p style={s.cvBigName}>{cv.file_name}</p>
+                    {uploadedAt && (
+                      <div style={s.cvBigDate}>
+                        <Calendar size={11} strokeWidth={1.5} />
+                        <span>آخر تحديث: {uploadedAt}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div style={s.cvBadge}><CheckCircle size={13} strokeWidth={2} /> مرفوعة</div>
-              </div>
-            )}
 
-            {/* Drop zone */}
-            <div
-              style={{ ...s.dropZone, ...(drag ? s.dropActive : {}), ...(uploading ? s.dropUploading : {}) }}
-              onClick={() => !uploading && fileRef.current?.click()}
-              onDragOver={e => { e.preventDefault(); setDrag(true); }}
-              onDragLeave={() => setDrag(false)}
-              onDrop={e => {
-                e.preventDefault(); setDrag(false);
-                const file = e.dataTransfer.files?.[0];
-                if (file && fileRef.current) {
-                  const dt = new DataTransfer(); dt.items.add(file);
-                  fileRef.current.files = dt.files;
-                  handleUpload({ target: fileRef.current } as any);
-                }
-              }}
-            >
-              <div style={s.dropIcon}>
-                <Upload size={28} strokeWidth={1.5} color={drag ? "#fff" : "#555"} />
-              </div>
-              <p style={s.dropTitle}>
-                {uploading ? "جاري الرفع…" : cv?.has_cv ? "اسحب ملفاً أو اضغط لاستبدال السيرة" : "اسحب ملفاً أو اضغط للرفع"}
-              </p>
-              <p style={s.dropSub}>PDF · JPG · PNG — حتى 10 ميغابايت</p>
-              <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: "none" }} onChange={handleUpload} disabled={uploading} />
-            </div>
+                {/* Action buttons */}
+                <div style={s.cvActions}>
+                  {cv.preview_url && (
+                    <a href={cv.preview_url} target="_blank" rel="noopener noreferrer" style={s.btnView}>
+                      <Eye size={15} strokeWidth={1.5} />
+                      معاينة السيرة
+                    </a>
+                  )}
+                  <button
+                    style={s.btnReplace}
+                    onClick={() => { setShowReplace(v => !v); setMsg(null); }}
+                  >
+                    <RefreshCw size={14} strokeWidth={1.5} />
+                    استبدال السيرة
+                  </button>
+                  <button style={s.btnDelete} onClick={handleDelete} disabled={deleting}>
+                    <Trash2 size={14} strokeWidth={1.5} />
+                    {deleting ? "جاري الحذف…" : "حذف"}
+                  </button>
+                </div>
 
-            {cv?.has_cv && (
-              <button style={s.deleteBtn} onClick={handleDelete} disabled={deleting}>
-                <Trash2 size={15} strokeWidth={1.5} />
-                {deleting ? "جاري الحذف…" : "حذف السيرة الذاتية"}
-              </button>
+                {/* Replace drop zone (collapsible) */}
+                {showReplace && (
+                  <div
+                    style={{ ...s.dropZone, ...(drag ? s.dropActive : {}), ...(uploading ? s.dropUploading : {}) }}
+                    onClick={() => !uploading && fileRef.current?.click()}
+                    onDragOver={e => { e.preventDefault(); setDrag(true); }}
+                    onDragLeave={() => setDrag(false)}
+                    onDrop={e => {
+                      e.preventDefault(); setDrag(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file && fileRef.current) {
+                        const dt = new DataTransfer(); dt.items.add(file);
+                        fileRef.current.files = dt.files;
+                        handleUpload({ target: fileRef.current } as any);
+                      }
+                    }}
+                  >
+                    <div style={s.dropIcon}>
+                      <Upload size={24} strokeWidth={1.5} color={drag ? "#fff" : "#555"} />
+                    </div>
+                    <p style={s.dropTitle}>{uploading ? "جاري الرفع…" : "اسحب ملفاً أو اضغط لاستبدال السيرة"}</p>
+                    <p style={s.dropSub}>PDF · JPG · PNG — حتى 10 ميغابايت</p>
+                    <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: "none" }} onChange={handleUpload} disabled={uploading} />
+                  </div>
+                )}
+              </>
+            ) : (
+              /* ── NO CV STATE ── */
+              <>
+                <div style={s.noCvBanner}>
+                  <XCircle size={16} strokeWidth={1.5} color="#f87171" />
+                  <span style={{ color: "#f87171", fontSize: 13, fontWeight: 600 }}>لم تُرفع سيرة ذاتية بعد — ارفع سيرتك لبدء التقديم التلقائي</span>
+                </div>
+
+                <div
+                  style={{ ...s.dropZone, ...(drag ? s.dropActive : {}), ...(uploading ? s.dropUploading : {}) }}
+                  onClick={() => !uploading && fileRef.current?.click()}
+                  onDragOver={e => { e.preventDefault(); setDrag(true); }}
+                  onDragLeave={() => setDrag(false)}
+                  onDrop={e => {
+                    e.preventDefault(); setDrag(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file && fileRef.current) {
+                      const dt = new DataTransfer(); dt.items.add(file);
+                      fileRef.current.files = dt.files;
+                      handleUpload({ target: fileRef.current } as any);
+                    }
+                  }}
+                >
+                  <div style={s.dropIcon}>
+                    <Upload size={28} strokeWidth={1.5} color={drag ? "#fff" : "#555"} />
+                  </div>
+                  <p style={s.dropTitle}>{uploading ? "جاري الرفع…" : "اسحب ملفاً أو اضغط للرفع"}</p>
+                  <p style={s.dropSub}>PDF · JPG · PNG — حتى 10 ميغابايت</p>
+                  <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: "none" }} onChange={handleUpload} disabled={uploading} />
+                </div>
+              </>
             )}
 
             {/* How it works */}
@@ -145,9 +217,7 @@ export default function CVPage() {
               </div>
               {steps.map((step, i) => (
                 <div key={i} style={s.step}>
-                  <div style={s.stepNum}>
-                    <span style={{ color: "#fff" }}>{step.icon}</span>
-                  </div>
+                  <div style={s.stepNum}>{step.icon}</div>
                   <p style={s.stepText}>{step.text}</p>
                 </div>
               ))}
@@ -176,27 +246,63 @@ const s: Record<string, React.CSSProperties> = {
     display: "flex", alignItems: "center", gap: 8,
     padding: "13px 16px", borderRadius: 12, marginBottom: 16, fontSize: 13, fontWeight: 500,
   },
-  cvCard: {
-    display: "flex", alignItems: "center", gap: 16,
-    background: "#111", border: "1px solid #22c55e22",
-    borderRadius: 14, padding: "18px 22px", marginBottom: 16,
+
+  /* Big CV card */
+  cvBigCard: {
+    display: "flex", alignItems: "flex-start", gap: 20,
+    background: "#0a1a0a", border: "1px solid #22c55e33",
+    borderRadius: 18, padding: "24px 28px", marginBottom: 16,
   },
-  cvIcon: {
-    width: 44, height: 44, borderRadius: 12, background: "#1a1a1a",
+  cvBigIcon: {
+    width: 64, height: 64, borderRadius: 16, background: "#0f2a0f",
+    border: "1px solid #22c55e44",
     display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
-  cvName: { color: "#fff", fontSize: 14, fontWeight: 600, margin: 0 },
-  cvDate: { color: "#555", fontSize: 12, margin: "4px 0 0" },
-  cvBadge: {
-    display: "flex", alignItems: "center", gap: 6,
-    background: "#0a1f0a", color: "#22c55e",
-    border: "1px solid #22c55e22", borderRadius: 8,
-    padding: "5px 12px", fontSize: 12, fontWeight: 600,
+  cvBigBadge: {
+    display: "inline-flex", alignItems: "center", gap: 6,
+    background: "#0f2a0f", border: "1px solid #22c55e33",
+    borderRadius: 100, padding: "4px 12px", fontSize: 11,
+    fontWeight: 700, color: "#22c55e", marginBottom: 8,
   },
+  cvBigName: { color: "#fff", fontSize: 15, fontWeight: 700, margin: "0 0 8px", wordBreak: "break-all" },
+  cvBigDate: {
+    display: "flex", alignItems: "center", gap: 5,
+    color: "#555", fontSize: 12,
+  },
+
+  /* Action buttons */
+  cvActions: { display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" },
+  btnView: {
+    display: "inline-flex", alignItems: "center", gap: 7,
+    padding: "10px 18px", borderRadius: 12,
+    background: "#fff", color: "#0a0a0a", fontSize: 13, fontWeight: 700,
+    textDecoration: "none", cursor: "pointer",
+  },
+  btnReplace: {
+    display: "inline-flex", alignItems: "center", gap: 7,
+    padding: "10px 18px", borderRadius: 12,
+    background: "#1a1a1a", border: "1px solid #2a2a2a",
+    color: "#ccc", fontSize: 13, fontWeight: 600, cursor: "pointer",
+  },
+  btnDelete: {
+    display: "inline-flex", alignItems: "center", gap: 7,
+    padding: "10px 18px", borderRadius: 12,
+    background: "#1a0a0a", border: "1px solid #3f1515",
+    color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer",
+  },
+
+  /* No CV banner */
+  noCvBanner: {
+    display: "flex", alignItems: "center", gap: 10,
+    background: "#1a0a0a", border: "1px solid #f8717122",
+    borderRadius: 12, padding: "13px 16px", marginBottom: 16,
+  },
+
+  /* Drop zone */
   dropZone: {
     background: "#111", border: "1.5px dashed #2a2a2a",
     borderRadius: 16, padding: "44px 28px",
-    textAlign: "center", cursor: "pointer", marginBottom: 14,
+    textAlign: "center", cursor: "pointer", marginBottom: 16,
     transition: "all 0.2s",
   },
   dropActive: { borderColor: "#fff", background: "#1a1a1a" },
@@ -208,18 +314,14 @@ const s: Record<string, React.CSSProperties> = {
   },
   dropTitle: { color: "#ccc", fontSize: 15, fontWeight: 600, margin: "0 0 6px" },
   dropSub: { color: "#555", fontSize: 13, margin: 0 },
-  deleteBtn: {
-    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-    width: "100%", padding: "12px",
-    background: "#1a0a0a", border: "1px solid #3f1515",
-    borderRadius: 12, color: "#f87171", fontSize: 13, fontWeight: 600,
-    cursor: "pointer", marginBottom: 20,
-  },
+
+  /* Info card */
   infoCard: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 16, padding: "22px" },
   step: { display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14 },
   stepNum: {
     width: 32, height: 32, borderRadius: 10, background: "#1a1a1a",
-    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    flexShrink: 0, color: "#fff",
   },
   stepText: { color: "#888", fontSize: 13, margin: 0, lineHeight: 1.6, paddingTop: 6 },
 };
