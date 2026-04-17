@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { PortalShell } from "@/components/portal-shell";
 import { portalFetch, clearToken, authHeaders } from "@/lib/portal-auth";
 import {
-  Sparkles, CheckCircle, XCircle, Save, Briefcase, RefreshCw, Bot,
+  Sparkles, CheckCircle, XCircle, Save, Briefcase, Bot, Loader2,
 } from "lucide-react";
 
 interface Field { id: string; name_ar: string; }
@@ -103,7 +103,7 @@ export default function PreferencesPage() {
             disabled={extracting}
           >
             {extracting
-              ? <><RefreshCw size={15} strokeWidth={1.5} style={{ animation: "spin 1s linear infinite" }} /> جاري التحليل…</>
+              ? <><Loader2 size={15} strokeWidth={1.5} className="spin-icon" /> جاري التحليل…</>
               : <><Sparkles size={15} strokeWidth={1.5} /> استخرج من سيرتي الذاتية</>
             }
           </button>
@@ -185,7 +185,6 @@ export default function PreferencesPage() {
           </>
         )}
 
-        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
     </PortalShell>
   );

@@ -25,6 +25,13 @@ html, body {
 ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #555; }
 
+/* Spin animation for loading icons */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spin-icon { animation: spin 1s linear infinite; }
+
 /* Portal responsive layout */
 @media (max-width: 768px) {
   .portal-sidebar { display: none !important; }

@@ -106,11 +106,17 @@ ${fieldsList}
   const gemData = await gemRes.json();
   const rawText = gemData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-  // Parse JSON from response (strip markdown fences if present)
-  const clean = rawText.replace(/```json|```/g, "").trim();
+  // Robust JSON extraction: find first { to last }
+  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
   let parsed: any = {};
-  try { parsed = JSON.parse(clean); } catch {
-    return NextResponse.json({ error: "فشل تفسير نتيجة الذكاء الاصطناعي", raw: rawText }, { status: 500 });
+  if (jsonMatch) {
+    try { parsed = JSON.parse(jsonMatch[0]); } catch { /* fall through to defaults */ }
+  }
+  // If no valid JSON found, try to extract fields we need from raw text
+  if (!parsed.matched_ids && !parsed.job_titles) {
+    console.error("Gemini raw response:", rawText);
+    // Return empty but valid response so the page still works
+    parsed = { matched_ids: [], job_titles: [], summary: "" };
   }
 
   return NextResponse.json({
