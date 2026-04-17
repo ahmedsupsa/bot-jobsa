@@ -21,8 +21,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "الاسم والسعر وعدد الأيام مطلوبة" }, { status: 400 });
   }
 
-  // Auto-create the product in StreamPay
+  // Auto-create the product in StreamPay (non-blocking — product is saved even if this fails)
   let streampay_product_id: string | null = null;
+  let streampay_error: string | null = null;
   try {
     const spProduct = await createProduct({
       name: name.trim(),
@@ -32,10 +33,7 @@ export async function POST(req: Request) {
     streampay_product_id = spProduct?.id || spProduct?.data?.id || null;
   } catch (spErr) {
     console.error("StreamPay createProduct error:", spErr);
-    return NextResponse.json(
-      { ok: false, error: "فشل إنشاء المنتج في بوابة الدفع: " + String(spErr).slice(0, 200) },
-      { status: 500 }
-    );
+    streampay_error = String(spErr).slice(0, 200);
   }
 
   const { data, error } = await supabase
@@ -50,7 +48,7 @@ export async function POST(req: Request) {
     .select()
     .single();
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, product: data, streampay_product_id });
+  return NextResponse.json({ ok: true, product: data, streampay_product_id, streampay_warning: streampay_error });
 }
 
 export async function PUT(req: Request) {
