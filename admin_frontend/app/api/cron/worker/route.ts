@@ -204,18 +204,21 @@ async function downloadCv(storagePath: string): Promise<Buffer | null> {
   return Buffer.from(arrayBuffer);
 }
 
-async function runCycle(): Promise<{ applied: number; users: number; errors: string[] }> {
+type CycleDetail = { user: string; job: string; to_email: string; status: "sent" | "skipped" | "error"; reason?: string };
+
+async function runCycle(): Promise<{ applied: number; users: number; errors: string[]; details: CycleDetail[] }> {
   const errors: string[] = [];
+  const details: CycleDetail[] = [];
   let totalApplied = 0;
   let activeUsers = 0;
 
   if (!RESEND_API_KEY || !RESEND_FROM_EMAIL) {
-    return { applied: 0, users: 0, errors: ["RESEND_API_KEY / RESEND_FROM_EMAIL غير معرّف"] };
+    return { applied: 0, users: 0, errors: ["RESEND_API_KEY / RESEND_FROM_EMAIL غير معرّف"], details: [] };
   }
 
   const jobsRaw = await sbGet("admin_jobs", { is_active: "eq.true" });
   const jobs = jobsRaw.filter((j) => String(j.application_email || "").trim());
-  if (!jobs.length) return { applied: 0, users: 0, errors: [] };
+  if (!jobs.length) return { applied: 0, users: 0, errors: [], details: [] };
 
   const [users, fieldsRaw] = await Promise.all([sbGet("users"), sbGet("job_fields")]);
 
@@ -265,8 +268,14 @@ async function runCycle(): Promise<{ applied: number; users: number; errors: str
         user_id: `eq.${uid}`,
         job_id: `eq.${jobId}`,
       });
-      if (alreadyApplied > 0) continue;
-      if (!jobMatchesUser(job, fieldNames)) continue;
+      if (alreadyApplied > 0) {
+        details.push({ user: name, job: String(job.title_ar || job.title_en || ""), to_email: String(job.application_email || ""), status: "skipped", reason: "قُدِّم سابقاً" });
+        continue;
+      }
+      if (!jobMatchesUser(job, fieldNames)) {
+        details.push({ user: name, job: String(job.title_ar || job.title_en || ""), to_email: String(job.application_email || ""), status: "skipped", reason: "لا يطابق التفضيلات" });
+        continue;
+      }
 
       const toEmail = String(job.application_email || "").trim();
       const jobTitle = String(job.title_ar || job.title_en || "وظيفة");
@@ -289,17 +298,20 @@ async function runCycle(): Promise<{ applied: number; users: number; errors: str
           job_id: jobId,
           applied_at: new Date().toISOString(),
         });
+        details.push({ user: name, job: jobTitle, to_email: toEmail, status: "sent" });
         sent++;
         totalApplied++;
       } catch (e) {
-        errors.push(`${name} → ${jobTitle}: ${e}`);
+        const errMsg = String(e);
+        errors.push(`${name} → ${jobTitle}: ${errMsg}`);
+        details.push({ user: name, job: jobTitle, to_email: toEmail, status: "error", reason: errMsg });
       }
     }
 
     if (sent > 0) console.log(`[worker] ${name}: ${sent} تقديم`);
   }
 
-  return { applied: totalApplied, users: activeUsers, errors };
+  return { applied: totalApplied, users: activeUsers, errors, details };
 }
 
 async function logWorkerRun(data: {

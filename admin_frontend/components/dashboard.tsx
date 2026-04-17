@@ -85,6 +85,8 @@ export default function Dashboard() {
   const [error, setError] = useState("");
   const [triggeringWorker, setTriggeringWorker] = useState(false);
   const [workerMsg, setWorkerMsg] = useState("");
+  const [workerMsgType, setWorkerMsgType] = useState<"ok"|"err">("ok");
+  const [runDetails, setRunDetails] = useState<Array<{user:string;job:string;to_email:string;status:"sent"|"skipped"|"error";reason?:string}>>([]);
   const [expandedLog, setExpandedLog] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
@@ -109,6 +111,7 @@ export default function Dashboard() {
   const triggerWorker = async () => {
     setTriggeringWorker(true);
     setWorkerMsg("");
+    setRunDetails([]);
     try {
       const r = await fetch(`${API_BASE}/api/admin/trigger-worker`, {
         method: "POST",
@@ -116,13 +119,17 @@ export default function Dashboard() {
       });
       const j = await r.json();
       if (j.ok) {
-        setWorkerMsg(`✅ تمّ: ${j.applied} تقديم، ${j.users} مستخدم نشط (${j.duration_ms}ms)`);
+        setWorkerMsg(`اكتمل: ${j.applied} تقديم أُرسل — ${j.users} مستخدم نشط — ${j.duration_ms}ms`);
+        setWorkerMsgType("ok");
+        setRunDetails(j.details || []);
       } else {
-        setWorkerMsg(`❌ فشل: ${j.error || "خطأ غير معروف"}`);
+        setWorkerMsg(`فشل: ${j.error || "خطأ غير معروف"}`);
+        setWorkerMsgType("err");
       }
       await loadData();
     } catch (e) {
-      setWorkerMsg(`❌ فشل: ${e}`);
+      setWorkerMsg(`فشل الاتصال: ${e}`);
+      setWorkerMsgType("err");
     } finally {
       setTriggeringWorker(false);
     }
@@ -242,9 +249,6 @@ export default function Dashboard() {
             <span className="text-xs text-slate-600">({logs.length} دورة)</span>
           </div>
           <div className="flex items-center gap-3">
-            {workerMsg && (
-              <span className="text-xs text-slate-400">{workerMsg}</span>
-            )}
             <button
               onClick={triggerWorker}
               disabled={triggeringWorker}
@@ -255,6 +259,61 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
+
+        {/* Live run results */}
+        {triggeringWorker && (
+          <div className="px-5 py-4 border-b border-line flex items-center gap-3">
+            <RefreshCw size={14} className="animate-spin text-accent" />
+            <span className="text-sm text-slate-300">Worker يشتغل... قد يستغرق بضع ثوانٍ</span>
+          </div>
+        )}
+        {!triggeringWorker && workerMsg && (
+          <div className={`px-5 py-3 border-b border-line text-xs font-medium ${
+            workerMsgType === "ok" ? "text-emerald-300 bg-emerald-950/20" : "text-red-300 bg-red-950/20"
+          }`}>{workerMsg}</div>
+        )}
+        {!triggeringWorker && runDetails.length > 0 && (
+          <div className="border-b border-line">
+            <div className="px-5 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              تفاصيل آخر تشغيل ({runDetails.filter(d => d.status === "sent").length} أُرسل / {runDetails.filter(d => d.status === "skipped").length} تخطّى / {runDetails.filter(d => d.status === "error").length} خطأ)
+            </div>
+            <div className="divide-y divide-line/40 max-h-64 overflow-y-auto">
+              {runDetails.map((d, i) => (
+                <div key={i} className="flex items-center gap-3 px-5 py-2.5 hover:bg-white/2">
+                  {d.status === "sent" ? (
+                    <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
+                  ) : d.status === "error" ? (
+                    <XCircle size={13} className="text-red-400 shrink-0" />
+                  ) : (
+                    <div className="h-3 w-3 rounded-full border border-slate-600 shrink-0" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-medium text-white">{d.user}</span>
+                      <span className="text-[10px] text-slate-500">→</span>
+                      <span className="text-xs text-slate-300">{d.job}</span>
+                      {d.status === "sent" && (
+                        <span className="text-[10px] text-slate-500">→ {d.to_email}</span>
+                      )}
+                    </div>
+                    {d.reason && (
+                      <div className="text-[10px] text-slate-600 mt-0.5">{d.reason}</div>
+                    )}
+                  </div>
+                  <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-md border ${
+                    d.status === "sent"
+                      ? "border-emerald-500/25 bg-emerald-950/30 text-emerald-400"
+                      : d.status === "error"
+                      ? "border-red-500/25 bg-red-950/30 text-red-400"
+                      : "border-slate-700 bg-slate-900 text-slate-500"
+                  }`}>
+                    {d.status === "sent" ? "أُرسل" : d.status === "error" ? "خطأ" : "تخطّى"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {logs.length === 0 ? (
           <div className="px-5 py-8 text-center text-sm text-slate-500">
