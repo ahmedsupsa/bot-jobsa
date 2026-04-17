@@ -1,9 +1,9 @@
 "use client";
 
 import Shell from "@/components/shell";
-import { apiGet, apiSend } from "@/lib/api";
+import { API_BASE } from "@/lib/api";
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Building2, Mail, BriefcaseBusiness } from "lucide-react";
+import { Plus, Trash2, Building2, Mail, BriefcaseBusiness, Sparkles, CheckCircle2 } from "lucide-react";
 
 type Job = {
   id: string;
@@ -11,51 +11,54 @@ type Job = {
   title_en?: string;
   company?: string;
   application_email?: string;
+  specializations?: string;
   is_active?: boolean;
+  created_at?: string;
 };
 
-const EMPTY_FORM = {
-  title_ar: "",
-  title_en: "",
-  description_ar: "",
-  company: "",
-  link_url: "",
-  application_email: "",
-  specializations: "",
-};
-
-const FIELD_LABELS: Record<string, string> = {
-  title_ar: "عنوان الوظيفة (عربي)",
-  title_en: "Job Title (English)",
-  description_ar: "الوصف",
-  company: "الشركة",
-  link_url: "رابط التقديم",
-  application_email: "البريد للتقديم",
-  specializations: "التخصصات",
-};
+const EMPTY = { title_ar: "", description_ar: "", application_email: "", company: "" };
 
 export default function JobsPage() {
   const [rows, setRows] = useState<Job[]>([]);
   const [msg, setMsg] = useState("");
   const [msgType, setMsgType] = useState<"ok" | "err">("ok");
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(EMPTY);
   const [adding, setAdding] = useState(false);
+  const [aiSpecs, setAiSpecs] = useState("");
 
   const load = async () => {
-    const r = await apiGet<{ ok: boolean; jobs: Job[] }>("/api/admin/jobs");
-    setRows(r.jobs || []);
+    const r = await fetch(`${API_BASE}/api/admin/jobs`, { credentials: "include" });
+    const j = await r.json();
+    setRows(j.jobs || []);
   };
-  useEffect(() => {
-    load().catch((e) => { setMsg(String(e)); setMsgType("err"); });
-  }, []);
+
+  useEffect(() => { load(); }, []);
+
+  const set = (k: keyof typeof EMPTY) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm((s) => ({ ...s, [k]: e.target.value }));
 
   const add = async () => {
+    if (!form.title_ar.trim() || !form.application_email.trim()) {
+      setMsg("عنوان الوظيفة والبريد الإلكتروني مطلوبان");
+      setMsgType("err");
+      return;
+    }
     setAdding(true);
+    setMsg("");
+    setAiSpecs("");
     try {
-      await apiSend("/api/admin/jobs", "POST", form);
+      const r = await fetch(`${API_BASE}/api/admin/jobs`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "فشل الإضافة");
+      setAiSpecs(j.specializations || "");
       setMsg("تمت إضافة الوظيفة بنجاح ✓");
       setMsgType("ok");
-      setForm(EMPTY_FORM);
+      setForm(EMPTY);
       await load();
     } catch (e) {
       setMsg(String(e));
@@ -66,7 +69,12 @@ export default function JobsPage() {
   };
 
   const del = async (id: string) => {
-    await apiSend(`/api/admin/jobs/${id}`, "DELETE");
+    await fetch(`${API_BASE}/api/admin/jobs`, {
+      method: "DELETE",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
     await load();
   };
 
@@ -74,57 +82,113 @@ export default function JobsPage() {
     <Shell>
       <div className="mb-5">
         <h1 className="text-xl font-bold text-white">الوظائف</h1>
-        <p className="text-sm text-slate-400 mt-0.5">إدارة الوظائف المتاحة في البوت</p>
+        <p className="text-sm text-slate-400 mt-0.5">أضف الوظائف وسيستخرج الذكاء الاصطناعي التخصصات تلقائياً</p>
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         {/* Add form */}
-        <div className="rounded-2xl border border-line/70 bg-panel shadow-card p-5">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="rounded-2xl border border-line/70 bg-panel shadow-card p-5 space-y-4">
+          <div className="flex items-center gap-2">
             <Plus size={17} className="text-accent" />
             <h2 className="font-semibold text-white">إضافة وظيفة جديدة</h2>
           </div>
-          <div className="space-y-3">
-            {Object.entries(form).map(([k, v]) => (
-              k === "description_ar" ? (
-                <div key={k}>
-                  <label className="mb-1.5 block text-xs text-slate-400">{FIELD_LABELS[k]}</label>
-                  <textarea
-                    value={v}
-                    onChange={(e) => setForm((s) => ({ ...s, [k]: e.target.value }))}
-                    rows={3}
-                    className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm placeholder:text-slate-500 focus:border-accent/50 focus:outline-none resize-none"
-                  />
-                </div>
-              ) : (
-                <div key={k}>
-                  <label className="mb-1.5 block text-xs text-slate-400">{FIELD_LABELS[k]}</label>
-                  <input
-                    value={v}
-                    onChange={(e) => setForm((s) => ({ ...s, [k]: e.target.value }))}
-                    className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm placeholder:text-slate-500 focus:border-accent/50 focus:outline-none"
-                  />
-                </div>
-              )
-            ))}
-            {msg && (
-              <div className={`rounded-xl border px-4 py-2.5 text-sm ${
-                msgType === "ok"
-                  ? "border-emerald-500/25 bg-emerald-950/30 text-emerald-300"
-                  : "border-red-500/25 bg-red-950/30 text-red-300"
-              }`}>
-                {msg}
-              </div>
-            )}
-            <button
-              onClick={add}
-              disabled={adding}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-accent/30 bg-accent/15 py-2.5 text-sm text-accent font-medium hover:bg-accent/25 transition-colors disabled:opacity-50"
-            >
-              <Plus size={15} />
-              {adding ? "جاري الإضافة..." : "إضافة الوظيفة"}
-            </button>
+
+          {/* Title AR - required */}
+          <div>
+            <label className="mb-1.5 block text-xs text-slate-400">
+              عنوان الوظيفة <span className="text-red-400">*</span>
+            </label>
+            <input
+              value={form.title_ar}
+              onChange={set("title_ar")}
+              placeholder="مصمم جرافيك"
+              className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-accent/50 focus:outline-none"
+            />
           </div>
+
+          {/* Description */}
+          <div>
+            <label className="mb-1.5 block text-xs text-slate-400">الوصف الوظيفي</label>
+            <textarea
+              value={form.description_ar}
+              onChange={set("description_ar")}
+              rows={4}
+              placeholder="صف متطلبات الوظيفة والمهام... (يستخدمها الذكاء الاصطناعي لاستخراج التخصصات)"
+              className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-accent/50 focus:outline-none resize-none"
+            />
+          </div>
+
+          {/* Email - required */}
+          <div>
+            <label className="mb-1.5 block text-xs text-slate-400">
+              البريد للتقديم <span className="text-red-400">*</span>
+            </label>
+            <input
+              value={form.application_email}
+              onChange={set("application_email")}
+              type="email"
+              placeholder="hr@company.com"
+              className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-accent/50 focus:outline-none"
+            />
+          </div>
+
+          {/* Company - optional */}
+          <div>
+            <label className="mb-1.5 block text-xs text-slate-400">اسم الشركة (اختياري)</label>
+            <input
+              value={form.company}
+              onChange={set("company")}
+              placeholder="شركة ..."
+              className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-accent/50 focus:outline-none"
+            />
+          </div>
+
+          {/* AI hint */}
+          <div className="flex items-start gap-2 rounded-xl border border-violet-500/20 bg-violet-950/20 px-3 py-2.5">
+            <Sparkles size={14} className="text-violet-400 mt-0.5 shrink-0" />
+            <p className="text-xs text-violet-300/80">
+              الذكاء الاصطناعي سيستخرج التخصصات ويطابقها مع تفضيلات المستخدمين تلقائياً
+            </p>
+          </div>
+
+          {/* AI specs result */}
+          {aiSpecs && (
+            <div className="flex items-start gap-2 rounded-xl border border-emerald-500/20 bg-emerald-950/20 px-3 py-2.5">
+              <CheckCircle2 size={14} className="text-emerald-400 mt-0.5 shrink-0" />
+              <div>
+                <div className="text-xs font-medium text-emerald-300 mb-1">تخصصات مُولَّدة:</div>
+                <div className="text-xs text-emerald-200/70">{aiSpecs}</div>
+              </div>
+            </div>
+          )}
+
+          {msg && (
+            <div className={`rounded-xl border px-4 py-2.5 text-sm ${
+              msgType === "ok"
+                ? "border-emerald-500/25 bg-emerald-950/30 text-emerald-300"
+                : "border-red-500/25 bg-red-950/30 text-red-300"
+            }`}>
+              {msg}
+            </div>
+          )}
+
+          <button
+            onClick={add}
+            disabled={adding}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-accent/30 bg-accent/15 py-2.5 text-sm text-accent font-medium hover:bg-accent/25 transition-colors disabled:opacity-50"
+          >
+            {adding ? (
+              <>
+                <Sparkles size={15} className="animate-pulse" />
+                يحلل بالذكاء الاصطناعي ويضيف...
+              </>
+            ) : (
+              <>
+                <Plus size={15} />
+                إضافة الوظيفة
+              </>
+            )}
+          </button>
         </div>
 
         {/* Jobs list */}
@@ -135,7 +199,7 @@ export default function JobsPage() {
           </div>
           <div className="divide-y divide-line/40 max-h-[600px] overflow-y-auto">
             {rows.length === 0 ? (
-              <div className="px-5 py-10 text-center text-sm text-slate-400">لا توجد وظائف</div>
+              <div className="px-5 py-10 text-center text-sm text-slate-400">لا توجد وظائف — أضف أول وظيفة</div>
             ) : rows.map((j) => (
               <div key={j.id} className="px-5 py-4">
                 <div className="flex items-start justify-between gap-3">
@@ -149,6 +213,12 @@ export default function JobsPage() {
                     {j.application_email && (
                       <div className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
                         <Mail size={11} /> {j.application_email}
+                      </div>
+                    )}
+                    {j.specializations && (
+                      <div className="mt-1.5 flex items-start gap-1">
+                        <Sparkles size={10} className="text-violet-400 mt-0.5 shrink-0" />
+                        <div className="text-[10px] text-slate-600 leading-relaxed">{j.specializations}</div>
                       </div>
                     )}
                   </div>
