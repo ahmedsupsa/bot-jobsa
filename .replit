@@ -19,11 +19,7 @@ args = "Start application"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Admin Backend"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Telegram Bot"
+args = "Auto Apply Worker"
 
 [[workflows.workflow]]
 name = "Start application"
@@ -38,7 +34,7 @@ waitForPort = 5000
 outputType = "webview"
 
 [[workflows.workflow]]
-name = "Admin Backend"
+name = "Auto Apply Worker"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -46,19 +42,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python admin/app.py"
-waitForPort = 8080
-
-[[workflows.workflow]]
-name = "Telegram Bot"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python main.py"
-
-[workflows.workflow.metadata]
-outputType = "console"
+args = "python3 -c 'import httpx, dotenv' 2>/dev/null || nix-env -iA nixpkgs.python3Packages.httpx nixpkgs.python3Packages.python-dotenv 2>/dev/null; python3 worker/main.py"
 
 [[ports]]
 localPort = 5000
