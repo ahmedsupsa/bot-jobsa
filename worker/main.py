@@ -239,7 +239,7 @@ async def run_cycle() -> None:
             cv_name = cv.get("file_name") or "cv.pdf"
 
             prefs_rows = await sb_get(client, "user_job_preferences", {"user_id": f"eq.{uid}"})
-            pref_ids = {str(p["field_id"]) for p in prefs_rows}
+            pref_ids = {str(p["field_id"]) for p in prefs_rows if p.get("field_id")}
             field_names = [
                 f.get("name_ar") or f.get("name_en") or ""
                 for f in fields_raw if str(f["id"]) in pref_ids
