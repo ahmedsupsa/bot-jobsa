@@ -2,7 +2,7 @@
 import Link from "next/link";
 import {
   Briefcase, Bot, PenLine, BarChart3, ArrowLeft,
-  CheckCircle2, Zap, Shield, Clock
+  CheckCircle2, Zap, Shield, Clock, Star, TrendingUp
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -10,29 +10,45 @@ export default function LandingPage() {
     {
       icon: <Bot size={22} strokeWidth={1.5} />,
       title: "تقديم تلقائي",
-      desc: "يقدّم عنك على الوظائف المناسبة كل 30 دقيقة بشكل تلقائي كامل",
+      desc: "يقدّم عنك على الوظائف المناسبة كل 30 دقيقة بشكل تلقائي كامل دون أي تدخل منك",
     },
     {
       icon: <PenLine size={22} strokeWidth={1.5} />,
       title: "رسائل بالذكاء الاصطناعي",
-      desc: "يكتب رسالة تغطية احترافية لكل وظيفة باستخدام Gemini AI",
+      desc: "يكتب رسالة تغطية احترافية ومخصصة لكل وظيفة باستخدام Gemini AI",
     },
     {
       icon: <BarChart3 size={22} strokeWidth={1.5} />,
       title: "تتبع التقديمات",
-      desc: "شوف كل الوظائف اللي انقدّم عليها في لوحة واحدة واضحة",
+      desc: "تابع كل الوظائف اللي انقدّم عليها في لوحة تحكم واضحة وسهلة",
     },
     {
       icon: <Shield size={22} strokeWidth={1.5} />,
       title: "خصوصية تامة",
-      desc: "بياناتك وسيرتك الذاتية محفوظة بأمان ولا تُشارك مع أي طرف",
+      desc: "بياناتك وسيرتك الذاتية محفوظة بأمان تام ولا تُشارك مع أي طرف ثالث",
+    },
+    {
+      icon: <TrendingUp size={22} strokeWidth={1.5} />,
+      title: "زيادة فرص التوظيف",
+      desc: "كلما زاد عدد التقديمات، زادت فرصك في الحصول على المقابلة ووظيفتك المثالية",
+    },
+    {
+      icon: <Clock size={22} strokeWidth={1.5} />,
+      title: "توفير الوقت",
+      desc: "بدل ما تقضي ساعات تقدّم يدوياً، Jobbots يتكفل بكل شيء عنك تلقائياً",
     },
   ];
 
   const steps = [
-    { num: "01", title: "احصل على كود التفعيل", desc: "تواصل معنا واحصل على كود للدخول للمنصة" },
-    { num: "02", title: "ارفع سيرتك الذاتية", desc: "ارفع CV وحدد مجالات الوظائف اللي تبيها" },
-    { num: "03", title: "استرخِ وانتظر النتائج", desc: "المنصة تقدّم عنك تلقائياً وتُرسل لك تقارير يومية" },
+    { num: "01", title: "احصل على كود التفعيل", desc: "تواصل معنا واشترك للحصول على كود تفعيل الدخول إلى المنصة" },
+    { num: "02", title: "ارفع سيرتك الذاتية", desc: "ارفع ملف CV وحدد مجالات الوظائف والمناطق التي تفضّلها" },
+    { num: "03", title: "استرخِ وانتظر النتائج", desc: "Jobbots يقدّم عنك تلقائياً ويُرسل لك تقارير بالوظائف التي قدّم عليها" },
+  ];
+
+  const faqs = [
+    { q: "كيف يعمل Jobbots؟", a: "Jobbots يقرأ سيرتك الذاتية وتفضيلاتك، ثم يبحث عن الوظائف المناسبة ويقدّم عنك تلقائياً كل 30 دقيقة باستخدام الذكاء الاصطناعي." },
+    { q: "هل بياناتي آمنة؟", a: "نعم، بياناتك مشفّرة ومحفوظة على خوادم آمنة ولا تُشارك مع أي جهة خارجية." },
+    { q: "ما هي الوظائف التي يقدّم عليها؟", a: "يقدّم على الوظائف في المجالات التي تحددها أنت، في المناطق التي تفضّلها داخل المملكة العربية السعودية." },
   ];
 
   return (
@@ -44,7 +60,7 @@ export default function LandingPage() {
             <div style={s.logoIcon}>
               <Briefcase size={20} strokeWidth={1.5} color="#0a0a0a" />
             </div>
-            <span style={s.logoText}>Jobsa</span>
+            <span style={s.logoText}>Jobbots</span>
           </div>
           <div style={s.navLinks}>
             <Link href="/portal/login" style={s.navBtn}>
@@ -65,12 +81,12 @@ export default function LandingPage() {
           <span style={s.heroAccent}>تلقائياً وبذكاء</span>
         </h1>
         <p style={s.heroSub}>
-          Jobsa يقدّم عنك على المئات من الوظائف تلقائياً يومياً<br />
-          بينما أنت مرتاح — بدون جهد وبنتائج حقيقية
+          Jobbots يقدّم عنك على المئات من الوظائف يومياً بالذكاء الاصطناعي<br />
+          وفّر وقتك وزد فرصك — بدون جهد وبنتائج حقيقية
         </p>
         <div style={s.heroCtas}>
           <Link href="/portal/login" style={s.ctaPrimary}>
-            ابدأ الآن
+            ابدأ الآن مجاناً
             <ArrowLeft size={17} strokeWidth={2} />
           </Link>
           <Link href="/portal/login" style={s.ctaSecondary}>
@@ -94,8 +110,11 @@ export default function LandingPage() {
       {/* ── FEATURES ── */}
       <section style={s.section}>
         <div style={s.sectionInner}>
-          <div style={s.sectionTag}>المميزات</div>
-          <h2 style={s.sectionTitle}>كل ما تحتاجه في مكان واحد</h2>
+          <div style={s.sectionTag}>مميزات المنصة</div>
+          <h2 style={s.sectionTitle}>كل ما تحتاجه للحصول على وظيفتك</h2>
+          <p style={s.sectionDesc}>
+            منصة Jobbots مصممة لتوفير وقتك وزيادة فرصك في سوق العمل السعودي
+          </p>
           <div style={s.featureGrid}>
             {features.map((f, i) => (
               <div key={i} style={s.featureCard}>
@@ -111,8 +130,11 @@ export default function LandingPage() {
       {/* ── HOW IT WORKS ── */}
       <section style={{ ...s.section, background: "#111" }}>
         <div style={s.sectionInner}>
-          <div style={s.sectionTag}>كيف يعمل</div>
-          <h2 style={s.sectionTitle}>ثلاث خطوات فقط</h2>
+          <div style={s.sectionTag}>طريقة العمل</div>
+          <h2 style={s.sectionTitle}>ابدأ التقديم التلقائي في 3 خطوات</h2>
+          <p style={s.sectionDesc}>
+            إعداد بسيط وسريع، وبعدها Jobbots يتكفل بكل شيء
+          </p>
           <div style={s.stepsGrid}>
             {steps.map((st, i) => (
               <div key={i} style={s.stepCard}>
@@ -125,12 +147,30 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── FAQ ── */}
+      <section style={s.section}>
+        <div style={{ ...s.sectionInner, maxWidth: 760 }}>
+          <div style={s.sectionTag}>الأسئلة الشائعة</div>
+          <h2 style={s.sectionTitle}>أسئلة يسألها المستخدمون</h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {faqs.map((faq, i) => (
+              <div key={i} style={s.faqCard}>
+                <h3 style={s.faqQ}>{faq.q}</h3>
+                <p style={s.faqA}>{faq.a}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── CTA BANNER ── */}
       <section style={s.ctaBanner}>
         <div style={s.ctaBannerInner}>
           <CheckCircle2 size={40} strokeWidth={1} color="#fff" style={{ opacity: 0.4, marginBottom: 20 }} />
           <h2 style={s.ctaBannerTitle}>جاهز تبدأ رحلة البحث عن وظيفة؟</h2>
-          <p style={s.ctaBannerSub}>سجّل دخولك الآن وخلّ Jobsa يشتغل عنك</p>
+          <p style={s.ctaBannerSub}>
+            سجّل دخولك الآن وخلّ Jobbots يشتغل عنك ويقدّم على الوظائف بدلاً منك
+          </p>
           <Link href="/portal/login" style={s.ctaBannerBtn}>
             ابدأ الآن
             <ArrowLeft size={17} strokeWidth={2} />
@@ -145,20 +185,21 @@ export default function LandingPage() {
             <div style={s.logoIcon}>
               <Briefcase size={16} strokeWidth={1.5} color="#0a0a0a" />
             </div>
-            <span style={{ ...s.logoText, fontSize: 16 }}>Jobsa</span>
+            <span style={{ ...s.logoText, fontSize: 16 }}>Jobbots</span>
           </div>
           <div style={s.footerLinks}>
             <Link href="/portal/login" style={s.footerLink}>دخول المشترك</Link>
             <span style={{ color: "#333" }}>·</span>
             <Link href="/login" style={s.footerLink}>لوحة الإدارة</Link>
           </div>
-          <div style={s.footerCopy}>© 2025 Jobsa. جميع الحقوق محفوظة.</div>
+          <div style={s.footerCopy}>© 2025 Jobbots. جميع الحقوق محفوظة.</div>
         </div>
       </footer>
 
       <style>{`
-        a { text-decoration: none; }
         * { box-sizing: border-box; }
+        a { text-decoration: none; }
+        body { font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif !important; }
         @media (max-width: 768px) {
           .hero-title { font-size: 36px !important; }
           .features-grid { grid-template-columns: 1fr 1fr !important; }
@@ -171,23 +212,23 @@ export default function LandingPage() {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  page: { background: "#0a0a0a", minHeight: "100vh", color: "#fff", fontFamily: "'Segoe UI', Tahoma, sans-serif" },
+  page: { background: "#0a0a0a", minHeight: "100vh", color: "#fff", fontFamily: "'Tajawal', 'Segoe UI', Tahoma, sans-serif" },
 
   /* NAV */
-  nav: { position: "sticky", top: 0, zIndex: 50, borderBottom: "1px solid #1a1a1a", background: "rgba(10,10,10,0.85)", backdropFilter: "blur(12px)" },
+  nav: { position: "sticky", top: 0, zIndex: 50, borderBottom: "1px solid #1a1a1a", background: "rgba(10,10,10,0.9)", backdropFilter: "blur(12px)" },
   navInner: { maxWidth: 1100, margin: "0 auto", padding: "0 24px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" },
   logo: { display: "flex", alignItems: "center", gap: 10 },
   logoIcon: { width: 36, height: 36, borderRadius: 10, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" },
-  logoText: { color: "#fff", fontWeight: 800, fontSize: 20 },
+  logoText: { color: "#fff", fontWeight: 800, fontSize: 20, letterSpacing: "-0.5px" },
   navLinks: { display: "flex", gap: 12, alignItems: "center" },
   navBtn: { padding: "8px 18px", borderRadius: 10, border: "1px solid #2a2a2a", color: "#ccc", fontSize: 14, fontWeight: 500, background: "transparent", cursor: "pointer" },
 
   /* HERO */
   hero: { maxWidth: 860, margin: "0 auto", padding: "100px 24px 80px", textAlign: "center" },
-  heroBadge: { display: "inline-flex", alignItems: "center", gap: 6, background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 100, padding: "6px 14px", fontSize: 12, color: "#999", marginBottom: 32 },
-  heroTitle: { fontSize: 60, fontWeight: 900, lineHeight: 1.15, margin: "0 0 20px", color: "#fff" },
-  heroAccent: { color: "#fff", opacity: 0.5 },
-  heroSub: { fontSize: 18, color: "#666", lineHeight: 1.8, margin: "0 0 40px" },
+  heroBadge: { display: "inline-flex", alignItems: "center", gap: 6, background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 100, padding: "6px 14px", fontSize: 13, color: "#999", marginBottom: 32 },
+  heroTitle: { fontSize: 60, fontWeight: 900, lineHeight: 1.2, margin: "0 0 20px", color: "#fff" },
+  heroAccent: { color: "#fff", opacity: 0.45 },
+  heroSub: { fontSize: 18, color: "#666", lineHeight: 1.9, margin: "0 0 40px" },
   heroCtas: { display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 60 },
   ctaPrimary: {
     display: "inline-flex", alignItems: "center", gap: 8,
@@ -208,27 +249,33 @@ const s: Record<string, React.CSSProperties> = {
   section: { padding: "80px 24px" },
   sectionInner: { maxWidth: 1100, margin: "0 auto" },
   sectionTag: { display: "inline-block", background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 100, padding: "4px 14px", fontSize: 12, color: "#888", marginBottom: 16 },
-  sectionTitle: { fontSize: 36, fontWeight: 800, color: "#fff", margin: "0 0 48px", textAlign: "center" },
+  sectionTitle: { fontSize: 36, fontWeight: 800, color: "#fff", margin: "0 0 12px", textAlign: "center" },
+  sectionDesc: { fontSize: 16, color: "#555", textAlign: "center", margin: "0 0 48px", lineHeight: 1.7 },
 
   /* FEATURES */
-  featureGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 },
+  featureGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 },
   featureCard: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 16, padding: "28px 24px" },
   featureIcon: { width: 44, height: 44, borderRadius: 12, background: "#1a1a1a", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", marginBottom: 16 },
   featureTitle: { fontSize: 16, fontWeight: 700, color: "#fff", margin: "0 0 10px" },
-  featureDesc: { fontSize: 14, color: "#666", lineHeight: 1.7, margin: 0 },
+  featureDesc: { fontSize: 14, color: "#666", lineHeight: 1.8, margin: 0 },
 
   /* STEPS */
   stepsGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 },
   stepCard: { background: "#0a0a0a", border: "1px solid #222", borderRadius: 16, padding: "32px 28px" },
   stepNum: { fontSize: 42, fontWeight: 900, color: "#222", marginBottom: 16, fontFamily: "monospace" },
   stepTitle: { fontSize: 18, fontWeight: 700, color: "#fff", margin: "0 0 10px" },
-  stepDesc: { fontSize: 14, color: "#666", lineHeight: 1.7, margin: 0 },
+  stepDesc: { fontSize: 14, color: "#666", lineHeight: 1.8, margin: 0 },
+
+  /* FAQ */
+  faqCard: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 14, padding: "24px 28px" },
+  faqQ: { fontSize: 16, fontWeight: 700, color: "#fff", margin: "0 0 10px" },
+  faqA: { fontSize: 14, color: "#666", lineHeight: 1.8, margin: 0 },
 
   /* CTA BANNER */
   ctaBanner: { padding: "80px 24px", background: "#0a0a0a", borderTop: "1px solid #1a1a1a" },
   ctaBannerInner: { maxWidth: 600, margin: "0 auto", textAlign: "center" },
   ctaBannerTitle: { fontSize: 32, fontWeight: 800, color: "#fff", margin: "0 0 12px" },
-  ctaBannerSub: { fontSize: 16, color: "#555", margin: "0 0 32px" },
+  ctaBannerSub: { fontSize: 16, color: "#555", margin: "0 0 32px", lineHeight: 1.7 },
   ctaBannerBtn: {
     display: "inline-flex", alignItems: "center", gap: 8,
     background: "#fff", color: "#0a0a0a", padding: "16px 36px",

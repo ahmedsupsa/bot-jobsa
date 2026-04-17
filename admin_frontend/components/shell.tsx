@@ -34,7 +34,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <Briefcase size={18} className="text-black" strokeWidth={1.5} />
           </div>
           <div>
-            <div className="text-sm font-bold text-white">Jobsa</div>
+            <div className="text-sm font-bold text-white">Jobbots</div>
             <div className="text-xs text-slate-500">لوحة الإدارة</div>
           </div>
         </div>
@@ -94,7 +94,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white">
               <Briefcase size={14} className="text-black" strokeWidth={1.5} />
             </div>
-            <span className="text-sm font-semibold text-white">Jobsa</span>
+            <span className="text-sm font-semibold text-white">Jobbots</span>
           </div>
           <button
             onClick={() => setMobileOpen(true)}
