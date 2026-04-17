@@ -21,7 +21,7 @@ export default function AdminLogin() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "كلمة المرور غير صحيحة"); return; }
-      router.replace("/");
+      router.replace("/admin");
     } catch { setError("خطأ في الاتصال بالخادم"); }
     finally { setLoading(false); }
   }

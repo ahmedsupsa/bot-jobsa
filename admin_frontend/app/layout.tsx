@@ -2,8 +2,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Admin Dashboard",
-  description: "Professional admin dashboard for bot-jobsa",
+  title: "جبسا — التقديم التلقائي على الوظائف",
+  description: "منصة جبسا تقدّم عنك على المئات من الوظائف تلقائياً بالذكاء الاصطناعي",
 };
 
 export default function RootLayout({

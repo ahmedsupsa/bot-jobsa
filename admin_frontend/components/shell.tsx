@@ -6,7 +6,7 @@ import { LayoutDashboard, Users, Key, BriefcaseBusiness, Megaphone, LogOut, Brie
 import { useState } from "react";
 
 const links = [
-  { href: "/", label: "الرئيسية", icon: LayoutDashboard },
+  { href: "/admin", label: "الرئيسية", icon: LayoutDashboard },
   { href: "/users", label: "المستخدمون", icon: Users },
   { href: "/codes", label: "أكواد التفعيل", icon: Key },
   { href: "/jobs", label: "الوظائف", icon: BriefcaseBusiness },
