@@ -13,8 +13,6 @@ import tempfile
 import os
 import time
 import re
-from config import RESEND_API_KEY, RESEND_FROM_EMAIL
-
 logger = logging.getLogger(__name__)
 
 # فاصل 45 ثانية بين كل تقديم لكل مستخدم (لتسريع الدورة وتجنب التأخير الطويل)
@@ -126,7 +124,7 @@ async def run_auto_apply_cycle(bot) -> None:
     from services.cv_guard import validate_cv_text
     from services.apply_eligibility import infer_applicant_gender_from_cv, applicant_matches_job_gender
     from templates.preview import build_application_html
-    from templates.preview import send_email, get_smtp_error_user_message, SMTP_NETWORK_ERROR_HINT
+    from templates.preview import send_email
 
     # جلب كل الوظائف النشطة التي لها إيميل
     try:
@@ -166,12 +164,9 @@ async def run_auto_apply_cycle(bot) -> None:
         except Exception:
             continue
 
-        resend_enabled = bool((RESEND_API_KEY or "").strip() and (RESEND_FROM_EMAIL or "").strip())
         missing: list[str] = []
         if not settings.get("email"):
             missing.append("ربط الإيميل من الإعدادات")
-        if (not settings.get("app_password_encrypted") and not resend_enabled):
-            missing.append("كلمة مرور التطبيق (App Password)")
         if missing:
             await _notify_missing_requirements(bot, telegram_id, user_id, missing)
             continue
@@ -251,19 +246,16 @@ async def run_auto_apply_cycle(bot) -> None:
         lang = user.get("application_language") or "ar"
         sender_email = settings["email"]
         resend_sender_alias = ""
-        if resend_enabled:
-            try:
-                resend_sender_alias = await asyncio.to_thread(
-                    ensure_user_sender_alias, user_id, sender_email
-                )
-            except Exception:
-                resend_sender_alias = ""
-        app_password = settings.get("app_password_encrypted")
+        try:
+            resend_sender_alias = await asyncio.to_thread(
+                ensure_user_sender_alias, user_id, sender_email
+            )
+        except Exception:
+            resend_sender_alias = ""
         remaining = 10 - count_today
 
         sent_this_cycle = 0
         failed_titles: list[str] = []
-        had_network_error = False  # لإضافة توجيه عند منع SMTP من الاستضافة
         for job in jobs_to_apply[:remaining]:
             # تحقق من الفاصل الزمني بين التقديمات
             if not _can_send_now(user_id):
@@ -306,8 +298,13 @@ async def run_auto_apply_cycle(bot) -> None:
 
             try:
                 await send_email(
-                    sender_email, app_password, to_email,
-                    subject, html_body, cv_bytes, cv_filename,
+                    sender_email=sender_email,
+                    app_password=None,
+                    to_email=to_email,
+                    subject=subject,
+                    html_body=html_body,
+                    attachment_bytes=cv_bytes,
+                    attachment_filename=cv_filename,
                     resend_from_email=resend_sender_alias or None,
                     resend_from_name=name,
                     reply_to_email=sender_email,
@@ -318,7 +315,6 @@ async def run_auto_apply_cycle(bot) -> None:
                 sent_this_cycle += 1
                 logger.info("✅ تقديم ناجح: %s → %s (%s)", name, job_title, to_email)
 
-                # إشعار المستخدم على تيليجرام
                 if telegram_id:
                     try:
                         msg = (
@@ -336,10 +332,7 @@ async def run_auto_apply_cycle(bot) -> None:
             except Exception as e:
                 logger.warning("❌ فشل التقديم: %s → %s: %s", name, job_title, e)
                 failed_titles.append(job_title)
-                if get_smtp_error_user_message(e):
-                    had_network_error = True
 
-        # رسالة فشل مرة واحدة فقط كل 24 ساعة لكل مستخدم (لا تُرسل كل دورة كتذكير)
         if failed_titles and telegram_id:
             now = time.time()
             last = _last_failure_notification.get(user_id, 0)
@@ -349,9 +342,7 @@ async def run_auto_apply_cycle(bot) -> None:
                     jobs_preview = "، ".join(failed_titles[:3])
                     if n > 3:
                         jobs_preview += f" و{n - 3} أخرى"
-                    text = f"⚠️ تعذّر التقديم على {n} وظيفة ({jobs_preview}). تأكد من صحة إيميلك وكلمة مرور التطبيق."
-                    if had_network_error:
-                        text += "\n\n" + SMTP_NETWORK_ERROR_HINT
+                    text = f"⚠️ تعذّر التقديم على {n} وظيفة ({jobs_preview}). تأكد من صحة إيميلك وحاول لاحقاً."
                     await bot.send_message(chat_id=telegram_id, text=text)
                     _last_failure_notification[user_id] = now
                 except Exception:
