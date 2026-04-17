@@ -27,7 +27,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     used_codes: (used || []).map((c: any) => c.code),
-    unused_codes: (unused || []).map((c: any) => ({ code: c.code, days: c.subscription_days })),
+    unused_codes: (unused || []).map((c: any) => `${c.code} (${c.subscription_days}d)`),
   });
 }
 
