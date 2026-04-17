@@ -31,10 +31,10 @@ export async function POST(req: Request) {
   const uid = payload.user_id;
 
   const body = await req.json().catch(() => ({}));
-  // Parse all IDs as integers (field_id column is integer in DB)
-  const ids: number[] = (body.field_ids || [])
-    .map((id: any) => parseInt(String(id), 10))
-    .filter((id: number) => !isNaN(id));
+  // IDs are UUIDs (strings)
+  const ids: string[] = (body.field_ids || [])
+    .map((id: any) => String(id).trim())
+    .filter((id: string) => id.length > 0);
 
   const { error: delErr } = await supabase
     .from("user_job_preferences")
