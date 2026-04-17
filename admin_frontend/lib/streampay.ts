@@ -60,6 +60,25 @@ export async function createPaymentLink(opts: {
   });
 }
 
+export async function createProduct(opts: {
+  name: string;
+  description?: string;
+  price: number;
+}) {
+  return sp("POST", "/api/v2/products", {
+    name: opts.name,
+    description: opts.description?.slice(0, 500) || null,
+    type: "ONE_OFF",
+    prices: [
+      {
+        currency: "SAR",
+        amount: opts.price,
+        is_price_inclusive_of_vat: true,
+      },
+    ],
+  });
+}
+
 export async function getPayment(payment_id: string) {
   return sp("GET", `/api/v2/payments/${payment_id}`);
 }

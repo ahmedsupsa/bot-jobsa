@@ -6,7 +6,7 @@ import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShoppingBag, Package, ClipboardList, Plus, Pencil, Trash2,
-  CheckCircle2, XCircle, Clock, RefreshCw, X, Save, AlertTriangle, CreditCard
+  CheckCircle2, XCircle, Clock, RefreshCw, X, Save, Zap
 } from "lucide-react";
 
 type Product = {
@@ -35,7 +35,7 @@ type Order = {
   store_products?: { name: string; price: number; duration_days: number };
 };
 
-const EMPTY_PRODUCT = { name: "", description: "", price: "", duration_days: "", streampay_product_id: "" };
+const EMPTY_PRODUCT = { name: "", description: "", price: "", duration_days: "" };
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   pending:   { label: "معلّق",   color: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20", icon: Clock },
@@ -116,7 +116,6 @@ export default function StoreAdminPage() {
       description: p.description || "",
       price: String(p.price),
       duration_days: String(p.duration_days),
-      streampay_product_id: p.streampay_product_id || "",
     });
     setShowForm(true);
   };
@@ -295,19 +294,26 @@ export default function StoreAdminPage() {
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="font-semibold text-white text-sm">{p.name}</span>
                           <span className={`rounded-full border px-2 py-0.5 text-xs ${p.is_active ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-slate-600 bg-slate-700/50 text-slate-400"}`}>
                             {p.is_active ? "نشط" : "متوقف"}
                           </span>
+                          {p.streampay_product_id ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-blue-500/20 bg-blue-500/5 px-2 py-0.5 text-xs text-blue-400">
+                              <Zap size={9} />
+                              مرتبط بـ StreamPay
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-600 bg-slate-700/30 px-2 py-0.5 text-xs text-slate-500">
+                              غير مرتبط
+                            </span>
+                          )}
                         </div>
                         {p.description && <p className="text-xs text-slate-500 mb-2 line-clamp-2">{p.description}</p>}
                         <div className="flex items-center gap-4 text-xs text-slate-400">
                           <span className="font-bold text-white text-base">{p.price} ر.س</span>
                           <span>مدة: {p.duration_days} يوم</span>
-                          {p.streampay_product_id && (
-                            <span className="font-mono text-slate-500 truncate max-w-[160px]">SP: {p.streampay_product_id}</span>
-                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
@@ -401,16 +407,20 @@ export default function StoreAdminPage() {
                           />
                         </div>
                       </div>
-                      <div>
-                        <label className="block text-xs text-slate-400 mb-1">StreamPay Product ID</label>
-                        <input
-                          value={pForm.streampay_product_id}
-                          onChange={e => setPForm(s => ({ ...s, streampay_product_id: e.target.value }))}
-                          placeholder="UUID من لوحة StreamPay"
-                          className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-white/30 focus:outline-none font-mono text-xs"
-                          dir="ltr"
-                        />
-                      </div>
+                      {editProduct?.streampay_product_id ? (
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">StreamPay Product ID</label>
+                          <div className="w-full rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-400 font-mono flex items-center gap-2" dir="ltr">
+                            <CheckCircle2 size={12} className="flex-shrink-0" />
+                            <span className="truncate">{editProduct.streampay_product_id}</span>
+                          </div>
+                        </div>
+                      ) : !editProduct ? (
+                        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-3 py-2.5 text-xs text-blue-300 flex items-center gap-2">
+                          <Zap size={13} className="flex-shrink-0 text-blue-400" />
+                          سيتم إنشاء المنتج تلقائياً في StreamPay عند الحفظ
+                        </div>
+                      ) : null}
                     </div>
                     {pMsg && (
                       <div className={`mt-3 rounded-xl border px-3 py-2 text-xs ${pMsgType === "ok" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
