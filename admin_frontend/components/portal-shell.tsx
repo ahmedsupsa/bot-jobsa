@@ -2,13 +2,14 @@
 import { useRouter, usePathname } from "next/navigation";
 import { clearToken } from "@/lib/portal-auth";
 import {
-  Home, ClipboardList, FileText, User, Settings, LogOut, Briefcase,
+  Home, ClipboardList, FileText, User, Settings, LogOut, Briefcase, SlidersHorizontal,
 } from "lucide-react";
 
 const NAV = [
   { href: "/portal/dashboard", icon: Home, label: "الرئيسية" },
   { href: "/portal/applications", icon: ClipboardList, label: "التقديمات" },
   { href: "/portal/cv", icon: FileText, label: "السيرة" },
+  { href: "/portal/preferences", icon: SlidersHorizontal, label: "تفضيلات" },
   { href: "/portal/profile", icon: User, label: "حسابي" },
   { href: "/portal/settings", icon: Settings, label: "الإعدادات" },
 ];
