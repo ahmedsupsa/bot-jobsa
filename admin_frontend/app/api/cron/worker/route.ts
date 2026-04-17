@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-export const maxDuration = 300;
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
