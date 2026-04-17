@@ -336,7 +336,7 @@ export async function GET(request: Request) {
     const result = await runCycle();
     const duration_ms = Date.now() - startTime;
     const status = result.errors.length === 0 ? "success" : result.applied > 0 ? "partial" : "error";
-    await logWorkerRun({ ...result, applied_count: result.applied, duration_ms, status });
+    await logWorkerRun({ applied_count: result.applied, active_users: result.users, errors: result.errors, duration_ms, status });
     console.log("[worker] انتهت الدورة:", result);
     return NextResponse.json({ ok: true, ...result, duration_ms });
   } catch (e) {
