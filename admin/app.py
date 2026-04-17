@@ -560,6 +560,24 @@ def users():
     )
 
 
+@app.route("/api/admin/login", methods=["POST"])
+def api_admin_login():
+    body = request.get_json(silent=True) or {}
+    password = (body.get("password") or "").strip()
+    if password == ADMIN_PASSWORD:
+        session["admin_logged_in"] = True
+        session["admin_gate_ok"] = True
+        return jsonify({"ok": True})
+    return jsonify({"ok": False, "error": "كلمة المرور غير صحيحة"}), 401
+
+
+@app.route("/api/admin/logout", methods=["POST"])
+def api_admin_logout():
+    session.pop("admin_logged_in", None)
+    session.pop("admin_gate_ok", None)
+    return jsonify({"ok": True})
+
+
 @app.route("/api/admin/summary")
 @api_login_required
 def api_admin_summary():

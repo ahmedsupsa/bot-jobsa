@@ -65,13 +65,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
         {/* Footer */}
         <div className="px-3 py-4 border-t border-line/60">
-          <a
-            href="/logout"
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-300 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
+          <button
+            onClick={async () => {
+              await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
+              window.location.href = "/login";
+            }}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-300 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
           >
             <LogOut size={17} />
             تسجيل الخروج
-          </a>
+          </button>
         </div>
       </aside>
 
