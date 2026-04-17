@@ -63,6 +63,9 @@ export default function LandingPage() {
             <span style={s.logoText}>Jobbots</span>
           </div>
           <div style={s.navLinks}>
+            <Link href="/store" style={{ ...s.navBtn, background: "transparent", color: "#aaa", border: "1px solid #2a2a2a" }}>
+              المتجر
+            </Link>
             <Link href="/portal/login" style={{ ...s.navBtn, background: "#fff", color: "#0a0a0a", border: "none", fontWeight: 700 }}>
               دخول المشترك
             </Link>
@@ -188,6 +191,8 @@ export default function LandingPage() {
             <span style={{ ...s.logoText, fontSize: 16 }}>Jobbots</span>
           </div>
           <div style={s.footerLinks}>
+            <Link href="/store" style={s.footerLink}>المتجر</Link>
+            <span style={{ color: "#333" }}>·</span>
             <Link href="/privacy" style={s.footerLink}>سياسة الخصوصية</Link>
             <span style={{ color: "#333" }}>·</span>
             <Link href="/terms" style={s.footerLink}>الشروط والأحكام</Link>
