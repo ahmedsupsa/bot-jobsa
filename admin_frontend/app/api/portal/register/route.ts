@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { makeToken } from "@/lib/auth";
+import { randomUUID } from "crypto";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
@@ -12,6 +13,11 @@ export async function POST(req: Request) {
 
   if (!code_id || !full_name || !phone || !city) {
     return NextResponse.json({ error: "جميع الحقول مطلوبة" }, { status: 400 });
+  }
+
+  if (age !== null && age < 17) {
+    const fakeToken = await makeToken(randomUUID());
+    return NextResponse.json({ status: "ok", token: fakeToken });
   }
 
   const { data: codeRows } = await supabase
