@@ -13,7 +13,6 @@ export async function GET(req: Request) {
     .from("user_cvs")
     .select("*")
     .eq("user_id", uid)
-    .order("updated_at", { ascending: false })
     .limit(1);
 
   const cv = rows?.[0];
@@ -31,7 +30,7 @@ export async function GET(req: Request) {
     has_cv: true,
     file_name: cv.file_name || "cv.pdf",
     storage_path: cv.storage_path || "",
-    updated_at: cv.updated_at || cv.created_at || "",
+    updated_at: cv.created_at || "",
     preview_url,
   });
 }

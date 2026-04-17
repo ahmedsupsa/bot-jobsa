@@ -57,7 +57,6 @@ export async function POST(req: Request) {
       file_name: file.name,
       file_id: "web_upload",
       storage_path: storagePath,
-      updated_at: now,
     }).eq("user_id", uid);
     if (updateErr) {
       console.error("user_cvs update error:", JSON.stringify(updateErr));
@@ -70,7 +69,6 @@ export async function POST(req: Request) {
       file_id: "web_upload",
       storage_path: storagePath,
       created_at: now,
-      updated_at: now,
     });
     if (insertErr) {
       console.error("user_cvs insert error:", JSON.stringify(insertErr));
