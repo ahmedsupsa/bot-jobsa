@@ -78,14 +78,14 @@ export async function POST(req: Request) {
   };
 
   const gemRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
     { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
   );
 
   if (!gemRes.ok) {
     const errText = await gemRes.text();
     console.error("Gemini error:", errText);
-    return NextResponse.json({ error: "فشل تحليل السيرة بالذكاء الاصطناعي" }, { status: 500 });
+    return NextResponse.json({ error: `فشل تحليل السيرة: ${gemRes.status} — ${errText.slice(0, 200)}` }, { status: 500 });
   }
 
   const gemData = await gemRes.json();
