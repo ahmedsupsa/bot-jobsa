@@ -358,3 +358,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }
 }
+
+export const POST = GET;
