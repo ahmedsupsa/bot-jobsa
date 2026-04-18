@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase-server";
+import { createClient } from "@supabase/supabase-js";
 import { makeToken } from "@/lib/auth";
 import { randomUUID } from "crypto";
+
+export const dynamic = "force-dynamic";
+
+function freshSupabase() {
+  const url = process.env.SUPABASE_URL || "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
@@ -20,6 +28,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ status: "ok", token: fakeToken });
   }
 
+  const supabase = freshSupabase();
+
   const { data: codeRows } = await supabase
     .from("activation_codes")
     .select("*")
@@ -35,10 +45,13 @@ export async function POST(req: Request) {
   const subscription_days = codeRow.subscription_days || 30;
   const ends_at = new Date(Date.now() + subscription_days * 86400000).toISOString();
 
+  // Use a unique negative telegram_id for web-registered users (avoids conflict with real Telegram IDs)
+  const web_telegram_id = -(Date.now() % 2147483647);
+
   const { data: userRows, error: userErr } = await supabase
     .from("users")
     .insert({
-      telegram_id: 0,
+      telegram_id: web_telegram_id,
       activation_code_id: code_id,
       subscription_ends_at: ends_at,
       full_name,
@@ -49,7 +62,8 @@ export async function POST(req: Request) {
     .select("*");
 
   if (userErr || !userRows?.[0]) {
-    return NextResponse.json({ error: "فشل إنشاء الحساب، حاول لاحقاً" }, { status: 500 });
+    console.error("Register insert error:", userErr?.message);
+    return NextResponse.json({ error: "فشل إنشاء الحساب، حاول لاحقاً", detail: userErr?.message }, { status: 500 });
   }
 
   const user = userRows[0];
