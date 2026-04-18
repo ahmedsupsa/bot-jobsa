@@ -74,22 +74,39 @@ export async function POST(req: Request) {
       }
     }
 
-    // Assign an unused activation code to this order
+    // Auto-generate a new activation code matching the product's duration
     let activation_code: string | null = null;
     try {
-      const { data: codeRow } = await supabase
-        .from("activation_codes")
-        .select("code, subscription_days")
-        .eq("used", false)
-        .limit(1)
-        .single();
+      const durationDays: number = order.store_products?.duration_days ?? 30;
 
-      if (codeRow) {
-        await supabase
+      // Generate a unique code (7 digits + 2 letters, same format as admin codes)
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const digits = "0123456789";
+      let newCode = "";
+      let attempts = 0;
+      while (attempts < 10) {
+        const d = Array.from({ length: 7 }, () => digits[Math.floor(Math.random() * 10)]).join("");
+        const l = Array.from({ length: 2 }, () => chars[Math.floor(Math.random() * 26)]).join("");
+        const candidate = d + l;
+        // Check it doesn't already exist
+        const { data: existing } = await supabase
           .from("activation_codes")
-          .update({ used: true, used_at: new Date().toISOString() })
-          .eq("code", codeRow.code);
-        activation_code = codeRow.code;
+          .select("code")
+          .eq("code", candidate)
+          .maybeSingle();
+        if (!existing) { newCode = candidate; break; }
+        attempts++;
+      }
+
+      if (newCode) {
+        const { error: insertErr } = await supabase.from("activation_codes").insert({
+          code: newCode,
+          subscription_days: durationDays,
+          used: true,
+          used_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        });
+        if (!insertErr) activation_code = newCode;
       }
     } catch {}
 
