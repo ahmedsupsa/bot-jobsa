@@ -13,6 +13,7 @@ const links = [
   { href: "/announcements", label: "الإعلانات", icon: Megaphone },
   { href: "/store-admin", label: "المتجر", icon: ShoppingBag },
   { href: "/support-admin", label: "الدعم الفني", icon: MessageCircle },
+  { href: "/affiliate-admin", label: "برنامج الربح", icon: TrendingUp },
   { href: "/finance", label: "المالية", icon: TrendingUp },
 ];
 
