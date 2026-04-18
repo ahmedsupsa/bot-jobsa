@@ -5,12 +5,36 @@
 html, body {
   background: #0a0a0a;
   color: #ffffff;
-  font-family: 'Segoe UI', Tahoma, sans-serif;
+  font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif;
   min-height: 100vh;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Allow text selection only on actual content (inputs, paragraphs, headings) */
+input, textarea, select, p, span, h1, h2, h3, h4, h5, h6, li, td, th, code, pre {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Buttons & nav items should never be selectable */
+button, a, nav, [role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Smooth tap on iOS */
+button, a {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 /* Portal pages — dark monochrome theme */
@@ -25,6 +49,9 @@ html, body {
 ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #555; }
 
+/* Hide scrollbar on mobile bottom nav */
+.portal-bottom-nav ::-webkit-scrollbar { display: none; }
+
 /* Spin animation for loading icons */
 @keyframes spin {
   from { transform: rotate(0deg); }
@@ -33,8 +60,48 @@ html, body {
 .spin-icon { animation: spin 1s linear infinite; }
 
 /* Portal responsive layout */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .portal-sidebar { display: none !important; }
-  .portal-bottom-nav { display: flex !important; }
-  .portal-main { padding: 20px 16px 90px !important; }
+  .portal-bottom-nav { display: block !important; }
+  .portal-main { padding: 20px 16px 110px !important; }
+}
+
+/* ===========================================
+   PWA STANDALONE MODE — feels like a native app
+   =========================================== */
+@media all and (display-mode: standalone),
+       all and (display-mode: fullscreen),
+       all and (display-mode: minimal-ui) {
+  /* Add iOS safe-area padding to body */
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    /* iOS-style smooth bounce-free scroll */
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Hide footer "© 2025 ..." in installed app — feels less webby */
+  .pwa-hide { display: none !important; }
+
+  /* Hide "Install app" CTA when already installed */
+  .pwa-install-prompt { display: none !important; }
+
+  /* Sticky navs need to respect notch */
+  .portal-bottom-nav {
+    padding-bottom: calc(6px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Make all clickable elements feel snappier on tap */
+  button:active, a:active, [role="button"]:active {
+    transform: scale(0.97);
+    transition: transform 0.08s ease-out;
+  }
+}
+
+/* iOS PWA: status bar matches dark theme */
+@supports (-webkit-touch-callout: none) {
+  body { -webkit-overflow-scrolling: touch; }
 }
