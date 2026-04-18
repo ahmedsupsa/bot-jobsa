@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase-server";
+import { createClient } from "@supabase/supabase-js";
 import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
 import { createProduct } from "@/lib/streampay";
 
+export const dynamic = "force-dynamic";
+
+function freshClient() {
+  const url = process.env.SUPABASE_URL || "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
+  return createClient(url, key, { auth: { persistSession: false } });
+}
+
 export async function GET() {
   if (!requireAdminSession()) return unauthorizedResponse();
+  const supabase = freshClient();
   const { data, error } = await supabase
     .from("store_products")
     .select("*")
@@ -15,13 +24,13 @@ export async function GET() {
 
 export async function POST(req: Request) {
   if (!requireAdminSession()) return unauthorizedResponse();
+  const supabase = freshClient();
   const body = await req.json();
   const { name, description, price, duration_days } = body;
   if (!name?.trim() || !price || !duration_days) {
     return NextResponse.json({ ok: false, error: "الاسم والسعر وعدد الأيام مطلوبة" }, { status: 400 });
   }
 
-  // Auto-create the product in StreamPay (non-blocking — product is saved even if this fails)
   let streampay_product_id: string | null = null;
   let streampay_error: string | null = null;
   try {
@@ -53,6 +62,7 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   if (!requireAdminSession()) return unauthorizedResponse();
+  const supabase = freshClient();
   const body = await req.json();
   const { id, name, description, price, duration_days, streampay_product_id, is_active } = body;
   if (!id) return NextResponse.json({ ok: false, error: "id مطلوب" }, { status: 400 });
@@ -70,9 +80,33 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   if (!requireAdminSession()) return unauthorizedResponse();
+  const supabase = freshClient();
   const { id } = await req.json();
   if (!id) return NextResponse.json({ ok: false, error: "id مطلوب" }, { status: 400 });
-  const { error } = await supabase.from("store_products").delete().eq("id", id);
-  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+
+  // Try hard delete first
+  const { error: delErr } = await supabase.from("store_products").delete().eq("id", id);
+
+  if (!delErr) {
+    return NextResponse.json({ ok: true, mode: "hard" });
+  }
+
+  // If FK constraint blocks delete, fallback to soft delete (hide from public store)
+  const isFkError = /foreign key|violates|referenced/i.test(delErr.message);
+  if (isFkError) {
+    const { error: softErr } = await supabase
+      .from("store_products")
+      .update({ is_active: false })
+      .eq("id", id);
+    if (softErr) {
+      return NextResponse.json({ ok: false, error: softErr.message }, { status: 500 });
+    }
+    return NextResponse.json({
+      ok: true,
+      mode: "soft",
+      note: "المنتج مرتبط بطلبات/أكواد سابقة — تم إخفاؤه من واجهة المتجر فقط.",
+    });
+  }
+
+  return NextResponse.json({ ok: false, error: delErr.message }, { status: 500 });
 }
