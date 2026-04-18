@@ -263,7 +263,7 @@ export default function EmailTestPage() {
 
       <style>{`
         @keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
-        @media (max-width: 760px) {
+        @media (max-width: 768px) {
           .email-test-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
