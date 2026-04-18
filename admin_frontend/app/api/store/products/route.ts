@@ -10,10 +10,11 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("store_products")
-    .select("id, name, description, price, duration_days, streampay_product_id")
-    .eq("is_active", true)
+    .select("id, name, description, price, duration_days, streampay_product_id, is_active")
     .order("price", { ascending: true });
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, products: data || [] });
+
+  const products = (data || []).filter((p) => p.is_active === true);
+  return NextResponse.json({ ok: true, products, _v: 2 });
 }
