@@ -16,12 +16,14 @@ export async function POST(req: Request) {
   const row = rows?.[0];
   if (!row) return NextResponse.json({ error: "كود التفعيل غير صحيح" }, { status: 400 });
 
+  // Already registered user — log them in
   if (row.used && row.used_by_user_id) {
     const token = await makeToken(String(row.used_by_user_id));
     return NextResponse.json({ status: "ok", token, user_id: String(row.used_by_user_id) });
   }
 
-  if (!row.used) {
+  // Fresh code OR code assigned via payment (used=true but no user yet) — allow registration
+  if (!row.used || (row.used && !row.used_by_user_id)) {
     return NextResponse.json({
       status: "needs_registration",
       code_id: String(row.id),
