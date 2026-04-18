@@ -26,15 +26,20 @@ export async function POST(req: Request) {
 
   const { data: aff } = await supabase
     .from("affiliates")
-    .select("bank_name, iban, account_holder")
+    .select("payout_method, bank_name, iban, account_holder, wallet_provider, wallet_number")
     .eq("user_id", uid)
     .single();
 
-  if (!aff?.iban || !aff?.bank_name || !aff?.account_holder) {
-    return NextResponse.json({ ok: false, error: "أضف بيانات حسابك البنكي أولاً" }, { status: 400 });
+  if (!aff?.payout_method || !aff?.account_holder) {
+    return NextResponse.json({ ok: false, error: "أضف بيانات حسابك أولاً" }, { status: 400 });
+  }
+  if (aff.payout_method === "bank" && (!aff.iban || !aff.bank_name)) {
+    return NextResponse.json({ ok: false, error: "بيانات البنك ناقصة" }, { status: 400 });
+  }
+  if (aff.payout_method === "wallet" && (!aff.wallet_provider || !aff.wallet_number)) {
+    return NextResponse.json({ ok: false, error: "بيانات المحفظة ناقصة" }, { status: 400 });
   }
 
-  // Get available pending referrals (not linked to any withdrawal)
   const { data: pending } = await supabase
     .from("affiliate_referrals")
     .select("id, commission")
@@ -47,22 +52,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: `الحد الأدنى للسحب ${MIN_WITHDRAW} ريال (رصيدك ${available.toFixed(2)})` }, { status: 400 });
   }
 
-  // Create withdrawal request
   const { data: wd, error: wdErr } = await supabase
     .from("affiliate_withdrawals")
     .insert({
       user_id: uid,
       amount: available,
-      bank_name: aff.bank_name,
-      iban: aff.iban,
+      method: aff.payout_method,
+      bank_name: aff.bank_name || null,
+      iban: aff.iban || null,
       account_holder: aff.account_holder,
+      wallet_provider: aff.wallet_provider || null,
+      wallet_number: aff.wallet_number || null,
       status: "pending",
     })
     .select()
     .single();
   if (wdErr || !wd) return NextResponse.json({ ok: false, error: wdErr?.message || "فشل إنشاء طلب السحب" }, { status: 500 });
 
-  // Link all pending referrals to this withdrawal
   const ids = (pending || []).map((r) => r.id);
   if (ids.length > 0) {
     await supabase
@@ -72,17 +78,4 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ ok: true, withdrawal: wd });
-}
-
-export async function GET(req: Request) {
-  const uid = await getUserId(req);
-  if (!uid) return NextResponse.json({ ok: false, error: "غير مخوّل" }, { status: 401 });
-  const supabase = freshClient();
-  const { data, error } = await supabase
-    .from("affiliate_withdrawals")
-    .select("id, amount, status, proof_url, notes, created_at, paid_at")
-    .eq("user_id", uid)
-    .order("created_at", { ascending: false });
-  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, withdrawals: data || [] });
 }
