@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
-import { extractToken, verifyToken } from "@/lib/auth";
+import { extractToken, verifyToken, makeToken } from "@/lib/auth";
 
 export async function GET(req: Request) {
   const token = extractToken(req);
@@ -8,6 +8,9 @@ export async function GET(req: Request) {
   const payload = await verifyToken(token);
   if (!payload) return NextResponse.json({ error: "غير مخوّل" }, { status: 401 });
   const uid = payload.user_id;
+
+  // Sliding session: re-issue a fresh 30-day token on every check-in
+  const refreshedToken = await makeToken(uid).catch(() => null);
 
   const { data: userRows } = await supabase.from("users").select("*").eq("id", uid).limit(1);
   const user = userRows?.[0];
@@ -33,7 +36,7 @@ export async function GET(req: Request) {
   }
   const subscription_active = days_left > 0;
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     id: uid,
     full_name: user.full_name || "",
     phone: user.phone || "",
@@ -46,4 +49,6 @@ export async function GET(req: Request) {
     sender_email_alias: settings.sender_email_alias || "",
     applications_count: apps_count || 0,
   });
+  if (refreshedToken) res.headers.set("X-Refresh-Token", refreshedToken);
+  return res;
 }
