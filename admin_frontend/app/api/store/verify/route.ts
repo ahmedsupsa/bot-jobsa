@@ -1,11 +1,27 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase-server";
+import { createClient } from "@supabase/supabase-js";
 import { getPayment, getInvoice } from "@/lib/streampay";
+
+export const dynamic = "force-dynamic";
+
+function freshSupabase() {
+  const url = process.env.SUPABASE_URL || "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
+  return createClient(url, key, { auth: { persistSession: false } });
+}
+
+function getDurationDays(store_products: any): number {
+  if (!store_products) return 30;
+  if (Array.isArray(store_products)) return store_products[0]?.duration_days ?? 30;
+  return store_products.duration_days ?? 30;
+}
 
 export async function POST(req: Request) {
   try {
     const { order_id, payment_id, invoice_id, status: redirectStatus } = await req.json();
     if (!order_id) return NextResponse.json({ ok: false, error: "order_id مطلوب" }, { status: 400 });
+
+    const supabase = freshSupabase();
 
     const { data: order } = await supabase
       .from("store_orders")
@@ -57,8 +73,19 @@ export async function POST(req: Request) {
       streampay_invoice_id: invoice_id || null,
     }).eq("id", order_id);
 
+    // Get duration days — fetch product separately as backup if join failed
+    let durationDays = getDurationDays(order.store_products);
+    if (durationDays === 30 && order.product_id) {
+      // Join might have failed; fetch directly
+      const { data: prod } = await supabase
+        .from("store_products")
+        .select("duration_days")
+        .eq("id", order.product_id)
+        .single();
+      if (prod?.duration_days) durationDays = prod.duration_days;
+    }
+
     if (order.user_email) {
-      const durationDays: number = order.store_products?.duration_days ?? 30;
       const { data: user } = await supabase
         .from("users")
         .select("id, subscription_ends_at")
@@ -74,12 +101,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // Auto-generate a new activation code matching the product's duration
+    // Auto-generate activation code matching the product's duration
     let activation_code: string | null = null;
     try {
-      const durationDays: number = order.store_products?.duration_days ?? 30;
-
-      // Generate a unique code (7 digits + 2 letters, same format as admin codes)
       const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
       const digits = "0123456789";
       let newCode = "";
@@ -88,7 +112,6 @@ export async function POST(req: Request) {
         const d = Array.from({ length: 7 }, () => digits[Math.floor(Math.random() * 10)]).join("");
         const l = Array.from({ length: 2 }, () => chars[Math.floor(Math.random() * 26)]).join("");
         const candidate = d + l;
-        // Check it doesn't already exist
         const { data: existing } = await supabase
           .from("activation_codes")
           .select("code")
