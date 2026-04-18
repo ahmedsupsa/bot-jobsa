@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { PWARegister } from "@/components/pwa-register";
+import { PWAInstallButton } from "@/components/pwa-install-button";
 
 export const metadata: Metadata = {
   title: "Jobbots — بوت التقديم التلقائي على الوظائف بالذكاء الاصطناعي",
@@ -68,6 +69,13 @@ export default function RootLayout({
       <body style={{ fontFamily: "'Tajawal', 'Segoe UI', Tahoma, sans-serif" }}>
         {children}
         <PWARegister />
+        <PWAInstallButton />
+        <style>{`
+          @keyframes pwaSlideUp {
+            from { transform: translateY(120%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+          }
+        `}</style>
       </body>
     </html>
   );
