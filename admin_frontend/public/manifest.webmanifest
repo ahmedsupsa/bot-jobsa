@@ -2,7 +2,7 @@
   "name": "Jobbots — التقديم التلقائي على الوظائف",
   "short_name": "Jobbots",
   "description": "نظام التقديم التلقائي على الوظائف بالذكاء الاصطناعي",
-  "start_url": "/",
+  "start_url": "/portal",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
