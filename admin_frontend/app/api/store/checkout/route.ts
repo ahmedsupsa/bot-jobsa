@@ -8,7 +8,7 @@ const SITE = rawSite.replace("https://jobbots.org", "https://www.jobbots.org").r
 
 export async function POST(req: Request) {
   try {
-    const { product_id, name, email, phone } = await req.json();
+    const { product_id, name, email, phone, ref_code } = await req.json();
     if (!product_id || !email?.trim() || !name?.trim()) {
       return NextResponse.json({ ok: false, error: "الاسم والبريد الإلكتروني والمنتج مطلوبة" }, { status: 400 });
     }
@@ -28,6 +28,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "هذا المنتج غير مرتبط ببوابة الدفع بعد" }, { status: 400 });
     }
 
+    // Validate ref_code (must exist in affiliates)
+    let validRefCode: string | null = null;
+    if (ref_code && typeof ref_code === "string") {
+      const { data: aff } = await supabase
+        .from("affiliates")
+        .select("code")
+        .eq("code", ref_code.trim().toUpperCase())
+        .maybeSingle();
+      if (aff) validRefCode = aff.code;
+    }
+
     const { data: order } = await supabase
       .from("store_orders")
       .insert({
@@ -36,6 +47,7 @@ export async function POST(req: Request) {
         user_email: email.trim().toLowerCase(),
         amount: product.price,
         status: "pending",
+        ref_code: validRefCode,
       })
       .select()
       .single();
