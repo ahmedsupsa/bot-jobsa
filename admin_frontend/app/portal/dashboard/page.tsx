@@ -274,7 +274,7 @@ const s: Record<string, React.CSSProperties> = {
     border: "1px solid", borderRadius: 10, padding: "6px 14px",
     fontSize: 13, fontWeight: 600,
   },
-  statsRow: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 20 },
+  statsRow: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 20 },
   statCard: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 16, padding: "18px 20px" },
   statIconWrap: {
     width: 38, height: 38, borderRadius: 10, background: "#1a1a1a",
@@ -290,7 +290,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   alertTitle: { color: "#f59e0b", fontWeight: 600, fontSize: 14, margin: 0 },
   alertSub: { color: "#a16207", fontSize: 12, margin: "2px 0 0" },
-  twoCol: { display: "grid", gridTemplateColumns: "1fr 260px", gap: 20, alignItems: "start" },
+  twoCol: { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 260px)", gap: 20, alignItems: "start" },
   card: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 16, padding: "22px" },
   cardHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 },
   cardTitleRow: { display: "flex", alignItems: "center", gap: 8 },
