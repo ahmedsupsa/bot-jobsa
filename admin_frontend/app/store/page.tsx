@@ -294,8 +294,8 @@ const s: Record<string, React.CSSProperties> = {
   // CARD
   card: { background: "linear-gradient(180deg, #111 0%, #0a0a0a 100%)", border: "1px solid #1f1f1f", borderRadius: 20, padding: "28px 26px", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden", transition: "all 0.2s" },
   cardGlow: { position: "absolute", top: -100, right: -100, width: 220, height: 220, background: "radial-gradient(circle, rgba(167,139,250,0.08), transparent 70%)", pointerEvents: "none" },
-  cardHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14, position: "relative", zIndex: 1 },
-  cardName: { color: "#e5e7eb", fontSize: 16, fontWeight: 700, margin: 0, letterSpacing: "-0.2px" },
+  cardHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14, position: "relative", zIndex: 1, flexWrap: "wrap" },
+  cardName: { color: "#e5e7eb", fontSize: 16, fontWeight: 700, margin: 0, letterSpacing: "-0.2px", flex: 1, minWidth: 0, overflowWrap: "break-word", wordBreak: "break-word" },
   savingsBadge: { background: "rgba(34,197,94,0.12)", color: "#86efac", border: "1px solid rgba(34,197,94,0.3)", padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" },
   cardPrice: { display: "flex", alignItems: "flex-end", gap: 8, position: "relative", zIndex: 1 },
   priceNum: { fontSize: "clamp(38px, 9vw, 50px)", fontWeight: 900, color: "#fff", lineHeight: 0.9, letterSpacing: "-2px" },

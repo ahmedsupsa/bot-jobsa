@@ -409,7 +409,7 @@ export default function AffiliatePage() {
             </div>
 
             {/* Method Toggle */}
-            <div style={{
+            <div className="payout-method-toggle" style={{
               display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 18,
               background: "#070707", border: "1px solid #1f1f1f", borderRadius: 12, padding: 4,
             }}>
@@ -458,6 +458,12 @@ export default function AffiliatePage() {
           </div>
         </div>
       )}
+
+      <style>{`
+        @media (max-width: 380px) {
+          .payout-method-toggle { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
 
       {previewProof && (
         <div onClick={() => setPreviewProof(null)} style={{

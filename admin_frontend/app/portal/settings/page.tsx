@@ -174,7 +174,7 @@ export default function SettingsPage() {
                   <p style={s.cardSub}>اللغة التي ستُرسل بها طلبات التوظيف</p>
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div className="lang-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <LangBtn
                   active={settings?.application_language !== "en"}
                   onClick={() => changeLanguage("ar")}
@@ -258,6 +258,11 @@ export default function SettingsPage() {
         )}
       </div>
 
+      <style>{`
+        @media (max-width: 380px) {
+          .lang-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
       {/* Delete confirmation modal */}
       {showDelete && (
         <div onClick={() => !deleting && setShowDelete(false)} style={{
@@ -367,9 +372,9 @@ function InfoRow({ icon, label, value, dir }: { icon: React.ReactNode; label: st
 const s: Record<string, React.CSSProperties> = {
   page: { maxWidth: 620, margin: "0 auto" },
   header: {
-    display: "flex", alignItems: "center", gap: 16,
+    display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
     background: "#111", border: "1px solid #1f1f1f",
-    borderRadius: 18, padding: "24px 28px", marginBottom: 24,
+    borderRadius: 18, padding: "22px 20px", marginBottom: 24,
   },
   headerIcon: {
     width: 52, height: 52, borderRadius: 14, background: "#1a1a1a",
@@ -381,7 +386,7 @@ const s: Record<string, React.CSSProperties> = {
     display: "flex", alignItems: "center", gap: 8,
     padding: "13px 16px", borderRadius: 12, marginBottom: 16, fontSize: 13, fontWeight: 500,
   },
-  card: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 16, padding: "22px", marginBottom: 16 },
+  card: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 16, padding: "20px 18px", marginBottom: 16 },
   cardHeader: { display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 20 },
   cardHeaderIcon: {
     width: 44, height: 44, borderRadius: 12, background: "#1a1a1a",
