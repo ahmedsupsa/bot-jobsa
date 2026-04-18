@@ -21,9 +21,12 @@ interface Withdrawal {
   full_name: string;
   phone: string;
   amount: number;
-  bank_name: string;
-  iban: string;
+  method: "bank" | "wallet";
+  bank_name: string | null;
+  iban: string | null;
   account_holder: string;
+  wallet_provider: string | null;
+  wallet_number: string | null;
   status: "pending" | "paid" | "rejected";
   proof_url: string | null;
   notes: string | null;
@@ -39,7 +42,7 @@ export default function AffiliateAdminPage() {
   const [activeWd, setActiveWd] = useState<Withdrawal | null>(null);
   const [uploading, setUploading] = useState(false);
   const [previewProof, setPreviewProof] = useState<string | null>(null);
-  const [copiedIban, setCopiedIban] = useState<string | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -91,10 +94,10 @@ export default function AffiliateAdminPage() {
     if (fileRef.current) fileRef.current.value = "";
   };
 
-  const copyIban = async (iban: string) => {
-    await navigator.clipboard.writeText(iban);
-    setCopiedIban(iban);
-    setTimeout(() => setCopiedIban(null), 2000);
+  const copyText = async (text: string, key: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedField(key);
+    setTimeout(() => setCopiedField(null), 2000);
   };
 
   const pendingWds = withdrawals.filter((w) => w.status === "pending");
@@ -229,27 +232,33 @@ export default function AffiliateAdminPage() {
               <Row label="المسوّق" value={activeWd.full_name} />
               <Row label="الجوال" value={activeWd.phone} ltr />
               <Row label="المبلغ" value={`${Number(activeWd.amount).toFixed(2)} ر.س`} highlight />
-              <Row label="البنك" value={activeWd.bank_name} />
-              <Row label="اسم الحساب" value={activeWd.account_holder} />
-              <div>
-                <p style={{ margin: "0 0 6px", color: "#888", fontSize: 11 }}>الآيبان</p>
-                <div style={{
-                  background: "#070707", border: "1px solid #1f1f1f", borderRadius: 10,
-                  padding: "10px 12px", display: "flex", alignItems: "center", gap: 8,
+              <div style={{
+                padding: "8px 0", borderBottom: "1px solid #1a1a1a",
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+              }}>
+                <span style={{ color: "#888", fontSize: 12 }}>طريقة الاستلام</span>
+                <span style={{
+                  background: activeWd.method === "wallet" ? "rgba(168,139,250,0.1)" : "rgba(59,130,246,0.1)",
+                  color: activeWd.method === "wallet" ? "#a78bfa" : "#3b82f6",
+                  border: `1px solid ${activeWd.method === "wallet" ? "#a78bfa33" : "#3b82f633"}`,
+                  borderRadius: 8, padding: "3px 10px", fontSize: 11, fontWeight: 700,
                 }}>
-                  <span style={{ flex: 1, color: "#22c55e", fontSize: 13, fontFamily: "monospace", direction: "ltr" }}>{activeWd.iban}</span>
-                  <button onClick={() => copyIban(activeWd.iban)} style={{
-                    background: copiedIban === activeWd.iban ? "#1f3d1f" : "#1a1a1a",
-                    border: `1px solid ${copiedIban === activeWd.iban ? "#22c55e" : "#2a2a2a"}`,
-                    color: copiedIban === activeWd.iban ? "#22c55e" : "#fff",
-                    borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer",
-                    display: "inline-flex", alignItems: "center", gap: 4,
-                  }}>
-                    {copiedIban === activeWd.iban ? <Check size={11} /> : <Copy size={11} />}
-                    {copiedIban === activeWd.iban ? "تم" : "نسخ"}
-                  </button>
-                </div>
+                  {activeWd.method === "wallet" ? "محفظة رقمية" : "حساب بنكي"}
+                </span>
               </div>
+              <Row label="اسم الحساب" value={activeWd.account_holder} />
+
+              {activeWd.method === "bank" ? (
+                <>
+                  <Row label="البنك" value={activeWd.bank_name || "—"} />
+                  <CopyRow label="الآيبان" value={activeWd.iban || ""} copied={copiedField === "iban"} onCopy={() => copyText(activeWd.iban || "", "iban")} />
+                </>
+              ) : (
+                <>
+                  <Row label="نوع المحفظة" value={activeWd.wallet_provider || "—"} />
+                  <CopyRow label="رقم الجوال" value={activeWd.wallet_number || ""} copied={copiedField === "wallet"} onCopy={() => copyText(activeWd.wallet_number || "", "wallet")} />
+                </>
+              )}
             </div>
 
             <p style={{ margin: "0 0 10px", color: "#fbbf24", fontSize: 12, lineHeight: 1.6 }}>
@@ -287,6 +296,30 @@ export default function AffiliateAdminPage() {
         </div>
       )}
     </Shell>
+  );
+}
+
+function CopyRow({ label, value, copied, onCopy }: { label: string; value: string; copied: boolean; onCopy: () => void }) {
+  return (
+    <div>
+      <p style={{ margin: "0 0 6px", color: "#888", fontSize: 11 }}>{label}</p>
+      <div style={{
+        background: "#070707", border: "1px solid #1f1f1f", borderRadius: 10,
+        padding: "10px 12px", display: "flex", alignItems: "center", gap: 8,
+      }}>
+        <span style={{ flex: 1, color: "#22c55e", fontSize: 13, fontFamily: "monospace", direction: "ltr" }}>{value}</span>
+        <button onClick={onCopy} style={{
+          background: copied ? "#1f3d1f" : "#1a1a1a",
+          border: `1px solid ${copied ? "#22c55e" : "#2a2a2a"}`,
+          color: copied ? "#22c55e" : "#fff",
+          borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer",
+          display: "inline-flex", alignItems: "center", gap: 4,
+        }}>
+          {copied ? <Check size={11} /> : <Copy size={11} />}
+          {copied ? "تم" : "نسخ"}
+        </button>
+      </div>
+    </div>
   );
 }
 
