@@ -38,7 +38,7 @@ export default function StorePage() {
   const [refCode, setRefCode] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/store/products")
+    fetch(`/api/store/products?t=${Date.now()}`, { cache: "no-store" })
       .then(r => r.json())
       .then(j => { setProducts(j.products || []); setLoading(false); })
       .catch(() => setLoading(false));
