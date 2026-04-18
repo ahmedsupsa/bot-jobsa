@@ -327,3 +327,5 @@ const s: Record<string, React.CSSProperties> = {
   checkoutBtn: { width: "100%", background: "linear-gradient(135deg, #a78bfa, #6d28d9)", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12, boxShadow: "0 8px 24px rgba(109,40,217,0.4)" },
   secureNote: { textAlign: "center", color: "#666", fontSize: 11.5, margin: 0 },
 };
+
+// rebuild: 1776481681
