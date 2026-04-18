@@ -304,7 +304,7 @@ const s: Record<string, React.CSSProperties> = {
   featureList: { listStyle: "none", padding: 0, margin: "0 0 24px", display: "flex", flexDirection: "column", gap: 11, flex: 1, position: "relative", zIndex: 1 },
   featureItem: { display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, color: "#bbb" },
   checkIcon: { width: 18, height: 18, borderRadius: 6, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.25)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  buyBtn: { width: "100%", padding: "13px", borderRadius: 11, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "linear-gradient(135deg, #a78bfa, #6d28d9)", color: "#fff", border: "none", boxShadow: "0 6px 20px rgba(109,40,217,0.35)", marginTop: "auto", position: "relative", zIndex: 1 },
+  buyBtn: { width: "100%", padding: "13px", borderRadius: 11, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#fff", color: "#0a0a0a", border: "none", marginTop: "auto", position: "relative", zIndex: 1 },
 
   // FOOTER
   footer: { borderTop: "1px solid #1a1a1a", padding: "24px" },
