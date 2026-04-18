@@ -192,7 +192,7 @@ export default function StorePage() {
       {/* Checkout Modal */}
       {selected && (
         <div style={s.overlay} onClick={e => { if (e.target === e.currentTarget) { setSelected(null); setFormErr(""); } }}>
-          <div style={s.modal} dir="rtl">
+          <div style={s.modal} dir="rtl" className="__modal">
             <div style={s.modalGlow} />
             <div style={s.modalHeader}>
               <div>
@@ -263,6 +263,9 @@ export default function StorePage() {
         @media (max-width: 760px) {
           .__grid { grid-template-columns: 1fr !important; }
         }
+        @media (max-width: 480px) {
+          .__modal { padding: 20px !important; border-radius: 16px !important; }
+        }
       `}</style>
     </div>
   );
@@ -312,7 +315,7 @@ const s: Record<string, React.CSSProperties> = {
   footerLink: { color: "#666", fontSize: 12.5, textDecoration: "none" },
 
   // MODAL
-  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 },
+  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 },
   modal: { background: "#0d0d0d", border: "1px solid #2a2a2a", borderRadius: 22, padding: "28px", width: "100%", maxWidth: 460, boxShadow: "0 24px 80px rgba(0,0,0,0.8)", position: "relative", overflow: "hidden" },
   modalGlow: { position: "absolute", top: -50, right: -50, width: 200, height: 200, background: "radial-gradient(circle, rgba(167,139,250,0.15), transparent 70%)", pointerEvents: "none" },
   modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, position: "relative" },
