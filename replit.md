@@ -1,4 +1,4 @@
-# Jobsa Telegram Bot
+# Jobbots — Auto-Apply Platform
 
 A Telegram bot for job applications (Arabic language), with a Flask admin panel, Next.js admin dashboard, and a user-facing web portal.
 
