@@ -239,7 +239,7 @@ const s: Record<string, React.CSSProperties> = {
     backgroundSize: "28px 28px", opacity: 0.25, zIndex: 0, pointerEvents: "none",
   },
   rightPanel: {
-    width: 480, display: "flex", alignItems: "center", justifyContent: "center",
+    width: "100%", maxWidth: 480, display: "flex", alignItems: "center", justifyContent: "center",
     padding: "40px 48px", background: "#0a0a0a", flexShrink: 0,
   },
   formBox: { width: "100%" },
