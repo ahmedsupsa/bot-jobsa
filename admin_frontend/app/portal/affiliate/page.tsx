@@ -2,14 +2,25 @@
 import { useEffect, useState } from "react";
 import { PortalShell } from "@/components/portal-shell";
 import { portalFetch } from "@/lib/portal-auth";
-import { TrendingUp, Copy, Check, DollarSign, Users, Clock, Loader2, Share2, AlertCircle } from "lucide-react";
+import { TrendingUp, Copy, Check, DollarSign, Users, Clock, Loader2, Share2, AlertCircle, Building2, Wallet, X, Eye } from "lucide-react";
 
 interface Referral {
   id: string;
   amount: number;
   commission: number;
   status: "pending" | "paid";
+  withdrawal_id: string | null;
   created_at: string;
+}
+
+interface Withdrawal {
+  id: string;
+  amount: number;
+  status: "pending" | "paid" | "rejected";
+  proof_url: string | null;
+  notes: string | null;
+  created_at: string;
+  paid_at: string | null;
 }
 
 interface AffiliateData {
@@ -17,12 +28,18 @@ interface AffiliateData {
   joined: boolean;
   eligible: boolean;
   code?: string;
+  bank_name?: string;
+  iban?: string;
+  account_holder?: string;
   total_earnings?: number;
-  pending_earnings?: number;
+  available_balance?: number;
+  requested_balance?: number;
   paid_earnings?: number;
   referrals_count?: number;
   referrals?: Referral[];
+  withdrawals?: Withdrawal[];
   commission_rate: number;
+  min_withdraw: number;
 }
 
 export default function AffiliatePage() {
@@ -30,12 +47,20 @@ export default function AffiliatePage() {
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showBank, setShowBank] = useState(false);
+  const [bankForm, setBankForm] = useState({ bank_name: "", iban: "", account_holder: "" });
+  const [savingBank, setSavingBank] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [previewProof, setPreviewProof] = useState<string | null>(null);
 
   const load = async () => {
     try {
       const r = await portalFetch("/affiliate");
       const j = await r.json();
-      if (j.ok) setData(j);
+      if (j.ok) {
+        setData(j);
+        setBankForm({ bank_name: j.bank_name || "", iban: j.iban || "", account_holder: j.account_holder || "" });
+      }
     } catch {}
     setLoading(false);
   };
@@ -51,6 +76,40 @@ export default function AffiliatePage() {
       else alert(j.error || "فشل الانضمام");
     } catch {}
     setJoining(false);
+  };
+
+  const saveBank = async () => {
+    if (!bankForm.bank_name.trim() || !bankForm.iban.trim() || !bankForm.account_holder.trim()) {
+      alert("كل الحقول مطلوبة"); return;
+    }
+    setSavingBank(true);
+    try {
+      const r = await portalFetch("/affiliate/bank", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bankForm),
+      });
+      const j = await r.json();
+      if (j.ok) {
+        await load();
+        setShowBank(false);
+      } else alert(j.error || "فشل الحفظ");
+    } catch {}
+    setSavingBank(false);
+  };
+
+  const requestWithdraw = async () => {
+    if (!confirm(`تأكيد طلب سحب ${(data?.available_balance || 0).toFixed(2)} ريال؟`)) return;
+    setWithdrawing(true);
+    try {
+      const r = await portalFetch("/affiliate/withdraw", { method: "POST" });
+      const j = await r.json();
+      if (j.ok) {
+        alert("تم إرسال طلب السحب بنجاح. سيتم التحويل قريباً.");
+        await load();
+      } else alert(j.error || "فشل طلب السحب");
+    } catch {}
+    setWithdrawing(false);
   };
 
   const link = data?.code ? `https://www.jobbots.org/store?ref=${data.code}` : "";
@@ -83,7 +142,6 @@ export default function AffiliatePage() {
     );
   }
 
-  // Not joined yet
   if (!data?.joined) {
     return (
       <PortalShell>
@@ -112,16 +170,14 @@ export default function AffiliatePage() {
               <div style={{
                 display: "flex", alignItems: "center", gap: 10, justifyContent: "center",
                 background: "#1f1408", border: "1px solid #f59e0b33",
-                color: "#fbbf24", padding: "12px 16px", borderRadius: 12,
-                fontSize: 13,
+                color: "#fbbf24", padding: "12px 16px", borderRadius: 12, fontSize: 13,
               }}>
                 <AlertCircle size={16} />
                 <span>تحتاج اشتراك نشط للانضمام لبرنامج الربح</span>
               </div>
             ) : (
               <button
-                onClick={join}
-                disabled={joining}
+                onClick={join} disabled={joining}
                 style={{
                   background: "#22c55e", color: "#000", border: "none",
                   borderRadius: 12, padding: "12px 28px", fontSize: 15, fontWeight: 700,
@@ -139,7 +195,9 @@ export default function AffiliatePage() {
     );
   }
 
-  // Joined
+  const hasBank = !!(data.bank_name && data.iban && data.account_holder);
+  const canWithdraw = hasBank && (data.available_balance || 0) >= (data.min_withdraw || 20);
+
   return (
     <PortalShell>
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
@@ -147,15 +205,63 @@ export default function AffiliatePage() {
           <TrendingUp size={22} color="#22c55e" /> برنامج الربح
         </h1>
 
-        {/* Stats Cards */}
+        {/* Stats */}
         <div style={{
           display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
           gap: 12, marginBottom: 20,
         }}>
-          <StatCard icon={DollarSign} color="#22c55e" label="إجمالي الأرباح" value={`${(data.total_earnings || 0).toFixed(2)} ر.س`} />
-          <StatCard icon={Clock} color="#f59e0b" label="معلّقة" value={`${(data.pending_earnings || 0).toFixed(2)} ر.س`} />
+          <StatCard icon={Wallet} color="#22c55e" label="رصيد متاح" value={`${(data.available_balance || 0).toFixed(2)} ر.س`} />
+          <StatCard icon={Clock} color="#f59e0b" label="قيد التحويل" value={`${(data.requested_balance || 0).toFixed(2)} ر.س`} />
           <StatCard icon={Check} color="#3b82f6" label="مدفوعة" value={`${(data.paid_earnings || 0).toFixed(2)} ر.س`} />
           <StatCard icon={Users} color="#a78bfa" label="عدد المبيعات" value={String(data.referrals_count || 0)} />
+        </div>
+
+        {/* Withdraw Action */}
+        <div style={{
+          background: "linear-gradient(135deg, #0d1f0d 0%, #0a1a0a 100%)",
+          border: "1px solid #22c55e33", borderRadius: 16,
+          padding: 18, marginBottom: 20,
+          display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap",
+        }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <p style={{ margin: 0, color: "#fff", fontSize: 14, fontWeight: 600 }}>
+              {canWithdraw ? "جاهز للسحب!" : `الحد الأدنى للسحب: ${data.min_withdraw} ريال`}
+            </p>
+            <p style={{ margin: "4px 0 0", color: "#888", fontSize: 12 }}>
+              {!hasBank
+                ? "أضف بيانات حسابك البنكي أولاً"
+                : !canWithdraw
+                ? `تحتاج ${((data.min_withdraw || 20) - (data.available_balance || 0)).toFixed(2)} ر.س إضافية`
+                : "اضغط لطلب التحويل لحسابك البنكي"}
+            </p>
+          </div>
+          <button
+            onClick={() => setShowBank(true)}
+            style={{
+              background: hasBank ? "#1a1a1a" : "#22c55e",
+              color: hasBank ? "#fff" : "#000",
+              border: hasBank ? "1px solid #2a2a2a" : "none",
+              borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 600,
+              cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6,
+            }}
+          >
+            <Building2 size={14} />
+            {hasBank ? "تعديل الحساب" : "إضافة الحساب"}
+          </button>
+          {canWithdraw && (
+            <button
+              onClick={requestWithdraw} disabled={withdrawing}
+              style={{
+                background: "#22c55e", color: "#000", border: "none",
+                borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 700,
+                cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6,
+                opacity: withdrawing ? 0.5 : 1,
+              }}
+            >
+              {withdrawing ? <Loader2 size={14} className="animate-spin" /> : <Wallet size={14} />}
+              طلب سحب
+            </button>
+          )}
         </div>
 
         {/* Referral Link */}
@@ -192,12 +298,56 @@ export default function AffiliatePage() {
               <Share2 size={14} /> شارك الآن
             </button>
           </div>
-          <p style={{ margin: "12px 0 0", color: "#666", fontSize: 12, lineHeight: 1.6 }}>
-            تربح <span style={{ color: "#22c55e", fontWeight: 700 }}>10%</span> من كل عملية بيع تتم عبر هذا الرابط
-          </p>
         </div>
 
-        {/* Referrals List */}
+        {/* Withdrawals History */}
+        {data.withdrawals && data.withdrawals.length > 0 && (
+          <div style={{
+            background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 16,
+            overflow: "hidden", marginBottom: 20,
+          }}>
+            <div style={{ padding: "14px 20px", borderBottom: "1px solid #1f1f1f" }}>
+              <p style={{ margin: 0, color: "#fff", fontSize: 14, fontWeight: 600 }}>طلبات السحب</p>
+            </div>
+            {data.withdrawals.map((w) => (
+              <div key={w.id} style={{
+                padding: "14px 20px", borderBottom: "1px solid #181818",
+                display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12,
+              }}>
+                <div>
+                  <p style={{ margin: 0, color: "#fff", fontSize: 14, fontWeight: 600 }}>
+                    {Number(w.amount).toFixed(2)} ر.س
+                  </p>
+                  <p style={{ margin: "2px 0 0", color: "#666", fontSize: 11 }}>
+                    {new Date(w.created_at).toLocaleString("ar-SA")}
+                  </p>
+                  {w.notes && <p style={{ margin: "4px 0 0", color: "#f87171", fontSize: 11 }}>{w.notes}</p>}
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {w.proof_url && (
+                    <button onClick={() => setPreviewProof(w.proof_url!)} style={{
+                      background: "#1a1a1a", border: "1px solid #2a2a2a", color: "#3b82f6",
+                      borderRadius: 8, padding: "6px 10px", fontSize: 11, fontWeight: 600,
+                      cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4,
+                    }}>
+                      <Eye size={11} /> إيصال التحويل
+                    </button>
+                  )}
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 8,
+                    background: w.status === "paid" ? "rgba(34,197,94,0.1)" : w.status === "rejected" ? "rgba(239,68,68,0.1)" : "rgba(245,158,11,0.1)",
+                    color: w.status === "paid" ? "#22c55e" : w.status === "rejected" ? "#f87171" : "#fbbf24",
+                    border: `1px solid ${w.status === "paid" ? "#22c55e33" : w.status === "rejected" ? "#ef444433" : "#f59e0b33"}`,
+                  }}>
+                    {w.status === "paid" ? "تم التحويل" : w.status === "rejected" ? "مرفوض" : "قيد المعالجة"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Sales Log */}
         <div style={{
           background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 16,
           overflow: "hidden",
@@ -225,27 +375,93 @@ export default function AffiliatePage() {
                 </div>
                 <span style={{
                   fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 8,
-                  background: r.status === "paid" ? "rgba(59,130,246,0.1)" : "rgba(245,158,11,0.1)",
-                  color: r.status === "paid" ? "#3b82f6" : "#fbbf24",
-                  border: `1px solid ${r.status === "paid" ? "#3b82f633" : "#f59e0b33"}`,
+                  background: r.status === "paid" ? "rgba(34,197,94,0.1)" : r.withdrawal_id ? "rgba(245,158,11,0.1)" : "rgba(168,139,250,0.1)",
+                  color: r.status === "paid" ? "#22c55e" : r.withdrawal_id ? "#fbbf24" : "#a78bfa",
+                  border: `1px solid ${r.status === "paid" ? "#22c55e33" : r.withdrawal_id ? "#f59e0b33" : "#a78bfa33"}`,
                 }}>
-                  {r.status === "paid" ? "مدفوعة" : "معلّقة"}
+                  {r.status === "paid" ? "مدفوعة" : r.withdrawal_id ? "قيد التحويل" : "متاحة"}
                 </span>
               </div>
             ))
           )}
         </div>
       </div>
+
+      {/* Bank Modal */}
+      {showBank && (
+        <div onClick={() => setShowBank(false)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 100,
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+        }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            background: "#0d0d0d", border: "1px solid #2a2a2a", borderRadius: 16,
+            padding: 24, width: "100%", maxWidth: 440,
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+              <h2 style={{ margin: 0, color: "#fff", fontSize: 17, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                <Building2 size={18} color="#22c55e" /> الحساب البنكي
+              </h2>
+              <button onClick={() => setShowBank(false)} style={{ background: "none", border: "none", color: "#666", cursor: "pointer" }}>
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <Input label="اسم البنك" value={bankForm.bank_name} onChange={(v) => setBankForm({ ...bankForm, bank_name: v })} placeholder="مثلاً: الراجحي" />
+              <Input label="اسم صاحب الحساب" value={bankForm.account_holder} onChange={(v) => setBankForm({ ...bankForm, account_holder: v })} placeholder="الاسم الكامل" />
+              <Input label="رقم الآيبان (IBAN)" value={bankForm.iban} onChange={(v) => setBankForm({ ...bankForm, iban: v })} placeholder="SA0000000000000000000000" mono />
+              <button
+                onClick={saveBank} disabled={savingBank}
+                style={{
+                  background: "#22c55e", color: "#000", border: "none",
+                  borderRadius: 10, padding: "12px", fontSize: 14, fontWeight: 700,
+                  cursor: "pointer", marginTop: 8, opacity: savingBank ? 0.5 : 1,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                }}
+              >
+                {savingBank && <Loader2 size={14} className="animate-spin" />}
+                حفظ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Proof Preview Modal */}
+      {previewProof && (
+        <div onClick={() => setPreviewProof(null)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 100,
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+        }}>
+          <img src={previewProof} alt="إيصال" style={{ maxWidth: "100%", maxHeight: "90vh", borderRadius: 12 }} />
+        </div>
+      )}
     </PortalShell>
+  );
+}
+
+function Input({ label, value, onChange, placeholder, mono }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; mono?: boolean }) {
+  return (
+    <div>
+      <label style={{ display: "block", color: "#888", fontSize: 12, marginBottom: 6 }}>{label}</label>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          width: "100%", background: "#070707", border: "1px solid #1f1f1f",
+          borderRadius: 10, padding: "10px 12px", color: "#fff", fontSize: 14,
+          fontFamily: mono ? "monospace" : "inherit",
+          direction: mono ? "ltr" : undefined,
+          outline: "none", boxSizing: "border-box",
+        }}
+      />
+    </div>
   );
 }
 
 function StatCard({ icon: Icon, color, label, value }: { icon: any; color: string; label: string; value: string }) {
   return (
-    <div style={{
-      background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 14,
-      padding: 16,
-    }}>
+    <div style={{ background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 14, padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <Icon size={14} color={color} />
         <span style={{ color: "#888", fontSize: 12 }}>{label}</span>
