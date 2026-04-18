@@ -7,7 +7,7 @@ export async function GET() {
 
   const { data: users } = await supabase
     .from("users")
-    .select("id,full_name,telegram_id,phone,created_at,subscription_ends_at")
+    .select("id,full_name,phone,created_at,subscription_ends_at")
     .order("created_at", { ascending: false })
     .limit(200);
 
