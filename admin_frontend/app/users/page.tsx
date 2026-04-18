@@ -8,7 +8,6 @@ import { Search, Save, User, FileText, Upload, Check, Loader2, ChevronDown, Chev
 type UserRow = {
   id: string;
   full_name: string;
-  telegram_id: number;
   email: string;
   phone?: string;
   city?: string;
@@ -37,7 +36,7 @@ export default function UsersPage() {
     const s = q.trim().toLowerCase();
     if (!s) return rows;
     return rows.filter((r) =>
-      `${r.full_name} ${r.telegram_id} ${r.email} ${r.phone} ${r.city}`.toLowerCase().includes(s)
+      `${r.full_name} ${r.email} ${r.phone} ${r.city}`.toLowerCase().includes(s)
     );
   }, [q, rows]);
 
