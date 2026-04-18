@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Key, BriefcaseBusiness, Megaphone, LogOut, Briefcase, ShoppingBag } from "lucide-react";
+import { LayoutDashboard, Users, Key, BriefcaseBusiness, Megaphone, LogOut, Briefcase, ShoppingBag, TrendingUp } from "lucide-react";
 import { useState } from "react";
 
 const links = [
@@ -12,6 +12,7 @@ const links = [
   { href: "/jobs", label: "الوظائف", icon: BriefcaseBusiness },
   { href: "/announcements", label: "الإعلانات", icon: Megaphone },
   { href: "/store-admin", label: "المتجر", icon: ShoppingBag },
+  { href: "/finance", label: "المالية", icon: TrendingUp },
 ];
 
 export default function Shell({ children }: { children: React.ReactNode }) {
