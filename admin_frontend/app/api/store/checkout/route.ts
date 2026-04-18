@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { findOrCreateConsumer, createPaymentLink } from "@/lib/streampay";
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL || process.env.ADMIN_DASHBOARD_URL || "https://jobbots.org";
+const rawSite = process.env.NEXT_PUBLIC_SITE_URL || process.env.ADMIN_DASHBOARD_URL || "https://www.jobbots.org";
+// Ensure we always use www to avoid Firebase catching the apex domain
+const SITE = rawSite.replace("https://jobbots.org", "https://www.jobbots.org").replace("http://jobbots.org", "https://www.jobbots.org");
 
 export async function POST(req: Request) {
   try {
