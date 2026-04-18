@@ -34,37 +34,51 @@ ${companyHtml}
 </div></body></html>`;
 }
 
+const GEMINI_MODEL = "gemini-3.1-pro-preview";
+
 async function generateCoverLetter(
   jobTitle: string,
   name: string,
   company: string,
   desc: string,
-  lang: string
+  lang: string,
+  cvBase64?: string,
+  cvMime = "application/pdf"
 ): Promise<string> {
-  if (!GEMINI_API_KEY) {
-    return lang === "ar"
-      ? `أتقدم بكل اهتمام لشغل وظيفة ${jobTitle}${company ? " في " + company : ""}. أنا مهتم بهذه الفرصة وأثق في قدرتي على إضافة قيمة حقيقية لفريقكم.`
-      : `I am writing to express my interest in the ${jobTitle} position${company ? " at " + company : ""}. I am confident in my ability to contribute effectively to your team.`;
-  }
+  const fallback = lang === "ar"
+    ? `أتقدم بكل اهتمام لشغل وظيفة ${jobTitle}${company ? " في " + company : ""}. أنا مهتم بهذه الفرصة وأثق في قدرتي على إضافة قيمة حقيقية لفريقكم.`
+    : `I am writing to express my interest in the ${jobTitle} position${company ? " at " + company : ""}. I am confident in my ability to contribute effectively to your team.`;
+
+  if (!GEMINI_API_KEY) return fallback;
 
   const prompt =
-    `اكتب رسالة تغطية مختصرة (3-4 جمل) باللغة ${lang === "ar" ? "العربية" : "الإنجليزية"} ` +
+    `اقرأ السيرة الذاتية المرفقة ثم اكتب رسالة تغطية مختصرة (3-4 جمل فقط) ` +
+    `باللغة ${lang === "ar" ? "العربية" : "الإنجليزية"} ` +
     `للتقديم على وظيفة: ${jobTitle}` +
     (company ? ` في شركة ${company}` : "") +
-    (desc ? `. تفاصيل: ${desc.slice(0, 300)}` : "") +
-    `. الاسم: ${name}. لا تضف إيموجي.`;
+    (desc ? `. تفاصيل الوظيفة: ${desc.slice(0, 400)}` : "") +
+    `. اسم المتقدم: ${name}. استخدم الخبرات والمهارات الموجودة في السيرة الذاتية. لا تضف إيموجي. أعطِ فقط نص الرسالة بدون عنوان أو تحية.`;
 
-  const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-    }
-  );
-  if (!r.ok) throw new Error(`Gemini ${r.status}`);
-  const data = await r.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+  const parts: any[] = [{ text: prompt }];
+  if (cvBase64) {
+    parts.push({ inline_data: { mime_type: cvMime, data: cvBase64 } });
+  }
+
+  try {
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts }] }),
+      }
+    );
+    if (!r.ok) throw new Error(`Gemini ${r.status}: ${await r.text()}`);
+    const data = await r.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 // GET /api/admin/email-test — return users + jobs for the dropdowns
@@ -127,11 +141,33 @@ export async function POST(req: Request) {
     const { user_id, job_id, custom_job_title, custom_company, custom_desc, lang } = body;
 
     let name = "أحمد العمري", phone = "05xxxxxxxx", email = "";
+    let cvBase64: string | undefined;
+    let cvMime = "application/pdf";
+
     if (user_id) {
-      const { data: users } = await supabase.from("users").select("full_name,phone").eq("id", user_id).limit(1);
+      const [{ data: users }, { data: s }, { data: cvRows }] = await Promise.all([
+        supabase.from("users").select("full_name,phone").eq("id", user_id).limit(1),
+        supabase.from("user_settings").select("email,application_language").eq("user_id", user_id).limit(1),
+        supabase.from("user_cvs").select("storage_path,file_name").eq("user_id", user_id).limit(1),
+      ]);
       if (users?.[0]) { name = users[0].full_name || name; phone = users[0].phone || phone; }
-      const { data: s } = await supabase.from("user_settings").select("email,application_language").eq("user_id", user_id).limit(1);
       email = s?.[0]?.email || "";
+
+      const cv = cvRows?.[0];
+      if (cv?.storage_path) {
+        const cvUrl = `${process.env.SUPABASE_URL}/storage/v1/object/cvs/${cv.storage_path}`;
+        try {
+          const cvRes = await fetch(cvUrl, {
+            headers: { apikey: process.env.SUPABASE_KEY || "", Authorization: `Bearer ${process.env.SUPABASE_KEY || ""}` },
+          });
+          if (cvRes.ok) {
+            const buf = await cvRes.arrayBuffer();
+            cvBase64 = Buffer.from(buf).toString("base64");
+            if (cv.file_name?.toLowerCase().endsWith(".docx"))
+              cvMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+          }
+        } catch { /* skip — Gemini falls back to generic */ }
+      }
     }
 
     let jobTitle = custom_job_title || "مطوّر برمجيات";
@@ -148,14 +184,7 @@ export async function POST(req: Request) {
       }
     }
 
-    let cover = "";
-    try {
-      cover = await generateCoverLetter(jobTitle, name, company, desc, language);
-    } catch {
-      cover = language === "ar"
-        ? `أتقدم بكل اهتمام لشغل وظيفة ${jobTitle}${company ? " في " + company : ""}. أثق في قدرتي على إضافة قيمة حقيقية.`
-        : `I am writing to express my interest in the ${jobTitle} position.`;
-    }
+    const cover = await generateCoverLetter(jobTitle, name, company, desc, language, cvBase64, cvMime);
 
     const html = buildEmailHtml(name, phone, jobTitle, company, cover, language);
     const subject = language === "ar"
