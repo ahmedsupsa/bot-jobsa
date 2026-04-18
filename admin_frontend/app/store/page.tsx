@@ -277,7 +277,7 @@ const s: Record<string, React.CSSProperties> = {
   logo: { display: "flex", alignItems: "center", gap: 10, textDecoration: "none" },
   logoIcon: { width: 34, height: 34, borderRadius: 9, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" },
   logoText: { color: "#fff", fontSize: 17, fontWeight: 800 },
-  navBtn: { background: "linear-gradient(135deg, #a78bfa, #6d28d9)", color: "#fff", padding: "9px 18px", borderRadius: 9, fontSize: 13, fontWeight: 700, textDecoration: "none", boxShadow: "0 4px 14px rgba(109,40,217,0.3)" },
+  navBtn: { background: "#fff", color: "#0a0a0a", padding: "9px 18px", borderRadius: 9, fontSize: 13, fontWeight: 700, textDecoration: "none", border: "none" },
 
   // MAIN
   main: { flex: 1, padding: "60px 24px", maxWidth: 1100, margin: "0 auto", width: "100%", boxSizing: "border-box" },
