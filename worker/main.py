@@ -109,29 +109,44 @@ def _is_subscription_active(user: dict) -> bool:
         return False
 
 
-async def _generate_cover_letter(job_title: str, name: str, company: str, desc: str, lang: str) -> str:
+async def _generate_cover_letter(
+    job_title: str, name: str, company: str, desc: str, lang: str,
+    cv_bytes: bytes | None = None, cv_mime: str = "application/pdf"
+) -> str:
+    fallback_ar = f"أتقدم بكل اهتمام لشغل وظيفة {job_title}{' في ' + company if company else ''}. أنا مهتم بهذه الفرصة وأثق في قدرتي على إضافة قيمة حقيقية لفريقكم."
+    fallback_en = f"I am writing to express my interest in the {job_title} position{' at ' + company if company else ''}. I am confident in my ability to contribute effectively to your team."
     if not GEMINI_API_KEY:
-        if lang == "ar":
-            return f"أتقدم بكل اهتمام لشغل وظيفة {job_title}{' في ' + company if company else ''}. أنا مهتم بهذه الفرصة وأثق في قدرتي على إضافة قيمة حقيقية لفريقكم."
-        return f"I am writing to express my interest in the {job_title} position{' at ' + company if company else ''}. I am confident in my ability to contribute effectively to your team."
+        return fallback_ar if lang == "ar" else fallback_en
 
     prompt = (
-        f"اكتب رسالة تغطية مختصرة (3-4 جمل) باللغة {'العربية' if lang == 'ar' else 'الإنجليزية'} "
+        f"اقرأ السيرة الذاتية المرفقة ثم اكتب رسالة تغطية مختصرة (3-4 جمل فقط) "
+        f"باللغة {'العربية' if lang == 'ar' else 'الإنجليزية'} "
         f"للتقديم على وظيفة: {job_title}"
         + (f" في شركة {company}" if company else "")
-        + (f". تفاصيل الوظيفة: {desc[:300]}" if desc else "")
-        + f". الاسم: {name}. لا تضف إيموجي."
+        + (f". تفاصيل الوظيفة: {desc[:400]}" if desc else "")
+        + f". اسم المتقدم: {name}. استخدم المعلومات من السيرة الذاتية (خبرات، مهارات، تعليم). لا تضف إيموجي. أعطِ فقط نص الرسالة بدون عنوان أو تحية."
     )
+
+    parts: list[dict] = [{"text": prompt}]
+    if cv_bytes:
+        parts.append({
+            "inline_data": {
+                "mime_type": cv_mime,
+                "data": base64.b64encode(cv_bytes).decode("ascii"),
+            }
+        })
+
     try:
-        async with httpx.AsyncClient(timeout=20) as client:
+        async with httpx.AsyncClient(timeout=40) as client:
             r = await client.post(
                 f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key={GEMINI_API_KEY}",
-                json={"contents": [{"parts": [{"text": prompt}]}]},
+                json={"contents": [{"parts": parts}]},
             )
             data = r.json()
             return data["candidates"][0]["content"]["parts"][0]["text"].strip()
-    except Exception:
-        return ""
+    except Exception as e:
+        logger.warning("Gemini error: %s", e)
+        return fallback_ar if lang == "ar" else fallback_en
 
 
 def _build_email_html(name: str, phone: str, job_title: str, company: str, cover: str, lang: str) -> str:
@@ -270,7 +285,10 @@ async def run_cycle() -> None:
                 company = job.get("company") or ""
                 desc = (job.get("description_ar") or job.get("description_en") or "")[:1200]
 
-                cover = await _generate_cover_letter(job_title, name, company, desc, lang)
+                cv_mime = "application/pdf"
+                if cv_name and cv_name.lower().endswith(".docx"):
+                    cv_mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                cover = await _generate_cover_letter(job_title, name, company, desc, lang, cv_bytes, cv_mime)
                 cover = _strip_emojis(cover)
                 html = _build_email_html(name, phone, job_title, company, cover, lang)
                 subject = f"التقديم على وظيفة: {_strip_emojis(job_title)}" if lang == "ar" else f"Application for: {_strip_emojis(job_title)}"
