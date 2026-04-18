@@ -71,20 +71,34 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile bottom nav */}
       <nav style={s.bottomNav} className="portal-bottom-nav">
-        {NAV.map(({ href, icon: Icon, label }) => {
-          const active = pathname === href;
-          return (
-            <button
-              key={href}
-              style={{ ...s.bottomItem, color: active ? "#fff" : "#555" }}
-              onClick={() => router.push(href)}
-            >
-              <Icon size={22} strokeWidth={active ? 2 : 1.5} />
-              <span style={{ fontSize: 10, marginTop: 2 }}>{label}</span>
-            </button>
-          );
-        })}
+        <div style={s.bottomScroller}>
+          {NAV.map(({ href, icon: Icon, label }) => {
+            const active = pathname === href;
+            return (
+              <button
+                key={href}
+                style={{ ...s.bottomItem, color: active ? "#fff" : "#555" }}
+                onClick={() => router.push(href)}
+              >
+                <Icon size={20} strokeWidth={active ? 2 : 1.5} />
+                <span style={{ fontSize: 10, marginTop: 2, whiteSpace: "nowrap" }}>{label}</span>
+              </button>
+            );
+          })}
+          <button style={{ ...s.bottomItem, color: "#555" }} onClick={logout}>
+            <LogOut size={20} strokeWidth={1.5} />
+            <span style={{ fontSize: 10, marginTop: 2, whiteSpace: "nowrap" }}>خروج</span>
+          </button>
+        </div>
       </nav>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .portal-sidebar { display: none !important; }
+          .portal-main { padding: 20px 16px 110px !important; }
+          .portal-bottom-nav { display: block !important; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -139,13 +153,18 @@ const s: Record<string, React.CSSProperties> = {
     display: "none", position: "fixed",
     bottom: 0, left: 0, right: 0,
     background: "#0f0f0f", borderTop: "1px solid #1f1f1f",
-    zIndex: 100, padding: "8px 0 6px",
+    zIndex: 100, padding: "6px 0 max(6px, env(safe-area-inset-bottom))",
+  },
+  bottomScroller: {
+    display: "flex", overflowX: "auto", overflowY: "hidden",
+    WebkitOverflowScrolling: "touch", scrollbarWidth: "none",
   },
   bottomItem: {
-    flex: 1, display: "flex", flexDirection: "column",
+    flex: "0 0 auto", minWidth: 64,
+    display: "flex", flexDirection: "column",
     alignItems: "center", gap: 2,
     background: "transparent", border: "none",
-    cursor: "pointer", padding: "4px 8px",
+    cursor: "pointer", padding: "6px 10px",
     fontFamily: "inherit",
   },
 };
