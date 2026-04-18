@@ -51,34 +51,52 @@ export async function GET(req: Request) {
       joined: false,
       eligible: !!subActive,
       commission_rate: COMMISSION_RATE,
+      min_withdraw: 20,
     });
   }
 
   const { data: referrals } = await supabase
     .from("affiliate_referrals")
-    .select("id, amount, commission, status, created_at")
+    .select("id, amount, commission, status, withdrawal_id, created_at")
     .eq("affiliate_user_id", uid)
     .order("created_at", { ascending: false });
 
   const totalEarnings = (referrals || []).reduce((s, r) => s + Number(r.commission || 0), 0);
-  const pendingEarnings = (referrals || [])
-    .filter((r) => r.status === "pending")
+  // Available = pending AND not linked to any withdrawal
+  const availableBalance = (referrals || [])
+    .filter((r) => r.status === "pending" && !r.withdrawal_id)
+    .reduce((s, r) => s + Number(r.commission || 0), 0);
+  // Requested = pending but linked to a withdrawal (awaiting admin)
+  const requestedBalance = (referrals || [])
+    .filter((r) => r.status === "pending" && r.withdrawal_id)
     .reduce((s, r) => s + Number(r.commission || 0), 0);
   const paidEarnings = (referrals || [])
     .filter((r) => r.status === "paid")
     .reduce((s, r) => s + Number(r.commission || 0), 0);
+
+  const { data: withdrawals } = await supabase
+    .from("affiliate_withdrawals")
+    .select("id, amount, status, proof_url, notes, created_at, paid_at")
+    .eq("user_id", uid)
+    .order("created_at", { ascending: false });
 
   return NextResponse.json({
     ok: true,
     joined: true,
     eligible: !!subActive,
     code: affiliate.code,
+    bank_name: affiliate.bank_name || "",
+    iban: affiliate.iban || "",
+    account_holder: affiliate.account_holder || "",
     total_earnings: totalEarnings,
-    pending_earnings: pendingEarnings,
+    available_balance: availableBalance,
+    requested_balance: requestedBalance,
     paid_earnings: paidEarnings,
     referrals_count: referrals?.length || 0,
     referrals: referrals || [],
+    withdrawals: withdrawals || [],
     commission_rate: COMMISSION_RATE,
+    min_withdraw: 20,
   });
 }
 
