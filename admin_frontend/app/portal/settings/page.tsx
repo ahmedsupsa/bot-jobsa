@@ -6,6 +6,7 @@ import { portalFetch, clearToken } from "@/lib/portal-auth";
 import {
   Mail, CheckCircle, XCircle, Globe, Languages,
   FileText, User, ClipboardList, ArrowRight, Shield,
+  LogOut, Trash2, AlertTriangle, Loader2, X, Lock,
 } from "lucide-react";
 
 interface Settings {
@@ -20,7 +21,11 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [emailInput, setEmailInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingLang, setSavingLang] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   async function loadSettings() {
     try {
@@ -47,6 +52,51 @@ export default function SettingsPage() {
     finally { setSaving(false); }
   }
 
+  async function changeLanguage(lang: "ar" | "en") {
+    if (settings?.application_language === lang) return;
+    setSavingLang(true); setMsg(null);
+    try {
+      const res = await portalFetch("/settings", {
+        method: "POST",
+        body: JSON.stringify({ application_language: lang }),
+      });
+      if (res.ok) {
+        setMsg({ text: `تم تغيير لغة التقديم إلى ${lang === "ar" ? "العربية" : "English"}`, type: "ok" });
+        await loadSettings();
+      } else {
+        const d = await res.json();
+        setMsg({ text: d.error || "فشل التغيير", type: "err" });
+      }
+    } catch { setMsg({ text: "خطأ في الاتصال", type: "err" }); }
+    finally { setSavingLang(false); }
+  }
+
+  function handleLogout() {
+    if (!confirm("تأكيد تسجيل الخروج؟")) return;
+    clearToken();
+    router.replace("/portal/login");
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirm !== "حذف") return;
+    setDeleting(true);
+    try {
+      const res = await portalFetch("/account", { method: "DELETE" });
+      const d = await res.json();
+      if (res.ok && d.ok) {
+        clearToken();
+        alert("تم حذف حسابك بنجاح");
+        router.replace("/portal/login");
+      } else {
+        alert(d.error || "فشل حذف الحساب");
+        setDeleting(false);
+      }
+    } catch {
+      alert("خطأ في الاتصال");
+      setDeleting(false);
+    }
+  }
+
   return (
     <PortalShell>
       <div style={s.page}>
@@ -54,7 +104,7 @@ export default function SettingsPage() {
           <div style={s.headerIcon}><Mail size={22} strokeWidth={1.5} color="#fff" /></div>
           <div>
             <h1 style={s.title}>الإعدادات</h1>
-            <p style={s.sub}>اربط إيميلك لتفعيل التقديم التلقائي</p>
+            <p style={s.sub}>أدر حسابك وتفضيلاتك</p>
           </div>
         </div>
 
@@ -72,7 +122,7 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {/* Email card */}
+            {/* Email */}
             <div style={s.card}>
               <div style={s.cardHeader}>
                 <div style={s.cardHeaderIcon}><Mail size={18} strokeWidth={1.5} color="#fff" /></div>
@@ -98,8 +148,7 @@ export default function SettingsPage() {
                   <Mail size={16} strokeWidth={1.5} color="#444" style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)" } as any} />
                   <input
                     style={s.input}
-                    type="email"
-                    dir="ltr"
+                    type="email" dir="ltr"
                     placeholder="example@gmail.com"
                     value={emailInput}
                     onChange={e => setEmailInput(e.target.value)}
@@ -113,6 +162,33 @@ export default function SettingsPage() {
               <div style={s.noteRow}>
                 <Shield size={14} strokeWidth={1.5} color="#555" style={{ flexShrink: 0 }} />
                 <p style={s.noteText}>نُنشئ عنوان إرسال خاص بك — إيميلك الشخصي لن يظهر للشركات.</p>
+              </div>
+            </div>
+
+            {/* Language */}
+            <div style={s.card}>
+              <div style={s.cardHeader}>
+                <div style={s.cardHeaderIcon}><Languages size={18} strokeWidth={1.5} color="#fff" /></div>
+                <div>
+                  <p style={s.cardTitle}>لغة التقديم</p>
+                  <p style={s.cardSub}>اللغة التي ستُرسل بها طلبات التوظيف</p>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <LangBtn
+                  active={settings?.application_language !== "en"}
+                  onClick={() => changeLanguage("ar")}
+                  disabled={savingLang}
+                  label="العربية"
+                  sub="رسائل بالعربي"
+                />
+                <LangBtn
+                  active={settings?.application_language === "en"}
+                  onClick={() => changeLanguage("en")}
+                  disabled={savingLang}
+                  label="English"
+                  sub="Messages in English"
+                />
               </div>
             </div>
 
@@ -143,10 +219,136 @@ export default function SettingsPage() {
                 </button>
               ))}
             </div>
+
+            {/* Security note (no password) */}
+            <div style={s.card}>
+              <div style={s.cardHeader}>
+                <div style={s.cardHeaderIcon}><Lock size={18} strokeWidth={1.5} color="#fff" /></div>
+                <div>
+                  <p style={s.cardTitle}>الأمان</p>
+                  <p style={s.cardSub}>تسجيل الدخول عبر إيميلك</p>
+                </div>
+              </div>
+              <p style={{ color: "#888", fontSize: 13, lineHeight: 1.7, margin: 0 }}>
+                نظامنا لا يستخدم كلمات سر. تسجيل الدخول يتم بإيميلك المربوط مباشرة، فلا حاجة لتذكر أي كلمة سر أو تغييرها.
+              </p>
+            </div>
+
+            {/* Danger zone */}
+            <div style={{ ...s.card, borderColor: "#ef444433" }}>
+              <div style={s.cardHeader}>
+                <div style={{ ...s.cardHeaderIcon, background: "#1f0a0a" }}><AlertTriangle size={18} strokeWidth={1.5} color="#f87171" /></div>
+                <div>
+                  <p style={{ ...s.cardTitle, color: "#f87171" }}>منطقة الخطر</p>
+                  <p style={s.cardSub}>إجراءات لا يمكن التراجع عنها</p>
+                </div>
+              </div>
+
+              <button onClick={handleLogout} style={s.dangerBtnSoft}>
+                <LogOut size={16} strokeWidth={1.5} />
+                تسجيل الخروج
+              </button>
+
+              <button onClick={() => setShowDelete(true)} style={s.dangerBtn}>
+                <Trash2 size={16} strokeWidth={1.5} />
+                حذف الحساب نهائياً
+              </button>
+            </div>
           </>
         )}
       </div>
+
+      {/* Delete confirmation modal */}
+      {showDelete && (
+        <div onClick={() => !deleting && setShowDelete(false)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 100,
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+        }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            background: "#0d0d0d", border: "1px solid #ef444444", borderRadius: 16,
+            padding: 24, width: "100%", maxWidth: 440,
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2 style={{ margin: 0, color: "#f87171", fontSize: 17, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                <AlertTriangle size={18} /> حذف الحساب
+              </h2>
+              <button onClick={() => setShowDelete(false)} disabled={deleting} style={{ background: "none", border: "none", color: "#666", cursor: "pointer" }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{
+              background: "rgba(239,68,68,0.08)", border: "1px solid #ef444433",
+              borderRadius: 10, padding: 14, marginBottom: 16,
+            }}>
+              <p style={{ margin: 0, color: "#fca5a5", fontSize: 13, lineHeight: 1.7 }}>
+                سيتم حذف كل بياناتك نهائياً وبدون رجعة:
+              </p>
+              <ul style={{ margin: "8px 0 0", paddingInlineStart: 18, color: "#fca5a5", fontSize: 12, lineHeight: 1.8 }}>
+                <li>السيرة الذاتية والتفضيلات</li>
+                <li>سجل التقديمات والاشتراك</li>
+                <li>برنامج الربح والعمولات المتراكمة</li>
+                <li>محادثات الدعم</li>
+              </ul>
+            </div>
+
+            <p style={{ color: "#aaa", fontSize: 13, margin: "0 0 8px" }}>
+              للتأكيد، اكتب كلمة <strong style={{ color: "#f87171" }}>حذف</strong> في الحقل التالي:
+            </p>
+            <input
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              placeholder="حذف"
+              disabled={deleting}
+              style={{
+                width: "100%", background: "#070707", border: "1px solid #1f1f1f",
+                borderRadius: 10, padding: "10px 12px", color: "#fff", fontSize: 14,
+                outline: "none", boxSizing: "border-box", marginBottom: 14,
+              }}
+            />
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setShowDelete(false)} disabled={deleting} style={{
+                flex: 1, background: "#1a1a1a", color: "#fff", border: "1px solid #2a2a2a",
+                borderRadius: 10, padding: "11px", fontSize: 14, fontWeight: 600,
+                cursor: "pointer", opacity: deleting ? 0.5 : 1,
+              }}>إلغاء</button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting || deleteConfirm !== "حذف"}
+                style={{
+                  flex: 1, background: deleteConfirm === "حذف" ? "#ef4444" : "#1a1a1a",
+                  color: deleteConfirm === "حذف" ? "#fff" : "#666",
+                  border: "none", borderRadius: 10, padding: "11px", fontSize: 14, fontWeight: 700,
+                  cursor: deleteConfirm === "حذف" ? "pointer" : "not-allowed",
+                  opacity: deleting ? 0.6 : 1,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                }}
+              >
+                {deleting && <Loader2 size={14} className="animate-spin" />}
+                {deleting ? "جاري الحذف..." : "حذف نهائي"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PortalShell>
+  );
+}
+
+function LangBtn({ active, onClick, disabled, label, sub }: { active: boolean; onClick: () => void; disabled: boolean; label: string; sub: string }) {
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      background: active ? "#0a1f0a" : "#141414",
+      border: `1px solid ${active ? "#22c55e" : "#2a2a2a"}`,
+      borderRadius: 12, padding: "12px 14px", cursor: disabled ? "wait" : "pointer",
+      textAlign: "right", opacity: disabled ? 0.6 : 1,
+    }}>
+      <p style={{ margin: 0, color: active ? "#22c55e" : "#fff", fontSize: 14, fontWeight: 700 }}>
+        {label} {active && <CheckCircle size={13} style={{ verticalAlign: "middle", marginInlineStart: 4 }} />}
+      </p>
+      <p style={{ margin: "3px 0 0", color: "#666", fontSize: 11 }}>{sub}</p>
+    </button>
   );
 }
 
@@ -215,4 +417,16 @@ const s: Record<string, React.CSSProperties> = {
     border: "none", borderBottom: "1px solid #1a1a1a", cursor: "pointer",
   },
   navBtnIcon: { width: 32, height: 32, borderRadius: 8, background: "#1a1a1a", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", flexShrink: 0 },
+  dangerBtnSoft: {
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+    width: "100%", padding: "12px", background: "#1a1a1a", color: "#ccc",
+    border: "1px solid #2a2a2a", borderRadius: 10, fontSize: 14, fontWeight: 600,
+    cursor: "pointer", marginBottom: 10,
+  },
+  dangerBtn: {
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+    width: "100%", padding: "12px", background: "#1f0a0a", color: "#f87171",
+    border: "1px solid #ef444433", borderRadius: 10, fontSize: 14, fontWeight: 600,
+    cursor: "pointer",
+  },
 };
