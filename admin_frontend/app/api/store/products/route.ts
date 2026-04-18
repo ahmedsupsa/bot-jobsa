@@ -15,6 +15,9 @@ export async function GET() {
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
 
-  const products = (data || []).filter((p) => p.is_active === true);
-  return NextResponse.json({ ok: true, products, _v: 2 });
+  const products = (data || [])
+    .filter((p) => p.is_active === true)
+    .map(({ is_active: _, ...rest }) => rest);
+
+  return NextResponse.json({ ok: true, products });
 }
