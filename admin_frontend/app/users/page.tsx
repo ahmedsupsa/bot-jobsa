@@ -3,7 +3,7 @@
 import Shell from "@/components/shell";
 import { apiGet, apiSend } from "@/lib/api";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Save, User, FileText, Upload, Check, Loader2, ChevronDown, ChevronUp, Tags } from "lucide-react";
+import { Search, Save, User, FileText, Upload, Check, Loader2, ChevronDown, ChevronUp, Tags, Calendar } from "lucide-react";
 
 type UserRow = {
   id: string;
@@ -60,6 +60,12 @@ export default function UsersPage() {
     setMsg("تم حفظ التفضيلات ✓"); setMsgType("ok");
   };
 
+  const saveSubscription = async (id: string, days: number) => {
+    await apiSend(`/api/admin/users/${id}/subscription`, "POST", { days });
+    setMsg(`تم تحديث الاشتراك (${days} يوم) ✓`); setMsgType("ok");
+    await load();
+  };
+
   return (
     <Shell>
       <div className="mb-5">
@@ -103,6 +109,7 @@ export default function UsersPage() {
                 onSaveEmail={updateEmail}
                 onUploadCv={uploadCv}
                 onSavePrefs={savePrefs}
+                onSaveSubscription={saveSubscription}
               />
             ))
           )}
@@ -117,11 +124,13 @@ function UserCard({
   onSaveEmail,
   onUploadCv,
   onSavePrefs,
+  onSaveSubscription,
 }: {
   user: UserRow;
   onSaveEmail: (id: string, email: string) => Promise<void>;
   onUploadCv: (id: string, file: File) => Promise<void>;
   onSavePrefs: (id: string, field_ids: string[]) => Promise<void>;
+  onSaveSubscription: (id: string, days: number) => Promise<void>;
 }) {
   const [email, setEmail] = useState(user.email || "");
   const [savingEmail, setSavingEmail] = useState(false);
@@ -130,6 +139,10 @@ function UserCard({
   const [cvName, setCvName] = useState("");
   const [err, setErr] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [subDays, setSubDays] = useState("");
+  const [savingSub, setSavingSub] = useState(false);
+  const [subSaved, setSubSaved] = useState(false);
 
   const [showPrefs, setShowPrefs] = useState(false);
   const [fields, setFields] = useState<Field[]>([]);
@@ -177,6 +190,18 @@ function UserCard({
       setTimeout(() => setEmailSaved(false), 2500);
     } catch (e) { setErr(String(e)); }
     finally { setSavingEmail(false); }
+  };
+
+  const handleSaveSub = async () => {
+    const d = parseInt(subDays);
+    if (!d || d < 1) return;
+    setSavingSub(true); setErr("");
+    try {
+      await onSaveSubscription(user.id, d);
+      setSubSaved(true); setSubDays("");
+      setTimeout(() => setSubSaved(false), 2500);
+    } catch (e) { setErr(String(e)); }
+    finally { setSavingSub(false); }
   };
 
   const handleCvChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -230,6 +255,30 @@ function UserCard({
           >
             {savingEmail ? <Loader2 size={12} className="animate-spin" /> : emailSaved ? <Check size={12} className="text-emerald-400" /> : <Save size={12} />}
             {savingEmail ? "..." : emailSaved ? "تم" : "حفظ"}
+          </button>
+        </div>
+
+        {/* Subscription edit */}
+        <div className="flex gap-2 items-center">
+          <Calendar size={13} className="text-slate-500 shrink-0" />
+          <span className="text-xs text-slate-500 shrink-0">
+            {user.subscription_ends_at ? `ينتهي: ${new Date(user.subscription_ends_at).toLocaleDateString("ar")}` : "لا اشتراك"}
+          </span>
+          <input
+            type="number"
+            min="1"
+            value={subDays}
+            onChange={(e) => setSubDays(e.target.value)}
+            placeholder="أيام جديدة"
+            className="w-24 rounded-xl border border-line/70 bg-panel2 px-2 py-1.5 text-xs text-center placeholder:text-slate-600 focus:border-accent/50 focus:outline-none"
+          />
+          <button
+            onClick={handleSaveSub}
+            disabled={savingSub || !subDays}
+            className="flex items-center gap-1 rounded-xl border border-blue-500/30 bg-blue-950/30 px-3 py-1.5 text-xs text-blue-300 hover:bg-blue-900/40 transition-colors disabled:opacity-40 whitespace-nowrap"
+          >
+            {savingSub ? <Loader2 size={11} className="animate-spin" /> : subSaved ? <Check size={11} className="text-emerald-400" /> : <Save size={11} />}
+            {subSaved ? "تم" : "تعيين"}
           </button>
         </div>
 
