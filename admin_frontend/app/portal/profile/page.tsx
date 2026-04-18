@@ -143,7 +143,7 @@ const s: Record<string, React.CSSProperties> = {
     padding: "8px 16px", borderRadius: 24, border: "1px solid",
     fontSize: 13, fontWeight: 600,
   },
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px,1fr))", gap: 14 },
+  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: 14 },
   linkBtn: {
     display: "flex", alignItems: "center", gap: 8,
     background: "#fff", color: "#0a0a0a",
