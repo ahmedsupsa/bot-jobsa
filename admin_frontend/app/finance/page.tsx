@@ -429,3 +429,4 @@ function OrdersTable({ rows, totalLabel, totalValue, totalColor }: {
 
 const th: React.CSSProperties = { textAlign: "right", padding: "10px 12px", fontWeight: 600, fontSize: 11 };
 const td: React.CSSProperties = { padding: "10px 12px", color: "#ccc" };
+
