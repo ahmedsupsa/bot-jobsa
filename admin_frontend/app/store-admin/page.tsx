@@ -159,11 +159,17 @@ export default function StoreAdminPage() {
 
   const deleteProduct = async (id: string) => {
     if (!confirm("حذف هذا المنتج؟")) return;
-    await fetch(`${API_BASE}/api/admin/store/products`, {
+    const res = await fetch(`${API_BASE}/api/admin/store/products`, {
       method: "DELETE", credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
+    const j = await res.json().catch(() => ({}));
+    if (!j.ok) {
+      alert("فشل الحذف: " + (j.error || "خطأ غير معروف"));
+    } else if (j.note) {
+      alert(j.note);
+    }
     await loadProducts();
   };
 
