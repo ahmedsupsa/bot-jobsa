@@ -2,7 +2,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import { clearToken } from "@/lib/portal-auth";
 import {
-  Home, ClipboardList, FileText, User, Settings, LogOut, Briefcase, SlidersHorizontal,
+  Home, ClipboardList, FileText, User, Settings, LogOut, Briefcase, SlidersHorizontal, MessageCircle,
 } from "lucide-react";
 
 const NAV = [
@@ -10,6 +10,7 @@ const NAV = [
   { href: "/portal/applications", icon: ClipboardList, label: "التقديمات" },
   { href: "/portal/cv", icon: FileText, label: "السيرة" },
   { href: "/portal/preferences", icon: SlidersHorizontal, label: "تفضيلات" },
+  { href: "/portal/support", icon: MessageCircle, label: "الدعم" },
   { href: "/portal/profile", icon: User, label: "حسابي" },
   { href: "/portal/settings", icon: Settings, label: "الإعدادات" },
 ];
