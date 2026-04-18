@@ -16,7 +16,7 @@ export async function GET() {
         .limit(12),
       supabase
         .from("users")
-        .select("id,full_name,telegram_id,created_at")
+        .select("id,full_name,created_at")
         .order("created_at", { ascending: false })
         .limit(8),
     ]);
@@ -47,7 +47,6 @@ export async function GET() {
     recent_applications: appItems,
     recent_users: (recentUsers || []).map((u: any) => ({
       name: u.full_name || "—",
-      telegram_id: u.telegram_id,
       created_at: u.created_at || "—",
     })),
   });
