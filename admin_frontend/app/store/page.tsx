@@ -34,12 +34,27 @@ export default function StorePage() {
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
   const [submitting, setSubmitting] = useState(false);
   const [formErr, setFormErr] = useState("");
+  const [refCode, setRefCode] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/store/products")
       .then(r => r.json())
       .then(j => { setProducts(j.products || []); setLoading(false); })
       .catch(() => setLoading(false));
+
+    // Capture referral code from URL or localStorage
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get("ref");
+      if (ref) {
+        const clean = ref.trim().toUpperCase();
+        localStorage.setItem("jobbots_ref", clean);
+        setRefCode(clean);
+      } else {
+        const stored = localStorage.getItem("jobbots_ref");
+        if (stored) setRefCode(stored);
+      }
+    }
   }, []);
 
   const handleBuy = (p: Product) => {
@@ -68,6 +83,7 @@ export default function StorePage() {
           name: form.name.trim(),
           email: form.email.trim().toLowerCase(),
           phone: form.phone.trim() || undefined,
+          ref_code: refCode || undefined,
         }),
       });
       const j = await r.json();
