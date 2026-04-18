@@ -133,6 +133,30 @@ export async function POST(req: Request) {
       }
     } catch {}
 
+    // Track affiliate commission if order has ref_code
+    if (order.ref_code) {
+      try {
+        const { data: aff } = await supabase
+          .from("affiliates")
+          .select("user_id")
+          .eq("code", order.ref_code)
+          .maybeSingle();
+        if (aff?.user_id) {
+          const amount = Number(order.amount || 0);
+          const commission = Math.round(amount * 0.10 * 100) / 100;
+          await supabase.from("affiliate_referrals").insert({
+            affiliate_user_id: aff.user_id,
+            order_id: order.id,
+            amount,
+            commission,
+            status: "pending",
+          });
+        }
+      } catch (e) {
+        console.error("Affiliate commission error:", e);
+      }
+    }
+
     return NextResponse.json({ ok: true, activation_code, order: { ...order, status: "paid" } });
   } catch (err) {
     console.error("Verify error:", err);
