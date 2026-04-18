@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { PWARegister } from "@/components/pwa-register";
 
 export const metadata: Metadata = {
   title: "Jobbots — بوت التقديم التلقائي على الوظائف بالذكاء الاصطناعي",
@@ -24,6 +25,22 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://jobbots.org",
   },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Jobbots",
+  },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+    shortcut: "/icon.svg",
+  },
+  applicationName: "Jobbots",
+  formatDetection: { telephone: false },
 };
 
 export const viewport = {
@@ -50,6 +67,7 @@ export default function RootLayout({
       </head>
       <body style={{ fontFamily: "'Tajawal', 'Segoe UI', Tahoma, sans-serif" }}>
         {children}
+        <PWARegister />
       </body>
     </html>
   );
