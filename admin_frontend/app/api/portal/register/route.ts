@@ -27,7 +27,8 @@ export async function POST(req: Request) {
     .limit(1);
 
   const codeRow = codeRows?.[0];
-  if (!codeRow || codeRow.used) {
+  // Reject if: code not found, OR already fully used (used=true AND linked to a user)
+  if (!codeRow || (codeRow.used && codeRow.used_by_user_id)) {
     return NextResponse.json({ error: "كود التفعيل غير صالح أو مستخدم مسبقاً" }, { status: 400 });
   }
 
