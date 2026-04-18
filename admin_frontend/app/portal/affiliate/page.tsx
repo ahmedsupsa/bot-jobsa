@@ -48,8 +48,6 @@ interface AffiliateData {
   min_withdraw: number;
 }
 
-const WALLET_PROVIDERS = ["STC Pay", "urpay", "Tabby Wallet", "Apple Pay", "Mada Pay"];
-
 export default function AffiliatePage() {
   const [data, setData] = useState<AffiliateData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,7 +56,7 @@ export default function AffiliatePage() {
   const [showAccount, setShowAccount] = useState(false);
   const [accMethod, setAccMethod] = useState<Method>("bank");
   const [bankForm, setBankForm] = useState({ bank_name: "", iban: "", account_holder: "" });
-  const [walletForm, setWalletForm] = useState({ wallet_provider: "STC Pay", wallet_number: "", account_holder: "" });
+  const [walletForm, setWalletForm] = useState({ wallet_provider: "", wallet_number: "", account_holder: "" });
   const [savingAcc, setSavingAcc] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
   const [previewProof, setPreviewProof] = useState<string | null>(null);
@@ -76,7 +74,7 @@ export default function AffiliatePage() {
           account_holder: j.account_holder || j.user_full_name || "",
         });
         setWalletForm({
-          wallet_provider: j.wallet_provider || "STC Pay",
+          wallet_provider: j.wallet_provider || "",
           wallet_number: j.wallet_number || "",
           account_holder: j.account_holder || j.user_full_name || "",
         });
@@ -441,20 +439,7 @@ export default function AffiliatePage() {
                 </>
               ) : (
                 <>
-                  <div>
-                    <label style={{ display: "block", color: "#888", fontSize: 12, marginBottom: 6 }}>نوع المحفظة</label>
-                    <select
-                      value={walletForm.wallet_provider}
-                      onChange={(e) => setWalletForm({ ...walletForm, wallet_provider: e.target.value })}
-                      style={{
-                        width: "100%", background: "#070707", border: "1px solid #1f1f1f",
-                        borderRadius: 10, padding: "10px 12px", color: "#fff", fontSize: 14,
-                        outline: "none", boxSizing: "border-box",
-                      }}
-                    >
-                      {WALLET_PROVIDERS.map((p) => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </div>
+                  <Input label="اسم المحفظة" value={walletForm.wallet_provider} onChange={(v) => setWalletForm({ ...walletForm, wallet_provider: v })} placeholder="مثلاً: STC Pay، urpay، باي بال..." />
                   <Input label="اسم صاحب الحساب" value={walletForm.account_holder} onChange={(v) => setWalletForm({ ...walletForm, account_holder: v })} placeholder="الاسم الكامل" />
                   <Input label="رقم الجوال المسجّل" value={walletForm.wallet_number} onChange={(v) => setWalletForm({ ...walletForm, wallet_number: v })} placeholder="05XXXXXXXX" mono />
                 </>
