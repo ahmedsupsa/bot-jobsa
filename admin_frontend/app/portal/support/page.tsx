@@ -21,7 +21,7 @@ export default function SupportPage() {
 
   const load = async () => {
     try {
-      const r = await portalFetch("/api/portal/support");
+      const r = await portalFetch("/support");
       const j = await r.json();
       if (j.ok) setMessages(j.messages || []);
     } catch {}
@@ -44,7 +44,7 @@ export default function SupportPage() {
     setSending(true);
     setInput("");
     try {
-      const r = await portalFetch("/api/portal/support", {
+      const r = await portalFetch("/support", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: text }),
