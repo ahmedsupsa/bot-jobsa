@@ -45,21 +45,29 @@ export async function POST(req: Request) {
   const subscription_days = codeRow.subscription_days || 30;
   const ends_at = new Date(Date.now() + subscription_days * 86400000).toISOString();
 
-  // Use a unique negative telegram_id for web-registered users (avoids conflict with real Telegram IDs)
-  const web_telegram_id = -(Date.now() % 2147483647);
+  const baseInsert = {
+    activation_code_id: code_id,
+    subscription_ends_at: ends_at,
+    full_name,
+    phone,
+    age: age || null,
+    city,
+  };
 
-  const { data: userRows, error: userErr } = await supabase
+  let { data: userRows, error: userErr } = await supabase
     .from("users")
-    .insert({
-      telegram_id: web_telegram_id,
-      activation_code_id: code_id,
-      subscription_ends_at: ends_at,
-      full_name,
-      phone,
-      age: age || null,
-      city,
-    })
+    .insert(baseInsert)
     .select("*");
+
+  // Fallback: if telegram_id column still exists and is NOT NULL, insert with a unique placeholder
+  if (userErr && (userErr.message.includes("telegram_id") || userErr.message.includes("null value"))) {
+    const fallback = await supabase
+      .from("users")
+      .insert({ ...baseInsert, telegram_id: -(Date.now() % 2147483647 + Math.floor(Math.random() * 99999)) })
+      .select("*");
+    userRows = fallback.data;
+    userErr = fallback.error;
+  }
 
   if (userErr || !userRows?.[0]) {
     console.error("Register insert error:", userErr?.message);
