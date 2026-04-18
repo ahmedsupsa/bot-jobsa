@@ -120,7 +120,7 @@ export default function EmailTestPage() {
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,1fr) minmax(320px,2fr)", gap: 20, alignItems: "start" }}>
+        <div className="email-test-grid" style={{ display: "grid", gridTemplateColumns: "minmax(280px,1fr) minmax(320px,2fr)", gap: 20, alignItems: "start" }}>
 
           {/* Controls Panel */}
           <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20, display: "flex", flexDirection: "column", gap: 18 }}>
@@ -261,7 +261,12 @@ export default function EmailTestPage() {
         </div>
       </div>
 
-      <style>{`@keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }`}</style>
+      <style>{`
+        @keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+        @media (max-width: 760px) {
+          .email-test-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }

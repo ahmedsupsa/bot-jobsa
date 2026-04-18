@@ -128,7 +128,7 @@ const s: Record<string, React.CSSProperties> = {
   hero: {
     display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap",
     background: "#111", border: "1px solid #1f1f1f",
-    borderRadius: 18, padding: "28px 32px", marginBottom: 24,
+    borderRadius: 18, padding: "24px 22px", marginBottom: 24,
   },
   avatar: {
     width: 64, height: 64, borderRadius: 16, background: "#fff",

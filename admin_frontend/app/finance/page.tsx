@@ -174,7 +174,7 @@ export default function FinancePage() {
         </div>
 
         {loading && !data ? (
-          <div style={{ color: "#555", textAlign: "center", padding: 80 }}>جاري التحميل...</div>
+          <div style={{ color: "#555", textAlign: "center", padding: "60px 20px" }}>جاري التحميل...</div>
         ) : data ? (
           <>
             {/* Top: Net Revenue Hero Cards */}
@@ -255,7 +255,7 @@ export default function FinancePage() {
                 </div>
 
                 {/* Chart + By Product */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 14, marginBottom: 18, alignItems: "start" }}>
+                <div className="finance-chart-grid" style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 14, marginBottom: 18, alignItems: "start" }}>
                   <StackedBarChart data={data.chart} />
                   <div style={{ background: "#111", border: "1px solid #222", borderRadius: 16, padding: 24 }}>
                     <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 700, margin: "0 0 18px", display: "flex", alignItems: "center", gap: 8 }}>
@@ -368,7 +368,12 @@ export default function FinancePage() {
           <p style={{ color: "#f87171", textAlign: "center" }}>تعذّر تحميل البيانات</p>
         )}
       </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 900px) {
+          .finance-chart-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </Shell>
   );
 }

@@ -129,7 +129,7 @@ const s: Record<string, React.CSSProperties> = {
   main: { flex: 1, padding: "60px 24px" },
   inner: { maxWidth: 760, margin: "0 auto" },
   badge: { display: "inline-block", background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 100, padding: "4px 14px", fontSize: 12, color: "#888", marginBottom: 16 },
-  title: { fontSize: 38, fontWeight: 900, color: "#fff", margin: "0 0 10px" },
+  title: { fontSize: "clamp(26px, 6vw, 38px)", fontWeight: 900, color: "#fff", margin: "0 0 10px" },
   lastUpdate: { color: "#444", fontSize: 13, margin: "0 0 48px" },
   content: {},
   list: { marginTop: 10, paddingRight: 20, display: "flex", flexDirection: "column", gap: 8 } as React.CSSProperties,

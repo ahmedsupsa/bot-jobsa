@@ -202,7 +202,7 @@ export default function Dashboard() {
         )}
 
         {/* Two-column layout */}
-        <div style={s.twoCol}>
+        <div style={s.twoCol} className="dashboard-two-col">
           {/* Recent applications */}
           <div style={s.card}>
             <div style={s.cardHeader}>
@@ -251,6 +251,11 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      <style>{`
+        @media (max-width: 900px) {
+          .dashboard-two-col { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </PortalShell>
   );
 }

@@ -298,7 +298,7 @@ const s: Record<string, React.CSSProperties> = {
   cardName: { color: "#e5e7eb", fontSize: 16, fontWeight: 700, margin: 0, letterSpacing: "-0.2px" },
   savingsBadge: { background: "rgba(34,197,94,0.12)", color: "#86efac", border: "1px solid rgba(34,197,94,0.3)", padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" },
   cardPrice: { display: "flex", alignItems: "flex-end", gap: 8, position: "relative", zIndex: 1 },
-  priceNum: { fontSize: 50, fontWeight: 900, color: "#fff", lineHeight: 0.9, letterSpacing: "-2px" },
+  priceNum: { fontSize: "clamp(38px, 9vw, 50px)", fontWeight: 900, color: "#fff", lineHeight: 0.9, letterSpacing: "-2px" },
   priceMeta: { display: "flex", flexDirection: "column", gap: 2, paddingBottom: 4 },
   priceCurr: { fontSize: 13, color: "#888", fontWeight: 700 },
   priceDur: { fontSize: 11, color: "#666", fontWeight: 500 },

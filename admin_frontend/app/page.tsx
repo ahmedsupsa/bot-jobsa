@@ -118,7 +118,7 @@ export default function LandingPage() {
           <p style={s.sectionDesc}>
             منصة Jobbots مصممة لتوفير وقتك وزيادة فرصك في سوق العمل السعودي
           </p>
-          <div style={s.featureGrid}>
+          <div style={s.featureGrid} className="features-grid">
             {features.map((f, i) => (
               <div key={i} style={s.featureCard}>
                 <div style={s.featureIcon}>{f.icon}</div>
@@ -138,7 +138,7 @@ export default function LandingPage() {
           <p style={s.sectionDesc}>
             إعداد بسيط وسريع، وبعدها Jobbots يتكفل بكل شيء
           </p>
-          <div style={s.stepsGrid}>
+          <div style={s.stepsGrid} className="steps-grid">
             {steps.map((st, i) => (
               <div key={i} style={s.stepCard}>
                 <div style={s.stepNum}>{st.num}</div>
@@ -207,11 +207,12 @@ export default function LandingPage() {
         * { box-sizing: border-box; }
         a { text-decoration: none; }
         body { font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif !important; }
-        @media (max-width: 768px) {
-          .hero-title { font-size: 36px !important; }
+        @media (max-width: 900px) {
           .features-grid { grid-template-columns: 1fr 1fr !important; }
-          .steps-grid { grid-template-columns: 1fr !important; }
-          .hero-ctas { flex-direction: column !important; align-items: stretch !important; }
+          .steps-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+        }
+        @media (max-width: 600px) {
+          .features-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>
@@ -233,7 +234,7 @@ const s: Record<string, React.CSSProperties> = {
   /* HERO */
   hero: { maxWidth: 860, margin: "0 auto", padding: "100px 24px 80px", textAlign: "center" },
   heroBadge: { display: "inline-flex", alignItems: "center", gap: 6, background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 100, padding: "6px 14px", fontSize: 13, color: "#999", marginBottom: 32 },
-  heroTitle: { fontSize: 60, fontWeight: 900, lineHeight: 1.2, margin: "0 0 20px", color: "#fff" },
+  heroTitle: { fontSize: "clamp(34px, 7vw, 60px)", fontWeight: 900, lineHeight: 1.2, margin: "0 0 20px", color: "#fff" },
   heroAccent: { color: "#fff", opacity: 0.45 },
   heroSub: { fontSize: 18, color: "#666", lineHeight: 1.9, margin: "0 0 40px" },
   heroCtas: { display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 60 },
@@ -247,7 +248,7 @@ const s: Record<string, React.CSSProperties> = {
     border: "1px solid #2a2a2a", color: "#888", padding: "14px 24px",
     borderRadius: 12, fontSize: 14, cursor: "pointer",
   },
-  heroStats: { display: "flex", justifyContent: "center", gap: 60, borderTop: "1px solid #1a1a1a", paddingTop: 40 },
+  heroStats: { display: "flex", justifyContent: "center", gap: 40, borderTop: "1px solid #1a1a1a", paddingTop: 40, flexWrap: "wrap" },
   heroStat: { textAlign: "center" },
   heroStatVal: { fontSize: 28, fontWeight: 800, color: "#fff", marginBottom: 4 },
   heroStatLabel: { fontSize: 13, color: "#555" },
@@ -256,7 +257,7 @@ const s: Record<string, React.CSSProperties> = {
   section: { padding: "80px 24px" },
   sectionInner: { maxWidth: 1100, margin: "0 auto" },
   sectionTag: { display: "inline-block", background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 100, padding: "4px 14px", fontSize: 12, color: "#888", marginBottom: 16 },
-  sectionTitle: { fontSize: 36, fontWeight: 800, color: "#fff", margin: "0 0 12px", textAlign: "center" },
+  sectionTitle: { fontSize: "clamp(24px, 5vw, 36px)", fontWeight: 800, color: "#fff", margin: "0 0 12px", textAlign: "center" },
   sectionDesc: { fontSize: 16, color: "#555", textAlign: "center", margin: "0 0 48px", lineHeight: 1.7 },
 
   /* FEATURES */
@@ -281,7 +282,7 @@ const s: Record<string, React.CSSProperties> = {
   /* CTA BANNER */
   ctaBanner: { padding: "80px 24px", background: "#0a0a0a", borderTop: "1px solid #1a1a1a" },
   ctaBannerInner: { maxWidth: 600, margin: "0 auto", textAlign: "center" },
-  ctaBannerTitle: { fontSize: 32, fontWeight: 800, color: "#fff", margin: "0 0 12px" },
+  ctaBannerTitle: { fontSize: "clamp(22px, 5vw, 32px)", fontWeight: 800, color: "#fff", margin: "0 0 12px" },
   ctaBannerSub: { fontSize: 16, color: "#555", margin: "0 0 32px", lineHeight: 1.7 },
   ctaBannerBtn: {
     display: "inline-flex", alignItems: "center", gap: 8,
