@@ -16,7 +16,7 @@ type Summary = {
     announcements_active: number;
   };
   recent_applications: Array<{ user_name: string; job_title: string; applied_at: string }>;
-  recent_users: Array<{ name: string; telegram_id: number; created_at: string }>;
+  recent_users: Array<{ name: string; created_at: string }>;
 };
 
 type BotStatus = {
@@ -455,7 +455,6 @@ export default function Dashboard() {
                 <div key={i} className="px-5 py-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-white truncate">{u.name}</div>
-                    <div className="text-xs text-slate-500">ID: {u.telegram_id}</div>
                   </div>
                   <div className="text-xs text-slate-600 whitespace-nowrap">{u.created_at?.slice(0, 10)}</div>
                 </div>
