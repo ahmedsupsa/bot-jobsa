@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("users"); if (_denied_) return _denied_;
 
   const uid = params.id;
   const formData = await req.formData();

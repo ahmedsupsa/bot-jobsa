@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 import webpush from "web-push";
 
 export const dynamic = "force-dynamic";
@@ -126,7 +126,7 @@ function matchesSegment(user: UserData | undefined, segment: Segment): boolean {
 // ── GET — segment counts ──────────────────────────────────────────────────────
 
 export async function GET() {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("notifications"); if (_denied_) return _denied_;
 
   const { data: subs } = await supabase.from("push_subscriptions").select("user_id");
   if (!subs?.length) {
@@ -148,7 +148,7 @@ export async function GET() {
 // ── POST — send smart notification ───────────────────────────────────────────
 
 export async function POST(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("notifications"); if (_denied_) return _denied_;
 
   const body = await req.json().catch(() => ({}));
   const { segment, customTitle, customBody, customUrl } = body as {

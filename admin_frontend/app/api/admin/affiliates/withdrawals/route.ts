@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ function freshClient() {
 }
 
 export async function GET() {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("affiliate"); if (_denied_) return _denied_;
   const supabase = freshClient();
 
   const { data: withdrawals, error } = await supabase
@@ -41,7 +41,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("affiliate"); if (_denied_) return _denied_;
   const { withdrawal_id, action, notes } = await req.json();
   if (!withdrawal_id) return NextResponse.json({ ok: false, error: "withdrawal_id مطلوب" }, { status: 400 });
   const supabase = freshClient();

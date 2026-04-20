@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 import webpush from "web-push";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ function initVapid() {
 }
 
 export async function GET(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("support"); if (_denied_) return _denied_;
   const url = new URL(req.url);
   const userId = url.searchParams.get("user_id");
   if (!userId) return NextResponse.json({ ok: false, error: "user_id مطلوب" }, { status: 400 });
@@ -53,7 +53,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("support"); if (_denied_) return _denied_;
   const { user_id, content } = await req.json();
   if (!user_id || !content?.trim()) {
     return NextResponse.json({ ok: false, error: "user_id والمحتوى مطلوبان" }, { status: 400 });

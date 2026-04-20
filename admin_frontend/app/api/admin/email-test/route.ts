@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "";
@@ -83,7 +83,7 @@ async function generateCoverLetter(
 
 // GET /api/admin/email-test — return users + jobs for the dropdowns
 export async function GET() {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("email-test"); if (_denied_) return _denied_;
 
   const [{ data: users }, { data: jobs }] = await Promise.all([
     supabase
@@ -118,7 +118,7 @@ export async function GET() {
 
 // POST /api/admin/email-test — action: connection | preview | send
 export async function POST(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("email-test"); if (_denied_) return _denied_;
 
   const body = await req.json().catch(() => ({}));
   const { action } = body;

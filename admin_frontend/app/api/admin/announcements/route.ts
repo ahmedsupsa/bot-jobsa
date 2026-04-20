@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 
 export async function GET() {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("templates"); if (_denied_) return _denied_;
   const { data } = await supabase
     .from("admin_announcements")
     .select("*")
@@ -12,7 +12,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("templates"); if (_denied_) return _denied_;
   const body = await req.json().catch(() => ({}));
   const { error } = await supabase.from("admin_announcements").insert({
     text_ar: body.text_ar || "",
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("templates"); if (_denied_) return _denied_;
   const { id } = await req.json().catch(() => ({}));
   if (!id) return NextResponse.json({ ok: false, error: "id required" }, { status: 400 });
   await supabase.from("admin_announcements").delete().eq("id", id);

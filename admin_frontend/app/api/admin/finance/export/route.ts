@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 import ExcelJS from "exceljs";
 
 export const dynamic = "force-dynamic";
@@ -87,7 +87,7 @@ function tableHeader(ws: ExcelJS.Worksheet, row: number, headers: string[]) {
 }
 
 export async function GET() {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("finance"); if (_denied_) return _denied_;
   const supabase = freshClient();
 
   const { data: rawOrders } = await supabase

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 import webpush from "web-push";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ function initVapid() {
 }
 
 export async function POST(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("notifications"); if (_denied_) return _denied_;
 
   const body = await req.json().catch(() => ({}));
   const { title, body: msgBody, url } = body;
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("notifications"); if (_denied_) return _denied_;
   const { count } = await supabase
     .from("push_subscriptions")
     .select("*", { count: "exact", head: true });

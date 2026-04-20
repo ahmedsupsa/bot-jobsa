@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 import { createProduct } from "@/lib/streampay";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ function freshClient() {
 }
 
 export async function GET() {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("store"); if (_denied_) return _denied_;
   const supabase = freshClient();
   const { data, error } = await supabase
     .from("store_products")
@@ -23,7 +23,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("store"); if (_denied_) return _denied_;
   const supabase = freshClient();
   const body = await req.json();
   const { name, description, price, duration_days } = body;
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("store"); if (_denied_) return _denied_;
   const supabase = freshClient();
   const body = await req.json();
   const { id, name, description, price, duration_days, streampay_product_id, is_active } = body;
@@ -79,7 +79,7 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("store"); if (_denied_) return _denied_;
   const supabase = freshClient();
   const { id } = await req.json();
   if (!id) return NextResponse.json({ ok: false, error: "id مطلوب" }, { status: 400 });

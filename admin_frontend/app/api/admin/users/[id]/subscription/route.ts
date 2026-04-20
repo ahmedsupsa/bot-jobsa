@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("users"); if (_denied_) return _denied_;
   const { days } = await req.json().catch(() => ({}));
   if (!days || isNaN(Number(days))) return NextResponse.json({ error: "أدخل عدد الأيام" }, { status: 400 });
 

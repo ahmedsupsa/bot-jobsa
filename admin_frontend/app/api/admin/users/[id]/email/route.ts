@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("users"); if (_denied_) return _denied_;
 
   const body = await req.json().catch(() => ({}));
   const email = (body.email || "").trim().toLowerCase();

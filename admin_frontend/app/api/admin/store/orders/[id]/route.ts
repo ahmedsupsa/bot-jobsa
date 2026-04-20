@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 import { makeToken } from "@/lib/auth";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
@@ -299,7 +299,7 @@ async function sendActivationEmail(
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("store"); if (_denied_) return _denied_;
 
   const { id } = params;
   const body = await req.json();
@@ -333,7 +333,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("store"); if (_denied_) return _denied_;
   const { id } = params;
   const supabase = freshClient();
   const { error } = await supabase.from("store_orders").delete().eq("id", id);

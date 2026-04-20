@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
@@ -29,7 +29,7 @@ async function generateSpecializations(titleAr: string, descAr: string): Promise
 }
 
 export async function GET() {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("jobs"); if (_denied_) return _denied_;
   const { data: jobs, error } = await supabase
     .from("admin_jobs")
     .select("*")
@@ -39,7 +39,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("jobs"); if (_denied_) return _denied_;
   const body = await req.json().catch(() => ({}));
 
   const titleAr = (body.title_ar || "").trim();
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("jobs"); if (_denied_) return _denied_;
   const { id } = await req.json().catch(() => ({}));
   if (!id) return NextResponse.json({ ok: false, error: "id required" }, { status: 400 });
   await supabase.from("admin_jobs").delete().eq("id", id);

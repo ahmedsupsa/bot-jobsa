@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +11,8 @@ function freshClient() {
 }
 
 export async function GET() {
-  const admin = requireAdminSession();
-  if (!admin) return unauthorizedResponse();
+  const admin = enforcePermission();
+  if (!admin) return enforcePermission();
 
   const supabase = freshClient();
   const { data, error } = await supabase
@@ -26,8 +26,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const admin = requireAdminSession();
-  if (!admin) return unauthorizedResponse();
+  const admin = enforcePermission();
+  if (!admin) return enforcePermission();
 
   const body = await req.json();
   const { type, name, account_number, iban, phone, display_order } = body;

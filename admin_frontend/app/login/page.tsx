@@ -2,10 +2,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Lock, ArrowRight, Key, Users, BriefcaseBusiness, Megaphone, Loader2 } from "lucide-react";
+import { Lock, ArrowRight, Key, Users, BriefcaseBusiness, Megaphone, Loader2, User } from "lucide-react";
 
 export default function AdminLogin() {
   const router = useRouter();
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -18,10 +19,10 @@ export default function AdminLogin() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username, password }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "كلمة المرور غير صحيحة"); return; }
+      if (!res.ok) { setError(data.error || "بيانات الدخول غير صحيحة"); return; }
       router.replace("/admin");
     } catch { setError("خطأ في الاتصال بالخادم"); }
     finally { setLoading(false); }
@@ -59,15 +60,24 @@ export default function AdminLogin() {
         <div style={s.formBox}>
           <div style={s.formIcon}><Lock size={22} strokeWidth={1.5} color="#0a0a0a" /></div>
           <h2 style={s.formTitle}>تسجيل الدخول</h2>
-          <p style={s.formSub}>أدخل كلمة مرور الأدمن</p>
+          <p style={s.formSub}>أدخل بيانات الدخول الخاصة بك</p>
           <form onSubmit={handleSubmit} style={{ marginTop: 28 }}>
-            <label style={s.label}>كلمة المرور</label>
+            <label style={s.label}>اسم المستخدم <span style={{ color: "#666", fontWeight: 400 }}>(اختياري للمدير العام)</span></label>
+            <div style={s.inputWrap}>
+              <User size={16} strokeWidth={1.5} color="#555" style={s.inputIcon} />
+              <input
+                type="text" style={s.input} dir="ltr"
+                placeholder="username" value={username} autoComplete="username"
+                onChange={e => setUsername(e.target.value)}
+              />
+            </div>
+            <label style={{ ...s.label, marginTop: 14 }}>كلمة المرور</label>
             <div style={s.inputWrap}>
               <Lock size={16} strokeWidth={1.5} color="#555" style={s.inputIcon} />
               <input
                 type="password" style={s.input} dir="ltr"
-                placeholder="••••••••" value={password}
-                onChange={e => setPassword(e.target.value)} autoFocus
+                placeholder="••••••••" value={password} autoComplete="current-password"
+                onChange={e => setPassword(e.target.value)}
               />
             </div>
             {error && <div style={s.error}>{error}</div>}

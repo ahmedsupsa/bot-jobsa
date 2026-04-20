@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ function freshClient() {
 }
 
 export async function GET() {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("affiliate"); if (_denied_) return _denied_;
   const supabase = freshClient();
 
   const { data: affiliates, error } = await supabase
@@ -66,7 +66,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("affiliate"); if (_denied_) return _denied_;
   const { user_id, action } = await req.json();
   if (!user_id || action !== "mark_paid") {
     return NextResponse.json({ ok: false, error: "user_id و action مطلوبان" }, { status: 400 });

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +11,8 @@ function freshClient() {
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const admin = requireAdminSession();
-  if (!admin) return unauthorizedResponse();
+  const admin = enforcePermission();
+  if (!admin) return enforcePermission();
 
   const supabase = freshClient();
   const { error } = await supabase
@@ -25,8 +25,8 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const admin = requireAdminSession();
-  if (!admin) return unauthorizedResponse();
+  const admin = enforcePermission();
+  if (!admin) return enforcePermission();
 
   const body = await req.json();
   const supabase = freshClient();

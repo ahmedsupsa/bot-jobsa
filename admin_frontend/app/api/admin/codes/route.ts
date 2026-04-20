@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 
 function generateCodes(count: number): string[] {
   const seen = new Set<string>();
@@ -17,7 +17,7 @@ function generateCodes(count: number): string[] {
 }
 
 export async function GET() {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("codes"); if (_denied_) return _denied_;
 
   const [{ data: used }, { data: unused }] = await Promise.all([
     supabase.from("activation_codes").select("code,used_at").eq("used", true).order("used_at", { ascending: false }).limit(120),
@@ -32,7 +32,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("codes"); if (_denied_) return _denied_;
 
   const body = await req.json().catch(() => ({}));
   const count = Math.min(parseInt(body.count) || 49, 500);

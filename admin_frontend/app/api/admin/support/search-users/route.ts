@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("support"); if (_denied_) return _denied_;
 
   const url = new URL(req.url);
   const q = (url.searchParams.get("q") || "").trim();

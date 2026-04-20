@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 
 export async function GET(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("store"); if (_denied_) return _denied_;
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
 
@@ -21,7 +21,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("store"); if (_denied_) return _denied_;
   const body = await req.json();
   const { user_id, product_id, user_name, user_email, amount, notes } = body;
   if (!product_id) return NextResponse.json({ ok: false, error: "product_id مطلوب" }, { status: 400 });

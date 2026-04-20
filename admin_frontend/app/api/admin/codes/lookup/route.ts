@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
-import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { enforcePermission } from "@/lib/admin-auth";
 
 export async function GET(req: Request) {
-  if (!requireAdminSession()) return unauthorizedResponse();
+  const _denied_ = enforcePermission("codes"); if (_denied_) return _denied_;
 
   const { searchParams } = new URL(req.url);
   const code = (searchParams.get("code") || "").trim().toUpperCase();
