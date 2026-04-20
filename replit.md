@@ -1,4 +1,4 @@
-# Jobbots — Auto-Apply Platform
+# Jobbots — منصة التقديم التلقائي على الوظائف
 
 A job application automation platform. Users register via Telegram bot, upload CVs, and the system automatically matches their profiles with job openings and submits applications on their behalf using AI-generated cover letters.
 
