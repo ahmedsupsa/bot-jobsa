@@ -1,8 +1,8 @@
 "use client";
 
 import Shell from "@/components/shell";
-import { useEffect, useState } from "react";
-import { Bell, Send, Users, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Bell, Send, Users, CheckCircle, XCircle, Loader2, RefreshCw } from "lucide-react";
 
 export default function NotificationsPage() {
   const [title, setTitle] = useState("");
@@ -12,13 +12,28 @@ export default function NotificationsPage() {
   const [msg, setMsg] = useState("");
   const [msgType, setMsgType] = useState<"ok" | "err">("ok");
   const [subscribers, setSubscribers] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const loadCount = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setRefreshing(true);
+    try {
+      const r = await fetch("/api/admin/notifications", { credentials: "include" });
+      const d = await r.json();
+      setSubscribers(d.subscribers ?? 0);
+      setLastUpdated(new Date());
+    } catch {
+      setSubscribers(0);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
-    fetch("/api/admin/notifications", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => setSubscribers(d.subscribers ?? 0))
-      .catch(() => setSubscribers(0));
-  }, []);
+    loadCount();
+    const interval = setInterval(() => loadCount(), 30_000);
+    return () => clearInterval(interval);
+  }, [loadCount]);
 
   async function send() {
     if (!title.trim() || !body.trim()) return;
@@ -41,7 +56,7 @@ export default function NotificationsPage() {
         setTitle("");
         setBody("");
         setUrl("/portal/dashboard");
-        setSubscribers((s) => s !== null ? s - (d.failed || 0) : s);
+        await loadCount();
       }
     } catch {
       setMsg("خطأ في الاتصال");
@@ -50,6 +65,10 @@ export default function NotificationsPage() {
       setSending(false);
     }
   }
+
+  const timeStr = lastUpdated
+    ? lastUpdated.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : null;
 
   return (
     <Shell>
@@ -133,16 +152,47 @@ export default function NotificationsPage() {
         <div className="space-y-4">
           {/* Subscribers count */}
           <div className="rounded-2xl border border-line/70 bg-panel shadow-card p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Users size={16} className="text-accent" />
-              <h2 className="font-semibold text-white">المشتركون في الإشعارات</h2>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Users size={16} className="text-accent" />
+                <h2 className="font-semibold text-white">المشتركون في الإشعارات</h2>
+              </div>
+              <button
+                onClick={() => loadCount(true)}
+                disabled={refreshing}
+                className="flex items-center gap-1.5 rounded-lg border border-line/60 bg-panel2 px-3 py-1.5 text-xs text-slate-400 hover:text-white transition-colors disabled:opacity-40"
+              >
+                <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
+                تحديث
+              </button>
             </div>
-            <div className="text-4xl font-bold text-white">
-              {subscribers === null ? "…" : subscribers}
+
+            <div className="flex items-end gap-3 mb-2">
+              <div className="text-5xl font-bold text-white">
+                {subscribers === null ? (
+                  <Loader2 size={32} className="animate-spin text-slate-500" />
+                ) : subscribers}
+              </div>
+              {subscribers !== null && subscribers > 0 && (
+                <div className="mb-2 flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-950/30 px-2.5 py-1 text-xs text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 inline-block" />
+                  نشط
+                </div>
+              )}
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              مستخدم وافق على استقبال الإشعارات
+
+            <p className="text-xs text-slate-500">
+              {subscribers === 0
+                ? "لا يوجد مشتركون بعد — البانر يظهر للمستخدمين تلقائياً"
+                : `مستخدم ${subscribers === 1 ? "وافق" : "وافقوا"} على استقبال الإشعارات`}
             </p>
+
+            {timeStr && (
+              <p className="mt-2 text-[10px] text-slate-600 flex items-center gap-1">
+                <span className="h-1 w-1 rounded-full bg-slate-600 inline-block" />
+                آخر تحديث: {timeStr} · يتجدد تلقائياً كل 30 ثانية
+              </p>
+            )}
           </div>
 
           {/* How it works */}
