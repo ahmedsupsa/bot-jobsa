@@ -11,8 +11,8 @@ function freshClient() {
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const admin = enforcePermission();
-  if (!admin) return enforcePermission();
+  const denied = enforcePermission("store");
+  if (denied) return denied;
 
   const supabase = freshClient();
   const { error } = await supabase
@@ -25,8 +25,8 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const admin = enforcePermission();
-  if (!admin) return enforcePermission();
+  const denied = enforcePermission("store");
+  if (denied) return denied;
 
   const body = await req.json();
   const supabase = freshClient();

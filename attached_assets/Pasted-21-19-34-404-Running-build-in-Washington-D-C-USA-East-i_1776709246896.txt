@@ -1,0 +1,43 @@
+21:19:34.404 Running build in Washington, D.C., USA (East) – iad1
+21:19:34.405 Build machine configuration: 2 cores, 8 GB
+21:19:34.612 Cloning github.com/ahmedsupsa/bot-jobsa (Branch: main, Commit: 6672759)
+21:19:35.648 Cloning completed: 1.036s
+21:19:38.163 Restored build cache from previous deployment (5iSVbRqG4icGNQMfhJZFSfVWp74U)
+21:19:38.343 Running "vercel build"
+21:19:39.045 Vercel CLI 51.6.1
+21:19:39.319 Running "install" command: `npm install`...
+21:19:44.447 
+21:19:44.447 up to date, audited 231 packages in 5s
+21:19:44.448 
+21:19:44.448 31 packages are looking for funding
+21:19:44.448   run `npm fund` for details
+21:19:44.493 
+21:19:44.494 1 high severity vulnerability
+21:19:44.494 
+21:19:44.495 To address all issues (including breaking changes), run:
+21:19:44.495   npm audit fix --force
+21:19:44.495 
+21:19:44.495 Run `npm audit` for details.
+21:19:44.529 Detected Next.js version: 14.2.35
+21:19:44.530 Running "npm run build"
+21:19:44.639 
+21:19:44.639 > admin-frontend@1.0.0 build
+21:19:44.640 > next build
+21:19:44.640 
+21:19:45.581   ▲ Next.js 14.2.35
+21:19:45.581 
+21:19:45.607    Creating an optimized production build ...
+21:20:01.084  ✓ Compiled successfully
+21:20:01.084    Linting and checking validity of types ...
+21:20:11.791 Failed to compile.
+21:20:11.791 
+21:20:11.792 app/api/admin/bank-accounts/[id]/route.ts
+21:20:11.792 Type error: Route "app/api/admin/bank-accounts/[id]/route.ts" has an invalid export:
+21:20:11.792   "Promise<NextResponse<unknown> | null>" is not a valid DELETE return type:
+21:20:11.792     Expected "void | Response | Promise<void | Response>", got "Promise<NextResponse<unknown> | null>".
+21:20:11.792       Expected "Promise<void | Response>", got "Promise<NextResponse<unknown> | null>".
+21:20:11.792         Expected "void | Response", got "NextResponse<unknown> | null".
+21:20:11.792           Expected "void | Response", got "null".
+21:20:11.792 
+21:20:11.824 Next.js build worker exited with code: 1 and signal: null
+21:20:11.845 Error: Command "npm run build" exited with 1

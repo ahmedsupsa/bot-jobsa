@@ -11,8 +11,8 @@ function freshClient() {
 }
 
 export async function GET() {
-  const admin = enforcePermission();
-  if (!admin) return enforcePermission();
+  const denied = enforcePermission("store");
+  if (denied) return denied;
 
   const supabase = freshClient();
   const { data, error } = await supabase
@@ -26,8 +26,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const admin = enforcePermission();
-  if (!admin) return enforcePermission();
+  const denied = enforcePermission("store");
+  if (denied) return denied;
 
   const body = await req.json();
   const { type, name, account_number, iban, phone, display_order } = body;
