@@ -86,9 +86,9 @@ export default function PortalLogin() {
   ];
 
   return (
-    <div style={s.page} className="portal-root">
+    <div style={s.page} className="portal-root split-auth-page">
       {/* Left panel */}
-      <div style={s.leftPanel}>
+      <div style={s.leftPanel} className="split-auth-left">
         <div style={s.brand}>
           <div style={s.brandLogo}><Briefcase size={28} strokeWidth={1.5} color="#0a0a0a" /></div>
           <h1 style={s.brandName}>Jobbots</h1>
@@ -106,8 +106,8 @@ export default function PortalLogin() {
       </div>
 
       {/* Right panel */}
-      <div style={s.rightPanel}>
-        <div style={s.formBox}>
+      <div style={s.rightPanel} className="split-auth-right">
+        <div style={s.formBox} className="split-auth-form">
           {step === "register" ? (
             <>
               <div style={s.formIcon}><User size={22} strokeWidth={1.5} color="#0a0a0a" /></div>
