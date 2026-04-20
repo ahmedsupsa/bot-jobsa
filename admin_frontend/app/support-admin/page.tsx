@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import Shell from "@/components/shell";
-import { Send, MessageCircle, Loader2, ArrowRight, Search, Plus, X, User, Phone, Mail } from "lucide-react";
+import { Send, MessageCircle, Loader2, ArrowRight, Search, Plus, X, User, Phone, Mail, FileText } from "lucide-react";
 
 interface Conv {
   user_id: string;
@@ -12,12 +12,23 @@ interface Conv {
   last_sender: string;
   unread_count: number;
 }
+interface Meta {
+  kind?: string;
+  title?: string;
+  fields?: { label: string; value: string }[];
+  [k: string]: unknown;
+}
 interface Msg {
   id: string;
   sender: "user" | "admin";
   content: string;
   created_at: string;
   read_at: string | null;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
+  attachment_type?: string | null;
+  attachment_size?: number | null;
+  meta?: Meta | null;
 }
 interface SearchUser {
   id: string;
@@ -309,7 +320,7 @@ export default function SupportAdminPage() {
             <>
               {/* Header المحادثة */}
               <div style={{ padding: "13px 20px", borderBottom: "1px solid #1f1f1f", background: "#0d0d0d", display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 12, background: "#1a1a1a", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
                   {(activeUser?.full_name || "?")[0]}
                 </div>
                 <div style={{ flex: 1 }}>
@@ -336,22 +347,67 @@ export default function SupportAdminPage() {
                     <p style={{ margin: 0, fontSize: 13 }}>لا رسائل بعد — ابدأ المحادثة</p>
                   </div>
                 ) : (
-                  messages.map((m) => (
+                  messages.map((m) => {
+                    const isImg = !!m.attachment_type && m.attachment_type.startsWith("image/");
+                    return (
                     <div key={m.id} style={{ alignSelf: m.sender === "admin" ? "flex-end" : "flex-start", maxWidth: "72%" }}>
                       <div style={{
-                        background: m.sender === "admin" ? "#1f3d1f" : "#1a1a1a",
-                        border: `1px solid ${m.sender === "admin" ? "#ffffff15" : "#2a2a2a"}`,
-                        color: "#fff", padding: "10px 14px", borderRadius: 14,
+                        background: m.sender === "admin" ? "#fff" : "#1a1a1a",
+                        border: `1px solid ${m.sender === "admin" ? "#fff" : "#2a2a2a"}`,
+                        color: m.sender === "admin" ? "#000" : "#fff",
+                        padding: m.attachment_url && isImg ? 6 : "10px 14px",
+                        borderRadius: 14,
                         fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word",
+                        display: "flex", flexDirection: "column", gap: 8,
                       }}>
-                        {m.content}
+                        {m.attachment_url && isImg && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <a href={m.attachment_url} target="_blank" rel="noreferrer">
+                            <img src={m.attachment_url} alt={m.attachment_name || ""}
+                              style={{ width: "100%", maxWidth: 260, borderRadius: 10, display: "block" }} />
+                          </a>
+                        )}
+                        {m.attachment_url && !isImg && (
+                          <a href={m.attachment_url} target="_blank" rel="noreferrer"
+                            style={{
+                              display: "flex", alignItems: "center", gap: 8, padding: "8px 10px",
+                              borderRadius: 10, background: m.sender === "admin" ? "#f4f4f5" : "#0a0a0a",
+                              color: m.sender === "admin" ? "#000" : "#fff",
+                              border: `1px solid ${m.sender === "admin" ? "#e4e4e7" : "#2a2a2a"}`,
+                              textDecoration: "none", fontSize: 13, fontWeight: 600,
+                            }}>
+                            <FileText size={16} />
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>
+                              {m.attachment_name || "ملف"}
+                            </span>
+                          </a>
+                        )}
+                        {m.meta && (
+                          <div style={{
+                            borderRadius: 10, padding: "10px 12px",
+                            background: m.sender === "admin" ? "#f4f4f5" : "#0a0a0a",
+                            color: m.sender === "admin" ? "#000" : "#fff",
+                            border: `1px solid ${m.sender === "admin" ? "#e4e4e7" : "#2a2a2a"}`,
+                          }}>
+                            <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: m.sender === "admin" ? "#444" : "#888", marginBottom: 6 }}>{m.meta.title || "تفاصيل"}</p>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                              {(m.meta.fields || []).map((f, i) => (
+                                <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12.5 }}>
+                                  <span style={{ color: m.sender === "admin" ? "#444" : "#888" }}>{f.label}</span>
+                                  <span style={{ fontWeight: 600, textAlign: "left" }}>{f.value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {m.content && <span style={{ paddingInline: m.attachment_url && isImg ? 8 : 0, paddingBottom: m.attachment_url && isImg ? 4 : 0 }}>{m.content}</span>}
                       </div>
                       <div style={{ fontSize: 10, color: "#444", marginTop: 3, textAlign: m.sender === "admin" ? "left" : "right", paddingInline: 4 }}>
                         {fmtTime(m.created_at)}
                         {m.sender === "admin" && m.read_at && <span style={{ color: "#fff", marginRight: 4 }}> ✓ قُرئت</span>}
                       </div>
                     </div>
-                  ))
+                  );})
                 )}
               </div>
 

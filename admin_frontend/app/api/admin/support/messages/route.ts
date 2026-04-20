@@ -29,7 +29,7 @@ export async function GET(req: Request) {
 
   const { data: messages, error } = await supabase
     .from("support_messages")
-    .select("id, sender, content, created_at, read_at")
+    .select("id, sender, content, created_at, read_at, attachment_url, attachment_name, attachment_type, attachment_size, meta")
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
 
@@ -54,17 +54,27 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const _denied_ = enforcePermission("support"); if (_denied_) return _denied_;
-  const { user_id, content } = await req.json();
-  if (!user_id || !content?.trim()) {
+  const body = await req.json();
+  const { user_id, attachment, meta } = body;
+  const content = (body.content || "").toString().trim();
+  if (!user_id || (!content && !attachment && !meta)) {
     return NextResponse.json({ ok: false, error: "user_id والمحتوى مطلوبان" }, { status: 400 });
   }
   const supabase = freshClient();
 
-  // حفظ الرسالة
+  const insert: Record<string, unknown> = { user_id, sender: "admin", content };
+  if (attachment?.url) {
+    insert.attachment_url = attachment.url;
+    insert.attachment_name = attachment.name || null;
+    insert.attachment_type = attachment.type || null;
+    insert.attachment_size = attachment.size || null;
+  }
+  if (meta) insert.meta = meta;
+
   const { data, error } = await supabase
     .from("support_messages")
-    .insert({ user_id, sender: "admin", content: content.trim() })
-    .select()
+    .insert(insert)
+    .select("id, sender, content, created_at, read_at, attachment_url, attachment_name, attachment_type, attachment_size, meta")
     .single();
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
 

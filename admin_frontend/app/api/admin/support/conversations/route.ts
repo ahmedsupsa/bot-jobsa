@@ -17,7 +17,7 @@ export async function GET() {
   // Get all support messages
   const { data: msgs, error } = await supabase
     .from("support_messages")
-    .select("id, user_id, sender, content, created_at, read_at")
+    .select("id, user_id, sender, content, created_at, read_at, attachment_url, attachment_type, meta")
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
@@ -31,12 +31,21 @@ export async function GET() {
     unread_count: number;
   }>();
 
+  const previewOf = (m: { content: string | null; attachment_url: string | null; attachment_type: string | null; meta: { title?: string } | null }) => {
+    if (m.content && m.content.trim()) return m.content;
+    if (m.attachment_url) {
+      return m.attachment_type?.startsWith("image/") ? "📷 صورة" : "📎 ملف مرفق";
+    }
+    if (m.meta) return `🔗 ${m.meta.title || "تفاصيل عملية"}`;
+    return "";
+  };
+
   for (const m of msgs || []) {
     const existing = byUser.get(m.user_id);
     if (!existing) {
       byUser.set(m.user_id, {
         user_id: m.user_id,
-        last_message: m.content,
+        last_message: previewOf(m),
         last_at: m.created_at,
         last_sender: m.sender,
         unread_count: m.sender === "user" && !m.read_at ? 1 : 0,
