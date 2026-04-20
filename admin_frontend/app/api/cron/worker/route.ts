@@ -119,7 +119,7 @@ async function generateCoverLetter(
 
   try {
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -262,7 +262,8 @@ async function runCycle(): Promise<{ applied: number; users: number; errors: str
     const remaining = 10 - countToday;
     let sent = 0;
 
-    for (const job of jobs.slice(0, remaining)) {
+    for (const job of jobs) {
+      if (sent >= remaining) break;
       const jobId = String(job.id);
       const alreadyApplied = await sbCount("applications", {
         user_id: `eq.${uid}`,

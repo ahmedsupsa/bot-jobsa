@@ -139,7 +139,7 @@ async def _generate_cover_letter(
     try:
         async with httpx.AsyncClient(timeout=40) as client:
             r = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key={GEMINI_API_KEY}",
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}",
                 json={"contents": [{"parts": parts}]},
             )
             data = r.json()
@@ -275,7 +275,9 @@ async def run_cycle() -> None:
 
             logger.info("👤 %s | تفضيلات: %s | متبقي: %d", name, field_names or "لا يوجد", remaining)
 
-            for job in jobs[:remaining]:
+            for job in jobs:
+                if sent >= remaining:
+                    break
                 job_id = str(job["id"])
                 already_rows = await sb_get(client, "applications", {"user_id": f"eq.{uid}", "job_id": f"eq.{job_id}"})
                 if already_rows:
