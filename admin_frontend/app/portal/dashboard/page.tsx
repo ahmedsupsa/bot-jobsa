@@ -27,31 +27,41 @@ function NextRunCard({ active }: { active: boolean }) {
   const [label, setLabel] = useState("");
   const [nextRunMs, setNextRunMs] = useState<number | null>(null);
 
-  // جلب آخر وقت تشغيل حقيقي من قاعدة البيانات
+  // جلب وقت التشغيل القادم الحقيقي من قاعدة البيانات
   useEffect(() => {
-    async function fetchLastRun() {
+    async function fetchStatus() {
       try {
-        const r = await fetch("/api/portal/worker-status");
+        const r = await fetch("/api/portal/worker-status", { cache: "no-store" });
         const data = await r.json();
+
+        // استخدم next_run_at مباشرة إذا توفّر
+        if (data.next_run_at) {
+          const next = new Date(data.next_run_at).getTime();
+          setNextRunMs(next < Date.now() ? Date.now() + 30 * 60 * 1000 : next);
+          return;
+        }
+
+        // وإلا احسب من last_ran_at + 30 دقيقة
         if (data.last_ran_at) {
           const lastRan = new Date(data.last_ran_at).getTime();
-          const next = lastRan + 30 * 60 * 1000; // آخر تشغيل + 30 دقيقة
+          const next = lastRan + 30 * 60 * 1000;
           setNextRunMs(next < Date.now() ? Date.now() + 30 * 60 * 1000 : next);
-        } else {
-          // لو ما في سجل، نحسب أقرب :00 أو :30
-          const now = new Date();
-          const next = new Date(now);
-          next.setSeconds(0); next.setMilliseconds(0);
-          if (now.getMinutes() < 30) { next.setMinutes(30); }
-          else { next.setMinutes(0); next.setHours(next.getHours() + 1); }
-          setNextRunMs(next.getTime());
+          return;
         }
+
+        // لا يوجد سجل — أقرب :00 أو :30
+        const now = new Date();
+        const next = new Date(now);
+        next.setSeconds(0); next.setMilliseconds(0);
+        if (now.getMinutes() < 30) { next.setMinutes(30); }
+        else { next.setMinutes(0); next.setHours(next.getHours() + 1); }
+        setNextRunMs(next.getTime());
       } catch {
         setNextRunMs(Date.now() + 30 * 60 * 1000);
       }
     }
-    fetchLastRun();
-    const refresh = setInterval(fetchLastRun, 60_000); // تحديث كل دقيقة
+    fetchStatus();
+    const refresh = setInterval(fetchStatus, 60_000);
     return () => clearInterval(refresh);
   }, []);
 

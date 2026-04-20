@@ -337,13 +337,34 @@ async def run_cycle() -> None:
                 logger.info("📊 %s: %d تقديم جديد", name, sent)
 
 
+async def _record_run(client: httpx.AsyncClient) -> None:
+    """يسجّل وقت آخر تشغيل في جدول worker_status."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    next_iso = (datetime.now(timezone.utc) + timedelta(seconds=CYCLE_INTERVAL)).isoformat()
+    try:
+        await client.post(
+            f"{SUPABASE_URL}/rest/v1/worker_status",
+            headers={**_SB_HEADERS, "Prefer": "resolution=merge-duplicates"},
+            json={"id": "main", "last_ran_at": now_iso, "next_run_at": next_iso},
+        )
+    except Exception as e:
+        logger.warning("تعذّر تسجيل وقت التشغيل: %s", e)
+
+
 async def main() -> None:
     logger.info("🚀 Auto-Apply Worker بدأ (كل %d ثانية)", CYCLE_INTERVAL)
     while True:
+        start_ts = datetime.now(timezone.utc)
         try:
             await run_cycle()
         except Exception as e:
             logger.error("خطأ في الدورة: %s", e)
+        # سجّل وقت انتهاء الدورة
+        try:
+            async with httpx.AsyncClient(timeout=10) as rc:
+                await _record_run(rc)
+        except Exception:
+            pass
         logger.info("⏰ انتهت الدورة — انتظار %d ثانية", CYCLE_INTERVAL)
         await asyncio.sleep(CYCLE_INTERVAL)
 

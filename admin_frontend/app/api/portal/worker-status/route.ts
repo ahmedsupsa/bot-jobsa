@@ -6,22 +6,21 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const url = process.env.SUPABASE_URL || "";
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
-  if (!url || !key) return NextResponse.json({ last_ran_at: null });
+  if (!url || !key) return NextResponse.json({ last_ran_at: null, next_run_at: null });
 
   const supabase = createClient(url, key, { auth: { persistSession: false } });
 
   const { data } = await supabase
-    .from("worker_logs")
-    .select("ran_at, applied_count, status")
-    .order("ran_at", { ascending: false })
-    .limit(1)
+    .from("worker_status")
+    .select("last_ran_at, next_run_at")
+    .eq("id", "main")
     .maybeSingle();
 
-  return NextResponse.json({
-    last_ran_at: data?.ran_at ?? null,
-    last_applied: data?.applied_count ?? 0,
-    last_status: data?.status ?? null,
-  }, {
-    headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30" },
-  });
+  return NextResponse.json(
+    {
+      last_ran_at: data?.last_ran_at ?? null,
+      next_run_at: data?.next_run_at ?? null,
+    },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }
