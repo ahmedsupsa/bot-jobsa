@@ -178,7 +178,11 @@ async function runCycle() {
   const jobs = jobsRaw.filter((j) => String(j.application_email ?? "").trim());
   if (!jobs.length) return { applied: 0, users: 0, errors: [], details: [] };
 
-  const [users, fieldsRaw] = await Promise.all([sbGet("users"), sbGet("job_fields")]);
+  const [usersRaw, fieldsRaw] = await Promise.all([sbGet("users"), sbGet("job_fields")]);
+
+  // ترتيب عشوائي في كل دورة — توزيع عادل ومنع الضغط
+  const users = [...usersRaw].sort(() => Math.random() - 0.5);
+
   const today = new Date().toISOString().split("T")[0];
 
   for (const user of users) {
@@ -254,6 +258,9 @@ async function runCycle() {
         });
         details.push({ user: name, job: jobTitle, email: toEmail, status: "sent" });
         sent++; applied++;
+
+        // تأخير 5 ثوانٍ بين كل إيميل — يمنع الضغط ويحمي من فلاتر الـ spam
+        await new Promise((r) => setTimeout(r, 5000));
       } catch (e) {
         const msg = String(e);
         errors.push(`${name} → ${jobTitle}: ${msg}`);
