@@ -76,7 +76,7 @@ export default function UsersPage() {
       {msg && (
         <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${
           msgType === "ok"
-            ? "border-emerald-500/25 bg-emerald-950/30 text-emerald-300"
+            ? "border-white/20 bg-white/5 text-white"
             : "border-red-500/25 bg-red-950/30 text-red-300"
         }`}>
           {msg}
@@ -253,7 +253,7 @@ function UserCard({
             disabled={savingEmail}
             className="flex items-center gap-1.5 rounded-xl border border-accent/30 bg-accent/15 px-3 py-2 text-xs text-accent font-medium hover:bg-accent/25 transition-colors disabled:opacity-50 whitespace-nowrap"
           >
-            {savingEmail ? <Loader2 size={12} className="animate-spin" /> : emailSaved ? <Check size={12} className="text-emerald-400" /> : <Save size={12} />}
+            {savingEmail ? <Loader2 size={12} className="animate-spin" /> : emailSaved ? <Check size={12} className="text-white/70" /> : <Save size={12} />}
             {savingEmail ? "..." : emailSaved ? "تم" : "حفظ"}
           </button>
         </div>
@@ -277,7 +277,7 @@ function UserCard({
             disabled={savingSub || !subDays}
             className="flex items-center gap-1 rounded-xl border border-blue-500/30 bg-blue-950/30 px-3 py-1.5 text-xs text-blue-300 hover:bg-blue-900/40 transition-colors disabled:opacity-40 whitespace-nowrap"
           >
-            {savingSub ? <Loader2 size={11} className="animate-spin" /> : subSaved ? <Check size={11} className="text-emerald-400" /> : <Save size={11} />}
+            {savingSub ? <Loader2 size={11} className="animate-spin" /> : subSaved ? <Check size={11} className="text-white/70" /> : <Save size={11} />}
             {subSaved ? "تم" : "تعيين"}
           </button>
         </div>
@@ -289,7 +289,7 @@ function UserCard({
             disabled={uploadingCv}
             className="flex items-center gap-1.5 rounded-xl border border-line/70 bg-panel2 px-3 py-2 text-xs text-slate-300 hover:border-accent/40 hover:text-accent transition-colors disabled:opacity-50 whitespace-nowrap"
           >
-            {uploadingCv ? <Loader2 size={12} className="animate-spin" /> : cvName ? <FileText size={12} className="text-emerald-400" /> : <Upload size={12} />}
+            {uploadingCv ? <Loader2 size={12} className="animate-spin" /> : cvName ? <FileText size={12} className="text-white/70" /> : <Upload size={12} />}
             {uploadingCv ? "جاري الرفع..." : cvName ? "تم الرفع ✓" : "رفع سيرة"}
           </button>
 
@@ -314,7 +314,7 @@ function UserCard({
               disabled={savingPrefs}
               className="flex items-center gap-1.5 rounded-lg border border-accent/30 bg-accent/15 px-3 py-1.5 text-xs text-accent font-medium hover:bg-accent/25 transition-colors disabled:opacity-50"
             >
-              {savingPrefs ? <Loader2 size={11} className="animate-spin" /> : prefsSaved ? <Check size={11} className="text-emerald-400" /> : <Save size={11} />}
+              {savingPrefs ? <Loader2 size={11} className="animate-spin" /> : prefsSaved ? <Check size={11} className="text-white/70" /> : <Save size={11} />}
               {savingPrefs ? "..." : prefsSaved ? "تم الحفظ" : "حفظ"}
             </button>
           </div>

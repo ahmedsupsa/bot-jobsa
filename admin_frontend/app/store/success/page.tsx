@@ -76,7 +76,7 @@ function SuccessContent() {
         {state === "new_account" && (
           <>
             <div style={s.iconWrap}>
-              <CheckCircle2 size={38} color="#4ade80" />
+              <CheckCircle2 size={38} color="#fff" />
             </div>
             <h1 style={s.title}>تم إنشاء حسابك بنجاح! 🎉</h1>
             <p style={s.desc}>
@@ -109,7 +109,7 @@ function SuccessContent() {
         {state === "existing" && (
           <>
             <div style={s.iconWrap}>
-              <CheckCircle2 size={38} color="#4ade80" />
+              <CheckCircle2 size={38} color="#fff" />
             </div>
             <h1 style={s.title}>تم الدفع بنجاح! 🎉</h1>
             <p style={s.desc}>
@@ -204,7 +204,7 @@ const s: Record<string, React.CSSProperties> = {
   iconWrap: {
     width: 72, height: 72, borderRadius: "50%",
     background: "#052e16",
-    border: "2px solid #16a34a",
+    border: "2px solid #444",
     display: "flex", alignItems: "center", justifyContent: "center",
     margin: "0 auto 20px",
   },

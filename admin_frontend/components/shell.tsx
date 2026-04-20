@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Key, BriefcaseBusiness, Bell, LogOut, ShoppingBag, TrendingUp, MessageCircle, MailCheck } from "lucide-react";
+import { LayoutDashboard, Users, Key, BriefcaseBusiness, Bell, LogOut, ShoppingBag, TrendingUp, MessageCircle, MailCheck, FileText } from "lucide-react";
 import { useState } from "react";
 
 const links = [
@@ -11,6 +11,7 @@ const links = [
   { href: "/users", label: "المستخدمون", icon: Users },
   { href: "/codes", label: "أكواد التفعيل", icon: Key },
   { href: "/jobs", label: "الوظائف", icon: BriefcaseBusiness },
+  { href: "/templates", label: "قوالب الرسائل", icon: FileText },
   { href: "/notifications", label: "إشعارات Push", icon: Bell },
   { href: "/store-admin", label: "المتجر", icon: ShoppingBag },
   { href: "/support-admin", label: "الدعم الفني", icon: MessageCircle },

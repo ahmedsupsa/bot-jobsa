@@ -10,7 +10,7 @@ type Status = { ok: boolean; msg: string } | null;
 const C = {
   bg: "#0a0a0a", card: "#111", border: "#222", text: "#fff", muted: "#888",
   purple: "#a78bfa", purpleDim: "rgba(167,139,250,0.12)",
-  success: "#4ade80", error: "#f87171",
+  success: "#fff", error: "#f87171",
 };
 
 export default function EmailTestPage() {

@@ -66,7 +66,7 @@ const SEGMENTS: SegmentInfo[] = [
     label: "إنجازات اليوم 🚀",
     desc: "من تم التقديم لهم اليوم",
     icon: <Trophy size={16} />,
-    color: "#22c55e",
+    color: "#fff",
     templateTitle: "تم التقديم على وظائف اليوم 🚀",
     templateBody: "تابع إيميلك لأي رد من الشركات — البوت شغّال لأجلك",
     templateUrl: "/portal/applications",
@@ -342,7 +342,7 @@ export default function NotificationsPage() {
                   {msg && (
                     <div className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm ${
                       msgType === "ok"
-                        ? "border-emerald-500/25 bg-emerald-950/30 text-emerald-300"
+                        ? "border-white/20 bg-white/5 text-white"
                         : "border-red-500/25 bg-red-950/30 text-red-300"
                     }`}>
                       {msgType === "ok" ? <CheckCircle size={14} className="shrink-0" /> : <XCircle size={14} className="shrink-0" />}

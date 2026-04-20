@@ -193,8 +193,8 @@ export default function CVPrefsPage() {
                     padding: "13px 16px", borderRadius: 12, marginBottom: 16,
                     fontSize: 13, fontWeight: 500,
                     background: cvMsg.type === "ok" ? (dark ? "#0a1f0a" : "#f0fdf4") : (dark ? "#1a0a0a" : "#fef2f2"),
-                    color: cvMsg.type === "ok" ? "#22c55e" : "#f87171",
-                    border: `1px solid ${cvMsg.type === "ok" ? "#22c55e22" : "#f8717122"}`,
+                    color: cvMsg.type === "ok" ? "#fff" : "#f87171",
+                    border: `1px solid ${cvMsg.type === "ok" ? "#ffffff20" : "#f8717120"}`,
                   }}>
                     {cvMsg.type === "ok" ? <CheckCircle size={16} strokeWidth={1.5} /> : <XCircle size={16} strokeWidth={1.5} />}
                     {cvMsg.text}
@@ -206,23 +206,23 @@ export default function CVPrefsPage() {
                     <div style={{
                       display: "flex", alignItems: "flex-start", gap: 18,
                       background: dark ? "#0a1a0a" : "#f0fdf4",
-                      border: "1px solid #22c55e33", borderRadius: 18,
+                      border: "1px solid #ffffff15", borderRadius: 18,
                       padding: "22px 20px", marginBottom: 14,
                     }}>
                       <div style={{
                         width: 60, height: 60, borderRadius: 15,
                         background: dark ? "#0f2a0f" : "#dcfce7",
-                        border: "1px solid #22c55e44",
+                        border: "1px solid #ffffff20",
                         display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                       }}>
-                        <FileText size={28} strokeWidth={1.2} color="#22c55e" />
+                        <FileText size={28} strokeWidth={1.2} color="#fff" />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
                           display: "inline-flex", alignItems: "center", gap: 6,
                           background: dark ? "#0f2a0f" : "#dcfce7",
-                          border: "1px solid #22c55e33", borderRadius: 100,
-                          padding: "3px 12px", fontSize: 11, fontWeight: 700, color: "#22c55e", marginBottom: 8,
+                          border: "1px solid #ffffff15", borderRadius: 100,
+                          padding: "3px 12px", fontSize: 11, fontWeight: 700, color: "#fff", marginBottom: 8,
                         }}>
                           <CheckCircle size={12} strokeWidth={2} /> سيرتك الذاتية مرفوعة وجاهزة
                         </div>
@@ -358,8 +358,8 @@ export default function CVPrefsPage() {
                 padding: "12px 16px", borderRadius: 12, marginBottom: 16,
                 fontSize: 13, fontWeight: 500,
                 background: prefsMsg.type === "ok" ? (dark ? "#0a1f0a" : "#f0fdf4") : prefsMsg.type === "info" ? (dark ? "#0a0f1a" : "#eff6ff") : (dark ? "#1a0a0a" : "#fef2f2"),
-                color: prefsMsg.type === "ok" ? "#22c55e" : prefsMsg.type === "info" ? "#60a5fa" : "#f87171",
-                border: `1px solid ${prefsMsg.type === "ok" ? "#22c55e33" : prefsMsg.type === "info" ? "#60a5fa33" : "#f8717133"}`,
+                color: prefsMsg.type === "ok" ? "#fff" : prefsMsg.type === "info" ? "#60a5fa" : "#f87171",
+                border: `1px solid ${prefsMsg.type === "ok" ? "#ffffff15" : prefsMsg.type === "info" ? "#60a5fa33" : "#f8717133"}`,
               }}>
                 {prefsMsg.type === "ok" ? <CheckCircle size={15} /> : prefsMsg.type === "info" ? <Sparkles size={15} /> : <XCircle size={15} />}
                 {prefsMsg.text}
@@ -416,13 +416,13 @@ export default function CVPrefsPage() {
                           display: "inline-flex", alignItems: "center", gap: 6,
                           padding: "8px 16px", borderRadius: 100,
                           background: isActive ? (dark ? "#071a07" : "#f0fdf4") : t.surface,
-                          border: `1px solid ${isActive ? "#22c55e55" : t.border}`,
+                          border: `1px solid ${isActive ? "#ffffff25" : t.border}`,
                           color: isActive ? (dark ? "#e8ffe8" : "#166534") : t.text3,
                           fontSize: 13, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
                           transition: "all 0.12s",
                         }}
                       >
-                        {isActive && <CheckCircle size={12} strokeWidth={2.5} color="#22c55e" style={{ flexShrink: 0 }} />}
+                        {isActive && <CheckCircle size={12} strokeWidth={2.5} color="#fff" style={{ flexShrink: 0 }} />}
                         {f.name_ar}
                       </button>
                     );

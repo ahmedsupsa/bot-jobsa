@@ -139,8 +139,8 @@ export default function AccountPage() {
               display: "flex", alignItems: "center", gap: 8,
               padding: "8px 16px", borderRadius: 100,
               background: active ? (dark ? "rgba(34,197,94,0.08)" : "#f0fdf4") : (dark ? "rgba(239,68,68,0.08)" : "#fef2f2"),
-              border: `1px solid ${active ? "#22c55e33" : "#ef444433"}`,
-              color: active ? "#22c55e" : "#ef4444",
+              border: `1px solid ${active ? "#ffffff15" : "#ef444433"}`,
+              color: active ? "#fff" : "#ef4444",
               fontSize: 13, fontWeight: 600, whiteSpace: "nowrap",
             }}>
               <div style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }} />
@@ -219,8 +219,8 @@ export default function AccountPage() {
                 display: "flex", alignItems: "center", gap: 8,
                 padding: "12px 16px", borderRadius: 12, fontSize: 13, fontWeight: 500,
                 background: msg.type === "ok" ? (dark ? "#0a1f0a" : "#f0fdf4") : (dark ? "#1a0a0a" : "#fef2f2"),
-                color: msg.type === "ok" ? "#22c55e" : "#f87171",
-                border: `1px solid ${msg.type === "ok" ? "#22c55e33" : "#ef444433"}`,
+                color: msg.type === "ok" ? "#fff" : "#f87171",
+                border: `1px solid ${msg.type === "ok" ? "#ffffff15" : "#ef444433"}`,
               }}>
                 {msg.type === "ok" ? <CheckCircle size={15} /> : <XCircle size={15} />}
                 {msg.text}
@@ -236,13 +236,13 @@ export default function AccountPage() {
                     <div style={{
                       display: "flex", alignItems: "center", gap: 12,
                       background: dark ? "#0a1f0a" : "#f0fdf4",
-                      border: "1px solid #22c55e33", borderRadius: 12,
+                      border: "1px solid #ffffff15", borderRadius: 12,
                       padding: "14px 16px", marginBottom: 12,
                     }}>
-                      <CheckCircle size={18} strokeWidth={1.5} color="#22c55e" />
+                      <CheckCircle size={18} strokeWidth={1.5} color="#fff" />
                       <div>
-                        <p style={{ color: "#22c55e", fontSize: 11, fontWeight: 600, margin: 0 }}>إيميل التقديم الخاص بك</p>
-                        <p style={{ color: "#4ade80", fontSize: 13, fontWeight: 700, margin: "3px 0 0" }} dir="ltr">{user.sender_email_alias}</p>
+                        <p style={{ color: "#fff", fontSize: 11, fontWeight: 600, margin: 0 }}>إيميل التقديم الخاص بك</p>
+                        <p style={{ color: "#fff", fontSize: 13, fontWeight: 700, margin: "3px 0 0" }} dir="ltr">{user.sender_email_alias}</p>
                       </div>
                     </div>
                   )}
@@ -310,11 +310,11 @@ export default function AccountPage() {
                   return (
                     <button key={lang} onClick={() => changeLanguage(lang)} disabled={savingLang} style={{
                       background: isActive ? (dark ? "#0a1f0a" : "#f0fdf4") : t.iconBg,
-                      border: `1px solid ${isActive ? "#22c55e" : t.border2}`,
+                      border: `1px solid ${isActive ? "#fff" : t.border2}`,
                       borderRadius: 12, padding: "12px 14px", cursor: savingLang ? "wait" : "pointer",
                       textAlign: "right", opacity: savingLang ? 0.6 : 1,
                     }}>
-                      <p style={{ margin: 0, color: isActive ? "#22c55e" : t.text, fontSize: 14, fontWeight: 700 }}>
+                      <p style={{ margin: 0, color: isActive ? "#fff" : t.text, fontSize: 14, fontWeight: 700 }}>
                         {label} {isActive && <CheckCircle size={12} style={{ verticalAlign: "middle" }} />}
                       </p>
                       <p style={{ margin: "3px 0 0", color: t.text3, fontSize: 11 }}>{sub}</p>

@@ -147,11 +147,11 @@ export default function SupportAdminPage() {
           <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid #1f1f1f" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <MessageCircle size={16} color="#22c55e" />
+                <MessageCircle size={16} color="#fff" />
                 <span style={{ color: "#fff", fontSize: 14, fontWeight: 600 }}>
                   المحادثات
                   {totalUnread > 0 && (
-                    <span style={{ marginRight: 6, background: "#22c55e", color: "#000", fontSize: 10, fontWeight: 700, borderRadius: 10, padding: "1px 7px" }}>
+                    <span style={{ marginRight: 6, background: "#fff", color: "#000", fontSize: 10, fontWeight: 700, borderRadius: 10, padding: "1px 7px" }}>
                       {totalUnread}
                     </span>
                   )}
@@ -162,7 +162,7 @@ export default function SupportAdminPage() {
                 title="محادثة جديدة"
                 style={{
                   width: 32, height: 32, borderRadius: 9, border: "1px solid #2a2a2a",
-                  background: showNewConv ? "#22c55e" : "#1a1a1a",
+                  background: showNewConv ? "#fff" : "#1a1a1a",
                   color: showNewConv ? "#000" : "#aaa",
                   display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
                 }}
@@ -201,7 +201,7 @@ export default function SupportAdminPage() {
                     autoFocus
                     style={{
                       width: "100%", padding: "8px 32px 8px 10px",
-                      background: "#111", border: "1px solid #22c55e44", borderRadius: 9,
+                      background: "#111", border: "1px solid #ffffff20", borderRadius: 9,
                       color: "#fff", fontSize: 13, fontFamily: "inherit", outline: "none",
                       boxSizing: "border-box",
                     }}
@@ -259,7 +259,7 @@ export default function SupportAdminPage() {
                     width: "100%", padding: "13px 14px",
                     background: activeUserId === c.user_id ? "#1a1a1a" : "transparent",
                     borderBottom: "1px solid #181818",
-                    borderInlineStart: activeUserId === c.user_id ? "3px solid #22c55e" : "3px solid transparent",
+                    borderInlineStart: activeUserId === c.user_id ? "3px solid #fff" : "3px solid transparent",
                     border: "none", textAlign: "right", cursor: "pointer",
                     display: "flex", flexDirection: "column", gap: 4,
                   }}
@@ -273,11 +273,11 @@ export default function SupportAdminPage() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ color: "#666", fontSize: 12, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {c.phone && <span style={{ color: "#444", marginLeft: 4 }}>{c.phone} · </span>}
-                      {c.last_sender === "admin" && <span style={{ color: "#22c55e" }}>أنت: </span>}
+                      {c.last_sender === "admin" && <span style={{ color: "#fff" }}>أنت: </span>}
                       {c.last_message}
                     </span>
                     {c.unread_count > 0 && (
-                      <span style={{ background: "#22c55e", color: "#000", fontSize: 10, fontWeight: 700, borderRadius: 10, padding: "2px 7px", minWidth: 20, textAlign: "center", flexShrink: 0 }}>
+                      <span style={{ background: "#fff", color: "#000", fontSize: 10, fontWeight: 700, borderRadius: 10, padding: "2px 7px", minWidth: 20, textAlign: "center", flexShrink: 0 }}>
                         {c.unread_count}
                       </span>
                     )}
@@ -302,14 +302,14 @@ export default function SupportAdminPage() {
                   background: "#1a1a1a", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer",
                 }}
               >
-                <Plus size={14} color="#22c55e" /> محادثة جديدة
+                <Plus size={14} color="#fff" /> محادثة جديدة
               </button>
             </div>
           ) : (
             <>
               {/* Header المحادثة */}
               <div style={{ padding: "13px 20px", borderBottom: "1px solid #1f1f1f", background: "#0d0d0d", display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(34,197,94,0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "#22c55e", fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
                   {(activeUser?.full_name || "?")[0]}
                 </div>
                 <div style={{ flex: 1 }}>
@@ -340,7 +340,7 @@ export default function SupportAdminPage() {
                     <div key={m.id} style={{ alignSelf: m.sender === "admin" ? "flex-end" : "flex-start", maxWidth: "72%" }}>
                       <div style={{
                         background: m.sender === "admin" ? "#1f3d1f" : "#1a1a1a",
-                        border: `1px solid ${m.sender === "admin" ? "#22c55e33" : "#2a2a2a"}`,
+                        border: `1px solid ${m.sender === "admin" ? "#ffffff15" : "#2a2a2a"}`,
                         color: "#fff", padding: "10px 14px", borderRadius: 14,
                         fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word",
                       }}>
@@ -348,7 +348,7 @@ export default function SupportAdminPage() {
                       </div>
                       <div style={{ fontSize: 10, color: "#444", marginTop: 3, textAlign: m.sender === "admin" ? "left" : "right", paddingInline: 4 }}>
                         {fmtTime(m.created_at)}
-                        {m.sender === "admin" && m.read_at && <span style={{ color: "#22c55e", marginRight: 4 }}> ✓ قُرئت</span>}
+                        {m.sender === "admin" && m.read_at && <span style={{ color: "#fff", marginRight: 4 }}> ✓ قُرئت</span>}
                       </div>
                     </div>
                   ))
@@ -375,7 +375,7 @@ export default function SupportAdminPage() {
                   disabled={sending || !input.trim()}
                   title="إرسال + إشعار جوال"
                   style={{
-                    background: "#22c55e", color: "#000", border: "none",
+                    background: "#fff", color: "#000", border: "none",
                     borderRadius: 12, width: 42, height: 42,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     cursor: sending || !input.trim() ? "not-allowed" : "pointer",

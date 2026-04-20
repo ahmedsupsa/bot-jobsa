@@ -34,7 +34,7 @@ function StatCard({ label, value, sub, icon: Icon, color = "#a78bfa", trend, big
   color?: string; trend?: "up" | "down" | "neutral"; big?: boolean;
 }) {
   const TrendIcon = trend === "up" ? ArrowUpRight : trend === "down" ? ArrowDownRight : Minus;
-  const trendColor = trend === "up" ? "#4ade80" : trend === "down" ? "#f87171" : "#888";
+  const trendColor = trend === "up" ? "#fff" : trend === "down" ? "#f87171" : "#888";
   return (
     <div style={{
       background: big ? `linear-gradient(135deg, ${color}15, #111)` : "#111",
@@ -70,7 +70,7 @@ function StackedBarChart({ data }: { data: ChartPoint[] }) {
         <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 700, margin: 0 }}>الإيرادات الشهرية (آخر 6 أشهر)</h3>
         <div style={{ display: "flex", gap: 14, fontSize: 11 }}>
           <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#aaa" }}>
-            <span style={{ width: 10, height: 10, background: "#22c55e", borderRadius: 2 }} /> مبيعات مباشرة
+            <span style={{ width: 10, height: 10, background: "#fff", borderRadius: 2 }} /> مبيعات مباشرة
           </span>
           <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#aaa" }}>
             <span style={{ width: 10, height: 10, background: "#a78bfa", borderRadius: 2 }} /> مع عمولة
@@ -89,7 +89,7 @@ function StackedBarChart({ data }: { data: ChartPoint[] }) {
               <div title={`${d.month}: مباشر ${fmt(d.direct)} + عمولة ${fmt(d.affiliate)} ر.س`}
                 style={{ width: "100%", height: totalH, borderRadius: 6, overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
                 <div style={{ height: affH, background: "linear-gradient(180deg, #c4b5fd, #6d28d9)" }} />
-                <div style={{ height: directH, background: "linear-gradient(180deg, #4ade80, #15803d)" }} />
+                <div style={{ height: directH, background: "linear-gradient(180deg, #fff, #aaa)" }} />
                 {total === 0 && <div style={{ height: "100%", background: "#1a1a1a" }} />}
               </div>
               <span style={{ color: "#555", fontSize: 10 }}>{d.month}</span>
@@ -153,7 +153,7 @@ export default function FinancePage() {
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={handleExport} disabled={exporting || !data}
               style={{
-                background: "linear-gradient(135deg, #16a34a, #15803d)", border: "none",
+                background: "#fff", color: "#000", border: "none",
                 borderRadius: 10, padding: "10px 16px", color: "#fff", cursor: exporting ? "wait" : "pointer",
                 display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700,
                 opacity: exporting || !data ? 0.6 : 1,
@@ -189,7 +189,7 @@ export default function FinancePage() {
                 label="صافي الإيراد بعد العمولة (Net)"
                 value={`${fmt(data.summary.netRevenue)} ر.س`}
                 sub="ما تبقّى لجوبوتس"
-                icon={Target} color="#22c55e" big
+                icon={Target} color="#fff" big
               />
               <StatCard
                 label="إجمالي العمولات المستحقة"
@@ -224,7 +224,7 @@ export default function FinancePage() {
                 {/* Secondary stats */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 18 }}>
                   <StatCard label="مبيعات مباشرة (بدون عمولة)" value={`${fmt(data.summary.directRevenue)} ر.س`}
-                    sub={`${data.summary.directCount} طلب — تبقى 100%`} icon={CheckCircle2} color="#22c55e" />
+                    sub={`${data.summary.directCount} طلب — تبقى 100%`} icon={CheckCircle2} color="#fff" />
                   <StatCard label="مبيعات عبر مسوّقين" value={`${fmt(data.summary.affiliateRevenue)} ر.س`}
                     sub={`${data.summary.affiliateCount} طلب`} icon={Users} color="#a78bfa" />
                   <StatCard label="إيراد هذا الشهر" value={`${fmt(data.summary.monthlyGross)} ر.س`}
@@ -245,8 +245,8 @@ export default function FinancePage() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
                     <CashRow icon={<Clock size={14} color="#f59e0b" />} label="عمولات معلّقة (لم تُسحب)"
                       value={`${fmt(data.summary.pendingCommissions)} ر.س`} bg="#f59e0b" />
-                    <CashRow icon={<CheckCircle2 size={14} color="#22c55e" />} label="عمولات مدفوعة"
-                      value={`${fmt(data.summary.paidCommissions)} ر.س`} bg="#22c55e" />
+                    <CashRow icon={<CheckCircle2 size={14} color="#fff" />} label="عمولات مدفوعة"
+                      value={`${fmt(data.summary.paidCommissions)} ر.س`} bg="#fff" />
                     <CashRow icon={<AlertCircle size={14} color="#f59e0b" />} label="طلبات سحب معلّقة"
                       value={`${fmt(data.summary.pendingPayout)} ر.س`} bg="#f59e0b" />
                     <CashRow icon={<DollarSign size={14} color="#3b82f6" />} label="إجمالي ما تم تحويله"
@@ -273,7 +273,7 @@ export default function FinancePage() {
                             <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>{fmt(total)} ر.س</span>
                           </div>
                           <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden", background: "#1a1a1a" }}>
-                            <div style={{ background: "#22c55e", width: `${(p.direct / max) * 100}%` }} title={`مباشر ${fmt(p.direct)}`} />
+                            <div style={{ background: "#fff", width: `${(p.direct / max) * 100}%` }} title={`مباشر ${fmt(p.direct)}`} />
                             <div style={{ background: "#a78bfa", width: `${(p.affiliate / max) * 100}%` }} title={`عمولة ${fmt(p.affiliate)}`} />
                           </div>
                           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3, fontSize: 10, color: "#666" }}>
@@ -291,14 +291,14 @@ export default function FinancePage() {
             {tab === "direct" && (
               <div style={{ background: "#111", border: "1px solid #222", borderRadius: 16, padding: 24 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                  <CheckCircle2 size={18} color="#22c55e" />
+                  <CheckCircle2 size={18} color="#fff" />
                   <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 700, margin: 0 }}>المبيعات المباشرة (بدون عمولة)</h3>
                 </div>
                 <p style={{ color: "#666", fontSize: 12, margin: "0 0 18px" }}>طلبات بدون كود إحالة — يحتفظ النظام بكامل المبلغ</p>
                 <OrdersTable rows={data.directOrders.map(o => ({
                   user_name: o.user_name, user_email: o.user_email, product_name: o.product_name,
                   amount: o.amount, paid_at: o.paid_at,
-                }))} totalLabel="إجمالي مباشر" totalValue={data.summary.directRevenue} totalColor="#22c55e" />
+                }))} totalLabel="إجمالي مباشر" totalValue={data.summary.directRevenue} totalColor="#fff" />
               </div>
             )}
 
@@ -338,12 +338,12 @@ export default function FinancePage() {
                           <td style={td}>{o.product_name}</td>
                           <td style={{ ...td, textAlign: "left", color: "#fff", fontWeight: 600 }}>{fmt(o.amount || 0)}</td>
                           <td style={{ ...td, textAlign: "left", color: "#f87171", fontWeight: 700 }}>− {fmt(o.commission)}</td>
-                          <td style={{ ...td, textAlign: "left", color: "#4ade80", fontWeight: 700 }}>{fmt(o.net)}</td>
+                          <td style={{ ...td, textAlign: "left", color: "#fff", fontWeight: 700 }}>{fmt(o.net)}</td>
                           <td style={td}>
                             <span style={{
                               padding: "3px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700,
                               background: o.commission_status === "paid" ? "#0a2a14" : "#2a1f0a",
-                              color: o.commission_status === "paid" ? "#4ade80" : "#fbbf24",
+                              color: o.commission_status === "paid" ? "#fff" : "#fbbf24",
                             }}>{o.commission_status === "paid" ? "مدفوعة" : "معلّقة"}</span>
                           </td>
                           <td style={{ ...td, color: "#666" }}>{fmtDate(o.paid_at)}</td>
@@ -355,7 +355,7 @@ export default function FinancePage() {
                         <td colSpan={4} style={{ ...td, color: "#fff", fontWeight: 700 }}>الإجماليات</td>
                         <td style={{ ...td, textAlign: "left", color: "#fff", fontWeight: 800 }}>{fmt(data.summary.affiliateRevenue)}</td>
                         <td style={{ ...td, textAlign: "left", color: "#f87171", fontWeight: 800 }}>− {fmt(data.summary.totalCommissionsAccrued)}</td>
-                        <td style={{ ...td, textAlign: "left", color: "#4ade80", fontWeight: 800 }}>{fmt(data.summary.affiliateRevenue - data.summary.totalCommissionsAccrued)}</td>
+                        <td style={{ ...td, textAlign: "left", color: "#fff", fontWeight: 800 }}>{fmt(data.summary.affiliateRevenue - data.summary.totalCommissionsAccrued)}</td>
                         <td colSpan={2} />
                       </tr>
                     </tfoot>

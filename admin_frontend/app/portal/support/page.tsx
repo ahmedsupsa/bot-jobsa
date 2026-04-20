@@ -75,10 +75,10 @@ export default function SupportPage() {
         }}>
           <div style={{
             width: 40, height: 40, borderRadius: 12,
-            background: "rgba(34,197,94,0.1)", display: "flex",
+            background: "rgba(255,255,255,0.06)", display: "flex",
             alignItems: "center", justifyContent: "center",
           }}>
-            <MessageCircle size={20} color="#22c55e" />
+            <MessageCircle size={20} color="#fff" />
           </div>
           <div>
             <p style={{ margin: 0, color: "var(--text)", fontSize: 15, fontWeight: 600 }}>الدعم الفني</p>
@@ -108,7 +108,7 @@ export default function SupportPage() {
               }}>
                 <div style={{
                   background: m.sender === "user" ? "rgba(34,197,94,0.12)" : "var(--surface2)",
-                  border: `1px solid ${m.sender === "user" ? "#22c55e33" : "var(--border)"}`,
+                  border: `1px solid ${m.sender === "user" ? "#ffffff15" : "var(--border)"}`,
                   color: "var(--text)",
                   padding: "10px 14px", borderRadius: 14,
                   fontSize: 14, lineHeight: 1.6,
@@ -155,7 +155,7 @@ export default function SupportPage() {
             onClick={send}
             disabled={sending || !input.trim()}
             style={{
-              background: "#22c55e", color: "#000", border: "none",
+              background: "#fff", color: "#000", border: "none",
               borderRadius: 12, width: 42, height: 42,
               display: "flex", alignItems: "center", justifyContent: "center",
               cursor: sending || !input.trim() ? "not-allowed" : "pointer",

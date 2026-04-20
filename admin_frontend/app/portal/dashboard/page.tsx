@@ -73,7 +73,7 @@ function NextRunCard({ active }: { active: boolean }) {
   return (
     <div style={{
       background: active ? "rgba(34,197,94,0.04)" : "var(--surface)",
-      border: `1px solid ${active ? "#22c55e33" : "var(--border)"}`,
+      border: `1px solid ${active ? "#ffffff15" : "var(--border)"}`,
       borderRadius: 16, padding: "20px 22px", marginBottom: 20,
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -83,7 +83,7 @@ function NextRunCard({ active }: { active: boolean }) {
             background: active ? "rgba(34,197,94,0.1)" : "var(--surface2)",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            <Zap size={17} strokeWidth={1.8} color={active ? "#22c55e" : "#444"} />
+            <Zap size={17} strokeWidth={1.8} color={active ? "#fff" : "#444"} />
           </div>
           <div>
             <p style={{ margin: 0, color: "var(--text)", fontSize: 14, fontWeight: 600 }}>التقديم التلقائي القادم</p>
@@ -93,15 +93,15 @@ function NextRunCard({ active }: { active: boolean }) {
         <span style={{
           padding: "4px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
           background: active ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.08)",
-          border: `1px solid ${active ? "#22c55e22" : "#ef444422"}`,
-          color: active ? "#22c55e" : "#ef4444",
+          border: `1px solid ${active ? "#ffffff12" : "#ef444422"}`,
+          color: active ? "#fff" : "#ef4444",
         }}>{active ? "نشط" : "موقوف"}</span>
       </div>
 
       <div style={{ background: "var(--surface2)", borderRadius: 999, height: 4, marginBottom: 12, overflow: "hidden" }}>
         <div style={{
           width: `${pct}%`, height: "100%",
-          background: active ? "#22c55e" : "#333",
+          background: active ? "#fff" : "#333",
           borderRadius: 999, transition: "width 1s linear",
         }} />
       </div>
@@ -114,7 +114,7 @@ function NextRunCard({ active }: { active: boolean }) {
         {active && (
           <span style={{
             fontFamily: "monospace", fontWeight: 700, fontSize: 22, letterSpacing: 2,
-            color: secs < 60 ? "#22c55e" : "var(--text)",
+            color: secs < 60 ? "#fff" : "var(--text)",
           }}>{fmt(secs)}</span>
         )}
       </div>
@@ -187,8 +187,8 @@ export default function Dashboard() {
           <div style={{
             ...s.subBadge,
             background: user.subscription_active ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.08)",
-            borderColor: user.subscription_active ? "#22c55e22" : "#ef444422",
-            color: user.subscription_active ? "#22c55e" : "#ef4444",
+            borderColor: user.subscription_active ? "#ffffff12" : "#ef444422",
+            color: user.subscription_active ? "#fff" : "#ef4444",
           }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }} />
             {user.subscription_active ? `${user.days_left} يوم متبقي` : "الاشتراك منتهٍ"}
@@ -332,7 +332,7 @@ const s: Record<string, React.CSSProperties> = {
   appTitle: { color: "var(--text)", fontSize: 13, fontWeight: 500, margin: 0 },
   appDate: { color: "var(--text3)", fontSize: 12, margin: "2px 0 0" },
   sentTag: {
-    background: "#0a1f0a", color: "#22c55e", border: "1px solid #22c55e22",
+    background: "#1a1a1a", color: "#fff", border: "1px solid #ffffff12",
     borderRadius: 8, padding: "3px 10px", fontSize: 11, fontWeight: 600, flexShrink: 0,
   },
   quickBtn: {

@@ -153,11 +153,11 @@ export default function JobsPage() {
 
           {/* AI specs result */}
           {aiSpecs && (
-            <div className="flex items-start gap-2 rounded-xl border border-emerald-500/20 bg-emerald-950/20 px-3 py-2.5">
-              <CheckCircle2 size={14} className="text-emerald-400 mt-0.5 shrink-0" />
+            <div className="flex items-start gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5">
+              <CheckCircle2 size={14} className="text-white/80 mt-0.5 shrink-0" />
               <div>
-                <div className="text-xs font-medium text-emerald-300 mb-1">تخصصات مُولَّدة:</div>
-                <div className="text-xs text-emerald-200/70">{aiSpecs}</div>
+                <div className="text-xs font-medium text-white mb-1">تخصصات مُولَّدة:</div>
+                <div className="text-xs text-slate-400">{aiSpecs}</div>
               </div>
             </div>
           )}
@@ -165,7 +165,7 @@ export default function JobsPage() {
           {msg && (
             <div className={`rounded-xl border px-4 py-2.5 text-sm ${
               msgType === "ok"
-                ? "border-emerald-500/25 bg-emerald-950/30 text-emerald-300"
+                ? "border-white/20 bg-white/5 text-white"
                 : "border-red-500/25 bg-red-950/30 text-red-300"
             }`}>
               {msg}

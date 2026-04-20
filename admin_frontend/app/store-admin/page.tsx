@@ -39,7 +39,7 @@ const EMPTY_PRODUCT = { name: "", description: "", price: "", duration_days: "" 
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   pending:   { label: "معلّق",   color: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20", icon: Clock },
-  paid:      { label: "مدفوع",   color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20", icon: CheckCircle2 },
+  paid:      { label: "مدفوع",   color: "text-white bg-white/10 border-white/20", icon: CheckCircle2 },
   failed:    { label: "فشل",     color: "text-red-400 bg-red-400/10 border-red-400/20", icon: XCircle },
   cancelled: { label: "ملغى",    color: "text-slate-400 bg-slate-400/10 border-slate-400/20", icon: XCircle },
 };
@@ -275,7 +275,7 @@ export default function StoreAdminPage() {
             </div>
 
             {pMsg && (
-              <div className={`rounded-xl border px-4 py-3 text-sm ${pMsgType === "ok" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
+              <div className={`rounded-xl border px-4 py-3 text-sm ${pMsgType === "ok" ? "border-white/20 bg-white/5 text-white" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
                 {pMsg}
               </div>
             )}
@@ -302,7 +302,7 @@ export default function StoreAdminPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="font-semibold text-white text-sm">{p.name}</span>
-                          <span className={`rounded-full border px-2 py-0.5 text-xs ${p.is_active ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-slate-600 bg-slate-700/50 text-slate-400"}`}>
+                          <span className={`rounded-full border px-2 py-0.5 text-xs ${p.is_active ? "border-white/20 bg-white/5 text-white" : "border-slate-600 bg-slate-700/50 text-slate-400"}`}>
                             {p.is_active ? "نشط" : "متوقف"}
                           </span>
                           {p.streampay_product_id ? (
@@ -325,7 +325,7 @@ export default function StoreAdminPage() {
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button
                           onClick={() => toggleActive(p)}
-                          className={`rounded-lg border px-2.5 py-1.5 text-xs transition-all ${p.is_active ? "border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10" : "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"}`}
+                          className={`rounded-lg border px-2.5 py-1.5 text-xs transition-all ${p.is_active ? "border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10" : "border-white/20 text-white hover:bg-white/10"}`}
                         >
                           {p.is_active ? "إيقاف" : "تفعيل"}
                         </button>
@@ -416,7 +416,7 @@ export default function StoreAdminPage() {
                       {editProduct?.streampay_product_id ? (
                         <div>
                           <label className="block text-xs text-slate-400 mb-1">StreamPay Product ID</label>
-                          <div className="w-full rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-400 font-mono flex items-center gap-2" dir="ltr">
+                          <div className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-white/80 font-mono flex items-center gap-2" dir="ltr">
                             <CheckCircle2 size={12} className="flex-shrink-0" />
                             <span className="truncate">{editProduct.streampay_product_id}</span>
                           </div>
@@ -429,7 +429,7 @@ export default function StoreAdminPage() {
                       ) : null}
                     </div>
                     {pMsg && (
-                      <div className={`mt-3 rounded-xl border px-3 py-2 text-xs ${pMsgType === "ok" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
+                      <div className={`mt-3 rounded-xl border px-3 py-2 text-xs ${pMsgType === "ok" ? "border-white/20 bg-white/5 text-white" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
                         {pMsg}
                       </div>
                     )}
@@ -497,7 +497,7 @@ export default function StoreAdminPage() {
             </div>
 
             {oMsg && (
-              <div className={`rounded-xl border px-4 py-3 text-sm ${oMsgType === "ok" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
+              <div className={`rounded-xl border px-4 py-3 text-sm ${oMsgType === "ok" ? "border-white/20 bg-white/5 text-white" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
                 {oMsg}
               </div>
             )}
@@ -534,7 +534,7 @@ export default function StoreAdminPage() {
                           {o.user_email && <span>✉️ {o.user_email}</span>}
                           {o.amount && <span className="text-white font-bold">💳 {o.amount} ر.س</span>}
                           <span>🕒 {fmt(o.created_at)}</span>
-                          {o.paid_at && <span className="text-emerald-400">✅ {fmt(o.paid_at)}</span>}
+                          {o.paid_at && <span className="text-white/80">✅ {fmt(o.paid_at)}</span>}
                           {o.notes && <span className="col-span-2 text-slate-500 italic">📝 {o.notes}</span>}
                           {o.streampay_invoice_id && (
                             <span className="col-span-2 font-mono text-slate-500 truncate">INV: {o.streampay_invoice_id}</span>
@@ -547,7 +547,7 @@ export default function StoreAdminPage() {
                             <button
                               disabled={updatingId === o.id}
                               onClick={() => updateOrderStatus(o.id, "paid")}
-                              className="rounded-lg border border-emerald-500/30 px-2.5 py-1.5 text-xs text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50 transition-all"
+                              className="rounded-lg border border-white/20 px-2.5 py-1.5 text-xs text-white hover:bg-white/10 disabled:opacity-50 transition-all"
                             >
                               تأكيد
                             </button>
@@ -561,7 +561,7 @@ export default function StoreAdminPage() {
                           </>
                         )}
                         {o.status === "paid" && (
-                          <span className="text-xs text-emerald-400 px-2">مكتمل</span>
+                          <span className="text-xs text-white/80 px-2">مكتمل</span>
                         )}
                         {(o.status === "failed" || o.status === "cancelled") && (
                           <button
@@ -665,7 +665,7 @@ export default function StoreAdminPage() {
                       </div>
                     </div>
                     {oMsg && (
-                      <div className={`mt-3 rounded-xl border px-3 py-2 text-xs ${oMsgType === "ok" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
+                      <div className={`mt-3 rounded-xl border px-3 py-2 text-xs ${oMsgType === "ok" ? "border-white/20 bg-white/5 text-white" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
                         {oMsg}
                       </div>
                     )}

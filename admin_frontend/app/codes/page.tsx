@@ -134,14 +134,14 @@ export default function CodesPage() {
         {lookupResult && (
           <div className={`mt-3 rounded-xl border p-4 ${
             lookupResult.status === "used"
-              ? "border-emerald-500/25 bg-emerald-950/20"
+              ? "border-white/20 bg-white/5"
               : "border-yellow-500/25 bg-yellow-950/20"
           }`}>
             <div className="flex items-center gap-2 mb-3">
               {lookupResult.status === "used"
-                ? <CheckCircle2 size={16} className="text-emerald-400" />
+                ? <CheckCircle2 size={16} className="text-white/80" />
                 : <XCircle size={16} className="text-yellow-400" />}
-              <span className={`text-sm font-semibold ${lookupResult.status === "used" ? "text-emerald-300" : "text-yellow-300"}`}>
+              <span className={`text-sm font-semibold ${lookupResult.status === "used" ? "text-white" : "text-yellow-300"}`}>
                 {lookupResult.status === "used" ? "كود مستخدم" : "كود غير مستخدم"}
               </span>
               <span className="mr-auto text-xs text-slate-500 font-mono">{lookupResult.code}</span>
@@ -215,7 +215,7 @@ export default function CodesPage() {
         {msg && (
           <div className={`mt-3 rounded-xl border px-4 py-2.5 text-sm ${
             msgType === "ok"
-              ? "border-emerald-500/25 bg-emerald-950/30 text-emerald-300"
+              ? "border-white/20 bg-white/5 text-white"
               : "border-red-500/25 bg-red-950/30 text-red-300"
           }`}>
             {msg}
@@ -225,7 +225,7 @@ export default function CodesPage() {
 
       {/* Code blocks */}
       <div className="space-y-4">
-        <CodeBlock title="الأكواد المولدة الآن" list={generated} onCopy={copy} accent="emerald" />
+        <CodeBlock title="الأكواد المولدة الآن" list={generated} onCopy={copy} accent="white" />
         <div className="grid gap-4 xl:grid-cols-2">
           <CodeBlock title={`الأكواد غير المستخدمة (${unused.length})`} list={unused} onCopy={copy} accent="blue" />
           <CodeBlock title={`الأكواد المستخدمة (${used.length})`} list={used} onCopy={copy} accent="slate" />
@@ -255,7 +255,7 @@ function CodeBlock({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const borderColor = accent === "emerald" ? "border-emerald-500/20" : accent === "blue" ? "border-accent/20" : "border-line/70";
+  const borderColor = accent === "emerald" ? "border-white/20" : accent === "blue" ? "border-accent/20" : "border-line/70";
 
   return (
     <div className={`rounded-2xl border bg-panel shadow-card ${borderColor}`}>
@@ -265,7 +265,7 @@ function CodeBlock({
           onClick={handleCopy}
           className="flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-slate-300 hover:border-accent/40 hover:text-accent transition-colors"
         >
-          {copied ? <CheckCheck size={12} className="text-emerald-400" /> : <Copy size={12} />}
+          {copied ? <CheckCheck size={12} className="text-white/80" /> : <Copy size={12} />}
           {copied ? "تم النسخ" : "نسخ"}
         </button>
       </div>
