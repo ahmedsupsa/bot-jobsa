@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import webpush from "web-push";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,14 @@ function freshClient() {
   const url = process.env.SUPABASE_URL || "";
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
   return createClient(url, key, { auth: { persistSession: false } });
+}
+
+function initVapid() {
+  webpush.setVapidDetails(
+    process.env.VAPID_EMAIL || "mailto:admin@jobbots.app",
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
+    process.env.VAPID_PRIVATE_KEY || ""
+  );
 }
 
 export async function GET(req: Request) {
@@ -50,11 +59,39 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "user_id والمحتوى مطلوبان" }, { status: 400 });
   }
   const supabase = freshClient();
+
+  // حفظ الرسالة
   const { data, error } = await supabase
     .from("support_messages")
     .insert({ user_id, sender: "admin", content: content.trim() })
     .select()
     .single();
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+
+  // إرسال إشعار push للمستخدم
+  try {
+    const { data: subs } = await supabase
+      .from("push_subscriptions")
+      .select("subscription")
+      .eq("user_id", user_id);
+
+    if (subs && subs.length > 0) {
+      initVapid();
+      const payload = JSON.stringify({
+        title: "رسالة جديدة من الدعم",
+        body: content.trim().slice(0, 100),
+        url: "/portal/support",
+      });
+      await Promise.allSettled(
+        subs.map(async (row) => {
+          try {
+            const sub = JSON.parse(row.subscription);
+            await webpush.sendNotification(sub, payload);
+          } catch {}
+        })
+      );
+    }
+  } catch {}
+
   return NextResponse.json({ ok: true, message: data });
 }
