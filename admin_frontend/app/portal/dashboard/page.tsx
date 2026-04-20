@@ -335,7 +335,7 @@ const s: Record<string, React.CSSProperties> = {
   statLabel: { color: "var(--text3)", fontSize: 12, margin: 0 },
   alert: {
     display: "flex", alignItems: "center", gap: 14,
-    background: "#0f0d00", border: "1px solid #78350f",
+    background: "var(--alert-bg)", border: "1px solid var(--alert-border)",
     borderRadius: 14, padding: "16px 20px", marginBottom: 24, cursor: "pointer",
   },
   alertTitle: { color: "#f59e0b", fontWeight: 600, fontSize: 14, margin: 0 },
@@ -357,7 +357,7 @@ const s: Record<string, React.CSSProperties> = {
   appTitle: { color: "var(--text)", fontSize: 13, fontWeight: 500, margin: 0 },
   appDate: { color: "var(--text3)", fontSize: 12, margin: "2px 0 0" },
   sentTag: {
-    background: "#1a1a1a", color: "#fff", border: "1px solid #2a2a2a",
+    background: "var(--surface2)", color: "var(--text)", border: "1px solid var(--border2)",
     borderRadius: 8, padding: "3px 10px", fontSize: 11, fontWeight: 600, flexShrink: 0,
   },
   quickBtn: {

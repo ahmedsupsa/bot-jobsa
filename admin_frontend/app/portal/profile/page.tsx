@@ -364,7 +364,11 @@ export default function AccountPage() {
                     name: "الحديث",
                     desc: "عصري وودّي • مناسب للشركات الناشئة",
                     preview: (
-                      <div style={{ background: "#0f0f0f", borderRadius: 8, padding: "8px 10px", fontSize: 9, color: "#eee", direction: "rtl", lineHeight: 1.7 }}>
+                      <div style={{
+                        background: dark ? "#0f0f0f" : "#1f1b2e",
+                        borderRadius: 8, padding: "8px 10px", fontSize: 9,
+                        color: "#eee", direction: "rtl", lineHeight: 1.7,
+                      }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
                           <div style={{ width: 16, height: 16, borderRadius: 4, background: "#a78bfa", flexShrink: 0 }} />
                           <div style={{ fontWeight: 700, color: "#fff", fontSize: 10 }}>مهندس برمجيات</div>

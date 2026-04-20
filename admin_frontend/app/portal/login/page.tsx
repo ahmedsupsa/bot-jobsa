@@ -111,7 +111,7 @@ export default function PortalLogin() {
         <div style={s.formBox}>
           {step === "register" ? (
             <>
-              <div style={s.formIcon}><User size={22} strokeWidth={1.5} color="#0a0a0a" /></div>
+              <div style={s.formIcon}><User size={22} strokeWidth={1.5} color="var(--accent-fg)" /></div>
               <h2 style={s.formTitle}>أكمل التسجيل</h2>
               <p style={s.formSub}>اشتراك {subDays} يوم — أدخل بياناتك للبدء</p>
               <form onSubmit={handleRegister} style={{ marginTop: 24 }}>
@@ -145,8 +145,8 @@ export default function PortalLogin() {
             <>
               <div style={s.formIcon}>
                 {tab === "email"
-                  ? <Mail size={22} strokeWidth={1.5} color="#0a0a0a" />
-                  : <KeyRound size={22} strokeWidth={1.5} color="#0a0a0a" />}
+                  ? <Mail size={22} strokeWidth={1.5} color="var(--accent-fg)" />
+                  : <KeyRound size={22} strokeWidth={1.5} color="var(--accent-fg)" />}
               </div>
               <h2 style={s.formTitle}>مرحباً بك</h2>
               <p style={s.formSub}>سجّل دخولك للوصول إلى حسابك</p>
@@ -165,7 +165,7 @@ export default function PortalLogin() {
                 <form onSubmit={handleEmailSubmit} style={{ marginTop: 20 }}>
                   <label style={s.label}>البريد الإلكتروني</label>
                   <div style={s.inputWrap}>
-                    <Mail size={16} strokeWidth={1.5} color="#555" style={s.inputIcon} />
+                    <Mail size={16} strokeWidth={1.5} color="var(--text4)" style={s.inputIcon} />
                     <input
                       style={s.input} type="email" dir="ltr"
                       value={email} onChange={e => setEmail(e.target.value)}
@@ -185,7 +185,7 @@ export default function PortalLogin() {
                 <form onSubmit={handleCodeSubmit} style={{ marginTop: 20 }}>
                   <label style={s.label}>كود التفعيل</label>
                   <div style={s.inputWrap}>
-                    <KeyRound size={16} strokeWidth={1.5} color="#555" style={s.inputIcon} />
+                    <KeyRound size={16} strokeWidth={1.5} color="var(--text4)" style={s.inputIcon} />
                     <input
                       style={s.input} dir="ltr"
                       value={code} onChange={e => setCode(e.target.value)}
@@ -214,69 +214,69 @@ export default function PortalLogin() {
 const s: Record<string, React.CSSProperties> = {
   brand: { display: "flex", alignItems: "center", gap: 14, marginBottom: 24, position: "relative", zIndex: 1 },
   brandLogo: {
-    width: 52, height: 52, borderRadius: 14, background: "#fff",
+    width: 52, height: 52, borderRadius: 14, background: "var(--accent)",
     display: "flex", alignItems: "center", justifyContent: "center",
   },
-  brandName: { color: "#fff", fontSize: 32, fontWeight: 800, margin: 0 },
-  brandTagline: { color: "#888", fontSize: 16, lineHeight: 1.7, margin: "0 0 40px", position: "relative", zIndex: 1 },
+  brandName: { color: "var(--text)", fontSize: 32, fontWeight: 800, margin: 0 },
+  brandTagline: { color: "var(--text3)", fontSize: 16, lineHeight: 1.7, margin: "0 0 40px", position: "relative", zIndex: 1 },
   featureList: { display: "flex", flexDirection: "column", gap: 14, position: "relative", zIndex: 1 },
   featureRow: {
     display: "flex", alignItems: "center", gap: 14,
-    background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 12, padding: "14px 18px",
+    background: "var(--feature-bg)", border: "1px solid var(--border2)", borderRadius: 12, padding: "14px 18px",
   },
   featureIconWrap: {
-    width: 36, height: 36, borderRadius: 10, background: "#222",
-    display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", flexShrink: 0,
+    width: 36, height: 36, borderRadius: 10, background: "var(--feature-icon)",
+    display: "flex", alignItems: "center", justifyContent: "center", color: "var(--feature-icon-fg)", flexShrink: 0,
   },
-  featureText: { color: "#ccc", fontSize: 14, fontWeight: 500 },
+  featureText: { color: "var(--text2)", fontSize: 14, fontWeight: 500 },
   grid: {
     position: "absolute", bottom: 0, left: 0, right: 0, top: 0,
-    backgroundImage: "radial-gradient(circle, #181818 1px, transparent 1px)",
+    backgroundImage: "radial-gradient(circle, var(--grid-dot) 1px, transparent 1px)",
     backgroundSize: "28px 28px", zIndex: 0, pointerEvents: "none",
   },
   formBox: { width: "100%", maxWidth: 400 },
   formIcon: {
-    width: 52, height: 52, borderRadius: 14, background: "#fff",
+    width: 52, height: 52, borderRadius: 14, background: "var(--accent)",
     display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20,
   },
-  formTitle: { color: "#fff", fontSize: 26, fontWeight: 700, margin: "0 0 6px" },
-  formSub: { color: "#888", fontSize: 14, margin: 0 },
+  formTitle: { color: "var(--text)", fontSize: 26, fontWeight: 700, margin: "0 0 6px" },
+  formSub: { color: "var(--text3)", fontSize: 14, margin: 0 },
   tabs: {
     display: "flex", gap: 8, marginTop: 24,
-    background: "#141414", border: "1px solid #2a2a2a", borderRadius: 12, padding: 4,
+    background: "var(--surface2)", border: "1px solid var(--border2)", borderRadius: 12, padding: 4,
   },
   tab: {
     flex: 1, padding: "10px 0", border: "none", borderRadius: 10,
-    background: "transparent", color: "#999", fontSize: 13, fontWeight: 600, cursor: "pointer",
+    background: "transparent", color: "var(--text3)", fontSize: 13, fontWeight: 600, cursor: "pointer",
     transition: "all 0.2s", fontFamily: "inherit",
   },
-  tabActive: { background: "#fff", color: "#0a0a0a" },
-  label: { display: "block", color: "#aaa", fontSize: 13, fontWeight: 500, marginBottom: 8, marginTop: 16 },
+  tabActive: { background: "var(--accent)", color: "var(--accent-fg)" },
+  label: { display: "block", color: "var(--text2)", fontSize: 13, fontWeight: 500, marginBottom: 8, marginTop: 16 },
   inputWrap: { position: "relative", display: "flex", alignItems: "center" },
-  inputIcon: { position: "absolute", right: 14, color: "#444", display: "flex", alignItems: "center", zIndex: 1 } as any,
+  inputIcon: { position: "absolute", right: 14, color: "var(--text4)", display: "flex", alignItems: "center", zIndex: 1 } as any,
   input: {
     width: "100%", padding: "13px 42px 13px 16px",
-    background: "#141414", border: "1px solid #2a2a2a",
-    borderRadius: 12, color: "#fff", fontSize: 16, outline: "none",
+    background: "var(--input-bg)", border: "1px solid var(--border2)",
+    borderRadius: 12, color: "var(--text)", fontSize: 16, outline: "none",
     boxSizing: "border-box", transition: "border-color 0.2s",
     WebkitAppearance: "none",
   },
   btn: {
     width: "100%", padding: "14px", marginTop: 20,
-    background: "#fff", color: "#0a0a0a", border: "none", borderRadius: 12,
+    background: "var(--accent)", color: "var(--accent-fg)", border: "none", borderRadius: 12,
     fontSize: 15, fontWeight: 700, cursor: "pointer",
     display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
     transition: "opacity 0.2s", fontFamily: "inherit", WebkitAppearance: "none",
   },
   btnBack: {
     width: "100%", padding: "12px", marginTop: 10,
-    background: "transparent", border: "1px solid #2a2a2a",
-    borderRadius: 12, color: "#888", fontSize: 14, cursor: "pointer",
+    background: "transparent", border: "1px solid var(--border2)",
+    borderRadius: 12, color: "var(--text3)", fontSize: 14, cursor: "pointer",
     display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
     fontFamily: "inherit",
   },
   error: {
-    background: "#1a0a0a", color: "#f87171", border: "1px solid #3f1515",
+    background: "rgba(248,113,113,0.08)", color: "#dc2626", border: "1px solid rgba(248,113,113,0.3)",
     borderRadius: 10, padding: "10px 14px", fontSize: 13, margin: "10px 0",
   },
 };

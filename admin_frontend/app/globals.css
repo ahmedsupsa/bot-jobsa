@@ -27,6 +27,12 @@
   --nav-bg:    rgba(244,244,245,0.94);
   --input-bg:  #ffffff;
   --shadow:    0 4px 24px rgba(0,0,0,0.08);
+  --alert-bg:     #fffbeb;
+  --alert-border: #fde68a;
+  --feature-bg:   #f4f4f5;
+  --feature-icon: #e4e4e7;
+  --feature-icon-fg: #09090b;
+  --grid-dot:     #e4e4e7;
 }
 
 /* ── الوضع الليلي: Dark ── */
@@ -48,6 +54,12 @@
   --nav-bg:    rgba(10,10,10,0.92);
   --input-bg:  #141414;
   --shadow:    0 4px 24px rgba(0,0,0,0.4);
+  --alert-bg:     #0f0d00;
+  --alert-border: #78350f;
+  --feature-bg:   #1a1a1a;
+  --feature-icon: #222222;
+  --feature-icon-fg: #ffffff;
+  --grid-dot:     #181818;
 }
 
 /* ═══════════════════════════════════════
@@ -117,12 +129,12 @@ button, [role="button"] { -webkit-user-select: none; user-select: none; }
   min-height: 100vh;
   display: flex;
   direction: rtl;
-  background: #0a0a0a;
+  background: var(--bg);
 }
 .login-left {
   flex: 1;
-  background: #111;
-  border-left: 1px solid #1f1f1f;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
   padding: 60px 52px;
   display: flex;
   flex-direction: column;
@@ -137,7 +149,7 @@ button, [role="button"] { -webkit-user-select: none; user-select: none; }
   align-items: center;
   justify-content: center;
   padding: 40px 48px;
-  background: #0a0a0a;
+  background: var(--bg);
   flex-shrink: 0;
 }
 @media (max-width: 768px) {
