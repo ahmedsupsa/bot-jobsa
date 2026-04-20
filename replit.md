@@ -48,3 +48,4 @@ Storage bucket: `cvs` — stores user CV files
 - The Next.js dev server runs on port 5000 with `0.0.0.0` host binding for Replit proxy compatibility
 - `allowedDevOrigins` in `next.config.mjs` permits requests from Replit's proxy domains
 - Google Fonts are loaded via CSS `@import` in `globals.css` to avoid hydration mismatches
+- All pages are fully responsive (mobile/tablet/desktop) with RTL Arabic layout and cross-browser support (iOS Safari, Firefox, Chrome, Edge)
