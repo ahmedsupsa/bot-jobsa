@@ -236,8 +236,8 @@ const s: Record<string, React.CSSProperties> = {
   hero: { maxWidth: 860, margin: "0 auto", padding: "80px 20px 60px", textAlign: "center" },
   heroBadge: { display: "inline-flex", alignItems: "center", gap: 6, background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 100, padding: "6px 14px", fontSize: 13, color: "#999", marginBottom: 28 },
   heroTitle: { fontSize: "clamp(30px, 7vw, 58px)", fontWeight: 900, lineHeight: 1.2, margin: "0 0 18px", color: "#fff" },
-  heroAccent: { color: "#fff", opacity: 0.45 },
-  heroSub: { fontSize: "clamp(15px, 3vw, 18px)", color: "#666", lineHeight: 1.9, margin: "0 0 36px", padding: "0 8px" },
+  heroAccent: { color: "#aaa" },
+  heroSub: { fontSize: "clamp(15px, 3vw, 18px)", color: "#aaa", lineHeight: 1.9, margin: "0 0 36px", padding: "0 8px" },
   heroCtas: { display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 52 },
   ctaPrimary: {
     display: "inline-flex", alignItems: "center", gap: 8,
@@ -247,46 +247,46 @@ const s: Record<string, React.CSSProperties> = {
   },
   ctaSecondary: {
     display: "inline-flex", alignItems: "center",
-    border: "1px solid #2a2a2a", color: "#888", padding: "13px 22px",
+    border: "1px solid #2a2a2a", color: "#aaa", padding: "13px 22px",
     borderRadius: 12, fontSize: 13, cursor: "pointer",
     whiteSpace: "nowrap",
   },
   heroStats: { display: "flex", justifyContent: "center", gap: 40, borderTop: "1px solid #1a1a1a", paddingTop: 36, flexWrap: "wrap" },
   heroStat: { textAlign: "center" },
   heroStatVal: { fontSize: 26, fontWeight: 800, color: "#fff", marginBottom: 4 },
-  heroStatLabel: { fontSize: 12, color: "#555" },
+  heroStatLabel: { fontSize: 12, color: "#999" },
 
   /* SECTIONS */
   section: { padding: "72px 20px" },
   sectionInner: { maxWidth: 1100, margin: "0 auto" },
-  sectionTag: { display: "inline-block", background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 100, padding: "4px 14px", fontSize: 12, color: "#888", marginBottom: 16 },
+  sectionTag: { display: "inline-block", background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 100, padding: "4px 14px", fontSize: 12, color: "#aaa", marginBottom: 16 },
   sectionTitle: { fontSize: "clamp(22px, 5vw, 34px)", fontWeight: 800, color: "#fff", margin: "0 0 12px", textAlign: "center" },
-  sectionDesc: { fontSize: 15, color: "#555", textAlign: "center", margin: "0 0 44px", lineHeight: 1.7, padding: "0 16px" },
+  sectionDesc: { fontSize: 15, color: "#aaa", textAlign: "center", margin: "0 0 44px", lineHeight: 1.7, padding: "0 16px" },
 
   /* FEATURES */
   featureGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 },
   featureCard: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 16, padding: "24px 20px" },
   featureIcon: { width: 42, height: 42, borderRadius: 12, background: "#1a1a1a", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", marginBottom: 14 },
   featureTitle: { fontSize: 15, fontWeight: 700, color: "#fff", margin: "0 0 8px" },
-  featureDesc: { fontSize: 13, color: "#666", lineHeight: 1.8, margin: 0 },
+  featureDesc: { fontSize: 13, color: "#aaa", lineHeight: 1.8, margin: 0 },
 
   /* STEPS */
   stepsGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 },
-  stepCard: { background: "#0a0a0a", border: "1px solid #222", borderRadius: 16, padding: "28px 24px" },
-  stepNum: { fontSize: 38, fontWeight: 900, color: "#222", marginBottom: 14, fontFamily: "monospace" },
+  stepCard: { background: "#0a0a0a", border: "1px solid #2a2a2a", borderRadius: 16, padding: "28px 24px" },
+  stepNum: { fontSize: 38, fontWeight: 900, color: "#333", marginBottom: 14, fontFamily: "monospace" },
   stepTitle: { fontSize: 17, fontWeight: 700, color: "#fff", margin: "0 0 8px" },
-  stepDesc: { fontSize: 13, color: "#666", lineHeight: 1.8, margin: 0 },
+  stepDesc: { fontSize: 13, color: "#aaa", lineHeight: 1.8, margin: 0 },
 
   /* FAQ */
   faqCard: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 14, padding: "22px 24px" },
   faqQ: { fontSize: 15, fontWeight: 700, color: "#fff", margin: "0 0 10px" },
-  faqA: { fontSize: 13, color: "#666", lineHeight: 1.8, margin: 0 },
+  faqA: { fontSize: 13, color: "#aaa", lineHeight: 1.8, margin: 0 },
 
   /* CTA BANNER */
   ctaBanner: { padding: "72px 20px", background: "#0a0a0a", borderTop: "1px solid #1a1a1a" },
   ctaBannerInner: { maxWidth: 600, margin: "0 auto", textAlign: "center" },
   ctaBannerTitle: { fontSize: "clamp(20px, 5vw, 30px)", fontWeight: 800, color: "#fff", margin: "0 0 12px" },
-  ctaBannerSub: { fontSize: 15, color: "#555", margin: "0 0 28px", lineHeight: 1.7 },
+  ctaBannerSub: { fontSize: 15, color: "#aaa", margin: "0 0 28px", lineHeight: 1.7 },
   ctaBannerBtn: {
     display: "inline-flex", alignItems: "center", gap: 8,
     background: "#fff", color: "#0a0a0a", padding: "14px 32px",
@@ -297,6 +297,6 @@ const s: Record<string, React.CSSProperties> = {
   footer: { borderTop: "1px solid #1a1a1a", padding: "28px 20px" },
   footerInner: { maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 },
   footerLinks: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" },
-  footerLink: { color: "#555", fontSize: 13 },
-  footerCopy: { color: "#333", fontSize: 13 },
+  footerLink: { color: "#aaa", fontSize: 13 },
+  footerCopy: { color: "#888", fontSize: 13 },
 };
