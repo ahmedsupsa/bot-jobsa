@@ -3,7 +3,6 @@ import { supabase } from "@/lib/supabase-server";
 import { findOrCreateConsumer, createPaymentLink } from "@/lib/streampay";
 
 const rawSite = process.env.NEXT_PUBLIC_SITE_URL || process.env.ADMIN_DASHBOARD_URL || "https://www.jobbots.org";
-// Ensure we always use www to avoid Firebase catching the apex domain
 const SITE = rawSite.replace("https://jobbots.org", "https://www.jobbots.org").replace("http://jobbots.org", "https://www.jobbots.org");
 
 export async function POST(req: Request) {
@@ -28,7 +27,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "هذا المنتج غير مرتبط ببوابة الدفع بعد" }, { status: 400 });
     }
 
-    // Validate ref_code (must exist in affiliates)
     let validRefCode: string | null = null;
     if (ref_code && typeof ref_code === "string") {
       const { data: aff } = await supabase
@@ -39,18 +37,26 @@ export async function POST(req: Request) {
       if (aff) validRefCode = aff.code;
     }
 
-    const { data: order } = await supabase
+    const orderBase = {
+      product_id: product.id,
+      user_name: name.trim(),
+      user_email: email.trim().toLowerCase(),
+      amount: product.price,
+      status: "pending",
+      ref_code: validRefCode,
+    };
+
+    let { data: order, error: orderErr } = await supabase
       .from("store_orders")
-      .insert({
-        product_id: product.id,
-        user_name: name.trim(),
-        user_email: email.trim().toLowerCase(),
-        amount: product.price,
-        status: "pending",
-        ref_code: validRefCode,
-      })
+      .insert({ ...orderBase, user_phone: phone?.trim() || null })
       .select()
       .single();
+
+    // If user_phone column doesn't exist yet, retry without it
+    if (orderErr?.message?.includes("user_phone")) {
+      const fb = await supabase.from("store_orders").insert(orderBase).select().single();
+      order = fb.data;
+    }
 
     const orderId = order?.id || crypto.randomUUID();
 

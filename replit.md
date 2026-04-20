@@ -86,7 +86,20 @@ Admin page `/notifications` supports 6 segments:
 
 Each notification is personalized with `{name}` → user's first name. Worker automatically sends achievement notifications via `/api/internal/notify-achievements` (secured by WORKER_SECRET).
 
+## Store Purchase → Auto Account Creation Flow
+
+1. User fills in name, email, phone in checkout modal → redirected to StreamPay
+2. After successful payment → `/store/success` → calls `/api/store/verify`
+3. Verify API auto-creates user account (or extends existing subscription)
+4. Token is saved to browser (localStorage + cookie) → user is logged in immediately
+5. Email login (`/portal/login` → tab "بريد إلكتروني") works automatically since `user_settings.email` is populated
+
+**DB migration (run once in Supabase SQL Editor):**
+```sql
+ALTER TABLE store_orders ADD COLUMN IF NOT EXISTS user_phone text;
+```
+
 ## Database (Supabase)
 
-Tables: `users`, `admin_jobs`, `applications`, `job_fields`, `user_settings`, `user_cvs`, `user_job_preferences`, `worker_logs`, `push_subscriptions`
+Tables: `users`, `admin_jobs`, `applications`, `job_fields`, `user_settings`, `user_cvs`, `user_job_preferences`, `worker_logs`, `push_subscriptions`, `store_orders`, `store_products`, `activation_codes`, `affiliates`, `affiliate_referrals`
 Storage bucket: `cvs` — stores user CV files
