@@ -327,12 +327,12 @@ export default function AccountPage() {
                   const isActive = lang === "ar" ? user?.application_language !== "en" : user?.application_language === "en";
                   return (
                     <button key={lang} onClick={() => changeLanguage(lang)} disabled={savingLang} style={{
-                      background: isActive ? (dark ? "#0a1f0a" : "#f0fdf4") : t.iconBg,
-                      border: `1px solid ${isActive ? "#fff" : t.border2}`,
+                      background: savingLang ? t.iconBg : (isActive ? (dark ? "#0a1f0a" : "#f0fdf4") : t.iconBg),
+                      border: `1px solid ${isActive ? (dark ? "#2a2a2a" : "#bbf7d0") : t.border2}`,
                       borderRadius: 12, padding: "12px 14px", cursor: savingLang ? "wait" : "pointer",
-                      textAlign: "right", opacity: savingLang ? 0.6 : 1,
+                      textAlign: "right",
                     }}>
-                      <p style={{ margin: 0, color: isActive ? "#fff" : t.text, fontSize: 14, fontWeight: 700 }}>
+                      <p style={{ margin: 0, color: isActive ? (dark ? "#fff" : "#166534") : t.text, fontSize: 14, fontWeight: 700 }}>
                         {label} {isActive && <CheckCircle size={12} style={{ verticalAlign: "middle" }} />}
                       </p>
                       <p style={{ margin: "3px 0 0", color: t.text3, fontSize: 11 }}>{sub}</p>
@@ -398,10 +398,10 @@ export default function AccountPage() {
                       disabled={savingTemplate}
                       style={{
                         display: "flex", gap: 12, alignItems: "stretch",
-                        background: isActive ? (dark ? "#0d0d1a" : "#faf5ff") : t.iconBg,
+                        background: savingTemplate ? t.iconBg : (isActive ? (dark ? "#0d0d1a" : "#faf5ff") : t.iconBg),
                         border: `1.5px solid ${isActive ? (dark ? "#4c1d95" : "#c4b5fd") : t.border2}`,
                         borderRadius: 14, padding: "12px 14px", cursor: savingTemplate ? "wait" : "pointer",
-                        textAlign: "right", opacity: savingTemplate ? 0.7 : 1,
+                        textAlign: "right",
                         transition: "all 0.15s",
                       }}
                     >

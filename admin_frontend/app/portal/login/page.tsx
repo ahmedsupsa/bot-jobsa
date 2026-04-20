@@ -231,8 +231,8 @@ const s: Record<string, React.CSSProperties> = {
   featureText: { color: "#ccc", fontSize: 14, fontWeight: 500 },
   grid: {
     position: "absolute", bottom: 0, left: 0, right: 0, top: 0,
-    backgroundImage: "radial-gradient(circle, #222 1px, transparent 1px)",
-    backgroundSize: "28px 28px", opacity: 0.25, zIndex: 0, pointerEvents: "none",
+    backgroundImage: "radial-gradient(circle, #181818 1px, transparent 1px)",
+    backgroundSize: "28px 28px", zIndex: 0, pointerEvents: "none",
   },
   formBox: { width: "100%", maxWidth: 400 },
   formIcon: {

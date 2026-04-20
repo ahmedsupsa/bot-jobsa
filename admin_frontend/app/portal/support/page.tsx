@@ -155,12 +155,12 @@ export default function SupportPage() {
             onClick={send}
             disabled={sending || !input.trim()}
             style={{
-              background: "#fff", color: "#000", border: "none",
+              background: sending || !input.trim() ? "var(--surface2)" : "var(--accent)",
+              color: sending || !input.trim() ? "var(--text3)" : "var(--accent-fg)",
+              border: "1px solid var(--border)",
               borderRadius: 12, width: 42, height: 42,
               display: "flex", alignItems: "center", justifyContent: "center",
               cursor: sending || !input.trim() ? "not-allowed" : "pointer",
-              opacity: sending || !input.trim() ? 0.4 : 1,
-              transition: "opacity .15s",
             }}
           >
             {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
