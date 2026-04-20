@@ -117,7 +117,7 @@ async function autoCreateAccount(
     }
 
     // Create user_settings so email login works later
-    await supabase.from("user_settings").insert({ user_id: userId, email }).catch(() => {});
+    try { await supabase.from("user_settings").insert({ user_id: userId, email }); } catch {}
 
     const token = await makeToken(String(userId));
     return { token, user_id: String(userId), account_created: true };

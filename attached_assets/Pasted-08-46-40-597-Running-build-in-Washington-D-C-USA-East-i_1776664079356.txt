@@ -1,0 +1,45 @@
+08:46:40.597 Running build in Washington, D.C., USA (East) – iad1
+08:46:40.598 Build machine configuration: 2 cores, 8 GB
+08:46:40.711 Cloning github.com/ahmedsupsa/bot-jobsa (Branch: main, Commit: cd8a98e)
+08:46:41.522 Cloning completed: 811.000ms
+08:46:41.773 Restored build cache from previous deployment (HC8nd9xFaywfPhbruegGiwz1pjHM)
+08:46:41.955 Running "vercel build"
+08:46:42.615 Vercel CLI 51.6.1
+08:46:42.890 Running "install" command: `npm install`...
+08:46:46.626 
+08:46:46.626 up to date, audited 231 packages in 3s
+08:46:46.627 
+08:46:46.627 31 packages are looking for funding
+08:46:46.628   run `npm fund` for details
+08:46:46.670 
+08:46:46.671 1 high severity vulnerability
+08:46:46.672 
+08:46:46.672 To address all issues (including breaking changes), run:
+08:46:46.672   npm audit fix --force
+08:46:46.672 
+08:46:46.672 Run `npm audit` for details.
+08:46:46.705 Detected Next.js version: 14.2.35
+08:46:46.706 Running "npm run build"
+08:46:46.812 
+08:46:46.812 > admin-frontend@1.0.0 build
+08:46:46.812 > next build
+08:46:46.812 
+08:46:47.513   ▲ Next.js 14.2.35
+08:46:47.513 
+08:46:47.537    Creating an optimized production build ...
+08:46:59.731  ✓ Compiled successfully
+08:46:59.732    Linting and checking validity of types ...
+08:47:09.064 Failed to compile.
+08:47:09.065 
+08:47:09.065 ./app/api/store/verify/route.ts:120:77
+08:47:09.065 Type error: Property 'catch' does not exist on type 'PostgrestFilterBuilder<any, any, any, null, "user_settings", unknown, "POST">'. Did you mean 'match'?
+08:47:09.065 
+08:47:09.065 [0m [90m 118 |[39m[0m
+08:47:09.065 [0m [90m 119 |[39m     [90m// Create user_settings so email login works later[39m[0m
+08:47:09.065 [0m[31m[1m>[22m[39m[90m 120 |[39m     [36mawait[39m supabase[33m.[39m[36mfrom[39m([32m"user_settings"[39m)[33m.[39minsert({ user_id[33m:[39m userId[33m,[39m email })[33m.[39m[36mcatch[39m(() [33m=>[39m {})[33m;[39m[0m
+08:47:09.066 [0m [90m     |[39m                                                                             [31m[1m^[22m[39m[0m
+08:47:09.066 [0m [90m 121 |[39m[0m
+08:47:09.066 [0m [90m 122 |[39m     [36mconst[39m token [33m=[39m [36mawait[39m makeToken([33mString[39m(userId))[33m;[39m[0m
+08:47:09.066 [0m [90m 123 |[39m     [36mreturn[39m { token[33m,[39m user_id[33m:[39m [33mString[39m(userId)[33m,[39m account_created[33m:[39m [36mtrue[39m }[33m;[39m[0m
+08:47:09.101 Next.js build worker exited with code: 1 and signal: null
+08:47:09.123 Error: Command "npm run build" exited with 1
