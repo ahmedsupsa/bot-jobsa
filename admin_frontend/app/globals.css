@@ -103,6 +103,17 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   height: -webkit-fill-available;
+  /* منع سحب الرجوع الأفقي (back-swipe) في الجوال — التنقل بالأزرار فقط */
+  overscroll-behavior-x: none;
+}
+
+/* Disable horizontal swipe navigation everywhere; keep vertical scroll free */
+body {
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
+}
+* {
+  -webkit-touch-callout: none; /* لا قوائم سياق طويلة في iOS */
 }
 
 html, body {
