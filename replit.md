@@ -1,51 +1,73 @@
 # Jobbots — منصة التقديم التلقائي على الوظائف
 
-A job application automation platform. Users register via Telegram bot, upload CVs, and the system automatically matches their profiles with job openings and submits applications on their behalf using AI-generated cover letters.
+A job application automation platform. Users register via activation codes or email, upload CVs, and the system automatically matches their profiles with job openings and submits applications using AI-generated cover letters.
 
 ## Architecture
 
-- **`admin_frontend/`** — Next.js 14 admin dashboard + user portal (port 5000)
-- **`worker/main.py`** — Auto-Apply Worker: periodic Python service that matches users to jobs and sends emails via Resend
+- **`admin_frontend/`** — Next.js 14 admin dashboard + user portal (port 5000), deployed on Vercel
+- **`supabase/functions/worker/`** — Auto-Apply Worker as a Supabase Edge Function (Deno/TypeScript)
+- **`worker/main.py`** — Python worker (development/testing only, not used in production)
 - **`database/`** — Supabase database schemas and utilities
-- **`scripts/`** — Admin utility scripts (e.g., generating activation codes)
-- **`config.py`** — Central configuration loaded from environment variables
+- **`scripts/`** — Admin utility scripts
 
-## Workflows
+## Production Architecture
 
-- **Start application** — Next.js admin frontend (`cd admin_frontend && npm run dev`) on port 5000
-- **Auto Apply Worker** — Python worker (`python3 worker/main.py`) — runs every 30 minutes
+```
+Vercel (Next.js frontend)
+    ↓ API routes for admin/portal UI
+Supabase (database + storage + edge functions)
+    → supabase/functions/worker  ← تشغيل تلقائي كل 30 دقيقة عبر pg_cron
+    → Resend (إرسال إيميلات)
+    → Gemini AI (رسائل التغطية)
+```
 
-## Required Secrets
+## Workflows (Replit — للتطوير فقط)
+
+- **Start application** — Next.js dev server (`cd admin_frontend && npm run dev`) on port 5000
+- **Auto Apply Worker** — Python worker for local testing only (not production)
+
+## Deploying the Edge Function
+
+```bash
+supabase login
+supabase link --project-ref <project-ref>
+supabase functions deploy worker
+```
+
+## Supabase Cron Setup (SQL Editor)
+
+```sql
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+select cron.schedule(
+  'auto-apply-worker',
+  '*/30 * * * *',
+  $$
+    select net.http_post(
+      url := 'https://<project-ref>.functions.supabase.co/worker',
+      headers := jsonb_build_object(
+        'Authorization', 'Bearer <WORKER_SECRET>',
+        'Content-Type', 'application/json'
+      ),
+      body := '{}'::jsonb
+    );
+  $$
+);
+```
+
+## Required Secrets (Vercel + Supabase Edge Function)
 
 - `SUPABASE_URL` — Supabase project URL
-- `SUPABASE_KEY` — Supabase API key (service role recommended)
+- `SUPABASE_SERVICE_ROLE_KEY` — Supabase service role key
 - `RESEND_API_KEY` — Resend email API key
-- `RESEND_FROM_EMAIL` — Sender email for Resend
-- `ADMIN_PASSWORD` — Password for the web admin panel
-- `ADMIN_SECRET` — JWT signing secret for admin sessions
-
-## Optional Secrets
-
-- `BOT_TOKEN` — Telegram Bot token (from @BotFather)
-- `ADMIN_TELEGRAM_IDS` — Comma-separated Telegram user IDs for admin access
-- `GEMINI_API_KEY` — Google Gemini API key (for AI cover letter generation)
-- `JOBS_SOURCE_CHANNEL_ID` — Telegram channel ID to import jobs from
-- `RESEND_FROM_NAME` — Display name for emails (default: "Jobsa")
-- `AUTO_APPLY_INTERVAL` — Seconds between worker cycles (default: 1800)
-
-## Dependencies
-
-- Python: `httpx`, `python-dotenv` (installed via pip)
-- Node.js: `admin_frontend/package.json` — Next.js 14, Tailwind CSS, framer-motion, @supabase/supabase-js
+- `RESEND_FROM_EMAIL` — Sender email
+- `RESEND_FROM_NAME` — Sender display name (default: Jobbots)
+- `GEMINI_API_KEY` — Google Gemini API key
+- `WORKER_SECRET` — Secret to protect the Edge Function endpoint
+- `SUPABASE_WORKER_URL` — Full URL of the Edge Function (for admin trigger button)
 
 ## Database (Supabase)
 
-Tables: `users`, `admin_jobs`, `applications`, `job_fields`, `user_settings`, `user_cvs`, `user_job_preferences`
+Tables: `users`, `admin_jobs`, `applications`, `job_fields`, `user_settings`, `user_cvs`, `user_job_preferences`, `worker_logs`, `push_subscriptions`
 Storage bucket: `cvs` — stores user CV files
-
-## Replit Environment Notes
-
-- The Next.js dev server runs on port 5000 with `0.0.0.0` host binding for Replit proxy compatibility
-- `allowedDevOrigins` in `next.config.mjs` permits requests from Replit's proxy domains
-- Google Fonts are loaded via CSS `@import` in `globals.css` to avoid hydration mismatches
-- All pages are fully responsive (mobile/tablet/desktop) with RTL Arabic layout and cross-browser support (iOS Safari, Firefox, Chrome, Edge)
