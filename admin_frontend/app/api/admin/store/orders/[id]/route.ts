@@ -44,6 +44,49 @@ async function createAndReserveCode(
   return null;
 }
 
+async function findExistingUser(
+  supabase: ReturnType<typeof freshClient>,
+  userId: string | null,
+  email: string
+): Promise<{ id: string; subscription_ends_at: string | null } | null> {
+  // 1. Direct user_id on the order (most reliable)
+  if (userId) {
+    const { data } = await supabase
+      .from("users")
+      .select("id, subscription_ends_at")
+      .eq("id", userId)
+      .maybeSingle();
+    if (data) return data;
+  }
+
+  if (!email) return null;
+
+  // 2. Check users.email
+  const { data: byEmail } = await supabase
+    .from("users")
+    .select("id, subscription_ends_at")
+    .eq("email", email)
+    .maybeSingle();
+  if (byEmail) return byEmail;
+
+  // 3. Fallback: check user_settings.email (older accounts)
+  const { data: bySetting } = await supabase
+    .from("user_settings")
+    .select("user_id")
+    .eq("email", email)
+    .maybeSingle();
+  if (bySetting?.user_id) {
+    const { data: u } = await supabase
+      .from("users")
+      .select("id, subscription_ends_at")
+      .eq("id", bySetting.user_id)
+      .maybeSingle();
+    if (u) return u;
+  }
+
+  return null;
+}
+
 async function autoActivateOrder(
   supabase: ReturnType<typeof freshClient>,
   orderId: string
@@ -56,38 +99,53 @@ async function autoActivateOrder(
 
   if (!order) return { code: null, email: null, name: "مستخدم", durationDays: 30, isNew: false };
 
-  const rawDays = order.store_products?.duration_days ?? order.store_products?.[0]?.duration_days ?? 30;
+  // Duration: from joined product, or fallback to 30
+  const rawDays =
+    order.store_products?.duration_days ??
+    (Array.isArray(order.store_products) ? order.store_products[0]?.duration_days : undefined) ??
+    30;
   const durationDays = Number(rawDays) || 30;
+
   const email = order.user_email?.trim().toLowerCase() || "";
   const name = order.user_name?.trim() || "مستخدم";
   const phone = order.user_phone?.trim() || "غير محدد";
 
-  if (!email) return { code: null, email: null, name, durationDays, isNew: false };
-
-  const ends_at = new Date(Date.now() + durationDays * 86400000).toISOString();
-
-  // Check existing user
-  const { data: existingUser } = await supabase
-    .from("users")
-    .select("id, subscription_ends_at")
-    .eq("email", email)
-    .maybeSingle();
+  // Find existing user via user_id OR email (users table OR user_settings)
+  const existingUser = await findExistingUser(supabase, order.user_id || null, email);
 
   if (existingUser) {
-    // Extend subscription
+    // Extend subscription from current end date (or today if already expired)
     const base =
       existingUser.subscription_ends_at && new Date(existingUser.subscription_ends_at) > new Date()
         ? new Date(existingUser.subscription_ends_at)
         : new Date();
     base.setDate(base.getDate() + durationDays);
-    await supabase
+
+    const { error: updateErr } = await supabase
       .from("users")
       .update({ subscription_ends_at: base.toISOString() })
       .eq("id", existingUser.id);
-    return { code: null, email, name, durationDays, isNew: false };
+
+    if (updateErr) console.error("Subscription extend error:", updateErr.message);
+
+    // Get email for notification if it came from user_settings
+    let notifyEmail = email;
+    if (!notifyEmail) {
+      const { data: s } = await supabase
+        .from("user_settings")
+        .select("email")
+        .eq("user_id", existingUser.id)
+        .maybeSingle();
+      notifyEmail = s?.email || "";
+    }
+
+    return { code: null, email: notifyEmail || email, name, durationDays, isNew: false };
   }
 
-  // Create new user + code
+  // No existing user — create new account
+  if (!email) return { code: null, email: null, name, durationDays, isNew: false };
+
+  const ends_at = new Date(Date.now() + durationDays * 86400000).toISOString();
   const codeEntry = await createAndReserveCode(supabase, durationDays);
 
   const insertData: Record<string, unknown> = {
