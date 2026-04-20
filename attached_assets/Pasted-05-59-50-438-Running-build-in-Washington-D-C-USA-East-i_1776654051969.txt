@@ -1,0 +1,51 @@
+05:59:50.438 Running build in Washington, D.C., USA (East) – iad1
+05:59:50.439 Build machine configuration: 2 cores, 8 GB
+05:59:50.590 Cloning github.com/ahmedsupsa/bot-jobsa (Branch: main, Commit: 43ecf8b)
+05:59:51.302 Cloning completed: 712.000ms
+05:59:51.599 Restored build cache from previous deployment (Dwj4L9EVLyZRmVQKNbssgVx8zwsT)
+05:59:51.823 Running "vercel build"
+05:59:52.643 Vercel CLI 51.6.1
+05:59:52.992 Running "install" command: `npm install`...
+05:59:57.563 
+05:59:57.564 added 15 packages, and audited 231 packages in 4s
+05:59:57.565 
+05:59:57.565 31 packages are looking for funding
+05:59:57.565   run `npm fund` for details
+05:59:57.609 
+05:59:57.610 1 high severity vulnerability
+05:59:57.610 
+05:59:57.611 To address all issues (including breaking changes), run:
+05:59:57.612   npm audit fix --force
+05:59:57.612 
+05:59:57.612 Run `npm audit` for details.
+05:59:57.652 Detected Next.js version: 14.2.35
+05:59:57.653 Running "npm run build"
+05:59:57.833 
+05:59:57.833 > admin-frontend@1.0.0 build
+05:59:57.834 > next build
+05:59:57.834 
+05:59:58.642   ▲ Next.js 14.2.35
+05:59:58.643 
+05:59:58.670    Creating an optimized production build ...
+06:00:21.662  ✓ Compiled successfully
+06:00:21.667    Linting and checking validity of types ...
+06:00:33.546    Collecting page data ...
+06:00:34.317 Error: No key set vapidDetails.publicKey
+06:00:34.318     at Object.c [as validatePublicKey] (/vercel/path0/admin_frontend/.next/server/app/api/admin/notifications/route.js:4:14190)
+06:00:34.318     at f.setVapidDetails (/vercel/path0/admin_frontend/.next/server/app/api/admin/notifications/route.js:4:17437)
+06:00:34.319     at 91286 (/vercel/path0/admin_frontend/.next/server/app/api/admin/notifications/route.js:1:1485)
+06:00:34.319     at t (/vercel/path0/admin_frontend/.next/server/webpack-runtime.js:1:143)
+06:00:34.319     at r (/vercel/path0/admin_frontend/.next/server/app/api/admin/notifications/route.js:4:22303)
+06:00:34.319     at /vercel/path0/admin_frontend/.next/server/app/api/admin/notifications/route.js:4:22345
+06:00:34.320     at t.X (/vercel/path0/admin_frontend/.next/server/webpack-runtime.js:1:1285)
+06:00:34.320     at /vercel/path0/admin_frontend/.next/server/app/api/admin/notifications/route.js:4:22316
+06:00:34.321     at Object.<anonymous> (/vercel/path0/admin_frontend/.next/server/app/api/admin/notifications/route.js:4:22373)
+06:00:34.321     at Module._compile (node:internal/modules/cjs/loader:1812:14)
+06:00:34.323 
+06:00:34.324 > Build error occurred
+06:00:34.324 Error: Failed to collect page data for /api/admin/notifications
+06:00:34.324     at /vercel/path0/admin_frontend/node_modules/next/dist/build/utils.js:1269:15
+06:00:34.325     at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+06:00:34.325   type: 'Error'
+06:00:34.325 }
+06:00:34.355 Error: Command "npm run build" exited with 1

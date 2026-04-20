@@ -3,13 +3,15 @@ import { supabase } from "@/lib/supabase-server";
 import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
 import webpush from "web-push";
 
-webpush.setVapidDetails(
-  process.env.VAPID_EMAIL || "mailto:admin@jobbots.app",
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
-  process.env.VAPID_PRIVATE_KEY || ""
-);
-
 export const dynamic = "force-dynamic";
+
+function initVapid() {
+  webpush.setVapidDetails(
+    process.env.VAPID_EMAIL || "mailto:admin@jobbots.app",
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
+    process.env.VAPID_PRIVATE_KEY || ""
+  );
+}
 
 export async function POST(req: Request) {
   if (!requireAdminSession()) return unauthorizedResponse();
@@ -29,6 +31,8 @@ export async function POST(req: Request) {
   if (!subs || subs.length === 0) {
     return NextResponse.json({ ok: true, sent: 0, failed: 0, message: "لا يوجد مشتركين في الإشعارات بعد" });
   }
+
+  initVapid();
 
   const payload = JSON.stringify({ title, body: msgBody, url: url || "/portal/dashboard" });
 
