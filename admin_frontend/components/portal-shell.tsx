@@ -2,7 +2,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import { clearToken } from "@/lib/portal-auth";
 import { useTheme } from "@/contexts/theme-context";
-import { usePushSubscribe } from "@/hooks/usePushSubscribe";
+import { PushPermissionBanner } from "@/components/PushPermissionBanner";
 import {
   Home, ClipboardList, FileText, User, LogOut,
   Briefcase, MessageCircle, TrendingUp, Sun, Moon,
@@ -22,7 +22,6 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { theme, toggle } = useTheme();
   const dark = theme === "dark";
-  usePushSubscribe();
 
   function logout() { clearToken(); router.replace("/portal/login"); }
 
@@ -177,6 +176,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         flex: 1, padding: "28px 24px 80px",
         minHeight: "100vh", minWidth: 0, background: t.main,
       }}>
+        <PushPermissionBanner />
         {children}
       </main>
 
