@@ -117,12 +117,12 @@ button, [role="button"] { -webkit-user-select: none; user-select: none; }
   min-height: 100vh;
   display: flex;
   direction: rtl;
-  background: var(--bg);
+  background: #0a0a0a;
 }
 .login-left {
   flex: 1;
-  background: var(--bg2);
-  border-left: 1px solid var(--border);
+  background: #111;
+  border-left: 1px solid #1f1f1f;
   padding: 60px 52px;
   display: flex;
   flex-direction: column;
@@ -137,7 +137,7 @@ button, [role="button"] { -webkit-user-select: none; user-select: none; }
   align-items: center;
   justify-content: center;
   padding: 40px 48px;
-  background: var(--bg);
+  background: #0a0a0a;
   flex-shrink: 0;
 }
 @media (max-width: 768px) {

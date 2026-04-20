@@ -247,7 +247,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   tab: {
     flex: 1, padding: "10px 0", border: "none", borderRadius: 10,
-    background: "transparent", color: "#666", fontSize: 13, fontWeight: 600, cursor: "pointer",
+    background: "transparent", color: "#999", fontSize: 13, fontWeight: 600, cursor: "pointer",
     transition: "all 0.2s", fontFamily: "inherit",
   },
   tabActive: { background: "#fff", color: "#0a0a0a" },
