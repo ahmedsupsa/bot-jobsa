@@ -24,6 +24,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://jobbots.org" },
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Jobbots" },
+  other: { "mobile-web-app-capable": "yes" },
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }, { url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],

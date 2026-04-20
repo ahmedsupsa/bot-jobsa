@@ -1,7 +1,15 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import Shell from "@/components/shell";
-import { Send, MessageCircle, Loader2, ArrowRight, Search, Plus, X, User, Phone, Mail, FileText } from "lucide-react";
+import { Send, MessageCircle, Loader2, ArrowRight, Search, Plus, X, User, Phone, Mail, FileText, Paperclip, Image as ImageIcon } from "lucide-react";
+
+interface Attachment { url: string; name?: string | null; type?: string | null; size?: number | null; }
+function fmtSize(b?: number | null) {
+  if (!b) return "";
+  if (b < 1024) return `${b} B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+  return `${(b / 1024 / 1024).toFixed(1)} MB`;
+}
 
 interface Conv {
   user_id: string;
@@ -48,6 +56,9 @@ export default function SupportAdminPage() {
   const [sending, setSending]             = useState(false);
   const [loadingList, setLoadingList]     = useState(true);
   const [loadingMsgs, setLoadingMsgs]     = useState(false);
+  const [pendingFile, setPendingFile]     = useState<Attachment | null>(null);
+  const [uploading, setUploading]         = useState(false);
+  const fileInputRef                       = useRef<HTMLInputElement>(null);
 
   /* بحث مستخدم جديد */
   const [showNewConv, setShowNewConv]     = useState(false);
@@ -95,19 +106,39 @@ export default function SupportAdminPage() {
 
   /* ── إرسال رسالة ── */
   const send = async () => {
-    if (!activeUserId || !input.trim() || sending) return;
+    if (!activeUserId || (!input.trim() && !pendingFile) || sending) return;
     const text = input.trim();
-    setSending(true); setInput("");
+    const att = pendingFile;
+    setSending(true); setInput(""); setPendingFile(null);
     try {
       const r = await fetch("/api/admin/support/messages", {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: activeUserId, content: text }),
+        body: JSON.stringify({ user_id: activeUserId, content: text, attachment: att }),
       });
       const j = await r.json();
       if (j.ok && j.message) { setMessages(prev => [...prev, j.message]); loadConversations(); }
     } catch {}
     setSending(false);
+  };
+
+  /* ── رفع ملف من المسؤول ── */
+  const onPickFile = () => fileInputRef.current?.click();
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    if (f.size > 10 * 1024 * 1024) { alert("الحد الأقصى 10 ميجا"); return; }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", f);
+      const r = await fetch("/api/admin/support/upload", { method: "POST", credentials: "include", body: fd });
+      const j = await r.json();
+      if (j.ok && j.attachment) setPendingFile(j.attachment);
+      else alert(j.error || "فشل الرفع");
+    } catch { alert("فشل الرفع"); }
+    setUploading(false);
   };
 
   /* ── البحث عن مستخدم جديد ── */
@@ -411,8 +442,43 @@ export default function SupportAdminPage() {
                 )}
               </div>
 
+              {/* معاينة الملف المُرفق قبل الإرسال */}
+              {pendingFile && (
+                <div style={{
+                  padding: "10px 14px", borderTop: "1px solid #1f1f1f",
+                  background: "#0d0d0d", display: "flex", gap: 10, alignItems: "center",
+                }}>
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, overflow: "hidden" }}>
+                    {pendingFile.type?.startsWith("image/")
+                      ? <ImageIcon size={16} color="#fff" />
+                      : <FileText size={16} color="#fff" />}
+                    <span style={{ color: "#fff", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {pendingFile.name}
+                    </span>
+                    <span style={{ color: "#666", fontSize: 11, flexShrink: 0 }}>{fmtSize(pendingFile.size)}</span>
+                  </div>
+                  <button onClick={() => setPendingFile(null)}
+                    style={{ background: "transparent", border: "none", color: "#666", cursor: "pointer", padding: 4, display: "flex" }}>
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
               {/* كتابة الرد */}
-              <div style={{ padding: 14, borderTop: "1px solid #1f1f1f", background: "#0d0d0d", display: "flex", gap: 10, alignItems: "flex-end" }}>
+              <div style={{ padding: 14, borderTop: "1px solid #1f1f1f", background: "#0d0d0d", display: "flex", gap: 8, alignItems: "flex-end" }}>
+                <input ref={fileInputRef} type="file" hidden
+                  accept="image/*,application/pdf,.doc,.docx,.txt"
+                  onChange={onFileChange} />
+                <button onClick={onPickFile} disabled={uploading} title="إرفاق ملف"
+                  style={{
+                    width: 42, height: 42, flexShrink: 0,
+                    background: "#0a0a0a", border: "1px solid #2a2a2a",
+                    borderRadius: 12, color: "#fff",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: uploading ? "not-allowed" : "pointer", opacity: uploading ? 0.5 : 1,
+                  }}>
+                  {uploading ? <Loader2 size={16} className="animate-spin" /> : <Paperclip size={16} />}
+                </button>
                 <textarea
                   value={input}
                   onChange={e => setInput(e.target.value)}
@@ -428,14 +494,14 @@ export default function SupportAdminPage() {
                 />
                 <button
                   onClick={send}
-                  disabled={sending || !input.trim()}
+                  disabled={sending || (!input.trim() && !pendingFile)}
                   title="إرسال + إشعار جوال"
                   style={{
                     background: "#fff", color: "#000", border: "none",
                     borderRadius: 12, width: 42, height: 42,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: sending || !input.trim() ? "not-allowed" : "pointer",
-                    opacity: sending || !input.trim() ? 0.4 : 1,
+                    cursor: sending || (!input.trim() && !pendingFile) ? "not-allowed" : "pointer",
+                    opacity: sending || (!input.trim() && !pendingFile) ? 0.4 : 1,
                   }}
                 >
                   {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}

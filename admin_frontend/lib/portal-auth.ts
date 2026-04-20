@@ -48,10 +48,17 @@ export async function portalFetch(
   path: string,
   options: RequestInit = {}
 ): Promise<Response> {
+  // Don't force JSON content-type when sending FormData — the browser
+  // must set multipart/form-data; boundary=… itself.
+  const isForm =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
+  const baseHeaders: Record<string, string> = isForm
+    ? {}
+    : { "Content-Type": "application/json" };
   const res = await fetch(`/api/portal${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...baseHeaders,
       ...authHeaders(),
       ...(options.headers || {}),
     },
