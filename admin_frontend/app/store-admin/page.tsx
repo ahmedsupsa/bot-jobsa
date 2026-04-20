@@ -31,6 +31,8 @@ type Order = {
   streampay_payment_link_id?: string;
   streampay_invoice_id?: string;
   streampay_payment_id?: string;
+  payment_gateway?: string;
+  receipt_url?: string;
   created_at: string;
   paid_at?: string;
   store_products?: { name: string; price: number; duration_days: number };
@@ -612,7 +614,37 @@ export default function StoreAdminPage() {
                           {o.streampay_invoice_id && (
                             <span className="col-span-2 font-mono text-slate-500 truncate">INV: {o.streampay_invoice_id}</span>
                           )}
+                          {o.payment_gateway === "bank_transfer" && (
+                            <span className="rounded-full border border-yellow-500/25 bg-yellow-500/5 px-2 py-0.5 text-xs text-yellow-400">
+                              🏦 تحويل بنكي
+                            </span>
+                          )}
                         </div>
+                        {/* Receipt */}
+                        {o.receipt_url && (
+                          <div className="mt-3 flex items-center gap-2">
+                            <span className="text-xs text-slate-500">الإيصال:</span>
+                            <a
+                              href={o.receipt_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/25 bg-purple-500/8 px-3 py-1 text-xs text-purple-400 hover:bg-purple-500/15 transition-all"
+                            >
+                              عرض الإيصال ↗
+                            </a>
+                            {/\.(jpe?g|png|webp|gif)$/i.test(o.receipt_url) && (
+                              <a href={o.receipt_url} target="_blank" rel="noopener noreferrer" className="block mt-1 shrink-0">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={o.receipt_url} alt="إيصال" className="h-12 w-16 rounded-lg object-cover border border-white/10" />
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        {o.payment_gateway === "bank_transfer" && !o.receipt_url && o.status === "pending" && (
+                          <div className="mt-2 rounded-lg border border-yellow-500/15 bg-yellow-500/5 px-3 py-1.5 text-xs text-yellow-500/80">
+                            لم يُرفع إيصال التحويل بعد
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         {o.status === "pending" && (

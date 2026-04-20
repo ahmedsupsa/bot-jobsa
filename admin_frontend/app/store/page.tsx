@@ -77,6 +77,10 @@ export default function StorePage() {
     order_id: string;
   } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadDone, setUploadDone] = useState(false);
+  const [uploadErr, setUploadErr] = useState("");
 
   useEffect(() => {
     fetch(`/api/store/products?t=${Date.now()}`, { cache: "no-store" })
@@ -100,7 +104,28 @@ export default function StorePage() {
 
   const handleBuy = (p: Product) => { setSelected(p); setFormErr(""); setStep("form"); setBankData(null); };
 
-  const closeModal = () => { setSelected(null); setFormErr(""); setStep("form"); setBankData(null); };
+  const closeModal = () => {
+    setSelected(null); setFormErr(""); setStep("form"); setBankData(null);
+    setReceiptFile(null); setUploadDone(false); setUploadErr("");
+  };
+
+  const handleReceiptUpload = async () => {
+    if (!receiptFile || !bankData?.order_id) return;
+    setUploading(true); setUploadErr("");
+    try {
+      const fd = new FormData();
+      fd.append("file", receiptFile);
+      fd.append("order_id", bankData.order_id);
+      const r = await fetch("/api/store/upload-receipt", { method: "POST", body: fd });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "فشل الرفع");
+      setUploadDone(true);
+      setReceiptFile(null);
+    } catch (e) {
+      setUploadErr(String(e).replace("Error: ", ""));
+    }
+    setUploading(false);
+  };
 
   const copyText = (text: string, id: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -422,10 +447,67 @@ export default function StorePage() {
                   )}
                 </div>
 
+                {/* Receipt upload section */}
+                <div style={s.receiptBox}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <div style={s.receiptIcon}>
+                      <ShieldCheck size={14} color="#a78bfa" />
+                    </div>
+                    <span style={{ color: "#e5e7eb", fontSize: 13, fontWeight: 700 }}>أرسل إيصال التحويل</span>
+                    <span style={{ color: "#666", fontSize: 11, marginRight: 2 }}>(اختياري)</span>
+                  </div>
+                  <p style={{ color: "#777", fontSize: 12, lineHeight: 1.7, margin: "0 0 12px" }}>
+                    ارفع صورة الإيصال لتسريع التحقق وتفعيل حسابك.
+                  </p>
+
+                  {uploadDone ? (
+                    <div style={s.uploadSuccess}>
+                      <CheckCheck size={16} color="#86efac" />
+                      <span>تم إرسال الإيصال بنجاح! سنتواصل معك خلال 24 ساعة.</span>
+                    </div>
+                  ) : (
+                    <>
+                      <label style={s.fileLabel}>
+                        <input
+                          type="file"
+                          accept="image/*,.pdf"
+                          style={{ display: "none" }}
+                          onChange={e => { setReceiptFile(e.target.files?.[0] || null); setUploadErr(""); }}
+                          disabled={uploading}
+                        />
+                        <div style={{ ...s.fileDropzone, borderColor: receiptFile ? "#a78bfa" : "#2a2a2a" }}>
+                          {receiptFile ? (
+                            <span style={{ color: "#e5e7eb", fontSize: 13 }}>{receiptFile.name}</span>
+                          ) : (
+                            <span style={{ color: "#555", fontSize: 13 }}>اضغط لاختيار صورة الإيصال</span>
+                          )}
+                        </div>
+                      </label>
+
+                      {uploadErr && (
+                        <div style={{ color: "#f87171", fontSize: 12, marginTop: 6 }}>{uploadErr}</div>
+                      )}
+
+                      {receiptFile && (
+                        <button
+                          onClick={handleReceiptUpload}
+                          disabled={uploading}
+                          style={{ ...s.payBtn, background: "linear-gradient(135deg, #a78bfa, #7c3aed)", color: "#fff", width: "100%", justifyContent: "center", marginTop: 10, opacity: uploading ? 0.7 : 1 }}
+                        >
+                          {uploading
+                            ? <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
+                            : <ShieldCheck size={14} />}
+                          <span>{uploading ? "جاري الرفع..." : "رفع الإيصال"}</span>
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+
                 {/* Back button */}
                 <button
-                  onClick={() => { setStep("form"); setBankData(null); }}
-                  style={{ ...s.payBtn, background: "#1a1a1a", color: "#aaa", border: "1px solid #2a2a2a", marginTop: 14, width: "100%", justifyContent: "center" }}
+                  onClick={() => { setStep("form"); setBankData(null); setReceiptFile(null); setUploadDone(false); setUploadErr(""); }}
+                  style={{ ...s.payBtn, background: "#1a1a1a", color: "#aaa", border: "1px solid #2a2a2a", marginTop: 4, width: "100%", justifyContent: "center" }}
                 >
                   <span>← العودة لخيارات الدفع</span>
                 </button>
@@ -539,6 +621,13 @@ const s: Record<string, React.CSSProperties> = {
   bankCard: { background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 12, padding: "14px 14px 10px" },
   bankIcon: { width: 28, height: 28, borderRadius: 8, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" },
   bankTypeTag: { marginRight: "auto", background: "#111", color: "#666", fontSize: 10, padding: "2px 8px", borderRadius: 6, border: "1px solid #1f1f1f" },
+
+  // Receipt upload
+  receiptBox: { background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 12, padding: "14px", marginTop: 14 },
+  receiptIcon: { width: 26, height: 26, borderRadius: 7, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  fileLabel: { display: "block", cursor: "pointer" },
+  fileDropzone: { border: "1.5px dashed #2a2a2a", borderRadius: 10, padding: "14px 16px", textAlign: "center" as const, transition: "border-color 0.2s", background: "#080808" },
+  uploadSuccess: { display: "flex", alignItems: "center", gap: 8, background: "rgba(134,239,172,0.06)", border: "1px solid rgba(134,239,172,0.2)", borderRadius: 10, padding: "10px 14px", color: "#86efac", fontSize: 13, fontWeight: 600 },
 
   secureNote: { textAlign: "center" as const, color: "#444", fontSize: 11, margin: 0, position: "relative", zIndex: 1 },
 
