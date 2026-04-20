@@ -61,7 +61,7 @@ export default function ApplicationsPage() {
                   <p style={s.date}>{fmtDate(a.applied_at)}</p>
                 </div>
                 <div style={s.badge}>
-                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#fff" }} />
+                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent-fg)" }} />
                   مُرسَل
                 </div>
               </div>
@@ -126,8 +126,8 @@ const s: Record<string, React.CSSProperties> = {
   date: { color: "var(--text3)", fontSize: 12, margin: "4px 0 0" },
   badge: {
     display: "flex", alignItems: "center", gap: 6,
-    background: "#1a1a1a", color: "#fff",
-    border: "1px solid #2a2a2a", borderRadius: 10,
+    background: "var(--accent)", color: "var(--accent-fg)",
+    border: "1px solid var(--border2)", borderRadius: 10,
     padding: "5px 12px", fontSize: 12, fontWeight: 600, flexShrink: 0,
   },
 };

@@ -181,8 +181,8 @@ export default function AffiliatePage() {
             {!data?.eligible ? (
               <div style={{
                 display: "flex", alignItems: "center", gap: 10, justifyContent: "center",
-                background: "#1f1408", border: "1px solid #78350f",
-                color: "#fbbf24", padding: "12px 16px", borderRadius: 12, fontSize: 13,
+                background: "var(--alert-bg)", border: "1px solid var(--alert-border)",
+                color: "var(--alert-fg2)", padding: "12px 16px", borderRadius: 12, fontSize: 13,
               }}>
                 <AlertCircle size={16} />
                 <span>تحتاج اشتراك نشط للانضمام لبرنامج الربح</span>
@@ -270,11 +270,11 @@ export default function AffiliatePage() {
           {/* Important warning */}
           <div style={{
             marginTop: 14, padding: "10px 12px",
-            background: "#1a0a0a", border: "1px solid #7f1d1d",
+            background: "var(--danger-bg)", border: "1px solid var(--danger-border)",
             borderRadius: 10, display: "flex", gap: 8, alignItems: "flex-start",
           }}>
-            <AlertTriangle size={14} color="#f87171" style={{ flexShrink: 0, marginTop: 2 }} />
-            <p style={{ margin: 0, color: "#fca5a5", fontSize: 12, lineHeight: 1.6 }}>
+            <AlertTriangle size={14} color="var(--danger-fg)" style={{ flexShrink: 0, marginTop: 2 }} />
+            <p style={{ margin: 0, color: "var(--danger-fg)", fontSize: 12, lineHeight: 1.6 }}>
               <strong>تنبيه مهم:</strong> لن يتم تحويل أي مبلغ إلى حساب باسم مختلف عن اسم المشترك المسجّل
               {data.user_full_name ? ` (${data.user_full_name})` : ""}. تأكد أن اسم صاحب الحساب مطابق تماماً.
             </p>
@@ -331,7 +331,7 @@ export default function AffiliatePage() {
                 <div>
                   <p style={{ margin: 0, color: "var(--text)", fontSize: 14, fontWeight: 600 }}>{Number(w.amount).toFixed(2)} ر.س</p>
                   <p style={{ margin: "2px 0 0", color: "var(--text3)", fontSize: 11 }}>{new Date(w.created_at).toLocaleString("ar-SA")}</p>
-                  {w.notes && <p style={{ margin: "4px 0 0", color: "#f87171", fontSize: 11 }}>{w.notes}</p>}
+                  {w.notes && <p style={{ margin: "4px 0 0", color: "var(--danger-fg)", fontSize: 11 }}>{w.notes}</p>}
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   {w.proof_url && (
@@ -345,9 +345,9 @@ export default function AffiliatePage() {
                   )}
                   <span style={{
                     fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 8,
-                    background: w.status === "paid" ? "#0a1f0a" : w.status === "rejected" ? "#1a0a0a" : "#1f1408",
-                    color: w.status === "paid" ? "#fff" : w.status === "rejected" ? "#f87171" : "#fbbf24",
-                    border: `1px solid ${w.status === "paid" ? "#2a2a2a" : w.status === "rejected" ? "#7f1d1d" : "#78350f"}`,
+                    background: w.status === "paid" ? "var(--success-bg)" : w.status === "rejected" ? "var(--danger-bg)" : "var(--alert-bg)",
+                    color: w.status === "paid" ? "var(--success-fg)" : w.status === "rejected" ? "var(--danger-fg)" : "var(--alert-fg2)",
+                    border: `1px solid ${w.status === "paid" ? "var(--success-border)" : w.status === "rejected" ? "var(--danger-border)" : "var(--alert-border)"}`,
                   }}>
                     {w.status === "paid" ? "تم التحويل" : w.status === "rejected" ? "مرفوض" : "قيد المعالجة"}
                   </span>
@@ -378,9 +378,9 @@ export default function AffiliatePage() {
                 </div>
                 <span style={{
                   fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 8,
-                  background: r.status === "paid" ? "#0a1f0a" : r.withdrawal_id ? "#1f1408" : "#0d0d1a",
-                  color: r.status === "paid" ? "#fff" : r.withdrawal_id ? "#fbbf24" : "#a78bfa",
-                  border: `1px solid ${r.status === "paid" ? "#2a2a2a" : r.withdrawal_id ? "#78350f" : "#4c1d95"}`,
+                  background: r.status === "paid" ? "var(--success-bg)" : r.withdrawal_id ? "var(--alert-bg)" : "var(--info-purple-bg)",
+                  color: r.status === "paid" ? "var(--success-fg)" : r.withdrawal_id ? "var(--alert-fg2)" : "var(--info-purple-fg)",
+                  border: `1px solid ${r.status === "paid" ? "var(--success-border)" : r.withdrawal_id ? "var(--alert-border)" : "var(--info-purple-border)"}`,
                 }}>
                   {r.status === "paid" ? "مدفوعة" : r.withdrawal_id ? "قيد التحويل" : "متاحة"}
                 </span>
@@ -393,7 +393,7 @@ export default function AffiliatePage() {
       {/* Account Modal */}
       {showAccount && (
         <div onClick={() => setShowAccount(false)} style={{
-          position: "fixed", inset: 0, background: "#000", zIndex: 100,
+          position: "fixed", inset: 0, background: "var(--modal-backdrop)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", zIndex: 100,
           display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
         }}>
           <div onClick={(e) => e.stopPropagation()} style={{
@@ -419,11 +419,11 @@ export default function AffiliatePage() {
             {/* Warning */}
             <div style={{
               padding: "10px 12px", marginBottom: 14,
-              background: "#1a0a0a", border: "1px solid #7f1d1d",
+              background: "var(--danger-bg)", border: "1px solid var(--danger-border)",
               borderRadius: 10, display: "flex", gap: 8, alignItems: "flex-start",
             }}>
-              <AlertTriangle size={14} color="#f87171" style={{ flexShrink: 0, marginTop: 2 }} />
-              <p style={{ margin: 0, color: "#fca5a5", fontSize: 12, lineHeight: 1.6 }}>
+              <AlertTriangle size={14} color="var(--danger-fg)" style={{ flexShrink: 0, marginTop: 2 }} />
+              <p style={{ margin: 0, color: "var(--danger-fg)", fontSize: 12, lineHeight: 1.6 }}>
                 لن يتم تحويل أي مبلغ إلى حساب باسم مختلف عن اسم المشترك
                 {data.user_full_name ? ` (${data.user_full_name})` : ""}.
               </p>
@@ -466,7 +466,7 @@ export default function AffiliatePage() {
 
       {previewProof && (
         <div onClick={() => setPreviewProof(null)} style={{
-          position: "fixed", inset: 0, background: "#000", zIndex: 100,
+          position: "fixed", inset: 0, background: "var(--modal-backdrop)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", zIndex: 100,
           display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
         }}>
           <img src={previewProof} alt="إيصال" style={{ maxWidth: "100%", maxHeight: "90vh", borderRadius: 12 }} />

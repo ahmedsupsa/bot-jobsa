@@ -38,6 +38,15 @@
   --danger-bg:    #fef2f2;
   --danger-border:#fecaca;
   --danger-accent:#dc2626;
+  --alert-fg:     #92400e;
+  --alert-fg2:    #b45309;
+  --success-bg:     #f0fdf4;
+  --success-border: #bbf7d0;
+  --success-fg:     #166534;
+  --info-purple-bg:     #f5f3ff;
+  --info-purple-border: #ddd6fe;
+  --info-purple-fg:     #7c3aed;
+  --modal-backdrop:     rgba(15,15,20,0.45);
 }
 
 /* ── الوضع الليلي: Dark ── */
@@ -70,6 +79,15 @@
   --danger-bg:    #2a0f10;
   --danger-border:#7f1d1d;
   --danger-accent:#dc2626;
+  --alert-fg:     #fcd34d;
+  --alert-fg2:    #fbbf24;
+  --success-bg:     #0a1f0a;
+  --success-border: #2a2a2a;
+  --success-fg:     #ffffff;
+  --info-purple-bg:     #0d0d1a;
+  --info-purple-border: #4c1d95;
+  --info-purple-fg:     #a78bfa;
+  --modal-backdrop:     rgba(0,0,0,0.7);
 }
 
 /* ═══════════════════════════════════════

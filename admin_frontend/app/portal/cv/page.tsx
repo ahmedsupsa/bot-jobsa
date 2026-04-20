@@ -260,7 +260,7 @@ export default function CVPrefsPage() {
                         background: dark ? "#1f1500" : "#fef3c7",
                         display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                       }}>
-                        <Lock size={16} strokeWidth={1.8} color="#f59e0b" />
+                        <Lock size={16} strokeWidth={1.8} color="var(--alert-fg2)" />
                       </div>
                       <div style={{ flex: 1 }}>
                         <p style={{ margin: 0, color: dark ? "#fcd34d" : "#92400e", fontSize: 13, fontWeight: 700 }}>السيرة الذاتية مقفلة</p>
@@ -271,7 +271,7 @@ export default function CVPrefsPage() {
                       <a href="/portal/support" style={{
                         display: "inline-flex", alignItems: "center", gap: 6,
                         padding: "8px 14px", borderRadius: 10,
-                        background: "#f59e0b", color: "#000",
+                        background: "var(--accent)", color: "var(--accent-fg)",
                         fontSize: 12, fontWeight: 700, textDecoration: "none",
                       }}>
                         <MessageCircle size={13} /> الدعم
