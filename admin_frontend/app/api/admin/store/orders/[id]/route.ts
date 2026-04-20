@@ -44,43 +44,32 @@ async function createAndReserveCode(
   return null;
 }
 
+type ExistingUser = { id: string; subscription_ends_at: string | null; activation_code_id: string | null };
+
 async function findExistingUser(
   supabase: ReturnType<typeof freshClient>,
   userId: string | null,
   email: string
-): Promise<{ id: string; subscription_ends_at: string | null } | null> {
+): Promise<ExistingUser | null> {
+  const cols = "id, subscription_ends_at, activation_code_id";
+
   // 1. Direct user_id on the order (most reliable)
   if (userId) {
-    const { data } = await supabase
-      .from("users")
-      .select("id, subscription_ends_at")
-      .eq("id", userId)
-      .maybeSingle();
+    const { data } = await supabase.from("users").select(cols).eq("id", userId).maybeSingle();
     if (data) return data;
   }
 
   if (!email) return null;
 
   // 2. Check users.email
-  const { data: byEmail } = await supabase
-    .from("users")
-    .select("id, subscription_ends_at")
-    .eq("email", email)
-    .maybeSingle();
+  const { data: byEmail } = await supabase.from("users").select(cols).eq("email", email).maybeSingle();
   if (byEmail) return byEmail;
 
   // 3. Fallback: check user_settings.email (older accounts)
   const { data: bySetting } = await supabase
-    .from("user_settings")
-    .select("user_id")
-    .eq("email", email)
-    .maybeSingle();
+    .from("user_settings").select("user_id").eq("email", email).maybeSingle();
   if (bySetting?.user_id) {
-    const { data: u } = await supabase
-      .from("users")
-      .select("id, subscription_ends_at")
-      .eq("id", bySetting.user_id)
-      .maybeSingle();
+    const { data: u } = await supabase.from("users").select(cols).eq("id", bySetting.user_id).maybeSingle();
     if (u) return u;
   }
 
@@ -90,7 +79,7 @@ async function findExistingUser(
 async function autoActivateOrder(
   supabase: ReturnType<typeof freshClient>,
   orderId: string
-): Promise<{ code: string | null; email: string | null; name: string; durationDays: number; isNew: boolean }> {
+): Promise<{ code: string | null; email: string | null; name: string; durationDays: number; isNew: boolean; newEndDate?: Date }> {
   const { data: order } = await supabase
     .from("store_orders")
     .select("*, store_products(duration_days)")
@@ -139,7 +128,18 @@ async function autoActivateOrder(
       notifyEmail = s?.email || "";
     }
 
-    return { code: null, email: notifyEmail || email, name, durationDays, isNew: false };
+    // Fetch the user's original activation code to include in renewal email
+    let oldCode: string | null = null;
+    if (existingUser.activation_code_id) {
+      const { data: codeRow } = await supabase
+        .from("activation_codes")
+        .select("code")
+        .eq("id", existingUser.activation_code_id)
+        .maybeSingle();
+      oldCode = codeRow?.code || null;
+    }
+
+    return { code: oldCode, email: notifyEmail || email, name, durationDays, isNew: false, newEndDate: base };
   }
 
   // No existing user — create new account
@@ -191,8 +191,17 @@ async function autoActivateOrder(
   return { code: codeEntry?.code || null, email, name, durationDays, isNew: true };
 }
 
-function buildActivationEmail(name: string, code: string | null, durationDays: number, isNew: boolean): string {
-  const months = durationDays >= 365 ? "سنة كاملة" : durationDays >= 90 ? `${Math.round(durationDays / 30)} أشهر` : durationDays >= 30 ? "شهر" : `${durationDays} يوم`;
+function buildActivationEmail(
+  name: string,
+  code: string | null,
+  durationDays: number,
+  isNew: boolean,
+  newEndDate?: Date
+): string {
+  const addedLabel = durationDays >= 365 ? "سنة كاملة" : durationDays >= 180 ? "6 أشهر" : durationDays >= 90 ? "3 أشهر" : durationDays >= 30 ? "شهر" : `${durationDays} يوم`;
+  const newEndStr = newEndDate
+    ? newEndDate.toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" })
+    : "";
   const portalUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.jobbots.org";
 
   return `<!DOCTYPE html>
@@ -215,21 +224,32 @@ function buildActivationEmail(name: string, code: string | null, durationDays: n
         ${isNew ? "🎉 تم تفعيل اشتراكك!" : "✅ تم تجديد اشتراكك!"}
       </h1>
       <p style="color:#aaa;font-size:14px;margin:0 0 28px;line-height:1.8;">
-        مرحباً ${name}، تم تأكيد تحويلك وتفعيل اشتراكك في Jobbots.
+        ${isNew
+          ? `مرحباً ${name}، تم تأكيد تحويلك وتفعيل اشتراكك في Jobbots.`
+          : `مرحباً ${name}، تم تأكيد تحويلك وتجديد اشتراكك في Jobbots.`
+        }
       </p>
 
       <!-- Subscription info -->
       <div style="background:#0d0d0d;border:1px solid #1f1f1f;border-radius:12px;padding:16px 20px;margin-bottom:24px;">
-        <div style="color:#777;font-size:11px;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;">مدة الاشتراك</div>
-        <div style="color:#a78bfa;font-size:20px;font-weight:900;">${months}</div>
+        <div style="color:#777;font-size:11px;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;">
+          ${isNew ? "مدة الاشتراك" : "المدة المُضافة"}
+        </div>
+        <div style="color:#a78bfa;font-size:20px;font-weight:900;">+ ${addedLabel}</div>
+        ${!isNew && newEndStr ? `
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid #1f1f1f;">
+          <div style="color:#777;font-size:11px;margin-bottom:4px;">تاريخ انتهاء الاشتراك الجديد</div>
+          <div style="color:#e5e7eb;font-size:15px;font-weight:700;">${newEndStr}</div>
+        </div>
+        ` : ""}
       </div>
 
       ${code ? `
       <!-- Activation code -->
       <div style="background:linear-gradient(135deg,rgba(167,139,250,0.1),rgba(109,40,217,0.06));border:1px solid rgba(167,139,250,0.25);border-radius:12px;padding:20px;margin-bottom:24px;text-align:center;">
-        <div style="color:#a78bfa;font-size:11px;font-weight:600;margin-bottom:10px;letter-spacing:1px;text-transform:uppercase;">كود التفعيل الخاص بك</div>
+        <div style="color:#a78bfa;font-size:11px;font-weight:600;margin-bottom:10px;letter-spacing:1px;text-transform:uppercase;">${isNew ? "كود التفعيل الخاص بك" : "كودك للدخول"}</div>
         <div style="color:#fff;font-size:28px;font-weight:900;letter-spacing:4px;font-family:monospace;">${code}</div>
-        <div style="color:#666;font-size:11px;margin-top:8px;">احتفظ بهذا الكود في مكان آمن</div>
+        <div style="color:#666;font-size:11px;margin-top:8px;">${isNew ? "استخدم هذا الكود لتفعيل حسابك" : "نفس الكود الذي تستخدمه للدخول"}</div>
       </div>
       ` : ""}
 
@@ -253,11 +273,14 @@ function buildActivationEmail(name: string, code: string | null, durationDays: n
 </html>`;
 }
 
-async function sendActivationEmail(to: string, name: string, code: string | null, durationDays: number, isNew: boolean) {
+async function sendActivationEmail(
+  to: string, name: string, code: string | null,
+  durationDays: number, isNew: boolean, newEndDate?: Date
+) {
   if (!RESEND_API_KEY || !RESEND_FROM_EMAIL || !to) return;
 
   const subject = isNew ? "🎉 تم تفعيل اشتراكك في Jobbots" : "✅ تم تجديد اشتراكك في Jobbots";
-  const html = buildActivationEmail(name, code, durationDays, isNew);
+  const html = buildActivationEmail(name, code, durationDays, isNew, newEndDate);
 
   try {
     await fetch("https://api.resend.com/emails", {
@@ -297,7 +320,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     try {
       const result = await autoActivateOrder(supabase, id);
       if (result.email) {
-        await sendActivationEmail(result.email, result.name, result.code, result.durationDays, result.isNew);
+        await sendActivationEmail(result.email, result.name, result.code, result.durationDays, result.isNew, result.newEndDate);
       }
       return NextResponse.json({ ok: true, activated: true, email_sent: !!result.email, is_new: result.isNew });
     } catch (activationErr) {
