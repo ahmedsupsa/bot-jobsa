@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, XCircle, Briefcase, ArrowLeft, RefreshCw } from "lucide-react";
+import { CheckCircle2, Loader2, XCircle, ArrowLeft, RefreshCw } from "lucide-react";
+import Image from "next/image";
 import { setToken } from "@/lib/portal-auth";
 
 function SuccessContent() {
@@ -60,7 +61,7 @@ function SuccessContent() {
   return (
     <div dir="rtl" style={s.page}>
       <Link href="/" style={s.logo}>
-        <div style={s.logoIcon}><Briefcase size={18} strokeWidth={1.5} color="#0a0a0a" /></div>
+        <Image src="/logo.png" alt="Jobbots" width={36} height={36} style={{ borderRadius: 10 }} />
         <span style={s.logoText}>Jobbots</span>
       </Link>
 

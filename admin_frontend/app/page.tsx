@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import {
-  Briefcase, Bot, PenLine, BarChart3, ArrowLeft,
-  CheckCircle2, Zap, Shield, Clock, Star, TrendingUp
+  Bot, PenLine, BarChart3, ArrowLeft,
+  CheckCircle2, Zap, Shield, Clock, TrendingUp
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -57,9 +58,7 @@ export default function LandingPage() {
       <nav style={s.nav} className="nav-blur">
         <div style={s.navInner}>
           <div style={s.logo}>
-            <div style={s.logoIcon}>
-              <Briefcase size={20} strokeWidth={1.5} color="#0a0a0a" />
-            </div>
+            <Image src="/logo.png" alt="Jobbots" width={34} height={34} style={{ borderRadius: 9 }} />
             <span style={s.logoText}>Jobbots</span>
           </div>
           <div style={s.navLinks} className="landing-nav-links">
@@ -185,9 +184,7 @@ export default function LandingPage() {
       <footer style={s.footer}>
         <div style={s.footerInner}>
           <div style={s.logo}>
-            <div style={s.logoIcon}>
-              <Briefcase size={16} strokeWidth={1.5} color="#0a0a0a" />
-            </div>
+            <Image src="/logo.png" alt="Jobbots" width={28} height={28} style={{ borderRadius: 7 }} />
             <span style={{ ...s.logoText, fontSize: 16 }}>Jobbots</span>
           </div>
           <div style={s.footerLinks}>

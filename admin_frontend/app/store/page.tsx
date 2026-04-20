@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import {
-  Briefcase, Sparkles, Check, ShoppingCart, X, RefreshCw, Loader2, ShieldCheck,
+  Sparkles, Check, ShoppingCart, X, RefreshCw, Loader2, ShieldCheck,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -95,7 +96,7 @@ export default function StorePage() {
       <nav style={s.nav}>
         <div style={s.navInner}>
           <Link href="/" style={s.logo}>
-            <div style={s.logoIcon}><Briefcase size={18} strokeWidth={2} color="#0a0a0a" /></div>
+            <Image src="/logo.png" alt="Jobbots" width={34} height={34} style={{ borderRadius: 9 }} />
             <span style={s.logoText}>Jobbots</span>
           </Link>
           <Link href="/portal/login" style={s.navBtn}>دخول المشترك</Link>
