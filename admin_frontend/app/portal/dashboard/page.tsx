@@ -16,17 +16,6 @@ interface UserData {
 }
 interface Application { id: string; job_title: string; applied_at: string; }
 
-function getNextRun(): Date {
-  const now = new Date();
-  const next = new Date(now);
-  next.setSeconds(0);
-  next.setMilliseconds(0);
-  const m = now.getMinutes();
-  if (m < 30) { next.setMinutes(30); }
-  else { next.setMinutes(0); next.setHours(next.getHours() + 1); }
-  return next;
-}
-
 function fmt(secs: number) {
   const m = Math.floor(secs / 60);
   const s = secs % 60;
@@ -36,17 +25,48 @@ function fmt(secs: number) {
 function NextRunCard({ active }: { active: boolean }) {
   const [secs, setSecs] = useState(0);
   const [label, setLabel] = useState("");
+  const [nextRunMs, setNextRunMs] = useState<number | null>(null);
+
+  // جلب آخر وقت تشغيل حقيقي من قاعدة البيانات
+  useEffect(() => {
+    async function fetchLastRun() {
+      try {
+        const r = await fetch("/api/portal/worker-status");
+        const data = await r.json();
+        if (data.last_ran_at) {
+          const lastRan = new Date(data.last_ran_at).getTime();
+          const next = lastRan + 30 * 60 * 1000; // آخر تشغيل + 30 دقيقة
+          setNextRunMs(next < Date.now() ? Date.now() + 30 * 60 * 1000 : next);
+        } else {
+          // لو ما في سجل، نحسب أقرب :00 أو :30
+          const now = new Date();
+          const next = new Date(now);
+          next.setSeconds(0); next.setMilliseconds(0);
+          if (now.getMinutes() < 30) { next.setMinutes(30); }
+          else { next.setMinutes(0); next.setHours(next.getHours() + 1); }
+          setNextRunMs(next.getTime());
+        }
+      } catch {
+        setNextRunMs(Date.now() + 30 * 60 * 1000);
+      }
+    }
+    fetchLastRun();
+    const refresh = setInterval(fetchLastRun, 60_000); // تحديث كل دقيقة
+    return () => clearInterval(refresh);
+  }, []);
 
   useEffect(() => {
+    if (nextRunMs === null) return;
     function tick() {
-      const next = getNextRun();
-      setSecs(Math.max(0, Math.floor((next.getTime() - Date.now()) / 1000)));
+      const remaining = Math.max(0, Math.floor((nextRunMs! - Date.now()) / 1000));
+      setSecs(remaining);
+      const next = new Date(nextRunMs!);
       setLabel(next.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
     }
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [nextRunMs]);
 
   const pct = Math.max(0, Math.min(100, ((1800 - secs) / 1800) * 100));
 
