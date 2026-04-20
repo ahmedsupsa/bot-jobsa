@@ -1,0 +1,46 @@
+19:00:42.050 Running build in Washington, D.C., USA (East) – iad1
+19:00:42.051 Build machine configuration: 2 cores, 8 GB
+19:00:42.532 Cloning github.com/ahmedsupsa/bot-jobsa (Branch: main, Commit: 3b756dd)
+19:00:44.420 Cloning completed: 1.888s
+19:00:44.726 Restored build cache from previous deployment (Ej5i563d5mhbSF4LKoSyqbhe8GnD)
+19:00:44.998 Running "vercel build"
+19:00:46.294 Vercel CLI 51.6.1
+19:00:46.569 Running "install" command: `npm install`...
+19:00:51.359 
+19:00:51.360 up to date, audited 231 packages in 4s
+19:00:51.360 
+19:00:51.360 31 packages are looking for funding
+19:00:51.361   run `npm fund` for details
+19:00:51.398 
+19:00:51.399 1 high severity vulnerability
+19:00:51.399 
+19:00:51.399 To address all issues (including breaking changes), run:
+19:00:51.399   npm audit fix --force
+19:00:51.400 
+19:00:51.400 Run `npm audit` for details.
+19:00:51.431 Detected Next.js version: 14.2.35
+19:00:51.432 Running "npm run build"
+19:00:51.542 
+19:00:51.542 > admin-frontend@1.0.0 build
+19:00:51.543 > next build
+19:00:51.543 
+19:00:52.230   ▲ Next.js 14.2.35
+19:00:52.231 
+19:00:52.255    Creating an optimized production build ...
+19:01:04.016  ✓ Compiled successfully
+19:01:04.017    Linting and checking validity of types ...
+19:01:14.232 Failed to compile.
+19:01:14.233 
+19:01:14.234 ./app/store/page.tsx:226:19
+19:01:14.234 Type error: Type 'string | null' is not assignable to type 'boolean | undefined'.
+19:01:14.234   Type 'null' is not assignable to type 'boolean | undefined'.
+19:01:14.234 
+19:01:14.235 [0m [90m 224 |[39m                   value[33m=[39m{form[33m.[39mname}[0m
+19:01:14.235 [0m [90m 225 |[39m                   onChange[33m=[39m{e [33m=>[39m setForm(s [33m=>[39m ({ [33m...[39ms[33m,[39m name[33m:[39m e[33m.[39mtarget[33m.[39mvalue }))}[0m
+19:01:14.235 [0m[31m[1m>[22m[39m[90m 226 |[39m                   disabled[33m=[39m{submitting}[0m
+19:01:14.236 [0m [90m     |[39m                   [31m[1m^[22m[39m[0m
+19:01:14.236 [0m [90m 227 |[39m                 [33m/[39m[33m>[39m[0m
+19:01:14.236 [0m [90m 228 |[39m               [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m[0m
+19:01:14.237 [0m [90m 229 |[39m               [33m<[39m[33mdiv[39m[33m>[39m[0m
+19:01:14.269 Next.js build worker exited with code: 1 and signal: null
+19:01:14.291 Error: Command "npm run build" exited with 1

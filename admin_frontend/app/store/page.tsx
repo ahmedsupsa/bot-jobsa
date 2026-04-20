@@ -223,7 +223,7 @@ export default function StorePage() {
                 <input style={s.input} placeholder="أحمد محمد"
                   value={form.name}
                   onChange={e => setForm(s => ({ ...s, name: e.target.value }))}
-                  disabled={submitting}
+                  disabled={!!submitting}
                 />
               </div>
               <div>
@@ -232,7 +232,7 @@ export default function StorePage() {
                   type="email" placeholder="you@example.com"
                   value={form.email}
                   onChange={e => setForm(s => ({ ...s, email: e.target.value }))}
-                  disabled={submitting}
+                  disabled={!!submitting}
                 />
               </div>
               <div>
@@ -241,7 +241,7 @@ export default function StorePage() {
                   type="tel" placeholder="+966501234567"
                   value={form.phone}
                   onChange={e => setForm(s => ({ ...s, phone: e.target.value }))}
-                  disabled={submitting}
+                  disabled={!!submitting}
                 />
               </div>
             </div>
