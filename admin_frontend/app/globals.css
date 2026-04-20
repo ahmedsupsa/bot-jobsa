@@ -33,6 +33,11 @@
   --feature-icon: #e4e4e7;
   --feature-icon-fg: #09090b;
   --grid-dot:     #e4e4e7;
+  --danger:       #b91c1c;
+  --danger-fg:    #b91c1c;
+  --danger-bg:    #fef2f2;
+  --danger-border:#fecaca;
+  --danger-accent:#dc2626;
 }
 
 /* ── الوضع الليلي: Dark ── */
@@ -60,6 +65,11 @@
   --feature-icon: #222222;
   --feature-icon-fg: #ffffff;
   --grid-dot:     #181818;
+  --danger:       #ef4444;
+  --danger-fg:    #ef4444;
+  --danger-bg:    #2a0f10;
+  --danger-border:#7f1d1d;
+  --danger-accent:#dc2626;
 }
 
 /* ═══════════════════════════════════════
