@@ -4,7 +4,53 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Cross-browser base resets ── */
+/* ═══════════════════════════════════════
+   THEME CSS VARIABLES
+═══════════════════════════════════════ */
+:root,
+:root[data-theme="dark"] {
+  --bg:        #0a0a0a;
+  --bg2:       #111111;
+  --bg3:       #141414;
+  --surface:   #111111;
+  --surface2:  #1a1a1a;
+  --border:    #1f1f1f;
+  --border2:   #2a2a2a;
+  --text:      #ffffff;
+  --text2:     #cccccc;
+  --text3:     #888888;
+  --text4:     #555555;
+  --accent:    #ffffff;
+  --accent-fg: #0a0a0a;
+  --scrollbar: #2a2a2a;
+  --nav-bg:    rgba(10,10,10,0.92);
+  --input-bg:  #141414;
+  --shadow:    0 4px 24px rgba(0,0,0,0.4);
+}
+
+:root[data-theme="light"] {
+  --bg:        #f4f4f5;
+  --bg2:       #ffffff;
+  --bg3:       #f9f9f9;
+  --surface:   #ffffff;
+  --surface2:  #f4f4f5;
+  --border:    #e4e4e7;
+  --border2:   #d4d4d8;
+  --text:      #09090b;
+  --text2:     #3f3f46;
+  --text3:     #71717a;
+  --text4:     #a1a1aa;
+  --accent:    #09090b;
+  --accent-fg: #ffffff;
+  --scrollbar: #d4d4d8;
+  --nav-bg:    rgba(244,244,245,0.94);
+  --input-bg:  #ffffff;
+  --shadow:    0 4px 24px rgba(0,0,0,0.08);
+}
+
+/* ═══════════════════════════════════════
+   CROSS-BROWSER BASE RESETS
+═══════════════════════════════════════ */
 *, *::before, *::after {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
@@ -18,101 +64,58 @@ html {
 }
 
 html, body {
-  background: #0a0a0a;
-  color: #ffffff;
+  background: var(--bg);
+  color: var(--text);
   font-family: 'Tajawal', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   min-height: 100vh;
   min-height: -webkit-fill-available;
   -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
   overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
+  transition: background 0.25s, color 0.25s;
 }
 
-/* ── Prevent iOS zoom on input focus (requires 16px) ── */
+/* Prevent iOS zoom on input focus */
 input, select, textarea {
   font-size: 16px;
   font-family: inherit;
 }
 
-/* ── Scrollbar hiding cross-browser ── */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #2a2a2a;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #3a3a3a;
-}
+/* ═══════════════════════════════════════
+   SCROLLBARS
+═══════════════════════════════════════ */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border2); }
+* { scrollbar-width: thin; scrollbar-color: var(--scrollbar) transparent; }
 
-/* Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #2a2a2a transparent;
-}
-
-/* ── Smooth focus outlines for accessibility ── */
-:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.3);
-  outline-offset: 2px;
-}
-
-/* ── Links ── */
-a {
-  text-decoration: none;
-  color: inherit;
-}
-
-/* ── Button base ── */
-button {
-  font-family: inherit;
-  cursor: pointer;
-}
-
-/* ── Images ── */
-img {
-  max-width: 100%;
-  height: auto;
-}
-
-/* ── Backdrop filter cross-browser ── */
-.backdrop-blur-support {
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-}
-
-/* ── iOS safe area support ── */
-.safe-bottom {
-  padding-bottom: max(12px, env(safe-area-inset-bottom));
-}
-
-/* ── Prevent text selection on interactive elements ── */
-button, [role="button"] {
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-/* ── Hide scrollbar utility ── */
+/* ═══════════════════════════════════════
+   UTILITIES
+═══════════════════════════════════════ */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* ── Responsive login split layout ── */
+:focus-visible { outline: 2px solid rgba(128,128,128,0.4); outline-offset: 2px; }
+a { text-decoration: none; color: inherit; }
+button { font-family: inherit; cursor: pointer; }
+img { max-width: 100%; height: auto; }
+
+button, [role="button"] { -webkit-user-select: none; user-select: none; }
+
+/* ═══════════════════════════════════════
+   RESPONSIVE: LOGIN SPLIT
+═══════════════════════════════════════ */
 .login-split {
   min-height: 100vh;
   display: flex;
   direction: rtl;
-  background: #0a0a0a;
+  background: var(--bg);
 }
 .login-left {
   flex: 1;
-  background: #111;
-  border-left: 1px solid #1f1f1f;
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
   padding: 60px 52px;
   display: flex;
   flex-direction: column;
@@ -127,7 +130,7 @@ button, [role="button"] {
   align-items: center;
   justify-content: center;
   padding: 40px 48px;
-  background: #0a0a0a;
+  background: var(--bg);
   flex-shrink: 0;
 }
 @media (max-width: 768px) {
@@ -141,49 +144,33 @@ button, [role="button"] {
   }
 }
 @media (max-width: 480px) {
-  .login-right {
-    padding: 24px 16px !important;
-    padding-top: 40px !important;
-  }
+  .login-right { padding: 24px 16px !important; padding-top: 40px !important; }
 }
 
-/* ── Landing page nav responsive ── */
+/* ═══════════════════════════════════════
+   RESPONSIVE: LANDING NAV
+═══════════════════════════════════════ */
 @media (max-width: 480px) {
-  .landing-nav-links {
-    gap: 6px !important;
-  }
-  .landing-nav-links a {
-    padding: 7px 12px !important;
-    font-size: 12px !important;
-  }
+  .landing-nav-links { gap: 6px !important; }
+  .landing-nav-links a { padding: 7px 12px !important; font-size: 12px !important; }
 }
 @media (max-width: 360px) {
-  .landing-nav-links .nav-secondary {
-    display: none !important;
-  }
+  .landing-nav-links .nav-secondary { display: none !important; }
 }
 
-/* ── Feature/Steps grids responsive ── */
+/* ═══════════════════════════════════════
+   RESPONSIVE: GRIDS
+═══════════════════════════════════════ */
 @media (max-width: 900px) {
   .features-grid { grid-template-columns: 1fr 1fr !important; }
   .steps-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+  .dashboard-two-col { grid-template-columns: 1fr !important; }
 }
 @media (max-width: 600px) {
   .features-grid { grid-template-columns: 1fr !important; }
-}
-
-/* ── Landing hero responsive ── */
-@media (max-width: 600px) {
   .hero-sub br { display: none; }
   .hero-stats { gap: 24px !important; padding-top: 28px !important; }
 }
-
-/* ── Dashboard two-col responsive ── */
-@media (max-width: 900px) {
-  .dashboard-two-col { grid-template-columns: 1fr !important; }
-}
-
-/* ── Store grid responsive ── */
 @media (max-width: 760px) {
   .__grid { grid-template-columns: 1fr !important; }
 }
@@ -191,70 +178,70 @@ button, [role="button"] {
   .__modal { padding: 20px !important; border-radius: 16px !important; }
 }
 
-/* ── Portal sidebar/nav responsive ── */
+/* ═══════════════════════════════════════
+   RESPONSIVE: PORTAL
+═══════════════════════════════════════ */
 @media (max-width: 900px) {
   .portal-sidebar { display: none !important; }
   .portal-main { padding: 20px 16px 100px !important; }
   .portal-bottom-nav { display: block !important; }
 }
-
-/* ── Admin shell responsive ── */
 @media (max-width: 768px) {
   .admin-content { padding: 16px !important; }
 }
 
-/* ── Spin animation used across pages ── */
+/* ═══════════════════════════════════════
+   INPUT / PLACEHOLDER
+═══════════════════════════════════════ */
+input::placeholder, textarea::placeholder { color: var(--text4); opacity: 1; }
+input:focus, textarea:focus { border-color: var(--border2) !important; outline: none !important; }
+
+/* ═══════════════════════════════════════
+   TOUCH & HOVER
+═══════════════════════════════════════ */
+@media (hover: none) and (pointer: coarse) {
+  button:active, [role="button"]:active { opacity: 0.7; }
+}
+
+/* ═══════════════════════════════════════
+   FIREFOX FALLBACK
+═══════════════════════════════════════ */
+@supports not (backdrop-filter: blur(1px)) {
+  .nav-blur { background: var(--bg) !important; opacity: 1 !important; }
+}
+
+/* ═══════════════════════════════════════
+   SAFE AREA (iOS)
+═══════════════════════════════════════ */
+.safe-bottom { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+
+/* ═══════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════ */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
-
-/* ── PWA install slide up ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 @keyframes pwaSlideUp {
   from { transform: translateY(120%); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
 
-/* ── Input placeholder cross-browser ── */
-input::placeholder,
-textarea::placeholder {
-  color: #444;
-  opacity: 1; /* Firefox */
-}
-input:focus,
-textarea:focus {
-  border-color: #444 !important;
-  outline: none !important;
-}
-
-/* ── Touch improvements ── */
-@media (hover: none) and (pointer: coarse) {
-  button:active, [role="button"]:active {
-    opacity: 0.7;
-  }
-}
-
-/* ── Firefox-specific backdrop filter fallback ── */
-@supports not (backdrop-filter: blur(1px)) {
-  .nav-blur {
-    background: rgba(10, 10, 10, 0.98) !important;
-  }
-}
-
-/* ── High contrast media query ── */
-@media (prefers-contrast: high) {
-  :root {
-    --border-color: #555;
-  }
-}
-
-/* ── Print styles ── */
+/* ═══════════════════════════════════════
+   PRINT
+═══════════════════════════════════════ */
 @media print {
-  nav, footer, .portal-bottom-nav, .pwa-install-prompt {
-    display: none !important;
-  }
-  body {
-    background: white;
-    color: black;
-  }
+  nav, footer, .portal-bottom-nav { display: none !important; }
+  body { background: white; color: black; }
+}
+
+/* ═══════════════════════════════════════
+   HIGH CONTRAST
+═══════════════════════════════════════ */
+@media (prefers-contrast: high) {
+  :root { --border: #666; --border2: #888; }
 }
