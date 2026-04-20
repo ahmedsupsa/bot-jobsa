@@ -21,5 +21,7 @@ export async function GET() {
     last_ran_at: data?.ran_at ?? null,
     last_applied: data?.applied_count ?? 0,
     last_status: data?.status ?? null,
+  }, {
+    headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30" },
   });
 }

@@ -55,6 +55,18 @@
       "short_name": "المتجر",
       "url": "/store",
       "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "لوحة الإدارة",
+      "short_name": "الإدارة",
+      "url": "/admin",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "إدارة المستخدمين",
+      "short_name": "المستخدمون",
+      "url": "/admin/users",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
     }
   ]
 }

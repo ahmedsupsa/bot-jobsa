@@ -53,15 +53,11 @@ export async function POST(req: Request) {
 
   const now = new Date().toISOString();
   if (existing?.[0]) {
-    const { error: updateErr } = await supabase.from("user_cvs").update({
-      file_name: file.name,
-      file_id: "web_upload",
-      storage_path: storagePath,
-    }).eq("user_id", uid);
-    if (updateErr) {
-      console.error("user_cvs update error:", JSON.stringify(updateErr));
-      return NextResponse.json({ error: `فشل حفظ البيانات: ${updateErr.message}` }, { status: 500 });
-    }
+    // السيرة محفوظة مسبقاً — لا يُسمح بتغييرها إلا عبر الدعم
+    return NextResponse.json({
+      error: "لا يمكن تغيير السيرة الذاتية بعد رفعها. تواصل مع الدعم لتغييرها.",
+      locked: true,
+    }, { status: 403 });
   } else {
     const { error: insertErr } = await supabase.from("user_cvs").insert({
       user_id: uid,

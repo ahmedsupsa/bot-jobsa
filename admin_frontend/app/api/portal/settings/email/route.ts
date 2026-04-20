@@ -17,9 +17,17 @@ export async function POST(req: Request) {
 
   const { data: existing } = await supabase
     .from("user_settings")
-    .select("id")
+    .select("id, email")
     .eq("user_id", uid)
     .limit(1);
+
+  if (existing?.[0]?.email) {
+    // الإيميل محفوظ مسبقاً — لا يُسمح بتغييره إلا عبر الدعم
+    return NextResponse.json({
+      error: "لا يمكن تغيير الإيميل بعد ربطه. تواصل مع الدعم لتغييره.",
+      locked: true,
+    }, { status: 403 });
+  }
 
   if (existing?.[0]) {
     await supabase.from("user_settings").update({ email }).eq("user_id", uid);

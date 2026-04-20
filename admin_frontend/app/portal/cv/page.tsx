@@ -7,7 +7,7 @@ import { portalFetch, clearToken, authHeaders } from "@/lib/portal-auth";
 import {
   Upload, Trash2, FileText, CheckCircle, XCircle,
   Bot, Search, Send, Eye, RefreshCw, Calendar,
-  Sparkles, Save, Briefcase, Loader2, X,
+  Sparkles, Save, Briefcase, Loader2, X, Lock, MessageCircle,
 } from "lucide-react";
 
 interface CVInfo { has_cv: boolean; file_name?: string; updated_at?: string; preview_url?: string; }
@@ -246,25 +246,37 @@ export default function CVPrefsPage() {
                           <Eye size={14} /> معاينة السيرة
                         </a>
                       )}
-                      <button onClick={() => { setShowReplace(v => !v); setCvMsg(null); }} style={{
-                        display: "inline-flex", alignItems: "center", gap: 7,
-                        padding: "10px 18px", borderRadius: 12,
-                        background: t.iconBg, border: `1px solid ${t.border2}`,
-                        color: t.text2, fontSize: 13, fontWeight: 600, cursor: "pointer",
-                      }}>
-                        <RefreshCw size={13} /> استبدال السيرة
-                      </button>
-                      <button onClick={handleDelete} disabled={deleting} style={{
-                        display: "inline-flex", alignItems: "center", gap: 7,
-                        padding: "10px 18px", borderRadius: 12,
-                        background: dark ? "#1a0a0a" : "#fef2f2", border: "1px solid #3f1515",
-                        color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer",
-                      }}>
-                        <Trash2 size={13} /> {deleting ? "جاري الحذف…" : "حذف"}
-                      </button>
                     </div>
 
-                    {showReplace && <DropZone t={t} dark={dark} drag={drag} setDrag={setDrag} uploading={uploading} fileRef={fileRef} handleUpload={handleUpload} handleDrop={handleDrop} />}
+                    {/* قفل تغيير السيرة — يتم عبر الدعم فقط */}
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: 12,
+                      background: dark ? "#14100a" : "#fffbeb",
+                      border: "1px solid #f59e0b33", borderRadius: 14,
+                      padding: "14px 16px", marginBottom: 14,
+                    }}>
+                      <div style={{
+                        width: 36, height: 36, borderRadius: 10,
+                        background: dark ? "#1f1500" : "#fef3c7",
+                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                      }}>
+                        <Lock size={16} strokeWidth={1.8} color="#f59e0b" />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ margin: 0, color: dark ? "#fcd34d" : "#92400e", fontSize: 13, fontWeight: 700 }}>السيرة الذاتية مقفلة</p>
+                        <p style={{ margin: "3px 0 0", color: dark ? "#a78054" : "#b45309", fontSize: 12, lineHeight: 1.5 }}>
+                          لتغيير السيرة الذاتية تواصل مع فريق الدعم
+                        </p>
+                      </div>
+                      <a href="/portal/support" style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "8px 14px", borderRadius: 10,
+                        background: "#f59e0b", color: "#000",
+                        fontSize: 12, fontWeight: 700, textDecoration: "none",
+                      }}>
+                        <MessageCircle size={13} /> الدعم
+                      </a>
+                    </div>
                   </>
                 ) : (
                   <>

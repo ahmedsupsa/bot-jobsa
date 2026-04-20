@@ -7,7 +7,7 @@ import { portalFetch, clearToken } from "@/lib/portal-auth";
 import {
   User, Phone, MapPin, Calendar, Mail, CreditCard, Send,
   Shield, Languages, CheckCircle, XCircle, AlertTriangle,
-  LogOut, Trash2, Loader2, X,
+  LogOut, Trash2, Loader2, X, Lock, MessageCircle,
 } from "lucide-react";
 
 interface UserData {
@@ -229,48 +229,77 @@ export default function AccountPage() {
 
             {/* Email */}
             <Card t={t} title="ربط إيميل Gmail" icon={<Mail size={17} strokeWidth={1.5} />} sub="مطلوب لإرسال طلبات التوظيف باسمك">
-              {user?.sender_email_alias && (
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 12,
-                  background: dark ? "#0a1f0a" : "#f0fdf4",
-                  border: "1px solid #22c55e33", borderRadius: 12,
-                  padding: "14px 16px", marginBottom: 16,
-                }}>
-                  <CheckCircle size={18} strokeWidth={1.5} color="#22c55e" />
-                  <div>
-                    <p style={{ color: "#22c55e", fontSize: 11, fontWeight: 600, margin: 0 }}>إيميل التقديم الخاص بك</p>
-                    <p style={{ color: "#4ade80", fontSize: 13, fontWeight: 700, margin: "3px 0 0" }} dir="ltr">{user.sender_email_alias}</p>
+              {user?.email ? (
+                /* الإيميل مربوط — مقفل */
+                <>
+                  {user.sender_email_alias && (
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: 12,
+                      background: dark ? "#0a1f0a" : "#f0fdf4",
+                      border: "1px solid #22c55e33", borderRadius: 12,
+                      padding: "14px 16px", marginBottom: 12,
+                    }}>
+                      <CheckCircle size={18} strokeWidth={1.5} color="#22c55e" />
+                      <div>
+                        <p style={{ color: "#22c55e", fontSize: 11, fontWeight: 600, margin: 0 }}>إيميل التقديم الخاص بك</p>
+                        <p style={{ color: "#4ade80", fontSize: 13, fontWeight: 700, margin: "3px 0 0" }} dir="ltr">{user.sender_email_alias}</p>
+                      </div>
+                    </div>
+                  )}
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 12,
+                    background: dark ? "#14100a" : "#fffbeb",
+                    border: "1px solid #f59e0b33", borderRadius: 12,
+                    padding: "14px 16px",
+                  }}>
+                    <Lock size={16} strokeWidth={1.8} color="#f59e0b" style={{ flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: 0, color: dark ? "#fcd34d" : "#92400e", fontSize: 13, fontWeight: 700 }}>الإيميل مقفل</p>
+                      <p style={{ margin: "3px 0 0", color: dark ? "#a78054" : "#b45309", fontSize: 12 }} dir="ltr">{user.email}</p>
+                    </div>
+                    <a href="/portal/support" style={{
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      padding: "7px 13px", borderRadius: 9,
+                      background: "#f59e0b", color: "#000",
+                      fontSize: 12, fontWeight: 700, textDecoration: "none", flexShrink: 0,
+                    }}>
+                      <MessageCircle size={12} /> تغيير
+                    </a>
                   </div>
-                </div>
+                </>
+              ) : (
+                /* أول مرة — يسمح بالربط */
+                <>
+                  <form onSubmit={saveEmail}>
+                    <label style={{ display: "block", color: t.text2, fontSize: 13, fontWeight: 500, marginBottom: 8 }}>إيميل Gmail</label>
+                    <div style={{ position: "relative", marginBottom: 12 }}>
+                      <Mail size={15} strokeWidth={1.5} color={t.text3} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)" } as any} />
+                      <input
+                        type="email" dir="ltr" value={emailInput}
+                        onChange={e => setEmailInput(e.target.value)}
+                        placeholder="example@gmail.com"
+                        style={{
+                          width: "100%", padding: "13px 42px 13px 16px",
+                          background: t.input, border: `1px solid ${t.border2}`,
+                          borderRadius: 12, color: t.text, fontSize: 16, outline: "none",
+                          boxSizing: "border-box", WebkitAppearance: "none",
+                        }}
+                      />
+                    </div>
+                    <button style={{
+                      width: "100%", padding: "13px", background: dark ? "#fff" : "#09090b",
+                      color: dark ? "#0a0a0a" : "#fff", border: "none", borderRadius: 12,
+                      fontSize: 14, fontWeight: 700, cursor: "pointer",
+                    }} type="submit" disabled={saving || !emailInput.trim()}>
+                      {saving ? "جاري الحفظ…" : "ربط الإيميل"}
+                    </button>
+                  </form>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 12 }}>
+                    <Shield size={13} strokeWidth={1.5} color={t.text3} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <p style={{ color: t.text3, fontSize: 12, margin: 0, lineHeight: 1.6 }}>نُنشئ عنوان إرسال خاص بك — إيميلك الشخصي لن يظهر للشركات.</p>
+                  </div>
+                </>
               )}
-              <form onSubmit={saveEmail}>
-                <label style={{ display: "block", color: t.text2, fontSize: 13, fontWeight: 500, marginBottom: 8 }}>إيميل Gmail</label>
-                <div style={{ position: "relative", marginBottom: 12 }}>
-                  <Mail size={15} strokeWidth={1.5} color={t.text3} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)" } as any} />
-                  <input
-                    type="email" dir="ltr" value={emailInput}
-                    onChange={e => setEmailInput(e.target.value)}
-                    placeholder="example@gmail.com"
-                    style={{
-                      width: "100%", padding: "13px 42px 13px 16px",
-                      background: t.input, border: `1px solid ${t.border2}`,
-                      borderRadius: 12, color: t.text, fontSize: 16, outline: "none",
-                      boxSizing: "border-box", WebkitAppearance: "none",
-                    }}
-                  />
-                </div>
-                <button style={{
-                  width: "100%", padding: "13px", background: dark ? "#fff" : "#09090b",
-                  color: dark ? "#0a0a0a" : "#fff", border: "none", borderRadius: 12,
-                  fontSize: 14, fontWeight: 700, cursor: "pointer",
-                }} type="submit" disabled={saving || !emailInput.trim()}>
-                  {saving ? "جاري الحفظ…" : user?.email ? "تحديث الإيميل" : "ربط الإيميل"}
-                </button>
-              </form>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 12 }}>
-                <Shield size={13} strokeWidth={1.5} color={t.text3} style={{ flexShrink: 0, marginTop: 1 }} />
-                <p style={{ color: t.text3, fontSize: 12, margin: 0, lineHeight: 1.6 }}>نُنشئ عنوان إرسال خاص بك — إيميلك الشخصي لن يظهر للشركات.</p>
-              </div>
             </Card>
 
             {/* Language */}
