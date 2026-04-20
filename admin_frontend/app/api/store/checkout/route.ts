@@ -8,8 +8,8 @@ const SITE = rawSite.replace("https://jobbots.org", "https://www.jobbots.org").r
 export async function POST(req: Request) {
   try {
     const { product_id, name, email, phone, ref_code } = await req.json();
-    if (!product_id || !email?.trim() || !name?.trim()) {
-      return NextResponse.json({ ok: false, error: "الاسم والبريد الإلكتروني والمنتج مطلوبة" }, { status: 400 });
+    if (!product_id || !email?.trim() || !name?.trim() || !phone?.trim()) {
+      return NextResponse.json({ ok: false, error: "الاسم والبريد الإلكتروني والجوال مطلوبة" }, { status: 400 });
     }
 
     const { data: product, error: pErr } = await supabase

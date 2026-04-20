@@ -53,7 +53,7 @@ async function autoCreateAccount(
   try {
     const email = order.user_email?.trim().toLowerCase();
     const name = order.user_name?.trim() || "مستخدم";
-    const phone = order.user_phone?.trim() || order.user_email?.trim() || "غير محدد";
+    const phone = order.user_phone?.trim() || "غير محدد";
     const ends_at = new Date(Date.now() + durationDays * 86400000).toISOString();
 
     // Check if user already exists

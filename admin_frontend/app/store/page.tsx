@@ -60,8 +60,9 @@ export default function StorePage() {
   const handleBuy = (p: Product) => { setSelected(p); setFormErr(""); };
 
   const handleCheckout = async () => {
-    if (!form.name.trim() || !form.email.trim()) { setFormErr("الاسم والبريد الإلكتروني مطلوبان"); return; }
+    if (!form.name.trim() || !form.email.trim() || !form.phone.trim()) { setFormErr("جميع الحقول مطلوبة"); return; }
     if (!form.email.includes("@")) { setFormErr("بريد إلكتروني غير صحيح"); return; }
+    if (form.phone.trim().length < 9) { setFormErr("رقم الجوال غير صحيح"); return; }
     if (!selected) return;
     setSubmitting(true); setFormErr("");
     try {
@@ -234,7 +235,7 @@ export default function StorePage() {
                 />
               </div>
               <div>
-                <label style={s.label}>رقم الجوال (اختياري)</label>
+                <label style={s.label}>رقم الجوال *</label>
                 <input style={{ ...s.input, direction: "ltr", textAlign: "right" }}
                   type="tel" placeholder="+966501234567"
                   value={form.phone}
