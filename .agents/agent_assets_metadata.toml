@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "AaJbw3p4lcxa5vgz79Yxr"
+uri = "file://docs/BRAND-CONTENT-BRIEF.md"
+type = "text"
+title = "Jobbots — مرجع المحتوى والتصميم"
