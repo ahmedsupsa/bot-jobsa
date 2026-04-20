@@ -5,7 +5,7 @@ import { PortalShell } from "@/components/portal-shell";
 import { portalFetch, clearToken } from "@/lib/portal-auth";
 import {
   Send, CalendarDays, Mail, AlertCircle, ArrowRight,
-  FileText, User, ClipboardList, Clock, Zap,
+  FileText, User, ClipboardList, Clock, Zap, PauseCircle,
 } from "lucide-react";
 
 interface UserData {
@@ -83,26 +83,42 @@ function NextRunCard({ active }: { active: boolean }) {
   return (
     <div style={{
       background: "var(--surface)",
-      border: `1px solid var(--border)`,
+      border: `1px solid ${active ? "var(--border)" : "#7f1d1d"}`,
       borderRadius: 16, padding: "20px 22px", marginBottom: 20,
+      position: "relative", overflow: "hidden",
     }}>
+      {!active && (
+        <div style={{
+          position: "absolute", top: 0, right: 0, left: 0, height: 3,
+          background: "#dc2626",
+        }} />
+      )}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
             width: 36, height: 36, borderRadius: 10,
-            background: "var(--surface2)",
+            background: active ? "var(--surface2)" : "#2a0f10",
+            border: active ? "none" : "1px solid #7f1d1d",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            <Zap size={17} strokeWidth={1.8} color={active ? "var(--text)" : "var(--text3)"} />
+            {active
+              ? <Zap size={17} strokeWidth={1.8} color="var(--text)" />
+              : <PauseCircle size={18} strokeWidth={1.8} color="#ef4444" />}
           </div>
           <div>
-            <p style={{ margin: 0, color: "var(--text)", fontSize: 14, fontWeight: 600 }}>التقديم التلقائي القادم</p>
-            <p style={{ margin: 0, color: "var(--text3)", fontSize: 12 }}>يعمل كل 30 دقيقة · الجلسة التالية {label}</p>
+            <p style={{ margin: 0, color: "var(--text)", fontSize: 14, fontWeight: 600 }}>
+              {active ? "التقديم التلقائي القادم" : "التقديم التلقائي موقوف"}
+            </p>
+            <p style={{ margin: 0, color: "var(--text3)", fontSize: 12 }}>
+              {active
+                ? `يعمل كل 30 دقيقة · الجلسة التالية ${label}`
+                : "لن يتم إرسال تقديمات حتى يستأنف العمل"}
+            </p>
           </div>
         </div>
         <span style={{
           padding: "4px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-          background: "var(--surface2)",
+          background: active ? "var(--surface2)" : "#2a0f10",
           border: `1px solid ${active ? "var(--border2)" : "#7f1d1d"}`,
           color: active ? "var(--text)" : "#ef4444",
         }}>{active ? "نشط" : "موقوف"}</span>
@@ -110,23 +126,22 @@ function NextRunCard({ active }: { active: boolean }) {
 
       <div style={{ background: "var(--surface2)", borderRadius: 999, height: 4, marginBottom: 12, overflow: "hidden" }}>
         <div style={{
-          width: `${pct}%`, height: "100%",
-          background: active ? "var(--text)" : "var(--text4)",
+          width: `${active ? pct : 100}%`, height: "100%",
+          background: active ? "var(--text)" : "#7f1d1d",
           borderRadius: 999, transition: "width 1s linear",
         }} />
       </div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text3)", fontSize: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, color: active ? "var(--text3)" : "#ef4444", fontSize: 12, fontWeight: active ? 400 : 600 }}>
           <Clock size={12} />
           {active ? "متبقي على الجلسة القادمة" : "جدّد اشتراكك لاستئناف التقديم التلقائي"}
         </div>
-        {active && (
-          <span style={{
-            fontFamily: "monospace", fontWeight: 700, fontSize: 22, letterSpacing: 2,
-            color: "var(--text)",
-          }}>{fmt(secs)}</span>
-        )}
+        <span style={{
+          fontFamily: "monospace", fontWeight: 700, fontSize: 22, letterSpacing: 2,
+          color: active ? "var(--text)" : "var(--text4)",
+          textDecoration: active ? "none" : "line-through",
+        }}>{active ? fmt(secs) : "--:--"}</span>
       </div>
     </div>
   );
