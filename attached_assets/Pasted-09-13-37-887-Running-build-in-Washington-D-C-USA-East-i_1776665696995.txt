@@ -1,0 +1,54 @@
+09:13:37.887 Running build in Washington, D.C., USA (East) – iad1
+09:13:37.888 Build machine configuration: 2 cores, 8 GB
+09:13:38.091 Cloning github.com/ahmedsupsa/bot-jobsa (Branch: main, Commit: 67ecfe2)
+09:13:39.133 Cloning completed: 1.041s
+09:13:39.378 Restored build cache from previous deployment (JDQn71TM3KjuBsfsKZhRqjn1Azh2)
+09:13:39.689 Running "vercel build"
+09:13:40.828 Vercel CLI 51.6.1
+09:13:41.134 Running "install" command: `npm install`...
+09:13:44.726 
+09:13:44.726 up to date, audited 231 packages in 3s
+09:13:44.727 
+09:13:44.727 31 packages are looking for funding
+09:13:44.727   run `npm fund` for details
+09:13:44.767 
+09:13:44.767 1 high severity vulnerability
+09:13:44.768 
+09:13:44.768 To address all issues (including breaking changes), run:
+09:13:44.768   npm audit fix --force
+09:13:44.768 
+09:13:44.768 Run `npm audit` for details.
+09:13:44.804 Detected Next.js version: 14.2.35
+09:13:44.805 Running "npm run build"
+09:13:44.913 
+09:13:44.913 > admin-frontend@1.0.0 build
+09:13:44.913 > next build
+09:13:44.914 
+09:13:45.608   ▲ Next.js 14.2.35
+09:13:45.608 
+09:13:45.632    Creating an optimized production build ...
+09:13:54.019 Failed to compile.
+09:13:54.020 
+09:13:54.020 ./app/portal/affiliate/page.tsx
+09:13:54.021 Error: 
+09:13:54.022   [31mx[0m Unexpected token `PortalShell`. Expected jsx identifier
+09:13:54.022      ,-[[36;1;4m/vercel/path0/admin_frontend/app/portal/affiliate/page.tsx[0m:208:1]
+09:13:54.022  [2m208[0m |   const canWithdraw = hasAccount && (data.available_balance || 0) >= (data.min_withdraw || 20);
+09:13:54.022  [2m209[0m | 
+09:13:54.022  [2m210[0m |   return (
+09:13:54.022  [2m211[0m |     <PortalShell>
+09:13:54.023      : [31;1m     ^^^^^^^^^^^[0m
+09:13:54.023  [2m212[0m |       <div style={{ maxWidth: 900, margin: "0 auto" }}>
+09:13:54.023  [2m213[0m |         <h1 style={{ margin: "0 0 20px", color: "var(--text)", fontSize: 22, fontWeight: 700, display: "flex", alignItems: "center", gap: 10 }}>
+09:13:54.023  [2m214[0m |           <TrendingUp size={22} color="#fff" /> برنامج الربح
+09:13:54.023      `----
+09:13:54.023 
+09:13:54.023 Caused by:
+09:13:54.023     Syntax Error
+09:13:54.023 
+09:13:54.024 Import trace for requested module:
+09:13:54.024 ./app/portal/affiliate/page.tsx
+09:13:54.024 
+09:13:54.034 
+09:13:54.035 > Build failed because of webpack errors
+09:13:54.075 Error: Command "npm run build" exited with 1

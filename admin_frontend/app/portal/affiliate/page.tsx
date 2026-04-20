@@ -299,8 +299,8 @@ export default function AffiliatePage() {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={copyLink} style={{
-              flex: 1, background: copied ? "rgba(34,197,94,0.12)" : "var(--surface2)",
-              border: `1px solid ${copied ? "#ffffff44" : "var(--border)"}`}`,
+              flex: 1, background: copied ? "rgba(255,255,255,0.06)" : "var(--surface2)",
+              border: `1px solid ${copied ? "#ffffff44" : "var(--border)"}`,
               color: copied ? "#fff" : "var(--text)",
               borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 600,
               cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,

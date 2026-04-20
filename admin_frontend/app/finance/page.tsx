@@ -154,7 +154,7 @@ export default function FinancePage() {
             <button onClick={handleExport} disabled={exporting || !data}
               style={{
                 background: "#fff", color: "#000", border: "none",
-                borderRadius: 10, padding: "10px 16px", color: "#fff", cursor: exporting ? "wait" : "pointer",
+                borderRadius: 10, padding: "10px 16px", cursor: exporting ? "wait" : "pointer",
                 display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700,
                 opacity: exporting || !data ? 0.6 : 1,
               }}>
