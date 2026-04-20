@@ -66,6 +66,25 @@ select cron.schedule(
 - `GEMINI_API_KEY` — Google Gemini API key
 - `WORKER_SECRET` — Secret to protect the Edge Function endpoint
 - `SUPABASE_WORKER_URL` — Full URL of the Edge Function (for admin trigger button)
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY` — VAPID public key for push notifications
+- `VAPID_PRIVATE_KEY` — VAPID private key for push notifications
+- `VAPID_EMAIL` — VAPID contact email (default: mailto:admin@jobbots.app)
+
+### Edge Function env vars (Supabase Dashboard → Edge Functions → Secrets)
+
+- `APP_URL` — Full URL of the deployed Next.js app (e.g., `https://jobbots.vercel.app`) — enables worker to send achievement push notifications after each cycle
+
+## Smart Push Notifications
+
+Admin page `/notifications` supports 6 segments:
+- `no_email` — active users without linked email
+- `no_cv` — active users without uploaded CV  
+- `expiring` — subscription ending within 3 days
+- `expired` — users with expired subscription
+- `achievement` — users who received job applications today
+- `all` — broadcast to all subscribers
+
+Each notification is personalized with `{name}` → user's first name. Worker automatically sends achievement notifications via `/api/internal/notify-achievements` (secured by WORKER_SECRET).
 
 ## Database (Supabase)
 

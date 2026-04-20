@@ -8,6 +8,7 @@ const RESEND_FROM    = Deno.env.get("RESEND_FROM_EMAIL") ?? "";
 const RESEND_NAME    = Deno.env.get("RESEND_FROM_NAME") ?? "Jobbots";
 const GEMINI_KEY     = Deno.env.get("GEMINI_API_KEY") ?? "";
 const WORKER_SECRET  = Deno.env.get("WORKER_SECRET") ?? "";
+const APP_URL        = (Deno.env.get("APP_URL") ?? "").replace(/\/$/, "");
 
 const SB = {
   apikey: SUPABASE_KEY,
@@ -168,6 +169,7 @@ type Detail = { user: string; job: string; email: string; status: "sent" | "skip
 async function runCycle() {
   const errors: string[] = [];
   const details: Detail[] = [];
+  const achievers: Array<{ user_id: string; name: string; applied_count: number }> = [];
   let applied = 0, activeUsers = 0;
 
   if (!RESEND_API_KEY || !RESEND_FROM) {
@@ -268,10 +270,13 @@ async function runCycle() {
       }
     }
 
-    if (sent > 0) console.log(`[worker] ✅ ${name}: ${sent} تقديم`);
+    if (sent > 0) {
+      console.log(`[worker] ✅ ${name}: ${sent} تقديم`);
+      achievers.push({ user_id: uid, name, applied_count: sent });
+    }
   }
 
-  return { applied, users: activeUsers, errors, details };
+  return { applied, users: activeUsers, errors, details, achievers };
 }
 
 async function logRun(data: { applied_count: number; active_users: number; errors: string[]; duration_ms: number; status: string }) {
@@ -299,6 +304,24 @@ Deno.serve(async (req: Request) => {
     const duration_ms = Date.now() - t0;
     const status = result.errors.length === 0 ? "success" : result.applied > 0 ? "partial" : "error";
     await logRun({ applied_count: result.applied, active_users: result.users, errors: result.errors, duration_ms, status });
+
+    // إرسال إشعارات الإنجاز للمستخدمين الذين تمت التقديمات لهم
+    if (result.achievers?.length && APP_URL) {
+      try {
+        await fetch(`${APP_URL}/api/internal/notify-achievements`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(WORKER_SECRET ? { Authorization: `Bearer ${WORKER_SECRET}` } : {}),
+          },
+          body: JSON.stringify({ results: result.achievers }),
+        });
+        console.log(`[worker] 🔔 إشعارات أُرسلت لـ ${result.achievers.length} مستخدم`);
+      } catch (e) {
+        console.warn("[worker] فشل إرسال إشعارات الإنجاز:", String(e));
+      }
+    }
+
     console.log("[worker] انتهت الدورة:", JSON.stringify(result));
     return new Response(JSON.stringify({ ok: true, ...result, duration_ms }), {
       headers: { "Content-Type": "application/json" },
