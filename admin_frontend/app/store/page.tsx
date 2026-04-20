@@ -196,51 +196,58 @@ export default function StorePage() {
         <div style={s.overlay} onClick={e => { if (e.target === e.currentTarget) { setSelected(null); setFormErr(""); } }}>
           <div style={s.modal} dir="rtl" className="__modal">
             <div style={s.modalGlow} />
+
+            {/* Header */}
             <div style={s.modalHeader}>
-              <div>
-                <div style={s.modalTitle}>إتمام الاشتراك</div>
-                <div style={s.modalSub}>{selected.name} • {selected.price} ر.س</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={s.modalIconWrap}>
+                  <ShoppingCart size={15} color="#a78bfa" />
+                </div>
+                <div>
+                  <div style={s.modalTitle}>إتمام الاشتراك</div>
+                  <div style={s.modalSub}>{selected.name}</div>
+                </div>
               </div>
               <button onClick={() => { setSelected(null); setFormErr(""); }} style={s.closeBtn}>
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
-            <div style={s.summaryBox}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                <span style={{ color: "#888", fontSize: 13 }}>المدة</span>
-                <span style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>{durationLabel(selected.duration_days)}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "#888", fontSize: 13 }}>المبلغ الإجمالي</span>
-                <span style={{ color: "#a78bfa", fontSize: 16, fontWeight: 800 }}>{selected.price} ر.س</span>
+            {/* Price strip */}
+            <div style={s.priceStrip}>
+              <span style={s.stripLabel}>المبلغ الإجمالي</span>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                <span style={s.stripAmount}>{selected.price}</span>
+                <span style={s.stripCurr}>ر.س</span>
+                <span style={s.stripDur}>/ {durationLabel(selected.duration_days)}</span>
               </div>
             </div>
 
-            <div style={s.formFields}>
-              <div>
+            {/* Form — two columns on desktop */}
+            <div style={s.formGrid} className="__formgrid">
+              <div style={s.formCol}>
                 <label style={s.label}>الاسم الكامل *</label>
                 <input style={s.input} placeholder="أحمد محمد"
                   value={form.name}
-                  onChange={e => setForm(s => ({ ...s, name: e.target.value }))}
+                  onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
                   disabled={!!submitting}
                 />
               </div>
-              <div>
-                <label style={s.label}>البريد الإلكتروني *</label>
-                <input style={{ ...s.input, direction: "ltr", textAlign: "right" }}
-                  type="email" placeholder="you@example.com"
-                  value={form.email}
-                  onChange={e => setForm(s => ({ ...s, email: e.target.value }))}
-                  disabled={!!submitting}
-                />
-              </div>
-              <div>
+              <div style={s.formCol}>
                 <label style={s.label}>رقم الجوال *</label>
                 <input style={{ ...s.input, direction: "ltr", textAlign: "right" }}
                   type="tel" placeholder="+966501234567"
                   value={form.phone}
-                  onChange={e => setForm(s => ({ ...s, phone: e.target.value }))}
+                  onChange={e => setForm(prev => ({ ...prev, phone: e.target.value }))}
+                  disabled={!!submitting}
+                />
+              </div>
+              <div style={{ ...s.formCol, gridColumn: "1 / -1" }}>
+                <label style={s.label}>البريد الإلكتروني *</label>
+                <input style={{ ...s.input, direction: "ltr", textAlign: "right" }}
+                  type="email" placeholder="you@example.com"
+                  value={form.email}
+                  onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))}
                   disabled={!!submitting}
                 />
               </div>
@@ -248,33 +255,39 @@ export default function StorePage() {
 
             {formErr && <div style={s.errBox}>{formErr}</div>}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {/* Payment gateway label */}
+            <div style={s.gatewayLabel}>
+              <span style={s.gatewayLine} />
+              <span style={s.gatewayText}>اختر بوابة الدفع</span>
+              <span style={s.gatewayLine} />
+            </div>
+
+            {/* Payment buttons — side by side */}
+            <div style={s.payBtns} className="__paybtns">
               <button
                 onClick={() => handleCheckout("tamara")}
                 disabled={!!submitting}
-                style={{ ...s.checkoutBtn, opacity: submitting ? 0.7 : 1 }}
+                style={{ ...s.payBtn, ...s.payBtnTamara, opacity: submitting ? 0.65 : 1 }}
               >
                 {submitting === "tamara"
-                  ? <RefreshCw size={16} style={{ animation: "spin 1s linear infinite" }} />
-                  : <ShieldCheck size={16} />}
-                {submitting === "tamara" ? "جاري التحويل..." : `ادفع عبر Tamara — ${selected.price} ر.س`}
+                  ? <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
+                  : <ShieldCheck size={14} />}
+                <span>{submitting === "tamara" ? "جاري..." : "Tamara"}</span>
               </button>
 
               <button
                 onClick={() => handleCheckout("streampay")}
                 disabled={!!submitting}
-                style={{ ...s.checkoutBtn, background: "linear-gradient(135deg, #334155, #1e293b)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)", opacity: submitting ? 0.7 : 1 }}
+                style={{ ...s.payBtn, ...s.payBtnStream, opacity: submitting ? 0.65 : 1 }}
               >
                 {submitting === "streampay"
-                  ? <RefreshCw size={16} style={{ animation: "spin 1s linear infinite" }} />
-                  : <ShieldCheck size={16} />}
-                {submitting === "streampay" ? "جاري التحويل..." : `ادفع عبر StreamPay — ${selected.price} ر.س`}
+                  ? <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
+                  : <ShieldCheck size={14} />}
+                <span>{submitting === "streampay" ? "جاري..." : "StreamPay"}</span>
               </button>
             </div>
 
-            <p style={s.secureNote}>
-              🔒 مدى • Visa • Mastercard • Apple Pay
-            </p>
+            <p style={s.secureNote}>🔒 مدى • Visa • Mastercard • Apple Pay</p>
           </div>
         </div>
       )}
@@ -285,8 +298,13 @@ export default function StorePage() {
           .__grid { grid-template-columns: 1fr !important; }
         }
         @media (max-width: 480px) {
-          .__modal { padding: 20px !important; border-radius: 16px !important; }
+          .__modal { padding: 16px !important; border-radius: 16px !important; }
+          .__formgrid { grid-template-columns: 1fr !important; }
+          .__paybtns { grid-template-columns: 1fr !important; }
         }
+        .__modal::-webkit-scrollbar { width: 4px; }
+        .__modal::-webkit-scrollbar-track { background: transparent; }
+        .__modal::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 4px; }
       `}</style>
     </div>
   );
@@ -336,20 +354,47 @@ const s: Record<string, React.CSSProperties> = {
   footerLink: { color: "#666", fontSize: 12.5, textDecoration: "none" },
 
   // MODAL
-  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 },
-  modal: { background: "#0d0d0d", border: "1px solid #2a2a2a", borderRadius: 22, padding: "28px", width: "100%", maxWidth: 460, boxShadow: "0 24px 80px rgba(0,0,0,0.8)", position: "relative", overflow: "hidden" },
-  modalGlow: { position: "absolute", top: -50, right: -50, width: 200, height: 200, background: "radial-gradient(circle, rgba(167,139,250,0.15), transparent 70%)", pointerEvents: "none" },
-  modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, position: "relative" },
-  modalTitle: { color: "#fff", fontSize: 19, fontWeight: 800, marginBottom: 4 },
-  modalSub: { color: "#888", fontSize: 13 },
-  closeBtn: { background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 8, padding: 7, cursor: "pointer", color: "#888", display: "flex", lineHeight: 1 },
+  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 },
+  modal: { background: "#0d0d0d", border: "1px solid #222", borderRadius: 20, padding: "22px 22px 18px", width: "100%", maxWidth: 440, maxHeight: "92vh", overflowY: "auto", boxShadow: "0 32px 80px rgba(0,0,0,0.9)", position: "relative" },
+  modalGlow: { position: "absolute", top: -60, right: -60, width: 180, height: 180, background: "radial-gradient(circle, rgba(167,139,250,0.12), transparent 70%)", pointerEvents: "none", zIndex: 0 },
+  modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, position: "relative", zIndex: 1 },
+  modalIconWrap: { width: 34, height: 34, borderRadius: 10, background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  modalTitle: { color: "#fff", fontSize: 16, fontWeight: 800, marginBottom: 2 },
+  modalSub: { color: "#666", fontSize: 12 },
+  closeBtn: { background: "#161616", border: "1px solid #252525", borderRadius: 8, padding: "6px", cursor: "pointer", color: "#666", display: "flex", lineHeight: 1, flexShrink: 0 },
+
+  // Price strip
+  priceStrip: { background: "linear-gradient(135deg, rgba(167,139,250,0.08), rgba(109,40,217,0.06))", border: "1px solid rgba(167,139,250,0.15)", borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", zIndex: 1 },
+  stripLabel: { color: "#888", fontSize: 12 },
+  stripAmount: { color: "#a78bfa", fontSize: 22, fontWeight: 900, letterSpacing: "-0.5px" },
+  stripCurr: { color: "#888", fontSize: 12, fontWeight: 600 },
+  stripDur: { color: "#555", fontSize: 11 },
+
+  // Form grid
+  formGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 12px", marginBottom: 14, position: "relative", zIndex: 1 },
+  formCol: { display: "flex", flexDirection: "column" as const },
+  label: { display: "block", color: "#777", fontSize: 11, marginBottom: 5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.3px" },
+  input: { width: "100%", background: "#080808", border: "1px solid #1e1e1e", borderRadius: 9, padding: "10px 12px", color: "#fff", fontSize: 13.5, outline: "none", boxSizing: "border-box" as const },
+
+  errBox: { background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 9, padding: "9px 13px", color: "#fca5a5", fontSize: 12.5, marginBottom: 12, position: "relative", zIndex: 1 },
+
+  // Gateway divider
+  gatewayLabel: { display: "flex", alignItems: "center", gap: 10, margin: "14px 0 12px", position: "relative", zIndex: 1 },
+  gatewayLine: { flex: 1, height: 1, background: "#1e1e1e" },
+  gatewayText: { color: "#555", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" as const },
+
+  // Pay buttons side by side
+  payBtns: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14, position: "relative", zIndex: 1 },
+  payBtn: { borderRadius: 11, padding: "12px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, transition: "opacity 0.15s" },
+  payBtnTamara: { background: "linear-gradient(135deg, #a78bfa, #7c3aed)", color: "#fff", boxShadow: "0 6px 20px rgba(109,40,217,0.35)" },
+  payBtnStream: { background: "#161b27", color: "#94a3b8", border: "1px solid #1e2738" },
+
+  secureNote: { textAlign: "center" as const, color: "#444", fontSize: 11, margin: 0, position: "relative", zIndex: 1 },
+
+  // legacy (kept for card)
   summaryBox: { background: "#0a0a0a", border: "1px solid #1f1f1f", borderRadius: 12, padding: "14px 16px", marginBottom: 20 },
-  formFields: { display: "flex", flexDirection: "column", gap: 14, marginBottom: 16 },
-  label: { display: "block", color: "#888", fontSize: 12, marginBottom: 6, fontWeight: 500 },
-  input: { width: "100%", background: "#070707", border: "1px solid #2a2a2a", borderRadius: 10, padding: "12px 14px", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box" },
-  errBox: { background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 10, padding: "10px 14px", color: "#fca5a5", fontSize: 13, marginBottom: 14 },
+  formFields: { display: "flex", flexDirection: "column" as const, gap: 14, marginBottom: 16 },
   checkoutBtn: { width: "100%", background: "linear-gradient(135deg, #a78bfa, #6d28d9)", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12, boxShadow: "0 8px 24px rgba(109,40,217,0.4)" },
-  secureNote: { textAlign: "center", color: "#666", fontSize: 11.5, margin: 0 },
 };
 
 // rebuild: 1776481799
