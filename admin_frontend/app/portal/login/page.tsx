@@ -3,9 +3,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { setToken } from "@/lib/portal-auth";
 import {
-  KeyRound, ArrowRight, Briefcase, Zap, PenLine, BarChart3, Loader2,
+  KeyRound, ArrowRight, Zap, PenLine, BarChart3, Loader2,
   User, Phone, MapPin, Calendar, ChevronLeft, Mail,
 } from "lucide-react";
+import Image from "next/image";
 
 type Tab = "email" | "code";
 type Step = "tab" | "register";
@@ -90,7 +91,7 @@ export default function PortalLogin() {
       {/* Left panel */}
       <div className="login-left">
         <div style={s.brand}>
-          <div style={s.brandLogo}><Briefcase size={28} strokeWidth={1.5} color="#0a0a0a" /></div>
+          <div style={s.brandLogo}><Image src="/logo.png" alt="Jobbots" width={56} height={56} style={{ borderRadius: 14 }} /></div>
           <h1 style={s.brandName}>Jobbots</h1>
         </div>
         <p style={s.brandTagline}>التقديم التلقائي على الوظائف<br />بالذكاء الاصطناعي</p>

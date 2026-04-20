@@ -3,9 +3,10 @@ import { useRouter, usePathname } from "next/navigation";
 import { clearToken } from "@/lib/portal-auth";
 import { useTheme } from "@/contexts/theme-context";
 import { PushPermissionBanner } from "@/components/PushPermissionBanner";
+import Image from "next/image";
 import {
   Home, ClipboardList, FileText, User, LogOut,
-  Briefcase, MessageCircle, TrendingUp, Sun, Moon,
+  MessageCircle, TrendingUp, Sun, Moon,
 } from "lucide-react";
 
 const NAV = [
@@ -61,10 +62,9 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         }}>
           <div style={{
             width: 40, height: 40, borderRadius: 12,
-            background: t.logoBg,
-            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            overflow: "hidden", flexShrink: 0,
           }}>
-            <Briefcase size={20} strokeWidth={1.5} color={t.logoFg} />
+            <Image src="/logo.png" alt="Jobbots" width={40} height={40} style={{ borderRadius: 12 }} />
           </div>
           <div>
             <p style={{ color: t.text, fontSize: 15, fontWeight: 800, margin: 0 }}>Jobbots</p>

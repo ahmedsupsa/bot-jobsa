@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Key, BriefcaseBusiness, Megaphone, Bell, LogOut, Briefcase, ShoppingBag, TrendingUp, MessageCircle, MailCheck } from "lucide-react";
+import { LayoutDashboard, Users, Key, BriefcaseBusiness, Megaphone, Bell, LogOut, ShoppingBag, TrendingUp, MessageCircle, MailCheck } from "lucide-react";
 import { useState } from "react";
 
 const links = [
@@ -36,8 +37,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-5 py-5 border-b border-line">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white">
-            <Briefcase size={18} className="text-black" strokeWidth={1.5} />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden">
+            <Image src="/logo.png" alt="Jobbots" width={36} height={36} className="rounded-xl" />
           </div>
           <div>
             <div className="text-sm font-bold text-white">Jobbots</div>
@@ -97,8 +98,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         {/* Top bar (mobile) */}
         <header className="flex items-center justify-between border-b border-line bg-sidebar px-4 py-3 md:hidden">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white">
-              <Briefcase size={14} className="text-black" strokeWidth={1.5} />
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg overflow-hidden">
+              <Image src="/logo.png" alt="Jobbots" width={28} height={28} className="rounded-lg" />
             </div>
             <span className="text-sm font-semibold text-white">Jobbots</span>
           </div>
