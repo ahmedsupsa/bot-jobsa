@@ -453,17 +453,27 @@ export default function StorePage() {
                     <div style={s.receiptIcon}>
                       <ShieldCheck size={14} color="#a78bfa" />
                     </div>
-                    <span style={{ color: "#e5e7eb", fontSize: 13, fontWeight: 700 }}>أرسل إيصال التحويل</span>
-                    <span style={{ color: "#666", fontSize: 11, marginRight: 2 }}>(اختياري)</span>
+                    <span style={{ color: "#e5e7eb", fontSize: 13, fontWeight: 700 }}>رفع إيصال التحويل</span>
+                    <span style={{ color: "#f87171", fontSize: 12, fontWeight: 700 }}>*</span>
+                    <span style={{ color: "#555", fontSize: 11, marginRight: 2 }}>(إلزامي)</span>
                   </div>
                   <p style={{ color: "#777", fontSize: 12, lineHeight: 1.7, margin: "0 0 12px" }}>
-                    ارفع صورة الإيصال لتسريع التحقق وتفعيل حسابك.
+                    يرجى رفع صورة إيصال التحويل لإتمام طلبك وتفعيل حسابك.
                   </p>
 
                   {uploadDone ? (
-                    <div style={s.uploadSuccess}>
-                      <CheckCheck size={16} color="#86efac" />
-                      <span>تم إرسال الإيصال بنجاح! سنتواصل معك خلال 24 ساعة.</span>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      <div style={s.uploadSuccess}>
+                        <CheckCheck size={16} color="#86efac" />
+                        <span>تم رفع الإيصال بنجاح!</span>
+                      </div>
+                      <div style={{ background: "#0a0a0a", border: "1px solid #1f1f1f", borderRadius: 10, padding: "12px 14px", color: "#aaa", fontSize: 12.5, lineHeight: 1.8 }}>
+                        ✅ تم استلام طلبك وإيصال التحويل.<br />
+                        سيتم مراجعته وتفعيل حسابك وإرسال كود التفعيل على بريدك الإلكتروني خلال 24 ساعة.
+                      </div>
+                      <button onClick={closeModal} style={{ ...s.payBtn, background: "#fff", color: "#0a0a0a", justifyContent: "center", width: "100%", fontWeight: 800 }}>
+                        إغلاق
+                      </button>
                     </div>
                   ) : (
                     <>
@@ -504,13 +514,15 @@ export default function StorePage() {
                   )}
                 </div>
 
-                {/* Back button */}
-                <button
-                  onClick={() => { setStep("form"); setBankData(null); setReceiptFile(null); setUploadDone(false); setUploadErr(""); }}
-                  style={{ ...s.payBtn, background: "#1a1a1a", color: "#aaa", border: "1px solid #2a2a2a", marginTop: 4, width: "100%", justifyContent: "center" }}
-                >
-                  <span>← العودة لخيارات الدفع</span>
-                </button>
+                {/* Back button — hidden after upload */}
+                {!uploadDone && (
+                  <button
+                    onClick={() => { setStep("form"); setBankData(null); setReceiptFile(null); setUploadDone(false); setUploadErr(""); }}
+                    style={{ ...s.payBtn, background: "#1a1a1a", color: "#aaa", border: "1px solid #2a2a2a", marginTop: 4, width: "100%", justifyContent: "center" }}
+                  >
+                    <span>← العودة لخيارات الدفع</span>
+                  </button>
+                )}
               </div>
             )}
           </div>

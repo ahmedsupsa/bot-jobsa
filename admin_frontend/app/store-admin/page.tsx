@@ -258,13 +258,27 @@ export default function StoreAdminPage() {
 
   const updateOrderStatus = async (id: string, status: string) => {
     setUpdatingId(id);
-    await fetch(`${API_BASE}/api/admin/store/orders/${id}`, {
+    const r = await fetch(`${API_BASE}/api/admin/store/orders/${id}`, {
       method: "PATCH", credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
+    const j = await r.json().catch(() => ({}));
     setUpdatingId(null);
     await loadOrders();
+
+    if (status === "paid") {
+      if (j.email_sent) {
+        setOMsg(j.is_new
+          ? "✅ تم تفعيل الحساب وإرسال كود التفعيل على البريد الإلكتروني"
+          : "✅ تم تجديد الاشتراك وإرسال إيميل التأكيد"
+        );
+      } else {
+        setOMsg("✅ تم تأكيد الطلب (لم يُرسَل إيميل — تحقق من إعدادات Resend)");
+      }
+      setOMsgType("ok");
+      setTimeout(() => setOMsg(""), 5000);
+    }
   };
 
   const deleteOrder = async (id: string) => {
