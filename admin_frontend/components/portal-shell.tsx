@@ -38,7 +38,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
     logoFg:   dark ? "#0a0a0a"   : "#ffffff",
     logoBg:   dark ? "#ffffff"   : "#09090b",
     main:     dark ? "#0a0a0a"   : "#f4f4f5",
-    bottomBg: dark ? "rgba(10,10,10,0.95)" : "rgba(244,244,245,0.96)",
+    bottomBg: dark ? "#0a0a0a" : "#f4f4f5",
   };
 
   return (
@@ -187,8 +187,6 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         display: "none", position: "fixed",
         bottom: 0, left: 0, right: 0,
         background: t.bottomBg,
-        WebkitBackdropFilter: "blur(12px)",
-        backdropFilter: "blur(12px)",
         borderTop: `1px solid ${t.border}`,
         zIndex: 100,
         paddingBottom: "max(4px, env(safe-area-inset-bottom))",

@@ -82,49 +82,49 @@ function NextRunCard({ active }: { active: boolean }) {
 
   return (
     <div style={{
-      background: active ? "rgba(34,197,94,0.04)" : "var(--surface)",
-      border: `1px solid ${active ? "#ffffff15" : "var(--border)"}`,
+      background: "var(--surface)",
+      border: `1px solid var(--border)`,
       borderRadius: 16, padding: "20px 22px", marginBottom: 20,
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
             width: 36, height: 36, borderRadius: 10,
-            background: active ? "rgba(34,197,94,0.1)" : "var(--surface2)",
+            background: "var(--surface2)",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            <Zap size={17} strokeWidth={1.8} color={active ? "#fff" : "#444"} />
+            <Zap size={17} strokeWidth={1.8} color={active ? "var(--text)" : "var(--text3)"} />
           </div>
           <div>
             <p style={{ margin: 0, color: "var(--text)", fontSize: 14, fontWeight: 600 }}>التقديم التلقائي القادم</p>
-            <p style={{ margin: 0, color: "#555", fontSize: 12 }}>يعمل كل 30 دقيقة · الجلسة التالية {label}</p>
+            <p style={{ margin: 0, color: "var(--text3)", fontSize: 12 }}>يعمل كل 30 دقيقة · الجلسة التالية {label}</p>
           </div>
         </div>
         <span style={{
           padding: "4px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-          background: active ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.08)",
-          border: `1px solid ${active ? "#ffffff12" : "#ef444422"}`,
-          color: active ? "#fff" : "#ef4444",
+          background: "var(--surface2)",
+          border: `1px solid ${active ? "var(--border2)" : "#7f1d1d"}`,
+          color: active ? "var(--text)" : "#ef4444",
         }}>{active ? "نشط" : "موقوف"}</span>
       </div>
 
       <div style={{ background: "var(--surface2)", borderRadius: 999, height: 4, marginBottom: 12, overflow: "hidden" }}>
         <div style={{
           width: `${pct}%`, height: "100%",
-          background: active ? "#fff" : "#333",
+          background: active ? "var(--text)" : "var(--text4)",
           borderRadius: 999, transition: "width 1s linear",
         }} />
       </div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#555", fontSize: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text3)", fontSize: 12 }}>
           <Clock size={12} />
           {active ? "متبقي على الجلسة القادمة" : "جدّد اشتراكك لاستئناف التقديم التلقائي"}
         </div>
         {active && (
           <span style={{
             fontFamily: "monospace", fontWeight: 700, fontSize: 22, letterSpacing: 2,
-            color: secs < 60 ? "#fff" : "var(--text)",
+            color: "var(--text)",
           }}>{fmt(secs)}</span>
         )}
       </div>
@@ -135,7 +135,7 @@ function NextRunCard({ active }: { active: boolean }) {
 function Loader() {
   return (
     <div style={{ display: "flex", height: "60vh", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ color: "#555", fontSize: 14 }}>جاري التحميل...</div>
+      <div style={{ color: "var(--text3)", fontSize: 14 }}>جاري التحميل...</div>
     </div>
   );
 }
@@ -196,9 +196,9 @@ export default function Dashboard() {
           </div>
           <div style={{
             ...s.subBadge,
-            background: user.subscription_active ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.08)",
-            borderColor: user.subscription_active ? "#ffffff12" : "#ef444422",
-            color: user.subscription_active ? "#fff" : "#ef4444",
+            background: "var(--surface2)",
+            borderColor: user.subscription_active ? "var(--border2)" : "#7f1d1d",
+            color: user.subscription_active ? "var(--text)" : "#ef4444",
           }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }} />
             {user.subscription_active ? `${user.days_left} يوم متبقي` : "الاشتراك منتهٍ"}
@@ -320,7 +320,7 @@ const s: Record<string, React.CSSProperties> = {
   statLabel: { color: "var(--text3)", fontSize: 12, margin: 0 },
   alert: {
     display: "flex", alignItems: "center", gap: 14,
-    background: "#0f0d00", border: "1px solid #f59e0b22",
+    background: "#0f0d00", border: "1px solid #78350f",
     borderRadius: 14, padding: "16px 20px", marginBottom: 24, cursor: "pointer",
   },
   alertTitle: { color: "#f59e0b", fontWeight: 600, fontSize: 14, margin: 0 },
@@ -342,7 +342,7 @@ const s: Record<string, React.CSSProperties> = {
   appTitle: { color: "var(--text)", fontSize: 13, fontWeight: 500, margin: 0 },
   appDate: { color: "var(--text3)", fontSize: 12, margin: "2px 0 0" },
   sentTag: {
-    background: "#1a1a1a", color: "#fff", border: "1px solid #ffffff12",
+    background: "#1a1a1a", color: "#fff", border: "1px solid #2a2a2a",
     borderRadius: 8, padding: "3px 10px", fontSize: 11, fontWeight: 600, flexShrink: 0,
   },
   quickBtn: {

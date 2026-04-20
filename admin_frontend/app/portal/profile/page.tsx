@@ -156,9 +156,9 @@ export default function AccountPage() {
             <div style={{
               display: "flex", alignItems: "center", gap: 8,
               padding: "8px 16px", borderRadius: 100,
-              background: active ? (dark ? "rgba(34,197,94,0.08)" : "#f0fdf4") : (dark ? "rgba(239,68,68,0.08)" : "#fef2f2"),
-              border: `1px solid ${active ? "#ffffff15" : "#ef444433"}`,
-              color: active ? "#fff" : "#ef4444",
+              background: active ? (dark ? "#0a1f0a" : "#f0fdf4") : (dark ? "#1a0a0a" : "#fef2f2"),
+              border: `1px solid ${active ? (dark ? "#2a2a2a" : "#bbf7d0") : (dark ? "#7f1d1d" : "#fecaca")}`,
+              color: active ? (dark ? "#fff" : "#166534") : "#ef4444",
               fontSize: 13, fontWeight: 600, whiteSpace: "nowrap",
             }}>
               <div style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }} />
@@ -237,8 +237,8 @@ export default function AccountPage() {
                 display: "flex", alignItems: "center", gap: 8,
                 padding: "12px 16px", borderRadius: 12, fontSize: 13, fontWeight: 500,
                 background: msg.type === "ok" ? (dark ? "#0a1f0a" : "#f0fdf4") : (dark ? "#1a0a0a" : "#fef2f2"),
-                color: msg.type === "ok" ? "#fff" : "#f87171",
-                border: `1px solid ${msg.type === "ok" ? "#ffffff15" : "#ef444433"}`,
+                color: msg.type === "ok" ? (dark ? "#fff" : "#166534") : "#f87171",
+                border: `1px solid ${msg.type === "ok" ? (dark ? "#2a2a2a" : "#bbf7d0") : (dark ? "#7f1d1d" : "#fecaca")}`,
               }}>
                 {msg.type === "ok" ? <CheckCircle size={15} /> : <XCircle size={15} />}
                 {msg.text}
@@ -254,20 +254,20 @@ export default function AccountPage() {
                     <div style={{
                       display: "flex", alignItems: "center", gap: 12,
                       background: dark ? "#0a1f0a" : "#f0fdf4",
-                      border: "1px solid #ffffff15", borderRadius: 12,
+                      border: `1px solid ${dark ? "#2a2a2a" : "#bbf7d0"}`, borderRadius: 12,
                       padding: "14px 16px", marginBottom: 12,
                     }}>
-                      <CheckCircle size={18} strokeWidth={1.5} color="#fff" />
+                      <CheckCircle size={18} strokeWidth={1.5} color={dark ? "#fff" : "#166534"} />
                       <div>
-                        <p style={{ color: "#fff", fontSize: 11, fontWeight: 600, margin: 0 }}>إيميل التقديم الخاص بك</p>
-                        <p style={{ color: "#fff", fontSize: 13, fontWeight: 700, margin: "3px 0 0" }} dir="ltr">{user.sender_email_alias}</p>
+                        <p style={{ color: dark ? "#fff" : "#166534", fontSize: 11, fontWeight: 600, margin: 0 }}>إيميل التقديم الخاص بك</p>
+                        <p style={{ color: dark ? "#fff" : "#14532d", fontSize: 13, fontWeight: 700, margin: "3px 0 0" }} dir="ltr">{user.sender_email_alias}</p>
                       </div>
                     </div>
                   )}
                   <div style={{
                     display: "flex", alignItems: "center", gap: 12,
                     background: dark ? "#14100a" : "#fffbeb",
-                    border: "1px solid #f59e0b33", borderRadius: 12,
+                    border: `1px solid ${dark ? "#78350f" : "#fde68a"}`, borderRadius: 12,
                     padding: "14px 16px",
                   }}>
                     <Lock size={16} strokeWidth={1.8} color="#f59e0b" style={{ flexShrink: 0 }} />
@@ -398,8 +398,8 @@ export default function AccountPage() {
                       disabled={savingTemplate}
                       style={{
                         display: "flex", gap: 12, alignItems: "stretch",
-                        background: isActive ? (dark ? "rgba(167,139,250,0.06)" : "#faf5ff") : t.iconBg,
-                        border: `1.5px solid ${isActive ? (dark ? "#a78bfa66" : "#a78bfa88") : t.border2}`,
+                        background: isActive ? (dark ? "#0d0d1a" : "#faf5ff") : t.iconBg,
+                        border: `1.5px solid ${isActive ? (dark ? "#4c1d95" : "#c4b5fd") : t.border2}`,
                         borderRadius: 14, padding: "12px 14px", cursor: savingTemplate ? "wait" : "pointer",
                         textAlign: "right", opacity: savingTemplate ? 0.7 : 1,
                         transition: "all 0.15s",
@@ -420,7 +420,7 @@ export default function AccountPage() {
                           <span style={{
                             display: "inline-block", marginTop: 4,
                             padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600,
-                            background: dark ? "rgba(167,139,250,0.12)" : "#ede9fe",
+                            background: dark ? "#1e1b3a" : "#ede9fe",
                             color: dark ? "#c4b5fd" : "#6d28d9",
                           }}>مُفعّل</span>
                         )}
@@ -440,7 +440,7 @@ export default function AccountPage() {
 
             {/* Danger zone */}
             <div style={{
-              background: t.surface, border: `1px solid ${dark ? "#ef444433" : "#fecaca"}`,
+              background: t.surface, border: `1px solid ${dark ? "#7f1d1d" : "#fecaca"}`,
               borderRadius: 16, padding: "18px 16px",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
@@ -467,7 +467,7 @@ export default function AccountPage() {
               <button onClick={() => setShowDelete(true)} style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 width: "100%", padding: "12px", background: dark ? "#1f0a0a" : "#fef2f2",
-                color: "#f87171", border: "1px solid #ef444433", borderRadius: 10,
+                color: "#f87171", border: `1px solid ${dark ? "#7f1d1d" : "#fecaca"}`, borderRadius: 10,
                 fontSize: 14, fontWeight: 600, cursor: "pointer",
               }}>
                 <Trash2 size={16} strokeWidth={1.5} /> حذف الحساب نهائياً
@@ -480,12 +480,12 @@ export default function AccountPage() {
       {/* Delete modal */}
       {showDelete && (
         <div onClick={() => !deleting && setShowDelete(false)} style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200,
+          position: "fixed", inset: 0, background: "#000", zIndex: 200,
           display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
         }}>
           <div onClick={e => e.stopPropagation()} style={{
             background: dark ? "#0d0d0d" : "#fff",
-            border: `1px solid ${dark ? "#ef444444" : "#fecaca"}`,
+            border: `1px solid ${dark ? "#7f1d1d" : "#fecaca"}`,
             borderRadius: 18, padding: "24px 20px", width: "100%", maxWidth: 440,
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -496,7 +496,7 @@ export default function AccountPage() {
                 <X size={20} />
               </button>
             </div>
-            <div style={{ background: dark ? "rgba(239,68,68,0.08)" : "#fef2f2", border: "1px solid #ef444433", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+            <div style={{ background: dark ? "#1a0a0a" : "#fef2f2", border: `1px solid ${dark ? "#7f1d1d" : "#fecaca"}`, borderRadius: 10, padding: 14, marginBottom: 16 }}>
               <p style={{ margin: 0, color: "#fca5a5", fontSize: 13, lineHeight: 1.7 }}>سيتم حذف كل بياناتك نهائياً وبدون رجعة.</p>
             </div>
             <p style={{ color: t.text2, fontSize: 13, margin: "0 0 8px" }}>اكتب كلمة <strong style={{ color: "#f87171" }}>حذف</strong> للتأكيد:</p>

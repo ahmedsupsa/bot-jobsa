@@ -127,7 +127,7 @@ const s: Record<string, React.CSSProperties> = {
   badge: {
     display: "flex", alignItems: "center", gap: 6,
     background: "#1a1a1a", color: "#fff",
-    border: "1px solid #ffffff15", borderRadius: 10,
+    border: "1px solid #2a2a2a", borderRadius: 10,
     padding: "5px 12px", fontSize: 12, fontWeight: 600, flexShrink: 0,
   },
 };

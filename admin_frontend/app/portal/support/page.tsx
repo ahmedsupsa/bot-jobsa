@@ -75,10 +75,10 @@ export default function SupportPage() {
         }}>
           <div style={{
             width: 40, height: 40, borderRadius: 12,
-            background: "rgba(255,255,255,0.06)", display: "flex",
+            background: "var(--surface)", border: "1px solid var(--border)", display: "flex",
             alignItems: "center", justifyContent: "center",
           }}>
-            <MessageCircle size={20} color="#fff" />
+            <MessageCircle size={20} color="var(--text)" />
           </div>
           <div>
             <p style={{ margin: 0, color: "var(--text)", fontSize: 15, fontWeight: 600 }}>الدعم الفني</p>
@@ -107,9 +107,9 @@ export default function SupportPage() {
                 maxWidth: "75%",
               }}>
                 <div style={{
-                  background: m.sender === "user" ? "rgba(34,197,94,0.12)" : "var(--surface2)",
-                  border: `1px solid ${m.sender === "user" ? "#ffffff15" : "var(--border)"}`,
-                  color: "var(--text)",
+                  background: m.sender === "user" ? "var(--accent)" : "var(--surface2)",
+                  color: m.sender === "user" ? "var(--accent-fg)" : "var(--text)",
+                  border: `1px solid ${m.sender === "user" ? "var(--accent)" : "var(--border)"}`,
                   padding: "10px 14px", borderRadius: 14,
                   fontSize: 14, lineHeight: 1.6,
                   whiteSpace: "pre-wrap", wordBreak: "break-word",

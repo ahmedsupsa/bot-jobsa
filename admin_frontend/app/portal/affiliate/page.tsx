@@ -163,25 +163,25 @@ export default function AffiliatePage() {
       <PortalShell>
         <div style={{ maxWidth: 640, margin: "0 auto", padding: "20px 0" }}>
           <div style={{
-            background: "linear-gradient(135deg, #141414 0%, #0f0f0f 100%)",
-            border: "1px solid #ffffff15", borderRadius: 20, padding: 32, textAlign: "center",
+            background: "var(--surface)",
+            border: "1px solid var(--border)", borderRadius: 20, padding: 32, textAlign: "center",
           }}>
             <div style={{
               width: 64, height: 64, borderRadius: 16, margin: "0 auto 18px",
-              background: "rgba(255,255,255,0.08)",
+              background: "var(--surface2)", border: "1px solid var(--border)",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
-              <TrendingUp size={28} color="#fff" />
+              <TrendingUp size={28} color="var(--text)" />
             </div>
             <h1 style={{ margin: "0 0 10px", color: "var(--text)", fontSize: 22, fontWeight: 700 }}>برنامج الربح</h1>
-            <p style={{ margin: "0 0 20px", color: "#999", fontSize: 14, lineHeight: 1.7 }}>
-              اربح <span style={{ color: "#fff", fontWeight: 700 }}>10%</span> عمولة من كل اشتراك يتم عبر رابطك الخاص.
+            <p style={{ margin: "0 0 20px", color: "var(--text2)", fontSize: 14, lineHeight: 1.7 }}>
+              اربح <span style={{ color: "var(--text)", fontWeight: 700 }}>10%</span> عمولة من كل اشتراك يتم عبر رابطك الخاص.
               <br />العمولة على كل عملية شراء، حتى لو جدّد العميل اشتراكه لاحقاً.
             </p>
             {!data?.eligible ? (
               <div style={{
                 display: "flex", alignItems: "center", gap: 10, justifyContent: "center",
-                background: "#1f1408", border: "1px solid #f59e0b33",
+                background: "#1f1408", border: "1px solid #78350f",
                 color: "#fbbf24", padding: "12px 16px", borderRadius: 12, fontSize: 13,
               }}>
                 <AlertCircle size={16} />
@@ -189,9 +189,9 @@ export default function AffiliatePage() {
               </div>
             ) : (
               <button onClick={join} disabled={joining} style={{
-                background: "#fff", color: "#000", border: "none",
+                background: "var(--accent)", color: "var(--accent-fg)", border: "none",
                 borderRadius: 12, padding: "12px 28px", fontSize: 15, fontWeight: 700,
-                cursor: joining ? "wait" : "pointer", opacity: joining ? 0.6 : 1,
+                cursor: joining ? "wait" : "pointer",
                 display: "inline-flex", alignItems: "center", gap: 8,
               }}>
                 {joining ? <Loader2 size={16} className="animate-spin" /> : <TrendingUp size={16} />}
@@ -211,14 +211,14 @@ export default function AffiliatePage() {
     <PortalShell>
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
         <h1 style={{ margin: "0 0 20px", color: "var(--text)", fontSize: 22, fontWeight: 700, display: "flex", alignItems: "center", gap: 10 }}>
-          <TrendingUp size={22} color="#fff" /> برنامج الربح
+          <TrendingUp size={22} color="var(--text)" /> برنامج الربح
         </h1>
 
         <div style={{
           display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
           gap: 12, marginBottom: 20,
         }}>
-          <StatCard icon={Wallet} color="#fff" label="رصيد متاح" value={`${(data.available_balance || 0).toFixed(2)} ر.س`} />
+          <StatCard icon={Wallet} color="var(--text)" label="رصيد متاح" value={`${(data.available_balance || 0).toFixed(2)} ر.س`} />
           <StatCard icon={Clock} color="#f59e0b" label="قيد التحويل" value={`${(data.requested_balance || 0).toFixed(2)} ر.س`} />
           <StatCard icon={Check} color="#3b82f6" label="مدفوعة" value={`${(data.paid_earnings || 0).toFixed(2)} ر.س`} />
           <StatCard icon={Users} color="#a78bfa" label="عدد المبيعات" value={String(data.referrals_count || 0)} />
@@ -226,8 +226,8 @@ export default function AffiliatePage() {
 
         {/* Withdraw Card */}
         <div style={{
-          background: "linear-gradient(135deg, #141414 0%, #0f0f0f 100%)",
-          border: "1px solid #ffffff15", borderRadius: 16,
+          background: "var(--surface)",
+          border: "1px solid var(--border)", borderRadius: 16,
           padding: 18, marginBottom: 20,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
@@ -235,7 +235,7 @@ export default function AffiliatePage() {
               <p style={{ margin: 0, color: "var(--text)", fontSize: 14, fontWeight: 600 }}>
                 {canWithdraw ? "جاهز للسحب!" : `الحد الأدنى للسحب: ${data.min_withdraw} ريال`}
               </p>
-              <p style={{ margin: "4px 0 0", color: "#888", fontSize: 12 }}>
+              <p style={{ margin: "4px 0 0", color: "var(--text3)", fontSize: 12 }}>
                 {!hasAccount
                   ? "أضف بيانات الحساب البنكي أو المحفظة الرقمية أولاً"
                   : !canWithdraw
@@ -246,8 +246,8 @@ export default function AffiliatePage() {
               </p>
             </div>
             <button onClick={() => setShowAccount(true)} style={{
-              background: hasAccount ? "var(--surface2)" : "#fff",
-              color: hasAccount ? "var(--text)" : "#000",
+              background: hasAccount ? "var(--surface2)" : "var(--accent)",
+              color: hasAccount ? "var(--text)" : "var(--accent-fg)",
               border: hasAccount ? "1px solid var(--border2)" : "none",
               borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 600,
               cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6,
@@ -257,10 +257,9 @@ export default function AffiliatePage() {
             </button>
             {canWithdraw && (
               <button onClick={requestWithdraw} disabled={withdrawing} style={{
-                background: "#fff", color: "#000", border: "none",
+                background: "var(--accent)", color: "var(--accent-fg)", border: "none",
                 borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 700,
                 cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6,
-                opacity: withdrawing ? 0.5 : 1,
               }}>
                 {withdrawing ? <Loader2 size={14} className="animate-spin" /> : <Wallet size={14} />}
                 طلب سحب
@@ -271,7 +270,7 @@ export default function AffiliatePage() {
           {/* Important warning */}
           <div style={{
             marginTop: 14, padding: "10px 12px",
-            background: "rgba(239,68,68,0.08)", border: "1px solid #ef444433",
+            background: "#1a0a0a", border: "1px solid #7f1d1d",
             borderRadius: 10, display: "flex", gap: 8, alignItems: "flex-start",
           }}>
             <AlertTriangle size={14} color="#f87171" style={{ flexShrink: 0, marginTop: 2 }} />
@@ -293,15 +292,15 @@ export default function AffiliatePage() {
             background: "var(--surface2)", border: "1px solid var(--border)",
             borderRadius: 10, padding: "10px 14px", marginBottom: 12,
           }}>
-            <span style={{ flex: 1, color: "#fff", fontSize: 13, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", direction: "ltr" }}>
+            <span style={{ flex: 1, color: "var(--text)", fontSize: 13, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", direction: "ltr" }}>
               {link}
             </span>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={copyLink} style={{
-              flex: 1, background: copied ? "rgba(255,255,255,0.06)" : "var(--surface2)",
-              border: `1px solid ${copied ? "#ffffff44" : "var(--border)"}`,
-              color: copied ? "#fff" : "var(--text)",
+              flex: 1, background: "var(--surface2)",
+              border: `1px solid ${copied ? "var(--text3)" : "var(--border)"}`,
+              color: "var(--text)",
               borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 600,
               cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             }}>
@@ -309,7 +308,7 @@ export default function AffiliatePage() {
               {copied ? "تم النسخ" : "نسخ الرابط"}
             </button>
             <button onClick={share} style={{
-              flex: 1, background: "#fff", border: "none", color: "#000",
+              flex: 1, background: "var(--accent)", border: "none", color: "var(--accent-fg)",
               borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700,
               cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             }}>
@@ -346,9 +345,9 @@ export default function AffiliatePage() {
                   )}
                   <span style={{
                     fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 8,
-                    background: w.status === "paid" ? "rgba(34,197,94,0.1)" : w.status === "rejected" ? "rgba(239,68,68,0.1)" : "rgba(245,158,11,0.1)",
+                    background: w.status === "paid" ? "#0a1f0a" : w.status === "rejected" ? "#1a0a0a" : "#1f1408",
                     color: w.status === "paid" ? "#fff" : w.status === "rejected" ? "#f87171" : "#fbbf24",
-                    border: `1px solid ${w.status === "paid" ? "#ffffff15" : w.status === "rejected" ? "#ef444433" : "#f59e0b33"}`,
+                    border: `1px solid ${w.status === "paid" ? "#2a2a2a" : w.status === "rejected" ? "#7f1d1d" : "#78350f"}`,
                   }}>
                     {w.status === "paid" ? "تم التحويل" : w.status === "rejected" ? "مرفوض" : "قيد المعالجة"}
                   </span>
@@ -379,9 +378,9 @@ export default function AffiliatePage() {
                 </div>
                 <span style={{
                   fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 8,
-                  background: r.status === "paid" ? "rgba(34,197,94,0.1)" : r.withdrawal_id ? "rgba(245,158,11,0.1)" : "rgba(168,139,250,0.1)",
+                  background: r.status === "paid" ? "#0a1f0a" : r.withdrawal_id ? "#1f1408" : "#0d0d1a",
                   color: r.status === "paid" ? "#fff" : r.withdrawal_id ? "#fbbf24" : "#a78bfa",
-                  border: `1px solid ${r.status === "paid" ? "#ffffff15" : r.withdrawal_id ? "#f59e0b33" : "#a78bfa33"}`,
+                  border: `1px solid ${r.status === "paid" ? "#2a2a2a" : r.withdrawal_id ? "#78350f" : "#4c1d95"}`,
                 }}>
                   {r.status === "paid" ? "مدفوعة" : r.withdrawal_id ? "قيد التحويل" : "متاحة"}
                 </span>
@@ -394,7 +393,7 @@ export default function AffiliatePage() {
       {/* Account Modal */}
       {showAccount && (
         <div onClick={() => setShowAccount(false)} style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 100,
+          position: "fixed", inset: 0, background: "#000", zIndex: 100,
           display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
         }}>
           <div onClick={(e) => e.stopPropagation()} style={{
@@ -420,7 +419,7 @@ export default function AffiliatePage() {
             {/* Warning */}
             <div style={{
               padding: "10px 12px", marginBottom: 14,
-              background: "rgba(239,68,68,0.08)", border: "1px solid #ef444433",
+              background: "#1a0a0a", border: "1px solid #7f1d1d",
               borderRadius: 10, display: "flex", gap: 8, alignItems: "flex-start",
             }}>
               <AlertTriangle size={14} color="#f87171" style={{ flexShrink: 0, marginTop: 2 }} />
@@ -446,9 +445,9 @@ export default function AffiliatePage() {
               )}
 
               <button onClick={saveAccount} disabled={savingAcc} style={{
-                background: "#fff", color: "#000", border: "none",
+                background: "var(--accent)", color: "var(--accent-fg)", border: "none",
                 borderRadius: 10, padding: "12px", fontSize: 14, fontWeight: 700,
-                cursor: "pointer", marginTop: 8, opacity: savingAcc ? 0.5 : 1,
+                cursor: "pointer", marginTop: 8,
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               }}>
                 {savingAcc && <Loader2 size={14} className="animate-spin" />}
@@ -467,7 +466,7 @@ export default function AffiliatePage() {
 
       {previewProof && (
         <div onClick={() => setPreviewProof(null)} style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 100,
+          position: "fixed", inset: 0, background: "#000", zIndex: 100,
           display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
         }}>
           <img src={previewProof} alt="إيصال" style={{ maxWidth: "100%", maxHeight: "90vh", borderRadius: 12 }} />
@@ -480,8 +479,8 @@ export default function AffiliatePage() {
 function MethodBtn({ active, onClick, icon: Icon, label }: { active: boolean; onClick: () => void; icon: any; label: string }) {
   return (
     <button onClick={onClick} style={{
-      background: active ? "#fff" : "transparent",
-      color: active ? "#000" : "var(--text3)",
+      background: active ? "var(--accent)" : "transparent",
+      color: active ? "var(--accent-fg)" : "var(--text3)",
       border: "none", borderRadius: 8, padding: "10px",
       fontSize: 13, fontWeight: 600, cursor: "pointer",
       display: "flex", alignItems: "center", justifyContent: "center", gap: 6,

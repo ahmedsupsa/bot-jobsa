@@ -193,8 +193,8 @@ export default function CVPrefsPage() {
                     padding: "13px 16px", borderRadius: 12, marginBottom: 16,
                     fontSize: 13, fontWeight: 500,
                     background: cvMsg.type === "ok" ? (dark ? "#0a1f0a" : "#f0fdf4") : (dark ? "#1a0a0a" : "#fef2f2"),
-                    color: cvMsg.type === "ok" ? "#fff" : "#f87171",
-                    border: `1px solid ${cvMsg.type === "ok" ? "#ffffff20" : "#f8717120"}`,
+                    color: cvMsg.type === "ok" ? (dark ? "#fff" : "#166534") : "#f87171",
+                    border: `1px solid ${cvMsg.type === "ok" ? (dark ? "#2a2a2a" : "#bbf7d0") : (dark ? "#7f1d1d" : "#fecaca")}`,
                   }}>
                     {cvMsg.type === "ok" ? <CheckCircle size={16} strokeWidth={1.5} /> : <XCircle size={16} strokeWidth={1.5} />}
                     {cvMsg.text}
@@ -206,23 +206,23 @@ export default function CVPrefsPage() {
                     <div style={{
                       display: "flex", alignItems: "flex-start", gap: 18,
                       background: dark ? "#0a1a0a" : "#f0fdf4",
-                      border: "1px solid #ffffff15", borderRadius: 18,
+                      border: `1px solid ${dark ? "#2a2a2a" : "#bbf7d0"}`, borderRadius: 18,
                       padding: "22px 20px", marginBottom: 14,
                     }}>
                       <div style={{
                         width: 60, height: 60, borderRadius: 15,
                         background: dark ? "#0f2a0f" : "#dcfce7",
-                        border: "1px solid #ffffff20",
+                        border: `1px solid ${dark ? "#2a2a2a" : "#bbf7d0"}`,
                         display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                       }}>
-                        <FileText size={28} strokeWidth={1.2} color="#fff" />
+                        <FileText size={28} strokeWidth={1.2} color={dark ? "#fff" : "#166534"} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
                           display: "inline-flex", alignItems: "center", gap: 6,
                           background: dark ? "#0f2a0f" : "#dcfce7",
-                          border: "1px solid #ffffff15", borderRadius: 100,
-                          padding: "3px 12px", fontSize: 11, fontWeight: 700, color: "#fff", marginBottom: 8,
+                          border: `1px solid ${dark ? "#2a2a2a" : "#bbf7d0"}`, borderRadius: 100,
+                          padding: "3px 12px", fontSize: 11, fontWeight: 700, color: dark ? "#fff" : "#166534", marginBottom: 8,
                         }}>
                           <CheckCircle size={12} strokeWidth={2} /> سيرتك الذاتية مرفوعة وجاهزة
                         </div>
@@ -252,7 +252,7 @@ export default function CVPrefsPage() {
                     <div style={{
                       display: "flex", alignItems: "center", gap: 12,
                       background: dark ? "#14100a" : "#fffbeb",
-                      border: "1px solid #f59e0b33", borderRadius: 14,
+                      border: `1px solid ${dark ? "#78350f" : "#fde68a"}`, borderRadius: 14,
                       padding: "14px 16px", marginBottom: 14,
                     }}>
                       <div style={{
@@ -283,7 +283,7 @@ export default function CVPrefsPage() {
                     <div style={{
                       display: "flex", alignItems: "center", gap: 10,
                       background: dark ? "#1a0a0a" : "#fef2f2",
-                      border: "1px solid #f8717122", borderRadius: 12,
+                      border: `1px solid ${dark ? "#7f1d1d" : "#fecaca"}`, borderRadius: 12,
                       padding: "13px 16px", marginBottom: 16,
                     }}>
                       <XCircle size={16} strokeWidth={1.5} color="#f87171" />
@@ -346,7 +346,7 @@ export default function CVPrefsPage() {
                 padding: "10px 20px", borderRadius: 10,
                 background: dark ? "#fff" : "#7c3aed", color: dark ? "#0a0a0a" : "#fff",
                 fontSize: 13, fontWeight: 700, cursor: extracting ? "not-allowed" : "pointer",
-                border: "none", opacity: extracting ? 0.5 : 1,
+                border: "none",
               }}>
                 {extracting ? <><Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> جاري التحليل…</> : <><Sparkles size={14} /> استخرج من سيرتي الذاتية</>}
               </button>
@@ -358,8 +358,8 @@ export default function CVPrefsPage() {
                 padding: "12px 16px", borderRadius: 12, marginBottom: 16,
                 fontSize: 13, fontWeight: 500,
                 background: prefsMsg.type === "ok" ? (dark ? "#0a1f0a" : "#f0fdf4") : prefsMsg.type === "info" ? (dark ? "#0a0f1a" : "#eff6ff") : (dark ? "#1a0a0a" : "#fef2f2"),
-                color: prefsMsg.type === "ok" ? "#fff" : prefsMsg.type === "info" ? "#60a5fa" : "#f87171",
-                border: `1px solid ${prefsMsg.type === "ok" ? "#ffffff15" : prefsMsg.type === "info" ? "#60a5fa33" : "#f8717133"}`,
+                color: prefsMsg.type === "ok" ? (dark ? "#fff" : "#166534") : prefsMsg.type === "info" ? (dark ? "#60a5fa" : "#1e3a8a") : "#f87171",
+                border: `1px solid ${prefsMsg.type === "ok" ? (dark ? "#2a2a2a" : "#bbf7d0") : prefsMsg.type === "info" ? (dark ? "#1e3a8a" : "#bfdbfe") : (dark ? "#7f1d1d" : "#fecaca")}`,
               }}>
                 {prefsMsg.type === "ok" ? <CheckCircle size={15} /> : prefsMsg.type === "info" ? <Sparkles size={15} /> : <XCircle size={15} />}
                 {prefsMsg.text}
@@ -416,13 +416,13 @@ export default function CVPrefsPage() {
                           display: "inline-flex", alignItems: "center", gap: 6,
                           padding: "8px 16px", borderRadius: 100,
                           background: isActive ? (dark ? "#071a07" : "#f0fdf4") : t.surface,
-                          border: `1px solid ${isActive ? "#ffffff25" : t.border}`,
+                          border: `1px solid ${isActive ? (dark ? "#2a2a2a" : "#bbf7d0") : t.border}`,
                           color: isActive ? (dark ? "#e8ffe8" : "#166534") : t.text3,
                           fontSize: 13, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
                           transition: "all 0.12s",
                         }}
                       >
-                        {isActive && <CheckCircle size={12} strokeWidth={2.5} color="#fff" style={{ flexShrink: 0 }} />}
+                        {isActive && <CheckCircle size={12} strokeWidth={2.5} color={dark ? "#fff" : "#166534"} style={{ flexShrink: 0 }} />}
                         {f.name_ar}
                       </button>
                     );
@@ -436,7 +436,6 @@ export default function CVPrefsPage() {
                   background: dark ? "#fff" : "#09090b",
                   color: dark ? "#0a0a0a" : "#fff",
                   border: "none", borderRadius: 14, fontSize: 14, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer",
-                  opacity: saving ? 0.6 : 1,
                 }}>
                   <Save size={16} strokeWidth={1.5} />
                   {saving ? "جاري الحفظ…" : `حفظ التفضيلات${selected.size > 0 ? ` (${selected.size})` : ""}`}
@@ -459,7 +458,6 @@ function DropZone({ t, dark, drag, setDrag, uploading, fileRef, handleUpload, ha
         borderRadius: 16, padding: "44px 24px",
         textAlign: "center", cursor: uploading ? "not-allowed" : "pointer",
         marginBottom: 16, transition: "all 0.2s",
-        opacity: uploading ? 0.6 : 1,
       }}
       onClick={() => !uploading && fileRef.current?.click()}
       onDragOver={e => { e.preventDefault(); setDrag(true); }}
