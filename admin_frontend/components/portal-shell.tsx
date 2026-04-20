@@ -173,11 +173,13 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
 
       {/* ─── MAIN ─── */}
       <main className="portal-main" style={{
-        flex: 1, padding: "28px 24px 80px",
+        flex: 1, padding: "28px 32px 80px",
         minHeight: "100vh", minWidth: 0, background: t.main,
       }}>
-        <PushPermissionBanner />
-        {children}
+        <div style={{ maxWidth: 720, margin: "0 auto", width: "100%" }}>
+          <PushPermissionBanner />
+          {children}
+        </div>
       </main>
 
       {/* ─── MOBILE BOTTOM NAV ─── */}

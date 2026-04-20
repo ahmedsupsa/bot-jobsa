@@ -281,7 +281,7 @@ export default function Dashboard() {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  page: { padding: "28px 0", maxWidth: 860, margin: "0 auto" },
+  page: { padding: "8px 0 28px" },
   header: {
     display: "flex", alignItems: "center", justifyContent: "space-between",
     marginBottom: 24, flexWrap: "wrap", gap: 12,
@@ -299,8 +299,8 @@ const s: Record<string, React.CSSProperties> = {
     border: "1px solid", borderRadius: 10, padding: "6px 14px",
     fontSize: 13, fontWeight: 600,
   },
-  statsRow: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 20 },
-  statCard: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: "18px 20px" },
+  statsRow: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 },
+  statCard: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: "16px 14px" },
   statIconWrap: {
     width: 38, height: 38, borderRadius: 10, background: "var(--surface2)",
     display: "flex", alignItems: "center", justifyContent: "center",
