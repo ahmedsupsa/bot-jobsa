@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Key, BriefcaseBusiness, Megaphone, LogOut, Briefcase, ShoppingBag, TrendingUp, MessageCircle, MailCheck } from "lucide-react";
+import { LayoutDashboard, Users, Key, BriefcaseBusiness, Megaphone, Bell, LogOut, Briefcase, ShoppingBag, TrendingUp, MessageCircle, MailCheck } from "lucide-react";
 import { useState } from "react";
 
 const links = [
@@ -11,6 +11,7 @@ const links = [
   { href: "/codes", label: "أكواد التفعيل", icon: Key },
   { href: "/jobs", label: "الوظائف", icon: BriefcaseBusiness },
   { href: "/announcements", label: "الإعلانات", icon: Megaphone },
+  { href: "/notifications", label: "إشعارات Push", icon: Bell },
   { href: "/store-admin", label: "المتجر", icon: ShoppingBag },
   { href: "/support-admin", label: "الدعم الفني", icon: MessageCircle },
   { href: "/affiliate-admin", label: "برنامج الربح", icon: TrendingUp },

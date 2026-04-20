@@ -1,16 +1,11 @@
-// Jobbots PWA Service Worker — Pass-through (no caching, no offline)
-// Intentionally minimal: enables PWA install but never intercepts requests
-// so API calls, form submissions, payments, and navigation always hit network.
+// Jobbots PWA Service Worker — Push Notifications + Pass-through
 
 self.addEventListener("install", (event) => {
-  // Activate immediately on first install
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  // Take control of open pages without requiring reload
   event.waitUntil(self.clients.claim());
-  // Clear any legacy caches if a previous SW version cached anything
   event.waitUntil(
     caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
   );
@@ -18,4 +13,44 @@ self.addEventListener("activate", (event) => {
 
 // NOTE: No 'fetch' listener registered on purpose.
 // All network requests pass directly to the browser without interference.
-// This guarantees that API calls, payments, OTP emails, etc. are NEVER blocked.
+
+// ── Push Notifications ──────────────────────────────────────────────────────
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: "إشعار", body: event.data ? event.data.text() : "" };
+  }
+
+  const title = data.title || "Jobbots 🔔";
+  const options = {
+    body: data.body || "",
+    icon: data.icon || "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    dir: "rtl",
+    lang: "ar",
+    tag: data.tag || "jobbots-notification",
+    renotify: true,
+    data: { url: data.url || "/portal/dashboard" },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/portal/dashboard";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if (client.url.includes(self.location.origin) && "focus" in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) return clients.openWindow(url);
+    })
+  );
+});

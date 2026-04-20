@@ -172,6 +172,18 @@ CREATE TABLE IF NOT EXISTS admin_users (
 CREATE INDEX IF NOT EXISTS idx_admin_jobs_active ON admin_jobs(is_active);
 CREATE INDEX IF NOT EXISTS idx_admin_announcements_active ON admin_announcements(is_active);
 
+-- اشتراكات إشعارات Push (PWA)
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  endpoint TEXT NOT NULL,
+  subscription TEXT NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, endpoint)
+);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id);
+
 -- ─── حفظ الإيميل في user_settings لا يعمل؟ ───
 -- ضع في البيئة SUPABASE_KEY = مفتاح service_role / secret من لوحة Supabase (ليس المفتاح العام anon).
 -- مفتاح الخدمة يتجاوز RLS. إذا بقي المنع، نفّذ (للتشخيص فقط):
