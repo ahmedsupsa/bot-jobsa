@@ -45,8 +45,18 @@ export const viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ar" dir="rtl">
-      <head />
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
+      <head>
+        {/* يُطبَّق الثيم فوراً قبل رسم الصفحة — يمنع الوميض */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){
+            try {
+              var t = localStorage.getItem('theme');
+              document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+            } catch(e) {}
+          })();
+        `}} />
+      </head>
       <body style={{ fontFamily: "'Tajawal', 'Segoe UI', Tahoma, sans-serif" }}>
         <ThemeProvider>
           {children}

@@ -7,27 +7,8 @@
 /* ═══════════════════════════════════════
    THEME CSS VARIABLES
 ═══════════════════════════════════════ */
+/* ── الوضع الافتراضي: فاتح (Light) ── */
 :root,
-:root[data-theme="dark"] {
-  --bg:        #0a0a0a;
-  --bg2:       #111111;
-  --bg3:       #141414;
-  --surface:   #111111;
-  --surface2:  #1a1a1a;
-  --border:    #1f1f1f;
-  --border2:   #2a2a2a;
-  --text:      #ffffff;
-  --text2:     #cccccc;
-  --text3:     #888888;
-  --text4:     #555555;
-  --accent:    #ffffff;
-  --accent-fg: #0a0a0a;
-  --scrollbar: #2a2a2a;
-  --nav-bg:    rgba(10,10,10,0.92);
-  --input-bg:  #141414;
-  --shadow:    0 4px 24px rgba(0,0,0,0.4);
-}
-
 :root[data-theme="light"] {
   --bg:        #f4f4f5;
   --bg2:       #ffffff;
@@ -46,6 +27,27 @@
   --nav-bg:    rgba(244,244,245,0.94);
   --input-bg:  #ffffff;
   --shadow:    0 4px 24px rgba(0,0,0,0.08);
+}
+
+/* ── الوضع الليلي: Dark ── */
+:root[data-theme="dark"] {
+  --bg:        #0a0a0a;
+  --bg2:       #111111;
+  --bg3:       #141414;
+  --surface:   #111111;
+  --surface2:  #1a1a1a;
+  --border:    #1f1f1f;
+  --border2:   #2a2a2a;
+  --text:      #ffffff;
+  --text2:     #cccccc;
+  --text3:     #888888;
+  --text4:     #555555;
+  --accent:    #ffffff;
+  --accent-fg: #0a0a0a;
+  --scrollbar: #2a2a2a;
+  --nav-bg:    rgba(10,10,10,0.92);
+  --input-bg:  #141414;
+  --shadow:    0 4px 24px rgba(0,0,0,0.4);
 }
 
 /* ═══════════════════════════════════════
@@ -72,7 +74,12 @@ html, body {
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
-  transition: background 0.25s, color 0.25s;
+  transition: background 0.22s ease, color 0.22s ease;
+}
+
+/* انتقال سلس لكل العناصر عند تبديل الثيم */
+*, *::before, *::after {
+  transition: background-color 0.22s ease, border-color 0.22s ease, color 0.22s ease, box-shadow 0.22s ease;
 }
 
 /* Prevent iOS zoom on input focus */

@@ -2,14 +2,14 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "dark" | "light";
-const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({ theme: "dark", toggle: () => {} });
+const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({ theme: "light", toggle: () => {} });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
-    const saved = (typeof window !== "undefined" && localStorage.getItem("theme")) as Theme | null;
-    const t = saved === "light" ? "light" : "dark";
+    const saved = localStorage.getItem("theme") as Theme | null;
+    const t: Theme = saved === "dark" ? "dark" : "light";
     setTheme(t);
     document.documentElement.setAttribute("data-theme", t);
   }, []);
