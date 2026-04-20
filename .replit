@@ -42,7 +42,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python3 -c 'import httpx, dotenv' 2>/dev/null || nix-env -iA nixpkgs.python3Packages.httpx nixpkgs.python3Packages.python-dotenv 2>/dev/null; python3 worker/main.py"
+args = "python3 worker/main.py"
 
 [[ports]]
 localPort = 5000

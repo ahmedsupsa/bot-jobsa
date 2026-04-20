@@ -1,58 +1,50 @@
 # Jobbots — Auto-Apply Platform
 
-A Telegram bot for job applications (Arabic language), with a Flask admin panel, Next.js admin dashboard, and a user-facing web portal.
+A job application automation platform. Users register via Telegram bot, upload CVs, and the system automatically matches their profiles with job openings and submits applications on their behalf using AI-generated cover letters.
 
 ## Architecture
 
-- **`main.py`** — Telegram bot entry point (python-telegram-bot v21, polling or webhook mode)
-- **`admin/app.py`** — Flask admin web panel + user portal API (port 8080)
-- **`admin/portal_api.py`** — Flask Blueprint for user portal REST API (`/api/portal/*`)
-- **`admin_frontend/`** — Next.js admin dashboard + user portal (port 5000, proxies API calls to Flask)
-- **`admin_frontend/app/portal/`** — User-facing web portal (login, dashboard, applications, CV, settings)
-- **`admin_frontend/lib/portal-auth.ts`** — JWT token management for user portal
-- **`database/`** — Supabase database layer
-- **`handlers/`** — Telegram bot command/message handlers
-- **`services/`** — Business logic (auto-apply, cover letters, announcements, etc.)
-- **`config.py`** — Configuration loaded from environment variables
-
-## User Portal
-
-- URL: `/portal/` (login at `/portal/login`)
-- Auth: JWT token stored in localStorage, signed with ADMIN_SECRET
-- Login: activation code (same codes from admin panel)
-- Pages: dashboard, applications, profile, CV upload, email settings
+- **`admin_frontend/`** — Next.js 14 admin dashboard + user portal (port 5000)
+- **`worker/main.py`** — Auto-Apply Worker: periodic Python service that matches users to jobs and sends emails via Resend
+- **`database/`** — Supabase database schemas and utilities
+- **`scripts/`** — Admin utility scripts (e.g., generating activation codes)
+- **`config.py`** — Central configuration loaded from environment variables
 
 ## Workflows
 
 - **Start application** — Next.js admin frontend (`cd admin_frontend && npm run dev`) on port 5000
-- **Admin Backend** — Flask admin panel (`python admin/app.py`) on port 8080
-- **Telegram Bot** — Telegram bot polling (`python main.py`) as console service
+- **Auto Apply Worker** — Python worker (`python3 worker/main.py`) — runs every 30 minutes
 
 ## Required Secrets
 
-- `BOT_TOKEN` — Telegram Bot token (from @BotFather)
 - `SUPABASE_URL` — Supabase project URL
 - `SUPABASE_KEY` — Supabase API key (service role recommended)
-- `ADMIN_TELEGRAM_IDS` — Comma-separated Telegram user IDs for admin access
+- `RESEND_API_KEY` — Resend email API key
+- `RESEND_FROM_EMAIL` — Sender email for Resend
 - `ADMIN_PASSWORD` — Password for the web admin panel
-- `ADMIN_SECRET` — Flask session secret key
+- `ADMIN_SECRET` — JWT signing secret for admin sessions
 
 ## Optional Secrets
 
+- `BOT_TOKEN` — Telegram Bot token (from @BotFather)
+- `ADMIN_TELEGRAM_IDS` — Comma-separated Telegram user IDs for admin access
 - `GEMINI_API_KEY` — Google Gemini API key (for AI cover letter generation)
 - `JOBS_SOURCE_CHANNEL_ID` — Telegram channel ID to import jobs from
-- `RESEND_API_KEY` — Resend email API key
-- `RESEND_FROM_EMAIL` — Sender email for Resend
-
-## Running in Webhook Mode
-
-Set these environment variables to enable webhook instead of polling:
-- `USE_WEBHOOK=true`
-- `WEBHOOK_URL=https://your-domain.com`
-- `WEBHOOK_PORT=8080`
-- `WEBHOOK_PATH=webhook`
+- `RESEND_FROM_NAME` — Display name for emails (default: "Jobsa")
+- `AUTO_APPLY_INTERVAL` — Seconds between worker cycles (default: 1800)
 
 ## Dependencies
 
-- Python: `requirements.txt` — python-telegram-bot, supabase, flask, google-generativeai, etc.
-- Node.js: `admin_frontend/package.json` — Next.js 14, Tailwind CSS, framer-motion
+- Python: `httpx`, `python-dotenv` (installed via pip)
+- Node.js: `admin_frontend/package.json` — Next.js 14, Tailwind CSS, framer-motion, @supabase/supabase-js
+
+## Database (Supabase)
+
+Tables: `users`, `admin_jobs`, `applications`, `job_fields`, `user_settings`, `user_cvs`, `user_job_preferences`
+Storage bucket: `cvs` — stores user CV files
+
+## Replit Environment Notes
+
+- The Next.js dev server runs on port 5000 with `0.0.0.0` host binding for Replit proxy compatibility
+- `allowedDevOrigins` in `next.config.mjs` permits requests from Replit's proxy domains
+- Google Fonts are loaded via CSS `@import` in `globals.css` to avoid hydration mismatches
