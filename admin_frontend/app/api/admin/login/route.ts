@@ -9,6 +9,7 @@ import {
 } from "@/lib/admin-auth";
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+const SUPER_ADMIN_USERNAME = (process.env.ADMIN_USERNAME || "admin").trim().toLowerCase();
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
@@ -17,9 +18,15 @@ export async function POST(req: Request) {
 
   let cookieValue: string | null = null;
 
-  // Super admin via env password (no username, or username "admin")
-  if ((!username || username === "admin") && password === ADMIN_PASSWORD) {
-    cookieValue = buildSessionCookieValue({ username: "admin", isSuper: true, permissions: [] });
+  // Super admin via env password: empty username, "admin", or configured ADMIN_USERNAME
+  const isSuperLogin =
+    !username || username === "admin" || username === SUPER_ADMIN_USERNAME;
+  if (isSuperLogin && password === ADMIN_PASSWORD) {
+    cookieValue = buildSessionCookieValue({
+      username: SUPER_ADMIN_USERNAME,
+      isSuper: true,
+      permissions: [],
+    });
   } else if (username) {
     // Look up admin account
     const { data: acc } = await supabase
