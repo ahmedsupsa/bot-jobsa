@@ -136,15 +136,16 @@ async function sendEmail(opts: {
   to: string; subject: string; html: string;
   replyTo: string; cc?: string;
   cvBytes?: Uint8Array | null; cvName?: string;
-  fromName: string;
+  fromName: string; fromEmail?: string;
 }) {
   const btoa = (b: Uint8Array) => {
     let s = "";
     b.forEach((c) => (s += String.fromCharCode(c)));
     return globalThis.btoa(s);
   };
+  const from = opts.fromEmail || RESEND_FROM;
   const payload: Record<string, unknown> = {
-    from: `${opts.fromName} <${RESEND_FROM}>`,
+    from: `${opts.fromName} <${from}>`,
     to: [opts.to], subject: opts.subject, html: opts.html, reply_to: opts.replyTo,
   };
   if (opts.cc && opts.cc.toLowerCase() !== opts.to.toLowerCase()) payload.cc = [opts.cc];
@@ -198,6 +199,8 @@ async function runCycle() {
     const userEmail = String(settings.email ?? "").trim();
     if (!userEmail) continue;
 
+    const senderAlias = String(settings.sender_email_alias ?? "").trim();
+
     const cv = cvRows[0];
     if (!cv) continue;
 
@@ -243,7 +246,8 @@ async function runCycle() {
           ? `التقديم على وظيفة: ${stripEmojis(jobTitle)}`
           : `Application for: ${stripEmojis(jobTitle)}`;
 
-        await sendEmail({ to: toEmail, subject, html, replyTo: userEmail, cc: userEmail, cvBytes, cvName, fromName: name });
+        const fromEmail = senderAlias || RESEND_FROM;
+        await sendEmail({ to: toEmail, subject, html, replyTo: userEmail, cc: userEmail, cvBytes, cvName, fromName: name, fromEmail });
         await sbInsert("applications", {
           user_id: uid, job_id: jobId, job_title: jobTitle,
           applied_at: new Date().toISOString(),
