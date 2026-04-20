@@ -227,18 +227,52 @@ button, [role="button"] { -webkit-user-select: none; user-select: none; }
 
 /* ═══════════════════════════════════════
    RESPONSIVE: PORTAL
+   Mobile-first comfortable spacing: side padding scales with viewport,
+   safe-area insets respected for notched devices, and content is held
+   inside a centered max-width container so it never kisses the edge.
 ═══════════════════════════════════════ */
+.portal-main {
+  padding-left: max(32px, env(safe-area-inset-left)) !important;
+  padding-right: max(32px, env(safe-area-inset-right)) !important;
+}
+.portal-container {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
 @media (max-width: 900px) {
   .portal-sidebar { display: none !important; }
-  .portal-main { padding: 20px 20px 100px !important; }
+  .portal-main {
+    padding-top: 22px !important;
+    padding-bottom: 110px !important;
+    padding-left: max(24px, env(safe-area-inset-left)) !important;
+    padding-right: max(24px, env(safe-area-inset-right)) !important;
+  }
   .portal-bottom-nav { display: block !important; }
 }
-@media (max-width: 480px) {
-  .portal-main { padding: 16px 16px 96px !important; }
+@media (max-width: 600px) {
+  .portal-main {
+    padding-top: 18px !important;
+    padding-bottom: 104px !important;
+    padding-left: max(20px, env(safe-area-inset-left)) !important;
+    padding-right: max(20px, env(safe-area-inset-right)) !important;
+  }
 }
-@media (max-width: 360px) {
-  .portal-main { padding: 12px 12px 92px !important; }
+@media (max-width: 380px) {
+  .portal-main {
+    padding-top: 16px !important;
+    padding-bottom: 100px !important;
+    padding-left: max(16px, env(safe-area-inset-left)) !important;
+    padding-right: max(16px, env(safe-area-inset-right)) !important;
+  }
 }
+
+/* Make sure nothing inside the portal blows out horizontally */
+.portal-container * { min-width: 0; }
+.portal-container img,
+.portal-container video,
+.portal-container canvas,
+.portal-container iframe { max-width: 100%; }
 @media (max-width: 768px) {
   .admin-content { padding: 16px !important; }
 }
