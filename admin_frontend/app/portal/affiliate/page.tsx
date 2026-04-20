@@ -173,7 +173,7 @@ export default function AffiliatePage() {
             }}>
               <TrendingUp size={28} color="#22c55e" />
             </div>
-            <h1 style={{ margin: "0 0 10px", color: "#fff", fontSize: 22, fontWeight: 700 }}>برنامج الربح</h1>
+            <h1 style={{ margin: "0 0 10px", color: "var(--text)", fontSize: 22, fontWeight: 700 }}>برنامج الربح</h1>
             <p style={{ margin: "0 0 20px", color: "#999", fontSize: 14, lineHeight: 1.7 }}>
               اربح <span style={{ color: "#22c55e", fontWeight: 700 }}>10%</span> عمولة من كل اشتراك يتم عبر رابطك الخاص.
               <br />العمولة على كل عملية شراء، حتى لو جدّد العميل اشتراكه لاحقاً.
@@ -210,7 +210,7 @@ export default function AffiliatePage() {
   return (
     <PortalShell>
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
-        <h1 style={{ margin: "0 0 20px", color: "#fff", fontSize: 22, fontWeight: 700, display: "flex", alignItems: "center", gap: 10 }}>
+        <h1 style={{ margin: "0 0 20px", color: "var(--text)", fontSize: 22, fontWeight: 700, display: "flex", alignItems: "center", gap: 10 }}>
           <TrendingUp size={22} color="#22c55e" /> برنامج الربح
         </h1>
 
@@ -232,7 +232,7 @@ export default function AffiliatePage() {
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 200 }}>
-              <p style={{ margin: 0, color: "#fff", fontSize: 14, fontWeight: 600 }}>
+              <p style={{ margin: 0, color: "var(--text)", fontSize: 14, fontWeight: 600 }}>
                 {canWithdraw ? "جاهز للسحب!" : `الحد الأدنى للسحب: ${data.min_withdraw} ريال`}
               </p>
               <p style={{ margin: "4px 0 0", color: "#888", fontSize: 12 }}>
@@ -246,9 +246,9 @@ export default function AffiliatePage() {
               </p>
             </div>
             <button onClick={() => setShowAccount(true)} style={{
-              background: hasAccount ? "#1a1a1a" : "#22c55e",
-              color: hasAccount ? "#fff" : "#000",
-              border: hasAccount ? "1px solid #2a2a2a" : "none",
+              background: hasAccount ? "var(--surface2)" : "#22c55e",
+              color: hasAccount ? "var(--text)" : "#000",
+              border: hasAccount ? "1px solid var(--border2)" : "none",
               borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 600,
               cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6,
             }}>
@@ -284,13 +284,13 @@ export default function AffiliatePage() {
 
         {/* Referral Link */}
         <div style={{
-          background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 16,
+          background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16,
           padding: 20, marginBottom: 20,
         }}>
-          <p style={{ margin: "0 0 12px", color: "#888", fontSize: 13 }}>رابطك الخاص</p>
+          <p style={{ margin: "0 0 12px", color: "var(--text3)", fontSize: 13 }}>رابطك الخاص</p>
           <div style={{
             display: "flex", gap: 8, alignItems: "center",
-            background: "#070707", border: "1px solid #1f1f1f",
+            background: "var(--surface2)", border: "1px solid var(--border)",
             borderRadius: 10, padding: "10px 14px", marginBottom: 12,
           }}>
             <span style={{ flex: 1, color: "#22c55e", fontSize: 13, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", direction: "ltr" }}>
@@ -299,9 +299,9 @@ export default function AffiliatePage() {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={copyLink} style={{
-              flex: 1, background: copied ? "#1f3d1f" : "#1a1a1a",
-              border: `1px solid ${copied ? "#22c55e" : "#2a2a2a"}`,
-              color: copied ? "#22c55e" : "#fff",
+              flex: 1, background: copied ? "rgba(34,197,94,0.12)" : "var(--surface2)",
+              border: `1px solid ${copied ? "#22c55e" : "var(--border)"}`,
+              color: copied ? "#22c55e" : "var(--text)",
               borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 600,
               cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             }}>
@@ -320,24 +320,24 @@ export default function AffiliatePage() {
 
         {/* Withdrawals History */}
         {data.withdrawals && data.withdrawals.length > 0 && (
-          <div style={{ background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 16, overflow: "hidden", marginBottom: 20 }}>
-            <div style={{ padding: "14px 20px", borderBottom: "1px solid #1f1f1f" }}>
-              <p style={{ margin: 0, color: "#fff", fontSize: 14, fontWeight: 600 }}>طلبات السحب</p>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", marginBottom: 20 }}>
+            <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
+              <p style={{ margin: 0, color: "var(--text)", fontSize: 14, fontWeight: 600 }}>طلبات السحب</p>
             </div>
             {data.withdrawals.map((w) => (
               <div key={w.id} style={{
-                padding: "14px 20px", borderBottom: "1px solid #181818",
+                padding: "14px 20px", borderBottom: "1px solid var(--border)",
                 display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12,
               }}>
                 <div>
-                  <p style={{ margin: 0, color: "#fff", fontSize: 14, fontWeight: 600 }}>{Number(w.amount).toFixed(2)} ر.س</p>
-                  <p style={{ margin: "2px 0 0", color: "#666", fontSize: 11 }}>{new Date(w.created_at).toLocaleString("ar-SA")}</p>
+                  <p style={{ margin: 0, color: "var(--text)", fontSize: 14, fontWeight: 600 }}>{Number(w.amount).toFixed(2)} ر.س</p>
+                  <p style={{ margin: "2px 0 0", color: "var(--text3)", fontSize: 11 }}>{new Date(w.created_at).toLocaleString("ar-SA")}</p>
                   {w.notes && <p style={{ margin: "4px 0 0", color: "#f87171", fontSize: 11 }}>{w.notes}</p>}
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   {w.proof_url && (
                     <button onClick={() => setPreviewProof(w.proof_url!)} style={{
-                      background: "#1a1a1a", border: "1px solid #2a2a2a", color: "#3b82f6",
+                      background: "var(--surface2)", border: "1px solid var(--border2)", color: "#3b82f6",
                       borderRadius: 8, padding: "6px 10px", fontSize: 11, fontWeight: 600,
                       cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4,
                     }}>
@@ -359,21 +359,21 @@ export default function AffiliatePage() {
         )}
 
         {/* Sales Log */}
-        <div style={{ background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 16, overflow: "hidden" }}>
-          <div style={{ padding: "14px 20px", borderBottom: "1px solid #1f1f1f" }}>
-            <p style={{ margin: 0, color: "#fff", fontSize: 14, fontWeight: 600 }}>سجل المبيعات</p>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
+          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
+            <p style={{ margin: 0, color: "var(--text)", fontSize: 14, fontWeight: 600 }}>سجل المبيعات</p>
           </div>
           {!data.referrals || data.referrals.length === 0 ? (
             <div style={{ padding: 40, textAlign: "center", color: "#555", fontSize: 13 }}>لا توجد مبيعات بعد. شارك رابطك للبدء!</div>
           ) : (
             data.referrals.map((r) => (
               <div key={r.id} style={{
-                padding: "14px 20px", borderBottom: "1px solid #181818",
+                padding: "14px 20px", borderBottom: "1px solid var(--border)",
                 display: "flex", justifyContent: "space-between", alignItems: "center",
               }}>
                 <div>
-                  <p style={{ margin: 0, color: "#fff", fontSize: 14, fontWeight: 600 }}>+{Number(r.commission).toFixed(2)} ر.س</p>
-                  <p style={{ margin: "2px 0 0", color: "#666", fontSize: 11 }}>
+                  <p style={{ margin: 0, color: "var(--text)", fontSize: 14, fontWeight: 600 }}>+{Number(r.commission).toFixed(2)} ر.س</p>
+                  <p style={{ margin: "2px 0 0", color: "var(--text3)", fontSize: 11 }}>
                     من بيع بقيمة {Number(r.amount).toFixed(2)} ر.س · {new Date(r.created_at).toLocaleDateString("ar-SA")}
                   </p>
                 </div>
@@ -398,12 +398,12 @@ export default function AffiliatePage() {
           display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
         }}>
           <div onClick={(e) => e.stopPropagation()} style={{
-            background: "#0d0d0d", border: "1px solid #2a2a2a", borderRadius: 16,
+            background: "var(--surface)", border: "1px solid var(--border2)", borderRadius: 16,
             padding: 24, width: "100%", maxWidth: 460, maxHeight: "90vh", overflowY: "auto",
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-              <h2 style={{ margin: 0, color: "#fff", fontSize: 17, fontWeight: 700 }}>طريقة استلام الأرباح</h2>
-              <button onClick={() => setShowAccount(false)} style={{ background: "none", border: "none", color: "#666", cursor: "pointer" }}>
+              <h2 style={{ margin: 0, color: "var(--text)", fontSize: 17, fontWeight: 700 }}>طريقة استلام الأرباح</h2>
+              <button onClick={() => setShowAccount(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}>
                 <X size={20} />
               </button>
             </div>
@@ -411,7 +411,7 @@ export default function AffiliatePage() {
             {/* Method Toggle */}
             <div className="payout-method-toggle" style={{
               display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 18,
-              background: "#070707", border: "1px solid #1f1f1f", borderRadius: 12, padding: 4,
+              background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 12, padding: 4,
             }}>
               <MethodBtn active={accMethod === "bank"} onClick={() => setAccMethod("bank")} icon={Building2} label="حساب بنكي" />
               <MethodBtn active={accMethod === "wallet"} onClick={() => setAccMethod("wallet")} icon={Smartphone} label="محفظة رقمية" />
@@ -481,7 +481,7 @@ function MethodBtn({ active, onClick, icon: Icon, label }: { active: boolean; on
   return (
     <button onClick={onClick} style={{
       background: active ? "#22c55e" : "transparent",
-      color: active ? "#000" : "#888",
+      color: active ? "#000" : "var(--text3)",
       border: "none", borderRadius: 8, padding: "10px",
       fontSize: 13, fontWeight: 600, cursor: "pointer",
       display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
@@ -494,14 +494,14 @@ function MethodBtn({ active, onClick, icon: Icon, label }: { active: boolean; on
 function Input({ label, value, onChange, placeholder, mono }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; mono?: boolean }) {
   return (
     <div>
-      <label style={{ display: "block", color: "#888", fontSize: 12, marginBottom: 6 }}>{label}</label>
+      <label style={{ display: "block", color: "var(--text3)", fontSize: 12, marginBottom: 6 }}>{label}</label>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         style={{
-          width: "100%", background: "#070707", border: "1px solid #1f1f1f",
-          borderRadius: 10, padding: "10px 12px", color: "#fff", fontSize: 14,
+          width: "100%", background: "var(--surface)", border: "1px solid var(--border)",
+          borderRadius: 10, padding: "10px 12px", color: "var(--text)", fontSize: 14,
           fontFamily: mono ? "monospace" : "inherit",
           direction: mono ? "ltr" : undefined,
           outline: "none", boxSizing: "border-box",
@@ -513,12 +513,12 @@ function Input({ label, value, onChange, placeholder, mono }: { label: string; v
 
 function StatCard({ icon: Icon, color, label, value }: { icon: any; color: string; label: string; value: string }) {
   return (
-    <div style={{ background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 14, padding: 16 }}>
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <Icon size={14} color={color} />
-        <span style={{ color: "#888", fontSize: 12 }}>{label}</span>
+        <span style={{ color: "var(--text3)", fontSize: 12 }}>{label}</span>
       </div>
-      <p style={{ margin: 0, color: "#fff", fontSize: 18, fontWeight: 700 }}>{value}</p>
+      <p style={{ margin: 0, color: "var(--text)", fontSize: 18, fontWeight: 700 }}>{value}</p>
     </div>
   );
 }

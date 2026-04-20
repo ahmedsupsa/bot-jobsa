@@ -65,13 +65,13 @@ export default function SupportPage() {
       <div style={{
         display: "flex", flexDirection: "column",
         height: "calc(100vh - 80px)", maxHeight: 800,
-        background: "#0a0a0a", border: "1px solid #1f1f1f", borderRadius: 16,
+        background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16,
         overflow: "hidden",
       }}>
         {/* Header */}
         <div style={{
-          padding: "16px 20px", borderBottom: "1px solid #1f1f1f",
-          display: "flex", alignItems: "center", gap: 12, background: "#0d0d0d",
+          padding: "16px 20px", borderBottom: "1px solid var(--border)",
+          display: "flex", alignItems: "center", gap: 12, background: "var(--surface2)",
         }}>
           <div style={{
             width: 40, height: 40, borderRadius: 12,
@@ -81,8 +81,8 @@ export default function SupportPage() {
             <MessageCircle size={20} color="#22c55e" />
           </div>
           <div>
-            <p style={{ margin: 0, color: "#fff", fontSize: 15, fontWeight: 600 }}>الدعم الفني</p>
-            <p style={{ margin: 0, color: "#666", fontSize: 12 }}>راسلنا وسنرد عليك في أقرب وقت</p>
+            <p style={{ margin: 0, color: "var(--text)", fontSize: 15, fontWeight: 600 }}>الدعم الفني</p>
+            <p style={{ margin: 0, color: "var(--text3)", fontSize: 12 }}>راسلنا وسنرد عليك في أقرب وقت</p>
           </div>
         </div>
 
@@ -90,7 +90,7 @@ export default function SupportPage() {
         <div ref={scrollRef} style={{
           flex: 1, overflowY: "auto", padding: 20,
           display: "flex", flexDirection: "column", gap: 10,
-          background: "#070707",
+          background: "var(--bg)",
         }}>
           {loading ? (
             <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
@@ -107,9 +107,9 @@ export default function SupportPage() {
                 maxWidth: "75%",
               }}>
                 <div style={{
-                  background: m.sender === "user" ? "#1f3d1f" : "#1a1a1a",
-                  border: `1px solid ${m.sender === "user" ? "#22c55e33" : "#2a2a2a"}`,
-                  color: "#fff",
+                  background: m.sender === "user" ? "rgba(34,197,94,0.12)" : "var(--surface2)",
+                  border: `1px solid ${m.sender === "user" ? "#22c55e33" : "var(--border)"}`,
+                  color: "var(--text)",
                   padding: "10px 14px", borderRadius: 14,
                   fontSize: 14, lineHeight: 1.6,
                   whiteSpace: "pre-wrap", wordBreak: "break-word",
@@ -130,7 +130,7 @@ export default function SupportPage() {
 
         {/* Composer */}
         <div style={{
-          padding: 14, borderTop: "1px solid #1f1f1f", background: "#0d0d0d",
+          padding: 14, borderTop: "1px solid var(--border)", background: "var(--surface2)",
           display: "flex", gap: 10, alignItems: "flex-end",
         }}>
           <textarea
@@ -145,8 +145,8 @@ export default function SupportPage() {
             placeholder="اكتب رسالتك..."
             rows={1}
             style={{
-              flex: 1, background: "#0a0a0a", border: "1px solid #2a2a2a",
-              borderRadius: 12, padding: "10px 14px", color: "#fff",
+              flex: 1, background: "var(--surface)", border: "1px solid var(--border)",
+              borderRadius: 12, padding: "10px 14px", color: "var(--text)",
               fontSize: 14, fontFamily: "inherit", resize: "none",
               outline: "none", maxHeight: 120, minHeight: 42,
             }}

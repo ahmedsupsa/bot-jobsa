@@ -34,7 +34,7 @@ export default function ApplicationsPage() {
             <p style={s.sub}>جميع الوظائف التي قدّم عليها البوت باسمك</p>
           </div>
           <div style={s.countBox}>
-            <Send size={18} strokeWidth={1.5} color="#fff" />
+            <Send size={18} strokeWidth={1.5} color="var(--text)" />
             <span style={s.countNum}>{count}</span>
             <span style={s.countLabel}>تقديم</span>
           </div>
@@ -83,29 +83,29 @@ const s: Record<string, React.CSSProperties> = {
   page: { maxWidth: 700, margin: "0 auto" },
   header: {
     display: "flex", alignItems: "center", justifyContent: "space-between",
-    background: "#111", border: "1px solid #1f1f1f",
+    background: "var(--surface)", border: "1px solid var(--border)",
     borderRadius: 18, padding: "24px 28px", marginBottom: 24,
     flexWrap: "wrap", gap: 16,
   },
-  title: { color: "#fff", fontSize: 22, fontWeight: 700, margin: 0 },
-  sub: { color: "#666", fontSize: 13, margin: "4px 0 0" },
+  title: { color: "var(--text)", fontSize: 22, fontWeight: 700, margin: 0 },
+  sub: { color: "var(--text3)", fontSize: 13, margin: "4px 0 0" },
   countBox: {
     display: "flex", alignItems: "center", gap: 10,
-    background: "#1a1a1a", border: "1px solid #2a2a2a",
+    background: "var(--surface2)", border: "1px solid var(--border2)",
     borderRadius: 14, padding: "12px 20px",
   },
-  countNum: { color: "#fff", fontSize: 26, fontWeight: 800 },
-  countLabel: { color: "#666", fontSize: 13 },
+  countNum: { color: "var(--text)", fontSize: 26, fontWeight: 800 },
+  countLabel: { color: "var(--text3)", fontSize: 13 },
   emptyState: {
-    background: "#111", border: "1px solid #1f1f1f", borderRadius: 18,
+    background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 18,
     padding: "60px 40px", textAlign: "center",
     display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
   },
-  emptyTitle: { color: "#fff", fontSize: 18, fontWeight: 700, margin: 0 },
-  emptySub: { color: "#666", fontSize: 14, maxWidth: 380, lineHeight: 1.6, margin: 0 },
+  emptyTitle: { color: "var(--text)", fontSize: 18, fontWeight: 700, margin: 0 },
+  emptySub: { color: "var(--text3)", fontSize: 14, maxWidth: 380, lineHeight: 1.6, margin: 0 },
   emptyBtn: {
     display: "flex", alignItems: "center", gap: 8,
-    background: "#fff", color: "#0a0a0a",
+    background: "var(--accent)", color: "var(--accent-fg)",
     border: "none", borderRadius: 12,
     padding: "12px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer",
     marginTop: 8,
@@ -113,18 +113,17 @@ const s: Record<string, React.CSSProperties> = {
   list: { display: "flex", flexDirection: "column", gap: 10 },
   card: {
     display: "flex", alignItems: "center", gap: 16,
-    background: "#111", border: "1px solid #1f1f1f",
+    background: "var(--surface)", border: "1px solid var(--border)",
     borderRadius: 14, padding: "18px 20px",
-    transition: "border-color 0.15s",
   },
   num: {
     width: 34, height: 34, borderRadius: "50%",
-    background: "#1a1a1a", color: "#fff",
+    background: "var(--surface2)", color: "var(--text)",
     fontSize: 13, fontWeight: 700,
     display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
-  jobTitle: { color: "#fff", fontSize: 14, fontWeight: 600, margin: 0 },
-  date: { color: "#555", fontSize: 12, margin: "4px 0 0" },
+  jobTitle: { color: "var(--text)", fontSize: 14, fontWeight: 600, margin: 0 },
+  date: { color: "var(--text3)", fontSize: 12, margin: "4px 0 0" },
   badge: {
     display: "flex", alignItems: "center", gap: 6,
     background: "#0a1f0a", color: "#22c55e",

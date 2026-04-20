@@ -72,21 +72,21 @@ function NextRunCard({ active }: { active: boolean }) {
 
   return (
     <div style={{
-      background: active ? "#050f05" : "#0d0d0d",
-      border: `1px solid ${active ? "#22c55e22" : "#2a2a2a"}`,
+      background: active ? "rgba(34,197,94,0.04)" : "var(--surface)",
+      border: `1px solid ${active ? "#22c55e33" : "var(--border)"}`,
       borderRadius: 16, padding: "20px 22px", marginBottom: 20,
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
             width: 36, height: 36, borderRadius: 10,
-            background: active ? "rgba(34,197,94,0.1)" : "#1a1a1a",
+            background: active ? "rgba(34,197,94,0.1)" : "var(--surface2)",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <Zap size={17} strokeWidth={1.8} color={active ? "#22c55e" : "#444"} />
           </div>
           <div>
-            <p style={{ margin: 0, color: "#fff", fontSize: 14, fontWeight: 600 }}>التقديم التلقائي القادم</p>
+            <p style={{ margin: 0, color: "var(--text)", fontSize: 14, fontWeight: 600 }}>التقديم التلقائي القادم</p>
             <p style={{ margin: 0, color: "#555", fontSize: 12 }}>يعمل كل 30 دقيقة · الجلسة التالية {label}</p>
           </div>
         </div>
@@ -98,7 +98,7 @@ function NextRunCard({ active }: { active: boolean }) {
         }}>{active ? "نشط" : "موقوف"}</span>
       </div>
 
-      <div style={{ background: "#1a1a1a", borderRadius: 999, height: 4, marginBottom: 12, overflow: "hidden" }}>
+      <div style={{ background: "var(--surface2)", borderRadius: 999, height: 4, marginBottom: 12, overflow: "hidden" }}>
         <div style={{
           width: `${pct}%`, height: "100%",
           background: active ? "#22c55e" : "#333",
@@ -114,7 +114,7 @@ function NextRunCard({ active }: { active: boolean }) {
         {active && (
           <span style={{
             fontFamily: "monospace", fontWeight: 700, fontSize: 22, letterSpacing: 2,
-            color: secs < 60 ? "#22c55e" : "#fff",
+            color: secs < 60 ? "#22c55e" : "var(--text)",
           }}>{fmt(secs)}</span>
         )}
       </div>
@@ -288,26 +288,26 @@ const s: Record<string, React.CSSProperties> = {
   },
   headerLeft: { display: "flex", alignItems: "center", gap: 14 },
   avatar: {
-    width: 46, height: 46, borderRadius: 14, background: "#fff",
-    color: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center",
+    width: 46, height: 46, borderRadius: 14, background: "var(--accent)",
+    color: "var(--accent-fg)", display: "flex", alignItems: "center", justifyContent: "center",
     fontSize: 20, fontWeight: 700, flexShrink: 0,
   },
-  greeting: { color: "#fff", fontSize: 20, fontWeight: 700, margin: 0 },
-  greetingSub: { color: "#555", fontSize: 13, margin: "3px 0 0" },
+  greeting: { color: "var(--text)", fontSize: 20, fontWeight: 700, margin: 0 },
+  greetingSub: { color: "var(--text3)", fontSize: 13, margin: "3px 0 0" },
   subBadge: {
     display: "flex", alignItems: "center", gap: 7,
     border: "1px solid", borderRadius: 10, padding: "6px 14px",
     fontSize: 13, fontWeight: 600,
   },
   statsRow: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 20 },
-  statCard: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 16, padding: "18px 20px" },
+  statCard: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: "18px 20px" },
   statIconWrap: {
-    width: 38, height: 38, borderRadius: 10, background: "#1a1a1a",
+    width: 38, height: 38, borderRadius: 10, background: "var(--surface2)",
     display: "flex", alignItems: "center", justifyContent: "center",
-    color: "#fff", marginBottom: 12,
+    color: "var(--text2)", marginBottom: 12,
   },
-  statValue: { color: "#fff", fontSize: 22, fontWeight: 800, margin: "0 0 4px" },
-  statLabel: { color: "#555", fontSize: 12, margin: 0 },
+  statValue: { color: "var(--text)", fontSize: 22, fontWeight: 800, margin: "0 0 4px" },
+  statLabel: { color: "var(--text3)", fontSize: 12, margin: 0 },
   alert: {
     display: "flex", alignItems: "center", gap: 14,
     background: "#0f0d00", border: "1px solid #f59e0b22",
@@ -316,35 +316,35 @@ const s: Record<string, React.CSSProperties> = {
   alertTitle: { color: "#f59e0b", fontWeight: 600, fontSize: 14, margin: 0 },
   alertSub: { color: "#a16207", fontSize: 12, margin: "2px 0 0" },
   twoCol: { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 260px)", gap: 20, alignItems: "start" },
-  card: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 16, padding: "22px" },
+  card: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: "22px" },
   cardHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 },
   cardTitleRow: { display: "flex", alignItems: "center", gap: 8 },
-  cardTitle: { color: "#fff", fontSize: 15, fontWeight: 600 },
+  cardTitle: { color: "var(--text)", fontSize: 15, fontWeight: 600 },
   viewAll: {
-    background: "transparent", border: "none", color: "#666",
+    background: "transparent", border: "none", color: "var(--text3)",
     fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
   },
   empty: { textAlign: "center", padding: "32px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 },
-  emptyTitle: { color: "#555", fontSize: 14, fontWeight: 600, margin: 0 },
-  emptySub: { color: "#444", fontSize: 12, margin: 0 },
-  appRow: { display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "#161616", borderRadius: 12 },
-  appBullet: { width: 6, height: 6, borderRadius: "50%", background: "#fff", flexShrink: 0 },
-  appTitle: { color: "#fff", fontSize: 13, fontWeight: 500, margin: 0 },
-  appDate: { color: "#555", fontSize: 12, margin: "2px 0 0" },
+  emptyTitle: { color: "var(--text3)", fontSize: 14, fontWeight: 600, margin: 0 },
+  emptySub: { color: "var(--text4)", fontSize: 12, margin: 0 },
+  appRow: { display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "var(--surface2)", borderRadius: 12 },
+  appBullet: { width: 6, height: 6, borderRadius: "50%", background: "var(--text3)", flexShrink: 0 },
+  appTitle: { color: "var(--text)", fontSize: 13, fontWeight: 500, margin: 0 },
+  appDate: { color: "var(--text3)", fontSize: 12, margin: "2px 0 0" },
   sentTag: {
     background: "#0a1f0a", color: "#22c55e", border: "1px solid #22c55e22",
     borderRadius: 8, padding: "3px 10px", fontSize: 11, fontWeight: 600, flexShrink: 0,
   },
   quickBtn: {
     display: "flex", alignItems: "center", gap: 12,
-    background: "#111", border: "1px solid #1f1f1f",
+    background: "var(--surface)", border: "1px solid var(--border)",
     borderRadius: 14, padding: "14px 16px", cursor: "pointer", width: "100%",
   },
   quickIcon: {
-    width: 38, height: 38, borderRadius: 10, background: "#1a1a1a",
+    width: 38, height: 38, borderRadius: 10, background: "var(--surface2)",
     display: "flex", alignItems: "center", justifyContent: "center",
-    color: "#fff", flexShrink: 0,
+    color: "var(--text2)", flexShrink: 0,
   },
-  quickLabel: { color: "#fff", fontSize: 13, fontWeight: 600, margin: 0 },
-  quickSub: { color: "#555", fontSize: 11, margin: "2px 0 0" },
+  quickLabel: { color: "var(--text)", fontSize: 13, fontWeight: 600, margin: 0 },
+  quickSub: { color: "var(--text3)", fontSize: 11, margin: "2px 0 0" },
 };
