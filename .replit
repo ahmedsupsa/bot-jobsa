@@ -58,3 +58,4 @@ externalPort = 8080
 NEXT_PUBLIC_VAPID_PUBLIC_KEY = "BOjShV12g7N91R_yg2VlvKZe9s_0U5qBHYek8IkZPDzIRCN-ivcGLtyUhGRPv6AKLGghOYjuNCM3YpXirV9lkNw"
 VAPID_PRIVATE_KEY = "WYQrf3rzxY_o9hRaEdfhqQftDv5RHDAqGfvHqah2yCA"
 VAPID_EMAIL = "mailto:admin@jobbots.app"
+TAMARA_SANDBOX = "false"
