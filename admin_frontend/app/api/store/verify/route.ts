@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getTamaraOrder, captureOrder } from "@/lib/tamara";
+import { getPayment, getInvoice } from "@/lib/streampay";
 import { makeToken } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -139,7 +140,16 @@ async function autoCreateAccount(
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { order_id, tamara_order_id: bodyTamaraId, paymentStatus } = body;
+    const {
+      order_id,
+      // Tamara params
+      tamara_order_id: bodyTamaraId,
+      paymentStatus,
+      // StreamPay params
+      payment_id,
+      invoice_id,
+      status: redirectStatus,
+    } = body;
 
     if (!order_id) {
       return NextResponse.json({ ok: false, error: "order_id مطلوب" }, { status: 400 });
@@ -171,39 +181,68 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, already_paid: true, token, account_created: false, order });
     }
 
-    // Get Tamara order ID (from body or DB)
-    const tamaraOrderId: string = bodyTamaraId || order.tamara_order_id;
-
-    if (!tamaraOrderId) {
-      return NextResponse.json({ ok: false, error: "لم يتم العثور على معرّف طلب Tamara" });
-    }
-
-    // Verify with Tamara API
     let verified = false;
-    let capturedAmount: number = Number(order.amount);
+    const capturedAmount: number = Number(order.amount);
 
-    try {
-      const tamaraOrder = await getTamaraOrder(tamaraOrderId);
-      const status: string = tamaraOrder?.status || "";
-      verified = ["approved", "fully_captured", "partially_captured", "captured"].includes(
-        status.toLowerCase()
-      );
+    // ─── Detect gateway: Tamara vs StreamPay ─────────────────────────────
+    const tamaraOrderId: string = bodyTamaraId || order.tamara_order_id || "";
+    const isStreamPay = !tamaraOrderId && (payment_id || invoice_id || order.streampay_payment_link_id);
 
-      // Capture if approved (not yet captured)
-      if (status.toLowerCase() === "approved") {
-        try {
-          await captureOrder(tamaraOrderId, capturedAmount);
-        } catch (captureErr) {
-          console.warn("Capture warning:", captureErr);
-          // Even if capture fails, treat as verified if approved
-        }
-        verified = true;
+    if (isStreamPay) {
+      // ── StreamPay verification ────────────────────────────────────────
+      if (redirectStatus !== "paid" && !payment_id && !invoice_id) {
+        await supabase.from("store_orders").update({ status: "failed" }).eq("id", order_id);
+        return NextResponse.json({ ok: false, error: "الدفع لم يكتمل" });
       }
-    } catch (tamaraErr) {
-      console.error("Tamara verify error:", tamaraErr);
-      // If paymentStatus indicates success but Tamara API fails, accept it
-      if (paymentStatus === "approved" || paymentStatus === "success") {
-        verified = true;
+
+      if (payment_id) {
+        try {
+          const payment = await getPayment(payment_id);
+          verified =
+            payment?.status === "paid" || payment?.status === "PAID" ||
+            payment?.data?.status === "paid";
+        } catch {}
+      }
+
+      if (!verified && invoice_id) {
+        try {
+          const invoice = await getInvoice(invoice_id);
+          verified =
+            invoice?.status === "paid" || invoice?.status === "PAID" ||
+            invoice?.data?.status === "paid";
+        } catch {}
+      }
+
+      if (!verified && redirectStatus === "paid") verified = true;
+
+      if (verified && (payment_id || invoice_id)) {
+        await supabase.from("store_orders").update({
+          streampay_payment_id: payment_id || null,
+          streampay_invoice_id: invoice_id || null,
+        }).eq("id", order_id);
+      }
+    } else {
+      // ── Tamara verification ───────────────────────────────────────────
+      if (!tamaraOrderId) {
+        return NextResponse.json({ ok: false, error: "لم يتم العثور على معرّف طلب Tamara" });
+      }
+
+      try {
+        const tamaraOrder = await getTamaraOrder(tamaraOrderId);
+        const tamaraStatus: string = tamaraOrder?.status || "";
+        verified = ["approved", "fully_captured", "partially_captured", "captured"].includes(
+          tamaraStatus.toLowerCase()
+        );
+
+        if (tamaraStatus.toLowerCase() === "approved") {
+          try { await captureOrder(tamaraOrderId, capturedAmount); } catch (e) {
+            console.warn("Capture warning:", e);
+          }
+          verified = true;
+        }
+      } catch (tamaraErr) {
+        console.error("Tamara verify error:", tamaraErr);
+        if (paymentStatus === "approved" || paymentStatus === "success") verified = true;
       }
     }
 

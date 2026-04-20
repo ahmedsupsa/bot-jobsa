@@ -33,7 +33,7 @@ export default function StorePage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Product | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState<string | null>(null);
   const [formErr, setFormErr] = useState("");
   const [refCode, setRefCode] = useState<string | null>(null);
 
@@ -59,12 +59,12 @@ export default function StorePage() {
 
   const handleBuy = (p: Product) => { setSelected(p); setFormErr(""); };
 
-  const handleCheckout = async () => {
+  const handleCheckout = async (gateway: "tamara" | "streampay") => {
     if (!form.name.trim() || !form.email.trim() || !form.phone.trim()) { setFormErr("جميع الحقول مطلوبة"); return; }
     if (!form.email.includes("@")) { setFormErr("بريد إلكتروني غير صحيح"); return; }
     if (form.phone.trim().length < 9) { setFormErr("رقم الجوال غير صحيح"); return; }
     if (!selected) return;
-    setSubmitting(true); setFormErr("");
+    setSubmitting(gateway); setFormErr("");
     try {
       const r = await fetch("/api/store/checkout", {
         method: "POST",
@@ -74,6 +74,7 @@ export default function StorePage() {
           email: form.email.trim().toLowerCase(),
           phone: form.phone.trim() || undefined,
           ref_code: refCode || undefined,
+          gateway,
         }),
       });
       const j = await r.json();
@@ -81,7 +82,7 @@ export default function StorePage() {
       window.location.href = j.url;
     } catch (e) {
       setFormErr(String(e).replace("Error: ", ""));
-      setSubmitting(false);
+      setSubmitting(null);
     }
   };
 
@@ -247,13 +248,32 @@ export default function StorePage() {
 
             {formErr && <div style={s.errBox}>{formErr}</div>}
 
-            <button onClick={handleCheckout} disabled={submitting} style={{ ...s.checkoutBtn, opacity: submitting ? 0.7 : 1 }}>
-              {submitting ? <RefreshCw size={16} style={{ animation: "spin 1s linear infinite" }} /> : <ShieldCheck size={16} />}
-              {submitting ? "جاري التحويل للدفع..." : `ادفع ${selected.price} ر.س بأمان`}
-            </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button
+                onClick={() => handleCheckout("tamara")}
+                disabled={!!submitting}
+                style={{ ...s.checkoutBtn, opacity: submitting ? 0.7 : 1 }}
+              >
+                {submitting === "tamara"
+                  ? <RefreshCw size={16} style={{ animation: "spin 1s linear infinite" }} />
+                  : <ShieldCheck size={16} />}
+                {submitting === "tamara" ? "جاري التحويل..." : `ادفع عبر Tamara — ${selected.price} ر.س`}
+              </button>
+
+              <button
+                onClick={() => handleCheckout("streampay")}
+                disabled={!!submitting}
+                style={{ ...s.checkoutBtn, background: "linear-gradient(135deg, #334155, #1e293b)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)", opacity: submitting ? 0.7 : 1 }}
+              >
+                {submitting === "streampay"
+                  ? <RefreshCw size={16} style={{ animation: "spin 1s linear infinite" }} />
+                  : <ShieldCheck size={16} />}
+                {submitting === "streampay" ? "جاري التحويل..." : `ادفع عبر StreamPay — ${selected.price} ر.س`}
+              </button>
+            </div>
 
             <p style={s.secureNote}>
-              🔒 الدفع آمن عبر Tamara — مدى • Visa • Mastercard • Apple Pay
+              🔒 مدى • Visa • Mastercard • Apple Pay
             </p>
           </div>
         </div>

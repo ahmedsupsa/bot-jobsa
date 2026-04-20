@@ -11,9 +11,13 @@ function SuccessContent() {
   const params = useSearchParams();
   const router = useRouter();
   const order_id = params.get("order_id");
-  // Tamara appends these after redirect
+  // Tamara params
   const tamara_order_id = params.get("orderId") || params.get("tamara_order_id");
-  const paymentStatus = params.get("paymentStatus") || params.get("status");
+  const paymentStatus = params.get("paymentStatus");
+  // StreamPay params
+  const payment_id = params.get("payment_id");
+  const invoice_id = params.get("invoice_id");
+  const status = params.get("status");
 
   const [state, setState] = useState<"loading" | "new_account" | "existing" | "err">("loading");
   const [msg, setMsg] = useState("");
@@ -36,7 +40,7 @@ function SuccessContent() {
     fetch("/api/store/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ order_id, tamara_order_id, paymentStatus }),
+      body: JSON.stringify({ order_id, tamara_order_id, paymentStatus, payment_id, invoice_id, status }),
     })
       .then(r => r.json())
       .then(j => {
@@ -51,7 +55,7 @@ function SuccessContent() {
         }
       })
       .catch(() => { setState("err"); setMsg("خطأ في الاتصال بالخادم"); });
-  }, [order_id, tamara_order_id, paymentStatus]);
+  }, [order_id, tamara_order_id, paymentStatus, payment_id, invoice_id, status]);
 
   const handleEnter = () => {
     setEntering(true);
