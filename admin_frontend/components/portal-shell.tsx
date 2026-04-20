@@ -177,6 +177,55 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         minHeight: "100vh", minWidth: 0, background: t.main,
       }}>
         <div className="portal-container">
+          {/* Top bar (only mobile — sidebar already hosts these on desktop) */}
+          <div className="portal-topbar" style={{
+            display: "none",
+            alignItems: "center", justifyContent: "space-between",
+            marginBottom: 16,
+            paddingTop: "max(0px, env(safe-area-inset-top))",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 11, overflow: "hidden", flexShrink: 0,
+              }}>
+                <Image src="/logo.png" alt="Jobbots" width={36} height={36} style={{ borderRadius: 11 }} />
+              </div>
+              <span style={{ color: t.text, fontSize: 15, fontWeight: 800 }}>Jobbots</span>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button
+                onClick={toggle}
+                aria-label={dark ? "الوضع النهاري" : "الوضع الليلي"}
+                style={{
+                  width: 40, height: 40, borderRadius: 11,
+                  background: t.sidebar, border: `1px solid ${t.border}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", padding: 0,
+                  WebkitTapHighlightColor: "transparent",
+                }}
+              >
+                {dark
+                  ? <Sun size={18} strokeWidth={1.7} color="#f59e0b" />
+                  : <Moon size={18} strokeWidth={1.7} color="#6366f1" />}
+              </button>
+              <button
+                onClick={logout}
+                aria-label="تسجيل الخروج"
+                style={{
+                  width: 40, height: 40, borderRadius: 11,
+                  background: dark ? "#1a0a0a" : "#fff0f0",
+                  border: `1px solid ${dark ? "#3f1515" : "#fecaca"}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", padding: 0,
+                  WebkitTapHighlightColor: "transparent",
+                }}
+              >
+                <LogOut size={18} strokeWidth={1.7} color="#f87171" />
+              </button>
+            </div>
+          </div>
+
           <PushPermissionBanner />
           {children}
         </div>
@@ -192,8 +241,9 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         paddingBottom: "max(4px, env(safe-area-inset-bottom))",
       }}>
         <div className="no-scrollbar" style={{
-          display: "flex", overflowX: "auto", overflowY: "hidden",
-          WebkitOverflowScrolling: "touch",
+          display: "flex", alignItems: "stretch",
+          paddingLeft: "max(0px, env(safe-area-inset-left))",
+          paddingRight: "max(0px, env(safe-area-inset-right))",
         }}>
           {NAV.map(({ href, icon: Icon, label }) => {
             const active = pathname === href || (href !== "/portal/dashboard" && pathname.startsWith(href));
@@ -202,37 +252,22 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
                 key={href}
                 onClick={() => router.push(href)}
                 style={{
-                  flex: "0 0 auto", minWidth: 60,
+                  flex: 1, minWidth: 0,
                   display: "flex", flexDirection: "column",
                   alignItems: "center", gap: 3,
                   background: "transparent", border: "none",
-                  cursor: "pointer", padding: "8px 10px 4px",
+                  cursor: "pointer", padding: "10px 6px 6px",
                   color: active ? t.text : t.text3,
                   WebkitTapHighlightColor: "transparent",
                 }}
               >
                 <Icon size={21} strokeWidth={active ? 2 : 1.5} />
-                <span style={{ fontSize: 9.5, fontWeight: active ? 700 : 400, whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, whiteSpace: "nowrap" }}>
                   {label}
                 </span>
               </button>
             );
           })}
-          <button
-            onClick={toggle}
-            style={{
-              flex: "0 0 auto", minWidth: 60,
-              display: "flex", flexDirection: "column",
-              alignItems: "center", gap: 3,
-              background: "transparent", border: "none",
-              cursor: "pointer", padding: "8px 10px 4px",
-              color: t.text3,
-              WebkitTapHighlightColor: "transparent",
-            }}
-          >
-            {dark ? <Sun size={21} strokeWidth={1.5} color="#f59e0b" /> : <Moon size={21} strokeWidth={1.5} color="#6366f1" />}
-            <span style={{ fontSize: 9.5, whiteSpace: "nowrap" }}>{dark ? "نهاري" : "ليلي"}</span>
-          </button>
         </div>
       </nav>
     </div>

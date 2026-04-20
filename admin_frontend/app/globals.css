@@ -243,25 +243,26 @@ button, [role="button"] { -webkit-user-select: none; user-select: none; }
 @media (max-width: 900px) {
   .portal-sidebar { display: none !important; }
   .portal-main {
-    padding-top: 22px !important;
-    padding-bottom: 110px !important;
-    padding-left: max(24px, env(safe-area-inset-left)) !important;
-    padding-right: max(24px, env(safe-area-inset-right)) !important;
+    padding-top: 18px !important;
+    padding-bottom: 140px !important;
+    padding-left: max(20px, env(safe-area-inset-left)) !important;
+    padding-right: max(20px, env(safe-area-inset-right)) !important;
   }
   .portal-bottom-nav { display: block !important; }
+  .portal-topbar { display: flex !important; }
 }
 @media (max-width: 600px) {
   .portal-main {
-    padding-top: 18px !important;
-    padding-bottom: 104px !important;
-    padding-left: max(20px, env(safe-area-inset-left)) !important;
-    padding-right: max(20px, env(safe-area-inset-right)) !important;
+    padding-top: 14px !important;
+    padding-bottom: 130px !important;
+    padding-left: max(18px, env(safe-area-inset-left)) !important;
+    padding-right: max(18px, env(safe-area-inset-right)) !important;
   }
 }
 @media (max-width: 380px) {
   .portal-main {
-    padding-top: 16px !important;
-    padding-bottom: 100px !important;
+    padding-top: 12px !important;
+    padding-bottom: 124px !important;
     padding-left: max(16px, env(safe-area-inset-left)) !important;
     padding-right: max(16px, env(safe-area-inset-right)) !important;
   }
