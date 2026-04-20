@@ -34,9 +34,9 @@ export default function AdminLogin() {
   ];
 
   return (
-    <div style={s.page}>
+    <div className="login-split">
       {/* Left panel */}
-      <div style={s.leftPanel}>
+      <div className="login-left">
         <div style={s.brand}>
           <div style={s.brandLogo}><Briefcase size={28} strokeWidth={1.5} color="#0a0a0a" /></div>
           <h1 style={s.brandName}>Jobbots</h1>
@@ -54,7 +54,7 @@ export default function AdminLogin() {
       </div>
 
       {/* Right panel */}
-      <div style={s.rightPanel}>
+      <div className="login-right">
         <div style={s.formBox}>
           <div style={s.formIcon}><Lock size={22} strokeWidth={1.5} color="#0a0a0a" /></div>
           <h2 style={s.formTitle}>تسجيل الدخول</h2>
@@ -78,30 +78,19 @@ export default function AdminLogin() {
           </form>
         </div>
       </div>
-      <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        input::placeholder { color: #444; }
-        input:focus { border-color: #444 !important; outline: none; }
-      `}</style>
     </div>
   );
 }
 
 const s: Record<string, React.CSSProperties> = {
-  page: { minHeight: "100vh", display: "flex", direction: "rtl", background: "#0a0a0a" },
-  leftPanel: {
-    flex: 1, background: "#111", borderLeft: "1px solid #1f1f1f",
-    padding: "60px 52px", display: "flex", flexDirection: "column",
-    justifyContent: "center", position: "relative", overflow: "hidden", minWidth: 300,
-  },
-  brand: { display: "flex", alignItems: "center", gap: 14, marginBottom: 24 },
+  brand: { display: "flex", alignItems: "center", gap: 14, marginBottom: 24, position: "relative", zIndex: 1 },
   brandLogo: {
     width: 52, height: 52, borderRadius: 14, background: "#fff",
     display: "flex", alignItems: "center", justifyContent: "center",
   },
   brandName: { color: "#fff", fontSize: 32, fontWeight: 800, margin: 0 },
-  brandTagline: { color: "#888", fontSize: 16, lineHeight: 1.7, margin: "0 0 40px" },
-  featureList: { display: "flex", flexDirection: "column", gap: 14 },
+  brandTagline: { color: "#888", fontSize: 16, lineHeight: 1.7, margin: "0 0 40px", position: "relative", zIndex: 1 },
+  featureList: { display: "flex", flexDirection: "column", gap: 14, position: "relative", zIndex: 1 },
   featureRow: {
     display: "flex", alignItems: "center", gap: 14,
     background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 12, padding: "14px 18px",
@@ -116,11 +105,7 @@ const s: Record<string, React.CSSProperties> = {
     backgroundImage: "radial-gradient(circle, #222 1px, transparent 1px)",
     backgroundSize: "28px 28px", opacity: 0.25, zIndex: 0, pointerEvents: "none",
   },
-  rightPanel: {
-    width: 480, display: "flex", alignItems: "center", justifyContent: "center",
-    padding: "40px 48px", background: "#0a0a0a", flexShrink: 0,
-  },
-  formBox: { width: "100%" },
+  formBox: { width: "100%", maxWidth: 400 },
   formIcon: {
     width: 52, height: 52, borderRadius: 14, background: "#fff",
     display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20,
@@ -133,15 +118,16 @@ const s: Record<string, React.CSSProperties> = {
   input: {
     width: "100%", padding: "13px 42px 13px 16px",
     background: "#141414", border: "1px solid #2a2a2a",
-    borderRadius: 12, color: "#fff", fontSize: 14, outline: "none",
+    borderRadius: 12, color: "#fff", fontSize: 16, outline: "none",
     boxSizing: "border-box", transition: "border-color 0.2s",
+    WebkitAppearance: "none",
   },
   btn: {
     width: "100%", padding: "14px", marginTop: 20,
     background: "#fff", color: "#0a0a0a", border: "none", borderRadius: 12,
     fontSize: 15, fontWeight: 700, cursor: "pointer",
     display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-    transition: "opacity 0.2s",
+    transition: "opacity 0.2s", WebkitAppearance: "none",
   },
   error: {
     background: "#1a0a0a", color: "#f87171", border: "1px solid #3f1515",

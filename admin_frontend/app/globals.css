@@ -4,106 +4,257 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Cross-browser base resets ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  height: -webkit-fill-available;
+}
+
 html, body {
   background: #0a0a0a;
   color: #ffffff;
-  font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif;
+  font-family: 'Tajawal', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   min-height: 100vh;
+  min-height: -webkit-fill-available;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
-  text-size-adjust: 100%;
-  -webkit-text-size-adjust: 100%;
   overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
 }
 
+/* ── Prevent iOS zoom on input focus (requires 16px) ── */
+input, select, textarea {
+  font-size: 16px;
+  font-family: inherit;
+}
+
+/* ── Scrollbar hiding cross-browser ── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a3a;
+}
+
+/* Firefox */
 * {
-  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #2a2a2a transparent;
 }
 
-/* Allow text selection only on actual content (inputs, paragraphs, headings) */
-input, textarea, select, p, span, h1, h2, h3, h4, h5, h6, li, td, th, code, pre {
-  -webkit-touch-callout: default;
-  -webkit-user-select: text;
-  user-select: text;
+/* ── Smooth focus outlines for accessibility ── */
+:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.3);
+  outline-offset: 2px;
 }
 
-/* Buttons & nav items should never be selectable */
-button, a, nav, [role="button"] {
+/* ── Links ── */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ── Button base ── */
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ── Images ── */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Backdrop filter cross-browser ── */
+.backdrop-blur-support {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* ── iOS safe area support ── */
+.safe-bottom {
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+/* ── Prevent text selection on interactive elements ── */
+button, [role="button"] {
   -webkit-user-select: none;
   user-select: none;
 }
 
-/* Smooth tap on iOS */
-button, a {
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
+/* ── Hide scrollbar utility ── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Portal pages — dark monochrome theme */
-.portal-root {
-  background: #0a0a0a !important;
-  color: #ffffff !important;
+/* ── Responsive login split layout ── */
+.login-split {
   min-height: 100vh;
+  display: flex;
+  direction: rtl;
+  background: #0a0a0a;
+}
+.login-left {
+  flex: 1;
+  background: #111;
+  border-left: 1px solid #1f1f1f;
+  padding: 60px 52px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  min-width: 300px;
+}
+.login-right {
+  width: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 48px;
+  background: #0a0a0a;
+  flex-shrink: 0;
+}
+@media (max-width: 768px) {
+  .login-left { display: none !important; }
+  .login-right {
+    width: 100% !important;
+    padding: 32px 20px !important;
+    min-height: 100vh;
+    align-items: flex-start;
+    padding-top: 48px !important;
+  }
+}
+@media (max-width: 480px) {
+  .login-right {
+    padding: 24px 16px !important;
+    padding-top: 40px !important;
+  }
 }
 
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #555; }
+/* ── Landing page nav responsive ── */
+@media (max-width: 480px) {
+  .landing-nav-links {
+    gap: 6px !important;
+  }
+  .landing-nav-links a {
+    padding: 7px 12px !important;
+    font-size: 12px !important;
+  }
+}
+@media (max-width: 360px) {
+  .landing-nav-links .nav-secondary {
+    display: none !important;
+  }
+}
 
-/* Hide scrollbar on mobile bottom nav */
-.portal-bottom-nav ::-webkit-scrollbar { display: none; }
+/* ── Feature/Steps grids responsive ── */
+@media (max-width: 900px) {
+  .features-grid { grid-template-columns: 1fr 1fr !important; }
+  .steps-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+}
+@media (max-width: 600px) {
+  .features-grid { grid-template-columns: 1fr !important; }
+}
 
-/* Spin animation for loading icons */
+/* ── Landing hero responsive ── */
+@media (max-width: 600px) {
+  .hero-sub br { display: none; }
+  .hero-stats { gap: 24px !important; padding-top: 28px !important; }
+}
+
+/* ── Dashboard two-col responsive ── */
+@media (max-width: 900px) {
+  .dashboard-two-col { grid-template-columns: 1fr !important; }
+}
+
+/* ── Store grid responsive ── */
+@media (max-width: 760px) {
+  .__grid { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 480px) {
+  .__modal { padding: 20px !important; border-radius: 16px !important; }
+}
+
+/* ── Portal sidebar/nav responsive ── */
+@media (max-width: 900px) {
+  .portal-sidebar { display: none !important; }
+  .portal-main { padding: 20px 16px 100px !important; }
+  .portal-bottom-nav { display: block !important; }
+}
+
+/* ── Admin shell responsive ── */
+@media (max-width: 768px) {
+  .admin-content { padding: 16px !important; }
+}
+
+/* ── Spin animation used across pages ── */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
-.spin-icon { animation: spin 1s linear infinite; }
 
-/* Portal responsive layout */
-@media (max-width: 900px) {
-  .portal-sidebar { display: none !important; }
-  .portal-bottom-nav { display: block !important; }
-  .portal-main { padding: 20px 16px 110px !important; }
+/* ── PWA install slide up ── */
+@keyframes pwaSlideUp {
+  from { transform: translateY(120%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
-/* ===========================================
-   PWA STANDALONE MODE — feels like a native app
-   =========================================== */
-@media all and (display-mode: standalone),
-       all and (display-mode: fullscreen),
-       all and (display-mode: minimal-ui) {
-  /* Add iOS safe-area padding to body */
+/* ── Input placeholder cross-browser ── */
+input::placeholder,
+textarea::placeholder {
+  color: #444;
+  opacity: 1; /* Firefox */
+}
+input:focus,
+textarea:focus {
+  border-color: #444 !important;
+  outline: none !important;
+}
+
+/* ── Touch improvements ── */
+@media (hover: none) and (pointer: coarse) {
+  button:active, [role="button"]:active {
+    opacity: 0.7;
+  }
+}
+
+/* ── Firefox-specific backdrop filter fallback ── */
+@supports not (backdrop-filter: blur(1px)) {
+  .nav-blur {
+    background: rgba(10, 10, 10, 0.98) !important;
+  }
+}
+
+/* ── High contrast media query ── */
+@media (prefers-contrast: high) {
+  :root {
+    --border-color: #555;
+  }
+}
+
+/* ── Print styles ── */
+@media print {
+  nav, footer, .portal-bottom-nav, .pwa-install-prompt {
+    display: none !important;
+  }
   body {
-    padding-top: env(safe-area-inset-top);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-    /* iOS-style smooth bounce-free scroll */
-    overscroll-behavior: none;
-    -webkit-user-select: none;
-    user-select: none;
+    background: white;
+    color: black;
   }
-
-  /* Hide footer "© 2025 ..." in installed app — feels less webby */
-  .pwa-hide { display: none !important; }
-
-  /* Hide "Install app" CTA when already installed */
-  .pwa-install-prompt { display: none !important; }
-
-  /* Sticky navs need to respect notch */
-  .portal-bottom-nav {
-    padding-bottom: calc(6px + env(safe-area-inset-bottom)) !important;
-  }
-
-  /* Make all clickable elements feel snappier on tap */
-  button:active, a:active, [role="button"]:active {
-    transform: scale(0.97);
-    transition: transform 0.08s ease-out;
-  }
-}
-
-/* iOS PWA: status bar matches dark theme */
-@supports (-webkit-touch-callout: none) {
-  body { -webkit-overflow-scrolling: touch; }
 }

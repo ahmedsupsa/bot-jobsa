@@ -39,7 +39,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <nav style={{ flex: 1 }}>
+        <nav style={{ flex: 1, overflowY: "auto" }}>
           {NAV.map(({ href, icon: Icon, label }) => {
             const active = pathname === href;
             return (
@@ -70,8 +70,8 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Mobile bottom nav */}
-      <nav style={s.bottomNav} className="portal-bottom-nav">
-        <div style={s.bottomScroller}>
+      <nav style={s.bottomNav} className="portal-bottom-nav no-scrollbar">
+        <div style={s.bottomScroller} className="no-scrollbar">
           {NAV.map(({ href, icon: Icon, label }) => {
             const active = pathname === href;
             return (
@@ -81,57 +81,53 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
                 onClick={() => router.push(href)}
               >
                 <Icon size={20} strokeWidth={active ? 2 : 1.5} />
-                <span style={{ fontSize: 10, marginTop: 2, whiteSpace: "nowrap" }}>{label}</span>
+                <span style={{ fontSize: 9.5, marginTop: 2, whiteSpace: "nowrap", fontWeight: active ? 600 : 400 }}>{label}</span>
               </button>
             );
           })}
           <button style={{ ...s.bottomItem, color: "#555" }} onClick={logout}>
             <LogOut size={20} strokeWidth={1.5} />
-            <span style={{ fontSize: 10, marginTop: 2, whiteSpace: "nowrap" }}>خروج</span>
+            <span style={{ fontSize: 9.5, marginTop: 2, whiteSpace: "nowrap" }}>خروج</span>
           </button>
         </div>
       </nav>
-
-      <style>{`
-        @media (max-width: 900px) {
-          .portal-sidebar { display: none !important; }
-          .portal-main { padding: 20px 16px 110px !important; }
-          .portal-bottom-nav { display: block !important; }
-        }
-      `}</style>
     </div>
   );
 }
 
 const s: Record<string, React.CSSProperties> = {
   root: {
-    minHeight: "100vh", background: "#0a0a0a",
-    display: "flex", direction: "rtl",
+    minHeight: "100vh",
+    background: "#0a0a0a",
+    display: "flex",
+    direction: "rtl",
   },
   sidebar: {
-    width: 230, minHeight: "100vh",
+    width: 226, minHeight: "100vh",
     background: "#0f0f0f", borderLeft: "1px solid #1f1f1f",
     display: "flex", flexDirection: "column",
-    padding: "24px 16px", position: "sticky",
+    padding: "20px 14px", position: "sticky",
     top: 0, height: "100vh", flexShrink: 0,
+    overflowY: "auto",
   },
   logo: {
     display: "flex", alignItems: "center", gap: 12,
-    marginBottom: 32, paddingBottom: 24, borderBottom: "1px solid #1f1f1f",
+    marginBottom: 28, paddingBottom: 20, borderBottom: "1px solid #1f1f1f",
+    flexShrink: 0,
   },
   logoIcon: {
-    width: 40, height: 40, borderRadius: 12, background: "#fff",
+    width: 38, height: 38, borderRadius: 11, background: "#fff",
     display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
-  logoName: { color: "#fff", fontSize: 16, fontWeight: 700, margin: 0 },
-  logoSub: { color: "#555", fontSize: 11, margin: "2px 0 0" },
+  logoName: { color: "#fff", fontSize: 15, fontWeight: 700, margin: 0 },
+  logoSub: { color: "#555", fontSize: 10.5, margin: "2px 0 0" },
   navItem: {
     display: "flex", alignItems: "center", gap: 10,
-    width: "100%", padding: "11px 12px", borderRadius: 10,
+    width: "100%", padding: "10px 11px", borderRadius: 10,
     background: "transparent", border: "none",
     cursor: "pointer", textAlign: "right",
     transition: "background 0.15s", marginBottom: 2,
-    position: "relative",
+    position: "relative", fontSize: 13, fontFamily: "inherit",
   },
   navActive: { background: "#1a1a1a" },
   activeDot: {
@@ -141,30 +137,40 @@ const s: Record<string, React.CSSProperties> = {
   },
   logoutBtn: {
     display: "flex", alignItems: "center", gap: 10,
-    width: "100%", padding: "11px 12px", borderRadius: 10,
+    width: "100%", padding: "10px 11px", borderRadius: 10,
     background: "transparent", border: "1px solid #1f1f1f",
-    cursor: "pointer", marginTop: 8,
+    cursor: "pointer", marginTop: 8, fontFamily: "inherit",
+    flexShrink: 0,
   },
   main: {
-    flex: 1, padding: "32px 28px 80px",
+    flex: 1, padding: "28px 24px 80px",
     minHeight: "100vh",
+    minWidth: 0,
   },
   bottomNav: {
     display: "none", position: "fixed",
     bottom: 0, left: 0, right: 0,
-    background: "#0f0f0f", borderTop: "1px solid #1f1f1f",
-    zIndex: 100, padding: "6px 0 max(6px, env(safe-area-inset-bottom))",
+    background: "rgba(10,10,10,0.96)",
+    WebkitBackdropFilter: "blur(10px)",
+    backdropFilter: "blur(10px)",
+    borderTop: "1px solid #1f1f1f",
+    zIndex: 100,
+    paddingBottom: "max(4px, env(safe-area-inset-bottom))",
   },
   bottomScroller: {
-    display: "flex", overflowX: "auto", overflowY: "hidden",
-    WebkitOverflowScrolling: "touch", scrollbarWidth: "none",
+    display: "flex",
+    overflowX: "auto", overflowY: "hidden",
+    WebkitOverflowScrolling: "touch",
+    scrollbarWidth: "none",
+    msOverflowStyle: "none",
   },
   bottomItem: {
-    flex: "0 0 auto", minWidth: 64,
+    flex: "0 0 auto", minWidth: 60,
     display: "flex", flexDirection: "column",
     alignItems: "center", gap: 2,
     background: "transparent", border: "none",
-    cursor: "pointer", padding: "6px 10px",
+    cursor: "pointer", padding: "8px 8px 4px",
     fontFamily: "inherit",
+    WebkitTapHighlightColor: "transparent",
   },
 };

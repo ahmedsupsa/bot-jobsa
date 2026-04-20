@@ -54,7 +54,7 @@ export default function LandingPage() {
   return (
     <div style={s.page} dir="rtl">
       {/* ── NAV ── */}
-      <nav style={s.nav}>
+      <nav style={s.nav} className="nav-blur">
         <div style={s.navInner}>
           <div style={s.logo}>
             <div style={s.logoIcon}>
@@ -62,8 +62,8 @@ export default function LandingPage() {
             </div>
             <span style={s.logoText}>Jobbots</span>
           </div>
-          <div style={s.navLinks}>
-            <Link href="/store" style={{ ...s.navBtn, background: "transparent", color: "#aaa", border: "1px solid #2a2a2a" }}>
+          <div style={s.navLinks} className="landing-nav-links">
+            <Link href="/store" style={{ ...s.navBtn, background: "transparent", color: "#aaa", border: "1px solid #2a2a2a" }} className="nav-secondary">
               المتجر
             </Link>
             <Link href="/portal/login" style={{ ...s.navBtn, background: "#fff", color: "#0a0a0a", border: "none", fontWeight: 700 }}>
@@ -83,8 +83,8 @@ export default function LandingPage() {
           قدّم على الوظائف<br />
           <span style={s.heroAccent}>تلقائياً وبذكاء</span>
         </h1>
-        <p style={s.heroSub}>
-          Jobbots يقدّم عنك على المئات من الوظائف يومياً بالذكاء الاصطناعي<br />
+        <p style={s.heroSub} className="hero-sub">
+          Jobbots يقدّم عنك على المئات من الوظائف يومياً بالذكاء الاصطناعي.{" "}
           وفّر وقتك وزد فرصك — بدون جهد وبنتائج حقيقية
         </p>
         <div style={s.heroCtas}>
@@ -96,7 +96,7 @@ export default function LandingPage() {
             لديك كود تفعيل؟ ادخل هنا
           </Link>
         </div>
-        <div style={s.heroStats}>
+        <div style={s.heroStats} className="hero-stats">
           {[
             { val: "+500", label: "وظيفة يومياً" },
             { val: "AI", label: "رسائل ذكية" },
@@ -204,15 +204,10 @@ export default function LandingPage() {
       </footer>
 
       <style>{`
-        * { box-sizing: border-box; }
-        a { text-decoration: none; }
-        body { font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif !important; }
-        @media (max-width: 900px) {
-          .features-grid { grid-template-columns: 1fr 1fr !important; }
-          .steps-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
-        }
-        @media (max-width: 600px) {
-          .features-grid { grid-template-columns: 1fr !important; }
+        @media (max-width: 480px) {
+          .footer-links { flex-wrap: wrap; gap: 8px !important; justify-content: center; }
+          .hero-ctas { flex-direction: column; align-items: stretch !important; }
+          .hero-ctas a { text-align: center; justify-content: center; }
         }
       `}</style>
     </div>
@@ -223,77 +218,85 @@ const s: Record<string, React.CSSProperties> = {
   page: { background: "#0a0a0a", minHeight: "100vh", color: "#fff", fontFamily: "'Tajawal', 'Segoe UI', Tahoma, sans-serif" },
 
   /* NAV */
-  nav: { position: "sticky", top: 0, zIndex: 50, borderBottom: "1px solid #1a1a1a", background: "rgba(10,10,10,0.9)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" },
-  navInner: { maxWidth: 1100, margin: "0 auto", padding: "0 24px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" },
+  nav: {
+    position: "sticky", top: 0, zIndex: 50,
+    borderBottom: "1px solid #1a1a1a",
+    background: "rgba(10,10,10,0.92)",
+    WebkitBackdropFilter: "blur(12px)",
+    backdropFilter: "blur(12px)",
+  },
+  navInner: { maxWidth: 1100, margin: "0 auto", padding: "0 20px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" },
   logo: { display: "flex", alignItems: "center", gap: 10 },
-  logoIcon: { width: 36, height: 36, borderRadius: 10, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" },
-  logoText: { color: "#fff", fontWeight: 800, fontSize: 20, letterSpacing: "-0.5px" },
-  navLinks: { display: "flex", gap: 12, alignItems: "center" },
-  navBtn: { padding: "8px 18px", borderRadius: 10, border: "1px solid #2a2a2a", color: "#ccc", fontSize: 14, fontWeight: 500, background: "transparent", cursor: "pointer" },
+  logoIcon: { width: 34, height: 34, borderRadius: 9, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  logoText: { color: "#fff", fontWeight: 800, fontSize: 18, letterSpacing: "-0.5px" },
+  navLinks: { display: "flex", gap: 10, alignItems: "center" },
+  navBtn: { padding: "8px 16px", borderRadius: 10, border: "1px solid #2a2a2a", color: "#ccc", fontSize: 13, fontWeight: 500, background: "transparent", cursor: "pointer", whiteSpace: "nowrap" },
 
   /* HERO */
-  hero: { maxWidth: 860, margin: "0 auto", padding: "100px 24px 80px", textAlign: "center" },
-  heroBadge: { display: "inline-flex", alignItems: "center", gap: 6, background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 100, padding: "6px 14px", fontSize: 13, color: "#999", marginBottom: 32 },
-  heroTitle: { fontSize: "clamp(34px, 7vw, 60px)", fontWeight: 900, lineHeight: 1.2, margin: "0 0 20px", color: "#fff" },
+  hero: { maxWidth: 860, margin: "0 auto", padding: "80px 20px 60px", textAlign: "center" },
+  heroBadge: { display: "inline-flex", alignItems: "center", gap: 6, background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 100, padding: "6px 14px", fontSize: 13, color: "#999", marginBottom: 28 },
+  heroTitle: { fontSize: "clamp(30px, 7vw, 58px)", fontWeight: 900, lineHeight: 1.2, margin: "0 0 18px", color: "#fff" },
   heroAccent: { color: "#fff", opacity: 0.45 },
-  heroSub: { fontSize: 18, color: "#666", lineHeight: 1.9, margin: "0 0 40px" },
-  heroCtas: { display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 60 },
+  heroSub: { fontSize: "clamp(15px, 3vw, 18px)", color: "#666", lineHeight: 1.9, margin: "0 0 36px", padding: "0 8px" },
+  heroCtas: { display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 52 },
   ctaPrimary: {
     display: "inline-flex", alignItems: "center", gap: 8,
-    background: "#fff", color: "#0a0a0a", padding: "14px 28px",
+    background: "#fff", color: "#0a0a0a", padding: "13px 26px",
     borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: "pointer",
+    whiteSpace: "nowrap",
   },
   ctaSecondary: {
     display: "inline-flex", alignItems: "center",
-    border: "1px solid #2a2a2a", color: "#888", padding: "14px 24px",
-    borderRadius: 12, fontSize: 14, cursor: "pointer",
+    border: "1px solid #2a2a2a", color: "#888", padding: "13px 22px",
+    borderRadius: 12, fontSize: 13, cursor: "pointer",
+    whiteSpace: "nowrap",
   },
-  heroStats: { display: "flex", justifyContent: "center", gap: 40, borderTop: "1px solid #1a1a1a", paddingTop: 40, flexWrap: "wrap" },
+  heroStats: { display: "flex", justifyContent: "center", gap: 40, borderTop: "1px solid #1a1a1a", paddingTop: 36, flexWrap: "wrap" },
   heroStat: { textAlign: "center" },
-  heroStatVal: { fontSize: 28, fontWeight: 800, color: "#fff", marginBottom: 4 },
-  heroStatLabel: { fontSize: 13, color: "#555" },
+  heroStatVal: { fontSize: 26, fontWeight: 800, color: "#fff", marginBottom: 4 },
+  heroStatLabel: { fontSize: 12, color: "#555" },
 
   /* SECTIONS */
-  section: { padding: "80px 24px" },
+  section: { padding: "72px 20px" },
   sectionInner: { maxWidth: 1100, margin: "0 auto" },
   sectionTag: { display: "inline-block", background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 100, padding: "4px 14px", fontSize: 12, color: "#888", marginBottom: 16 },
-  sectionTitle: { fontSize: "clamp(24px, 5vw, 36px)", fontWeight: 800, color: "#fff", margin: "0 0 12px", textAlign: "center" },
-  sectionDesc: { fontSize: 16, color: "#555", textAlign: "center", margin: "0 0 48px", lineHeight: 1.7 },
+  sectionTitle: { fontSize: "clamp(22px, 5vw, 34px)", fontWeight: 800, color: "#fff", margin: "0 0 12px", textAlign: "center" },
+  sectionDesc: { fontSize: 15, color: "#555", textAlign: "center", margin: "0 0 44px", lineHeight: 1.7, padding: "0 16px" },
 
   /* FEATURES */
-  featureGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 },
-  featureCard: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 16, padding: "28px 24px" },
-  featureIcon: { width: 44, height: 44, borderRadius: 12, background: "#1a1a1a", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", marginBottom: 16 },
-  featureTitle: { fontSize: 16, fontWeight: 700, color: "#fff", margin: "0 0 10px" },
-  featureDesc: { fontSize: 14, color: "#666", lineHeight: 1.8, margin: 0 },
+  featureGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 },
+  featureCard: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 16, padding: "24px 20px" },
+  featureIcon: { width: 42, height: 42, borderRadius: 12, background: "#1a1a1a", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", marginBottom: 14 },
+  featureTitle: { fontSize: 15, fontWeight: 700, color: "#fff", margin: "0 0 8px" },
+  featureDesc: { fontSize: 13, color: "#666", lineHeight: 1.8, margin: 0 },
 
   /* STEPS */
-  stepsGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 },
-  stepCard: { background: "#0a0a0a", border: "1px solid #222", borderRadius: 16, padding: "32px 28px" },
-  stepNum: { fontSize: 42, fontWeight: 900, color: "#222", marginBottom: 16, fontFamily: "monospace" },
-  stepTitle: { fontSize: 18, fontWeight: 700, color: "#fff", margin: "0 0 10px" },
-  stepDesc: { fontSize: 14, color: "#666", lineHeight: 1.8, margin: 0 },
+  stepsGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 },
+  stepCard: { background: "#0a0a0a", border: "1px solid #222", borderRadius: 16, padding: "28px 24px" },
+  stepNum: { fontSize: 38, fontWeight: 900, color: "#222", marginBottom: 14, fontFamily: "monospace" },
+  stepTitle: { fontSize: 17, fontWeight: 700, color: "#fff", margin: "0 0 8px" },
+  stepDesc: { fontSize: 13, color: "#666", lineHeight: 1.8, margin: 0 },
 
   /* FAQ */
-  faqCard: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 14, padding: "24px 28px" },
-  faqQ: { fontSize: 16, fontWeight: 700, color: "#fff", margin: "0 0 10px" },
-  faqA: { fontSize: 14, color: "#666", lineHeight: 1.8, margin: 0 },
+  faqCard: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 14, padding: "22px 24px" },
+  faqQ: { fontSize: 15, fontWeight: 700, color: "#fff", margin: "0 0 10px" },
+  faqA: { fontSize: 13, color: "#666", lineHeight: 1.8, margin: 0 },
 
   /* CTA BANNER */
-  ctaBanner: { padding: "80px 24px", background: "#0a0a0a", borderTop: "1px solid #1a1a1a" },
+  ctaBanner: { padding: "72px 20px", background: "#0a0a0a", borderTop: "1px solid #1a1a1a" },
   ctaBannerInner: { maxWidth: 600, margin: "0 auto", textAlign: "center" },
-  ctaBannerTitle: { fontSize: "clamp(22px, 5vw, 32px)", fontWeight: 800, color: "#fff", margin: "0 0 12px" },
-  ctaBannerSub: { fontSize: 16, color: "#555", margin: "0 0 32px", lineHeight: 1.7 },
+  ctaBannerTitle: { fontSize: "clamp(20px, 5vw, 30px)", fontWeight: 800, color: "#fff", margin: "0 0 12px" },
+  ctaBannerSub: { fontSize: 15, color: "#555", margin: "0 0 28px", lineHeight: 1.7 },
   ctaBannerBtn: {
     display: "inline-flex", alignItems: "center", gap: 8,
-    background: "#fff", color: "#0a0a0a", padding: "16px 36px",
-    borderRadius: 14, fontWeight: 700, fontSize: 16, cursor: "pointer",
+    background: "#fff", color: "#0a0a0a", padding: "14px 32px",
+    borderRadius: 14, fontWeight: 700, fontSize: 15, cursor: "pointer",
   },
 
   /* FOOTER */
-  footer: { borderTop: "1px solid #1a1a1a", padding: "32px 24px" },
+  footer: { borderTop: "1px solid #1a1a1a", padding: "28px 20px" },
   footerInner: { maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 },
-  footerLinks: { display: "flex", gap: 12, alignItems: "center" },
+  footerLinks: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" },
   footerLink: { color: "#555", fontSize: 13 },
   footerCopy: { color: "#333", fontSize: 13 },
 };
