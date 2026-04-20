@@ -139,6 +139,39 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, url: paymentUrl });
     }
 
+    // ─── Bank Transfer ────────────────────────────────────────────────────
+    if (gateway === "bank_transfer") {
+      const originalAmount = Number(product.price);
+      const discountedAmount =
+        originalAmount > 40 ? Math.round(originalAmount * 0.85 * 100) / 100 : originalAmount;
+      const hasDiscount = discountedAmount < originalAmount;
+
+      if (order?.id) {
+        try {
+          await supabase
+            .from("store_orders")
+            .update({ amount: discountedAmount, payment_gateway: "bank_transfer" })
+            .eq("id", order.id);
+        } catch {}
+      }
+
+      const { data: accounts } = await supabase
+        .from("bank_accounts")
+        .select("id, type, name, account_number, iban, phone, display_order")
+        .eq("is_active", true)
+        .order("display_order", { ascending: true });
+
+      return NextResponse.json({
+        ok: true,
+        gateway: "bank_transfer",
+        order_id: orderId,
+        amount: discountedAmount,
+        original_amount: originalAmount,
+        has_discount: hasDiscount,
+        accounts: accounts || [],
+      });
+    }
+
     return NextResponse.json({ ok: false, error: "بوابة الدفع غير معروفة" }, { status: 400 });
   } catch (err) {
     console.error("Checkout error:", err);

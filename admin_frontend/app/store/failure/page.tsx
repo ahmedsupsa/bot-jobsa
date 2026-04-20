@@ -2,13 +2,24 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { XCircle, Loader2 } from "lucide-react";
 
 function FailureContent() {
   const params = useSearchParams();
+  const order_id = params.get("order_id");
   const msg = params.get("message") || "تم إلغاء عملية الدفع أو رفضها.";
+
+  useEffect(() => {
+    if (order_id) {
+      fetch("/api/store/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_id }),
+      }).catch(() => {});
+    }
+  }, [order_id]);
 
   return (
     <div dir="rtl" style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>

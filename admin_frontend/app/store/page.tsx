@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   Sparkles, Check, ShoppingCart, X, RefreshCw, Loader2, ShieldCheck,
+  Copy, CheckCheck, Building2, Wallet,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -14,6 +15,37 @@ type Product = {
   price: number;
   duration_days: number;
 };
+
+type BankAccount = {
+  id: string;
+  type: "bank" | "wallet";
+  name: string;
+  account_number?: string | null;
+  iban?: string | null;
+  phone?: string | null;
+};
+
+function BankField({ label, value, id, copiedId, onCopy }: {
+  label: string; value: string; id: string;
+  copiedId: string | null; onCopy: (v: string, id: string) => void;
+}) {
+  const copied = copiedId === id;
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0d0d0d", border: "1px solid #222", borderRadius: 8, padding: "8px 12px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <span style={{ color: "#666", fontSize: 11 }}>{label}</span>
+        <span style={{ color: "#e5e7eb", fontSize: 13, fontWeight: 600, letterSpacing: "0.2px", direction: "ltr" }}>{value}</span>
+      </div>
+      <button
+        onClick={() => onCopy(value, id)}
+        style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: copied ? "#a78bfa" : "#555", transition: "color 0.2s" }}
+        title="نسخ"
+      >
+        {copied ? <CheckCheck size={15} /> : <Copy size={15} />}
+      </button>
+    </div>
+  );
+}
 
 function durationLabel(days: number): string {
   if (days === 30) return "شهر";
@@ -36,6 +68,15 @@ export default function StorePage() {
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [formErr, setFormErr] = useState("");
   const [refCode, setRefCode] = useState<string | null>(null);
+  const [step, setStep] = useState<"form" | "bank_details">("form");
+  const [bankData, setBankData] = useState<{
+    accounts: BankAccount[];
+    amount: number;
+    original_amount: number;
+    has_discount: boolean;
+    order_id: string;
+  } | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/store/products?t=${Date.now()}`, { cache: "no-store" })
@@ -57,9 +98,18 @@ export default function StorePage() {
     }
   }, []);
 
-  const handleBuy = (p: Product) => { setSelected(p); setFormErr(""); };
+  const handleBuy = (p: Product) => { setSelected(p); setFormErr(""); setStep("form"); setBankData(null); };
 
-  const handleCheckout = async (gateway: "tamara" | "streampay") => {
+  const closeModal = () => { setSelected(null); setFormErr(""); setStep("form"); setBankData(null); };
+
+  const copyText = (text: string, id: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  };
+
+  const handleCheckout = async (gateway: "tamara" | "streampay" | "bank_transfer") => {
     if (!form.name.trim() || !form.email.trim() || !form.phone.trim()) { setFormErr("جميع الحقول مطلوبة"); return; }
     if (!form.email.includes("@")) { setFormErr("بريد إلكتروني غير صحيح"); return; }
     if (form.phone.trim().length < 9) { setFormErr("رقم الجوال غير صحيح"); return; }
@@ -79,6 +129,20 @@ export default function StorePage() {
       });
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || "فشل إنشاء رابط الدفع");
+
+      if (gateway === "bank_transfer") {
+        setBankData({
+          accounts: j.accounts || [],
+          amount: j.amount,
+          original_amount: j.original_amount,
+          has_discount: j.has_discount,
+          order_id: j.order_id,
+        });
+        setStep("bank_details");
+        setSubmitting(null);
+        return;
+      }
+
       window.location.href = j.url;
     } catch (e) {
       setFormErr(String(e).replace("Error: ", ""));
@@ -193,7 +257,7 @@ export default function StorePage() {
 
       {/* Checkout Modal */}
       {selected && (
-        <div style={s.overlay} onClick={e => { if (e.target === e.currentTarget) { setSelected(null); setFormErr(""); } }}>
+        <div style={s.overlay} onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
           <div style={s.modal} dir="rtl" className="__modal">
             <div style={s.modalGlow} />
 
@@ -208,7 +272,7 @@ export default function StorePage() {
                   <div style={s.modalSub}>{selected.name}</div>
                 </div>
               </div>
-              <button onClick={() => { setSelected(null); setFormErr(""); }} style={s.closeBtn}>
+              <button onClick={closeModal} style={s.closeBtn}>
                 <X size={16} />
               </button>
             </div>
@@ -262,32 +326,111 @@ export default function StorePage() {
               <span style={s.gatewayLine} />
             </div>
 
-            {/* Payment buttons — side by side */}
-            <div style={s.payBtns} className="__paybtns">
-              <button
-                onClick={() => handleCheckout("tamara")}
-                disabled={!!submitting}
-                style={{ ...s.payBtn, ...s.payBtnTamara, opacity: submitting ? 0.65 : 1 }}
-              >
-                {submitting === "tamara"
-                  ? <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
-                  : <ShieldCheck size={14} />}
-                <span>{submitting === "tamara" ? "جاري..." : "Tamara"}</span>
-              </button>
+            {step === "form" && (
+              <>
+                {/* Payment buttons — grid */}
+                <div style={s.payBtns} className="__paybtns">
+                  <button
+                    onClick={() => handleCheckout("tamara")}
+                    disabled={!!submitting}
+                    style={{ ...s.payBtn, ...s.payBtnTamara, opacity: submitting ? 0.65 : 1 }}
+                  >
+                    {submitting === "tamara"
+                      ? <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
+                      : <ShieldCheck size={14} />}
+                    <span>{submitting === "tamara" ? "جاري..." : "Tamara"}</span>
+                  </button>
 
-              <button
-                onClick={() => handleCheckout("streampay")}
-                disabled={!!submitting}
-                style={{ ...s.payBtn, ...s.payBtnStream, opacity: submitting ? 0.65 : 1 }}
-              >
-                {submitting === "streampay"
-                  ? <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
-                  : <ShieldCheck size={14} />}
-                <span>{submitting === "streampay" ? "جاري..." : "StreamPay"}</span>
-              </button>
-            </div>
+                  <button
+                    onClick={() => handleCheckout("streampay")}
+                    disabled={!!submitting}
+                    style={{ ...s.payBtn, ...s.payBtnStream, opacity: submitting ? 0.65 : 1 }}
+                  >
+                    {submitting === "streampay"
+                      ? <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
+                      : <ShieldCheck size={14} />}
+                    <span>{submitting === "streampay" ? "جاري..." : "StreamPay"}</span>
+                  </button>
 
-            <p style={s.secureNote}>🔒 مدى • Visa • Mastercard • Apple Pay</p>
+                  <button
+                    onClick={() => handleCheckout("bank_transfer")}
+                    disabled={!!submitting}
+                    style={{ ...s.payBtn, ...s.payBtnBank, gridColumn: "1 / -1", opacity: submitting ? 0.65 : 1, position: "relative" }}
+                  >
+                    {submitting === "bank_transfer"
+                      ? <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
+                      : <Building2 size={14} />}
+                    <span>{submitting === "bank_transfer" ? "جاري..." : "تحويل بنكي"}</span>
+                    {selected && Number(selected.price) > 40 && (
+                      <span style={s.discountBadge}>خصم 15%</span>
+                    )}
+                  </button>
+                </div>
+                <p style={s.secureNote}>🔒 مدى • Visa • Mastercard • Apple Pay</p>
+              </>
+            )}
+
+            {step === "bank_details" && bankData && (
+              <div style={{ marginTop: 4 }}>
+                {/* Amount summary */}
+                <div style={s.bankAmountBox}>
+                  {bankData.has_discount && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13 }}>
+                      <span style={{ color: "#aaa" }}>السعر الأصلي</span>
+                      <span style={{ color: "#888", textDecoration: "line-through" }}>{bankData.original_amount} ر.س</span>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ color: "#aaa", fontSize: 13 }}>
+                      {bankData.has_discount ? "بعد الخصم 15%" : "المبلغ المطلوب"}
+                    </span>
+                    <span style={{ color: "#fff", fontSize: 22, fontWeight: 900 }}>{bankData.amount} ر.س</span>
+                  </div>
+                  <p style={{ color: "#aaa", fontSize: 12, margin: "8px 0 0", lineHeight: 1.7 }}>
+                    بعد إتمام التحويل، أرسل إيصال الدفع إلى الدعم وسيتم تفعيل حسابك خلال 24 ساعة.
+                  </p>
+                </div>
+
+                {/* Bank accounts list */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
+                  {bankData.accounts.map(acc => (
+                    <div key={acc.id} style={s.bankCard}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <div style={s.bankIcon}>
+                          {acc.type === "bank" ? <Building2 size={14} color="#a78bfa" /> : <Wallet size={14} color="#a78bfa" />}
+                        </div>
+                        <span style={{ color: "#e5e7eb", fontWeight: 700, fontSize: 14 }}>{acc.name}</span>
+                        <span style={s.bankTypeTag}>{acc.type === "bank" ? "بنك" : "محفظة"}</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {acc.account_number && (
+                          <BankField label="رقم الحساب" value={acc.account_number} id={`acct-${acc.id}`} copiedId={copiedId} onCopy={copyText} />
+                        )}
+                        {acc.iban && (
+                          <BankField label="الآيبان" value={acc.iban} id={`iban-${acc.id}`} copiedId={copiedId} onCopy={copyText} />
+                        )}
+                        {acc.phone && (
+                          <BankField label="رقم الجوال" value={acc.phone} id={`phone-${acc.id}`} copiedId={copiedId} onCopy={copyText} />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {bankData.accounts.length === 0 && (
+                    <p style={{ color: "#888", textAlign: "center", fontSize: 13, padding: "16px 0" }}>
+                      لا توجد حسابات بنكية متاحة حالياً. تواصل مع الدعم.
+                    </p>
+                  )}
+                </div>
+
+                {/* Back button */}
+                <button
+                  onClick={() => { setStep("form"); setBankData(null); }}
+                  style={{ ...s.payBtn, background: "#1a1a1a", color: "#aaa", border: "1px solid #2a2a2a", marginTop: 14, width: "100%", justifyContent: "center" }}
+                >
+                  <span>← العودة لخيارات الدفع</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -388,6 +531,14 @@ const s: Record<string, React.CSSProperties> = {
   payBtn: { borderRadius: 11, padding: "12px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, transition: "opacity 0.15s" },
   payBtnTamara: { background: "linear-gradient(135deg, #a78bfa, #7c3aed)", color: "#fff", boxShadow: "0 6px 20px rgba(109,40,217,0.35)" },
   payBtnStream: { background: "#161b27", color: "#94a3b8", border: "1px solid #1e2738" },
+  payBtnBank: { background: "#0f1612", color: "#86efac", border: "1px solid #1a2e20" },
+  discountBadge: { position: "absolute" as const, top: -8, left: 12, background: "#a78bfa", color: "#fff", fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 6 },
+
+  // Bank transfer styles
+  bankAmountBox: { background: "linear-gradient(135deg, rgba(167,139,250,0.06), rgba(109,40,217,0.04))", border: "1px solid rgba(167,139,250,0.12)", borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column" as const, gap: 6 },
+  bankCard: { background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 12, padding: "14px 14px 10px" },
+  bankIcon: { width: 28, height: 28, borderRadius: 8, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" },
+  bankTypeTag: { marginRight: "auto", background: "#111", color: "#666", fontSize: 10, padding: "2px 8px", borderRadius: 6, border: "1px solid #1f1f1f" },
 
   secureNote: { textAlign: "center" as const, color: "#444", fontSize: 11, margin: 0, position: "relative", zIndex: 1 },
 

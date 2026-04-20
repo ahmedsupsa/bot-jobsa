@@ -6,7 +6,8 @@ import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShoppingBag, Package, ClipboardList, Plus, Pencil, Trash2,
-  CheckCircle2, XCircle, Clock, RefreshCw, X, Save, Zap
+  CheckCircle2, XCircle, Clock, RefreshCw, X, Save, Zap,
+  Building2, Wallet, Copy, CheckCheck,
 } from "lucide-react";
 
 type Product = {
@@ -35,7 +36,21 @@ type Order = {
   store_products?: { name: string; price: number; duration_days: number };
 };
 
+type BankAccount = {
+  id: string;
+  type: "bank" | "wallet";
+  name: string;
+  account_number?: string | null;
+  iban?: string | null;
+  phone?: string | null;
+  is_active: boolean;
+  display_order: number;
+  created_at: string;
+};
+
 const EMPTY_PRODUCT = { name: "", description: "", price: "", duration_days: "" };
+
+const EMPTY_BANK = { type: "bank", name: "", account_number: "", iban: "", phone: "", display_order: "0" };
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   pending:   { label: "معلّق",   color: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20", icon: Clock },
@@ -60,7 +75,7 @@ function fmt(d: string) {
 }
 
 export default function StoreAdminPage() {
-  const [tab, setTab] = useState<"products" | "orders">("products");
+  const [tab, setTab] = useState<"products" | "orders" | "banks">("products");
 
   // Products state
   const [products, setProducts] = useState<Product[]>([]);
@@ -100,8 +115,65 @@ export default function StoreAdminPage() {
     setOLoading(false);
   }, [oFilter]);
 
+  // Bank accounts state
+  const [banks, setBanks] = useState<BankAccount[]>([]);
+  const [bLoading, setBLoading] = useState(false);
+  const [bMsg, setBMsg] = useState("");
+  const [bMsgType, setBMsgType] = useState<"ok" | "err">("ok");
+  const [showBankForm, setShowBankForm] = useState(false);
+  const [bForm, setBForm] = useState(EMPTY_BANK);
+  const [bSaving, setBSaving] = useState(false);
+  const [bDeletingId, setBDeletingId] = useState<string | null>(null);
+
+  const loadBanks = useCallback(async () => {
+    setBLoading(true);
+    const r = await fetch(`${API_BASE}/api/admin/bank-accounts`, { credentials: "include" });
+    const j = await r.json();
+    setBanks(j.accounts || []);
+    setBLoading(false);
+  }, []);
+
+  const saveBank = async () => {
+    setBSaving(true); setBMsg("");
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/bank-accounts`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bForm),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "فشل الحفظ");
+      setBMsg("تمت الإضافة"); setBMsgType("ok");
+      setShowBankForm(false); setBForm(EMPTY_BANK);
+      loadBanks();
+    } catch (e) {
+      setBMsg(String(e).replace("Error: ", "")); setBMsgType("err");
+    }
+    setBSaving(false);
+  };
+
+  const deleteBank = async (id: string) => {
+    if (!confirm("حذف هذا الحساب؟")) return;
+    setBDeletingId(id);
+    const r = await fetch(`${API_BASE}/api/admin/bank-accounts/${id}`, { method: "DELETE", credentials: "include" });
+    const j = await r.json();
+    if (j.ok) loadBanks();
+    else { setBMsg("فشل الحذف"); setBMsgType("err"); }
+    setBDeletingId(null);
+  };
+
+  const toggleBankActive = async (acc: BankAccount) => {
+    await fetch(`${API_BASE}/api/admin/bank-accounts/${acc.id}`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_active: !acc.is_active }),
+    });
+    loadBanks();
+  };
+
   useEffect(() => { loadProducts(); }, [loadProducts]);
   useEffect(() => { if (tab === "orders") loadOrders(); }, [tab, loadOrders]);
+  useEffect(() => { if (tab === "banks") loadBanks(); }, [tab, loadBanks]);
 
   const openAddProduct = () => {
     setEditProduct(null);
@@ -242,14 +314,15 @@ export default function StoreAdminPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 rounded-xl border border-line bg-panel p-1 w-fit">
+        <div className="flex gap-1 rounded-xl border border-line bg-panel p-1 w-fit flex-wrap">
           {[
-            { key: "products", label: "المنتجات", icon: Package },
-            { key: "orders",   label: "الطلبات",  icon: ClipboardList },
+            { key: "products", label: "المنتجات",       icon: Package },
+            { key: "orders",   label: "الطلبات",         icon: ClipboardList },
+            { key: "banks",    label: "الحسابات البنكية", icon: Building2 },
           ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
-              onClick={() => setTab(key as "products" | "orders")}
+              onClick={() => setTab(key as "products" | "orders" | "banks")}
               className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
                 tab === key ? "bg-white/10 text-white border border-white/15" : "text-slate-400 hover:text-white"
               }`}
@@ -689,6 +762,199 @@ export default function StoreAdminPage() {
                 </motion.div>
               )}
             </AnimatePresence>
+          </motion.div>
+        )}
+
+        {/* ─── BANKS TAB ─── */}
+        {tab === "banks" && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-400">{banks.length} حساب</span>
+              <button
+                onClick={() => { setBForm(EMPTY_BANK); setShowBankForm(true); setBMsg(""); }}
+                className="flex items-center gap-2 rounded-xl bg-white text-black px-4 py-2 text-sm font-semibold hover:bg-white/90 transition-all"
+              >
+                <Plus size={15} />
+                إضافة حساب
+              </button>
+            </div>
+
+            {bMsg && (
+              <div className={`rounded-xl border px-4 py-3 text-sm ${bMsgType === "ok" ? "border-white/20 bg-white/5 text-white" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
+                {bMsg}
+              </div>
+            )}
+
+            {/* Add form */}
+            <AnimatePresence>
+              {showBankForm && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  <motion.div className="rounded-2xl border border-line bg-panel p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-white text-sm">إضافة حساب جديد</h3>
+                      <button onClick={() => setShowBankForm(false)} className="text-slate-500 hover:text-white"><X size={16} /></button>
+                    </div>
+
+                    {/* Type selector */}
+                    <div className="flex gap-2">
+                      {[{ v: "bank", label: "بنك", icon: Building2 }, { v: "wallet", label: "محفظة", icon: Wallet }].map(({ v, label, icon: Icon }) => (
+                        <button
+                          key={v}
+                          onClick={() => setBForm(f => ({ ...f, type: v }))}
+                          className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${bForm.type === v ? "border-white/30 bg-white/10 text-white" : "border-line text-slate-400 hover:text-white"}`}
+                        >
+                          <Icon size={14} />
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs text-slate-400 mb-1.5">الاسم *</label>
+                        <input
+                          className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30"
+                          placeholder={bForm.type === "bank" ? "مثال: بنك الراجحي" : "مثال: STC Pay"}
+                          value={bForm.name}
+                          onChange={e => setBForm(f => ({ ...f, name: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1.5">رقم الحساب</label>
+                        <input
+                          className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30 ltr text-right"
+                          placeholder="SA..."
+                          value={bForm.account_number}
+                          onChange={e => setBForm(f => ({ ...f, account_number: e.target.value }))}
+                        />
+                      </div>
+                      {bForm.type === "bank" && (
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1.5">الآيبان (IBAN)</label>
+                          <input
+                            className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30 ltr text-right"
+                            placeholder="SA0000000000000000000000"
+                            value={bForm.iban}
+                            onChange={e => setBForm(f => ({ ...f, iban: e.target.value }))}
+                          />
+                        </div>
+                      )}
+                      {bForm.type === "wallet" && (
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1.5">رقم الجوال</label>
+                          <input
+                            type="tel"
+                            className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30 ltr text-right"
+                            placeholder="+966"
+                            value={bForm.phone}
+                            onChange={e => setBForm(f => ({ ...f, phone: e.target.value }))}
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1.5">الترتيب</label>
+                        <input
+                          type="number"
+                          className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30"
+                          placeholder="0"
+                          value={bForm.display_order}
+                          onChange={e => setBForm(f => ({ ...f, display_order: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={saveBank}
+                        disabled={bSaving}
+                        className="flex items-center gap-2 rounded-xl bg-white text-black px-4 py-2.5 text-sm font-semibold hover:bg-white/90 disabled:opacity-50 transition-all"
+                      >
+                        {bSaving ? <RefreshCw size={13} className="animate-spin" /> : <Save size={13} />}
+                        حفظ
+                      </button>
+                      <button
+                        onClick={() => setShowBankForm(false)}
+                        className="rounded-xl border border-line px-4 py-2.5 text-sm text-slate-400 hover:text-white hover:border-white/20 transition-all"
+                      >
+                        إلغاء
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {bLoading ? (
+              <div className="flex items-center justify-center py-16 text-slate-500">
+                <RefreshCw size={18} className="animate-spin ml-2" />جاري التحميل...
+              </div>
+            ) : banks.length === 0 ? (
+              <div className="rounded-2xl border border-line bg-panel p-12 text-center">
+                <Building2 size={32} className="mx-auto mb-3 text-slate-600" />
+                <p className="text-slate-500">لا توجد حسابات بنكية بعد</p>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {banks.map((acc, i) => (
+                  <motion.div
+                    key={acc.id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className="rounded-2xl border border-line bg-panel p-4"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white/5 shrink-0">
+                          {acc.type === "bank" ? <Building2 size={16} className="text-purple-400" /> : <Wallet size={16} className="text-purple-400" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                            <span className="font-semibold text-white text-sm">{acc.name}</span>
+                            <span className="rounded-full border border-line px-2 py-0.5 text-xs text-slate-400">
+                              {acc.type === "bank" ? "بنك" : "محفظة"}
+                            </span>
+                            <span className={`rounded-full border px-2 py-0.5 text-xs ${acc.is_active ? "border-white/20 bg-white/5 text-white" : "border-slate-700 text-slate-500"}`}>
+                              {acc.is_active ? "نشط" : "متوقف"}
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            {acc.account_number && (
+                              <div className="text-xs text-slate-400">رقم الحساب: <span className="text-slate-300 font-mono">{acc.account_number}</span></div>
+                            )}
+                            {acc.iban && (
+                              <div className="text-xs text-slate-400">الآيبان: <span className="text-slate-300 font-mono">{acc.iban}</span></div>
+                            )}
+                            {acc.phone && (
+                              <div className="text-xs text-slate-400">الجوال: <span className="text-slate-300 font-mono">{acc.phone}</span></div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => toggleBankActive(acc)}
+                          className="rounded-lg border border-line px-3 py-1.5 text-xs text-slate-400 hover:text-white hover:border-white/20 transition-all"
+                        >
+                          {acc.is_active ? "إيقاف" : "تفعيل"}
+                        </button>
+                        <button
+                          onClick={() => deleteBank(acc.id)}
+                          disabled={bDeletingId === acc.id}
+                          className="rounded-lg border border-red-500/20 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50"
+                        >
+                          {bDeletingId === acc.id ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
       </div>
