@@ -13,7 +13,6 @@ type Product = {
   description?: string;
   price: number;
   duration_days: number;
-  streampay_product_id?: string;
 };
 
 function durationLabel(days: number): string {
@@ -254,7 +253,7 @@ export default function StorePage() {
             </button>
 
             <p style={s.secureNote}>
-              🔒 الدفع آمن عبر StreamPay — مدى • Visa • Mastercard • Apple Pay
+              🔒 الدفع آمن عبر Tamara — مدى • Visa • Mastercard • Apple Pay
             </p>
           </div>
         </div>

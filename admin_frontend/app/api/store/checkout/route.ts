@@ -1,15 +1,21 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
-import { findOrCreateConsumer, createPaymentLink } from "@/lib/streampay";
+import { createCheckoutSession } from "@/lib/tamara";
 
 const rawSite = process.env.NEXT_PUBLIC_SITE_URL || process.env.ADMIN_DASHBOARD_URL || "https://www.jobbots.org";
-const SITE = rawSite.replace("https://jobbots.org", "https://www.jobbots.org").replace("http://jobbots.org", "https://www.jobbots.org");
+const SITE = rawSite
+  .replace("https://jobbots.org", "https://www.jobbots.org")
+  .replace("http://jobbots.org", "https://www.jobbots.org");
 
 export async function POST(req: Request) {
   try {
     const { product_id, name, email, phone, ref_code } = await req.json();
+
     if (!product_id || !email?.trim() || !name?.trim() || !phone?.trim()) {
-      return NextResponse.json({ ok: false, error: "الاسم والبريد الإلكتروني والجوال مطلوبة" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "الاسم والبريد الإلكتروني والجوال مطلوبة" },
+        { status: 400 }
+      );
     }
 
     const { data: product, error: pErr } = await supabase
@@ -21,10 +27,6 @@ export async function POST(req: Request) {
 
     if (pErr || !product) {
       return NextResponse.json({ ok: false, error: "المنتج غير متاح" }, { status: 404 });
-    }
-
-    if (!product.streampay_product_id) {
-      return NextResponse.json({ ok: false, error: "هذا المنتج غير مرتبط ببوابة الدفع بعد" }, { status: 400 });
     }
 
     let validRefCode: string | null = null;
@@ -52,7 +54,6 @@ export async function POST(req: Request) {
       .select()
       .single();
 
-    // If user_phone column doesn't exist yet, retry without it
     if (orderErr?.message?.includes("user_phone")) {
       const fb = await supabase.from("store_orders").insert(orderBase).select().single();
       order = fb.data;
@@ -60,36 +61,43 @@ export async function POST(req: Request) {
 
     const orderId = order?.id || crypto.randomUUID();
 
-    const consumer = await findOrCreateConsumer(name.trim(), email.trim().toLowerCase(), phone || undefined);
-    const consumerId = consumer?.id || consumer?.data?.id;
-
-    const link = await createPaymentLink({
-      name: `اشتراك ${product.name} — Jobbots`,
-      description: product.description || product.name,
-      product_id: product.streampay_product_id,
-      consumer_id: consumerId,
-      success_url: `${SITE}/store/success?order_id=${orderId}`,
-      failure_url: `${SITE}/store/failure?order_id=${orderId}`,
-      metadata: {
-        order_id: orderId,
-        user_email: email.trim().toLowerCase(),
-        product_name: product.name,
-      },
+    const session = await createCheckoutSession({
+      orderId,
+      amount: Number(product.price),
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
+      productName: product.name,
+      productDescription: product.description || product.name,
+      successUrl: `${SITE}/store/success?order_id=${orderId}`,
+      failureUrl: `${SITE}/store/failure?order_id=${orderId}`,
+      cancelUrl: `${SITE}/store/failure?order_id=${orderId}&cancelled=1`,
+      notificationUrl: `${SITE}/api/store/tamara-webhook`,
     });
 
-    const paymentUrl = link?.url || link?.data?.url;
-    const linkId = link?.id || link?.data?.id;
+    const checkoutUrl: string = session?.checkout_url;
+    const tamaraOrderId: string = session?.order_id;
+    const checkoutId: string = session?.checkout_id;
 
-    if (order?.id && linkId) {
-      await supabase
-        .from("store_orders")
-        .update({ streampay_payment_link_id: linkId })
-        .eq("id", order.id);
+    if (order?.id) {
+      try {
+        await supabase
+          .from("store_orders")
+          .update({ tamara_order_id: tamaraOrderId || null, tamara_checkout_id: checkoutId || null })
+          .eq("id", order.id);
+      } catch {}
     }
 
-    return NextResponse.json({ ok: true, url: paymentUrl });
+    if (!checkoutUrl) {
+      throw new Error("لم يتم الحصول على رابط الدفع من Tamara");
+    }
+
+    return NextResponse.json({ ok: true, url: checkoutUrl });
   } catch (err) {
     console.error("Checkout error:", err);
-    return NextResponse.json({ ok: false, error: "حدث خطأ أثناء إنشاء رابط الدفع، حاول مجدداً" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "حدث خطأ أثناء إنشاء رابط الدفع، حاول مجدداً" },
+      { status: 500 }
+    );
   }
 }

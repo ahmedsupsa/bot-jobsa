@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { getPayment, getInvoice } from "@/lib/streampay";
+import { getTamaraOrder, captureOrder } from "@/lib/tamara";
 import { makeToken } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +25,10 @@ function genCode(): string {
   return d + l;
 }
 
-async function createActivationCode(supabase: ReturnType<typeof freshSupabase>, durationDays: number): Promise<string | null> {
+async function createActivationCode(
+  supabase: ReturnType<typeof freshSupabase>,
+  durationDays: number
+): Promise<string | null> {
   for (let i = 0; i < 10; i++) {
     const candidate = genCode();
     const { data: existing } = await supabase
@@ -56,7 +59,6 @@ async function autoCreateAccount(
     const phone = order.user_phone?.trim() || "غير محدد";
     const ends_at = new Date(Date.now() + durationDays * 86400000).toISOString();
 
-    // Check if user already exists
     const { data: existingUser } = await supabase
       .from("users")
       .select("id, subscription_ends_at")
@@ -64,20 +66,22 @@ async function autoCreateAccount(
       .maybeSingle();
 
     if (existingUser) {
-      // Extend subscription
-      const base = existingUser.subscription_ends_at && new Date(existingUser.subscription_ends_at) > new Date()
-        ? new Date(existingUser.subscription_ends_at)
-        : new Date();
+      const base =
+        existingUser.subscription_ends_at &&
+        new Date(existingUser.subscription_ends_at) > new Date()
+          ? new Date(existingUser.subscription_ends_at)
+          : new Date();
       base.setDate(base.getDate() + durationDays);
-      await supabase.from("users").update({ subscription_ends_at: base.toISOString() }).eq("id", existingUser.id);
+      await supabase
+        .from("users")
+        .update({ subscription_ends_at: base.toISOString() })
+        .eq("id", existingUser.id);
       const token = await makeToken(String(existingUser.id));
       return { token, user_id: String(existingUser.id), account_created: false };
     }
 
-    // Create activation code first (for record-keeping)
     const codeId = await createActivationCode(supabase, durationDays);
 
-    // Create user account
     const insertData: any = {
       full_name: name,
       phone,
@@ -91,11 +95,16 @@ async function autoCreateAccount(
       .insert(insertData)
       .select("id");
 
-    // Telegram fallback if column is NOT NULL
-    if (userErr && (userErr.message?.includes("telegram_id") || userErr.message?.includes("null value"))) {
+    if (
+      userErr &&
+      (userErr.message?.includes("telegram_id") || userErr.message?.includes("null value"))
+    ) {
       const fb = await supabase
         .from("users")
-        .insert({ ...insertData, telegram_id: -(Date.now() % 2147483647 + Math.floor(Math.random() * 99999)) })
+        .insert({
+          ...insertData,
+          telegram_id: -(Date.now() % 2147483647 + Math.floor(Math.random() * 99999)),
+        })
         .select("id");
       userRows = fb.data;
       userErr = fb.error;
@@ -108,7 +117,6 @@ async function autoCreateAccount(
 
     const userId = userRows[0].id;
 
-    // Mark activation code as used by this user
     if (codeId) {
       await supabase
         .from("activation_codes")
@@ -116,8 +124,9 @@ async function autoCreateAccount(
         .eq("id", codeId);
     }
 
-    // Create user_settings so email login works later
-    try { await supabase.from("user_settings").insert({ user_id: userId, email }); } catch {}
+    try {
+      await supabase.from("user_settings").insert({ user_id: userId, email });
+    } catch {}
 
     const token = await makeToken(String(userId));
     return { token, user_id: String(userId), account_created: true };
@@ -129,8 +138,12 @@ async function autoCreateAccount(
 
 export async function POST(req: Request) {
   try {
-    const { order_id, payment_id, invoice_id, status: redirectStatus } = await req.json();
-    if (!order_id) return NextResponse.json({ ok: false, error: "order_id مطلوب" }, { status: 400 });
+    const body = await req.json();
+    const { order_id, tamara_order_id: bodyTamaraId, paymentStatus } = body;
+
+    if (!order_id) {
+      return NextResponse.json({ ok: false, error: "order_id مطلوب" }, { status: 400 });
+    }
 
     const supabase = freshSupabase();
 
@@ -140,58 +153,74 @@ export async function POST(req: Request) {
       .eq("id", order_id)
       .single();
 
-    if (!order) return NextResponse.json({ ok: false, error: "الطلب غير موجود" }, { status: 404 });
+    if (!order) {
+      return NextResponse.json({ ok: false, error: "الطلب غير موجود" }, { status: 404 });
+    }
 
-    // Already paid — try to return token for existing user
+    // Already paid
     if (order.status === "paid") {
       let token: string | null = null;
-      let account_created = false;
       if (order.user_email) {
-        const { data: u } = await supabase.from("users").select("id").eq("email", order.user_email).maybeSingle();
+        const { data: u } = await supabase
+          .from("users")
+          .select("id")
+          .eq("email", order.user_email)
+          .maybeSingle();
         if (u) token = await makeToken(String(u.id));
       }
-      return NextResponse.json({ ok: true, already_paid: true, token, account_created, order });
+      return NextResponse.json({ ok: true, already_paid: true, token, account_created: false, order });
     }
 
-    if (redirectStatus !== "paid") {
-      await supabase.from("store_orders").update({ status: "failed" }).eq("id", order_id);
-      return NextResponse.json({ ok: false, error: "الدفع لم يكتمل" });
+    // Get Tamara order ID (from body or DB)
+    const tamaraOrderId: string = bodyTamaraId || order.tamara_order_id;
+
+    if (!tamaraOrderId) {
+      return NextResponse.json({ ok: false, error: "لم يتم العثور على معرّف طلب Tamara" });
     }
 
-    // Verify payment with StreamPay
+    // Verify with Tamara API
     let verified = false;
-    let verifiedAmount: number | null = null;
+    let capturedAmount: number = Number(order.amount);
 
-    if (payment_id) {
-      try {
-        const payment = await getPayment(payment_id);
-        verified = payment?.status === "paid" || payment?.status === "PAID" || payment?.data?.status === "paid";
-        verifiedAmount = payment?.amount || payment?.data?.amount;
-      } catch {}
-    }
+    try {
+      const tamaraOrder = await getTamaraOrder(tamaraOrderId);
+      const status: string = tamaraOrder?.status || "";
+      verified = ["approved", "fully_captured", "partially_captured", "captured"].includes(
+        status.toLowerCase()
+      );
 
-    if (!verified && invoice_id) {
-      try {
-        const invoice = await getInvoice(invoice_id);
-        verified = invoice?.status === "paid" || invoice?.status === "PAID" || invoice?.data?.status === "paid";
-      } catch {}
-    }
-
-    if (!verified && redirectStatus === "paid") {
-      verified = true;
+      // Capture if approved (not yet captured)
+      if (status.toLowerCase() === "approved") {
+        try {
+          await captureOrder(tamaraOrderId, capturedAmount);
+        } catch (captureErr) {
+          console.warn("Capture warning:", captureErr);
+          // Even if capture fails, treat as verified if approved
+        }
+        verified = true;
+      }
+    } catch (tamaraErr) {
+      console.error("Tamara verify error:", tamaraErr);
+      // If paymentStatus indicates success but Tamara API fails, accept it
+      if (paymentStatus === "approved" || paymentStatus === "success") {
+        verified = true;
+      }
     }
 
     if (!verified) {
-      return NextResponse.json({ ok: false, error: "تعذّر التحقق من الدفع" });
+      await supabase.from("store_orders").update({ status: "failed" }).eq("id", order_id);
+      return NextResponse.json({ ok: false, error: "الدفع لم يكتمل أو لم يُؤكَّد" });
     }
 
     // Mark order as paid
-    await supabase.from("store_orders").update({
-      status: "paid",
-      paid_at: new Date().toISOString(),
-      streampay_payment_id: payment_id || null,
-      streampay_invoice_id: invoice_id || null,
-    }).eq("id", order_id);
+    await supabase
+      .from("store_orders")
+      .update({
+        status: "paid",
+        paid_at: new Date().toISOString(),
+        tamara_order_id: tamaraOrderId,
+      })
+      .eq("id", order_id);
 
     // Get duration days
     let durationDays = getDurationDays(order.store_products);
@@ -204,7 +233,7 @@ export async function POST(req: Request) {
       if (prod?.duration_days) durationDays = prod.duration_days;
     }
 
-    // Auto-create or update user account
+    // Create/update user account
     const accountResult = await autoCreateAccount(supabase, order, durationDays);
 
     // Track affiliate commission
@@ -217,7 +246,7 @@ export async function POST(req: Request) {
           .maybeSingle();
         if (aff?.user_id) {
           const amount = Number(order.amount || 0);
-          const commission = Math.round(amount * 0.10 * 100) / 100;
+          const commission = Math.round(amount * 0.1 * 100) / 100;
           await supabase.from("affiliate_referrals").insert({
             affiliate_user_id: aff.user_id,
             order_id: order.id,
