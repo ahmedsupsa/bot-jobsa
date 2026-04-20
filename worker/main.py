@@ -224,8 +224,12 @@ async def run_cycle() -> None:
         users = await sb_get(client, "users")
         fields_raw = await sb_get(client, "job_fields", {})
 
+        logger.info("🔍 فحص %d مستخدم مع %d وظيفة نشطة", len(users), len(jobs))
+
         for user in users:
+            name_log = user.get("full_name") or str(user.get("id",""))[:8]
             if not _is_subscription_active(user):
+                logger.info("⏭️  %s — اشتراك منتهٍ", name_log)
                 continue
 
             uid = str(user["id"])
@@ -234,17 +238,20 @@ async def run_cycle() -> None:
                 {"user_id": f"eq.{uid}", "applied_at": f"gte.{datetime.now(timezone.utc).date().isoformat()}"},
             )
             if count_today >= 10:
+                logger.info("⏭️  %s — وصل حد اليوم (%d)", name_log, count_today)
                 continue
 
             settings_rows = await sb_get(client, "user_settings", {"user_id": f"eq.{uid}"})
             settings = settings_rows[0] if settings_rows else {}
             email = (settings.get("email") or "").strip()
             if not email:
+                logger.info("⏭️  %s — لا يوجد إيميل مربوط", name_log)
                 continue
 
             cv_rows = await sb_get(client, "user_cvs", {"user_id": f"eq.{uid}"})
             cv = cv_rows[0] if cv_rows else None
             if not cv:
+                logger.info("⏭️  %s — لا توجد سيرة ذاتية", name_log)
                 continue
 
             storage_path = (cv.get("storage_path") or "").strip()
@@ -254,7 +261,7 @@ async def run_cycle() -> None:
             cv_name = cv.get("file_name") or "cv.pdf"
 
             prefs_rows = await sb_get(client, "user_job_preferences", {"user_id": f"eq.{uid}"})
-            pref_ids = {str(p["field_id"]) for p in prefs_rows if p.get("field_id")}
+            pref_ids = {str(p["job_field_id"]) for p in prefs_rows if p.get("job_field_id")}
             field_names = [
                 f.get("name_ar") or f.get("name_en") or ""
                 for f in fields_raw if str(f["id"]) in pref_ids
@@ -266,12 +273,16 @@ async def run_cycle() -> None:
             remaining = 10 - count_today
             sent = 0
 
+            logger.info("👤 %s | تفضيلات: %s | متبقي: %d", name, field_names or "لا يوجد", remaining)
+
             for job in jobs[:remaining]:
                 job_id = str(job["id"])
                 already_rows = await sb_get(client, "applications", {"user_id": f"eq.{uid}", "job_id": f"eq.{job_id}"})
                 if already_rows:
                     continue
-                if not _job_matches_user(job, field_names):
+                matched = _job_matches_user(job, field_names)
+                logger.info("   🔎 وظيفة [%s] → %s", job.get("title_ar") or job.get("title_en"), "✓ تطابق" if matched else "✗ لا تطابق")
+                if not matched:
                     continue
 
                 now_m = time.monotonic()
