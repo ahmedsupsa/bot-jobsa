@@ -52,6 +52,9 @@ export async function POST(req: Request) {
   if (body.application_language && ["ar", "en"].includes(body.application_language)) {
     update.application_language = body.application_language;
   }
+  if (body.template_type && ["classic", "modern", "brief"].includes(body.template_type)) {
+    update.template_type = body.template_type;
+  }
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: "لا يوجد تغيير" }, { status: 400 });
   }

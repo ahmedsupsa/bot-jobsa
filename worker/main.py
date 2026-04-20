@@ -109,23 +109,70 @@ def _is_subscription_active(user: dict) -> bool:
         return False
 
 
+def _build_prompt(job_title: str, name: str, company: str, desc: str, lang: str, template: str) -> str:
+    is_ar = lang == "ar"
+    lang_str = "العربية" if is_ar else "الإنجليزية"
+    co_str = f" في شركة {company}" if company else ""
+    desc_str = f". تفاصيل الوظيفة: {desc[:400]}" if desc else ""
+
+    if template == "brief":
+        if is_ar:
+            return (
+                f"اقرأ السيرة الذاتية واكتب رسالة تقديم موجزة جداً بالعربية (نقاط 2-3 فقط) "
+                f"للوظيفة: {job_title}{co_str}{desc_str}. اسم المتقدم: {name}. "
+                f"الأسلوب: مباشر، اذكر أبرز مهارة أو خبرة واحدة من السيرة الذاتية، ثم أبدِ اهتمامك. "
+                f"بدون تحية، بدون إيموجي، النص فقط في 2-3 جمل قصيرة."
+            )
+        else:
+            return (
+                f"Read the CV and write a very brief cover note in English (2-3 sentences) "
+                f"for the position: {job_title}{co_str}{desc_str}. Applicant: {name}. "
+                f"Style: direct and punchy — highlight one key skill from the CV and express interest. "
+                f"No greeting, no emoji, plain text only."
+            )
+    elif template == "modern":
+        if is_ar:
+            return (
+                f"اقرأ السيرة الذاتية واكتب رسالة تقديم عصرية وودّية بالعربية (3-4 جمل) "
+                f"للوظيفة: {job_title}{co_str}{desc_str}. اسم المتقدم: {name}. "
+                f"الأسلوب: متحمّس، شخصي، اذكر سبباً محدداً من السيرة الذاتية لماذا هذه الفرصة مثيرة. "
+                f"بدون تحية رسمية، بدون إيموجي، النص فقط."
+            )
+        else:
+            return (
+                f"Read the CV and write a modern, friendly cover note in English (3-4 sentences) "
+                f"for the role: {job_title}{co_str}{desc_str}. Applicant: {name}. "
+                f"Style: enthusiastic, personal — mention a specific reason from the CV why this opportunity excites you. "
+                f"No formal salutation, no emoji, plain text only."
+            )
+    else:  # classic
+        if is_ar:
+            return (
+                f"اقرأ السيرة الذاتية المرفقة ثم اكتب رسالة تغطية رسمية ومنظّمة بالعربية (3-4 جمل) "
+                f"للتقديم على وظيفة: {job_title}{co_str}{desc_str}. اسم المتقدم: {name}. "
+                f"الأسلوب: رسمي، ابدأ بالتعريف بالنفس ثم اذكر خبرات من السيرة الذاتية تتناسب مع الوظيفة. "
+                f"بدون إيموجي، النص فقط بدون عنوان أو تحية."
+            )
+        else:
+            return (
+                f"Read the attached CV and write a formal, structured cover letter in English (3-4 sentences) "
+                f"for the position: {job_title}{co_str}{desc_str}. Applicant: {name}. "
+                f"Style: professional — introduce yourself, cite relevant experience from the CV. "
+                f"No emoji, plain text only, no heading or salutation."
+            )
+
+
 async def _generate_cover_letter(
     job_title: str, name: str, company: str, desc: str, lang: str,
-    cv_bytes: bytes | None = None, cv_mime: str = "application/pdf"
+    cv_bytes: bytes | None = None, cv_mime: str = "application/pdf",
+    template: str = "classic",
 ) -> str:
     fallback_ar = f"أتقدم بكل اهتمام لشغل وظيفة {job_title}{' في ' + company if company else ''}. أنا مهتم بهذه الفرصة وأثق في قدرتي على إضافة قيمة حقيقية لفريقكم."
     fallback_en = f"I am writing to express my interest in the {job_title} position{' at ' + company if company else ''}. I am confident in my ability to contribute effectively to your team."
     if not GEMINI_API_KEY:
         return fallback_ar if lang == "ar" else fallback_en
 
-    prompt = (
-        f"اقرأ السيرة الذاتية المرفقة ثم اكتب رسالة تغطية مختصرة (3-4 جمل فقط) "
-        f"باللغة {'العربية' if lang == 'ar' else 'الإنجليزية'} "
-        f"للتقديم على وظيفة: {job_title}"
-        + (f" في شركة {company}" if company else "")
-        + (f". تفاصيل الوظيفة: {desc[:400]}" if desc else "")
-        + f". اسم المتقدم: {name}. استخدم المعلومات من السيرة الذاتية (خبرات، مهارات، تعليم). لا تضف إيموجي. أعطِ فقط نص الرسالة بدون عنوان أو تحية."
-    )
+    prompt = _build_prompt(job_title, name, company, desc, lang, template)
 
     parts: list[dict] = [{"text": prompt}]
     if cv_bytes:
@@ -149,22 +196,99 @@ async def _generate_cover_letter(
         return fallback_ar if lang == "ar" else fallback_en
 
 
-def _build_email_html(name: str, phone: str, job_title: str, company: str, cover: str, lang: str) -> str:
+def _build_email_html(name: str, phone: str, job_title: str, company: str, cover: str, lang: str, template: str = "classic") -> str:
     is_ar = lang == "ar"
     dir_ = "rtl" if is_ar else "ltr"
+    align = "right" if is_ar else "left"
     cover_html = cover.replace("\n", "<br>")
-    company_html = f"<p><strong>{'الشركة' if is_ar else 'Company'}:</strong> {company}</p>" if company else ""
-    return f"""<!DOCTYPE html><html dir="{dir_}" lang="{'ar' if is_ar else 'en'}">
-<head><meta charset="UTF-8"></head>
-<body style="font-family:'Segoe UI',sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f9f9f9;direction:{dir_};text-align:{'right' if is_ar else 'left'};">
-<div style="background:#fff;padding:24px;border-radius:8px;">
-<h2 style="color:#333;margin:0 0 12px;">{'طلب توظيف' if is_ar else 'Job Application'} — {job_title}</h2>
-<p style="line-height:1.9;color:#2c2c2c;">{cover_html}</p>
-<hr style="border:none;border-top:1px solid #eee;margin:16px 0;">
-{company_html}
-<p><strong>{'الاسم' if is_ar else 'Name'}:</strong> {name}</p>
-<p><strong>{'الجوال' if is_ar else 'Phone'}:</strong> {phone}</p>
-</div></body></html>"""
+    name_lbl  = "الاسم" if is_ar else "Name"
+    phone_lbl = "الجوال" if is_ar else "Phone"
+    co_lbl    = "الشركة" if is_ar else "Company"
+    subj_lbl  = "طلب توظيف" if is_ar else "Job Application"
+    company_row = f'<tr><td style="color:#777;padding:4px 0;">{co_lbl}</td><td style="color:#222;padding:4px 0 4px 12px;" dir="ltr">{company}</td></tr>' if company else ""
+
+    if template == "modern":
+        # Dark header card, minimal footer
+        return f"""<!DOCTYPE html><html dir="{dir_}" lang="{'ar' if is_ar else 'en'}">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f0f0f0;font-family:'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+  <!-- Header -->
+  <tr><td style="background:#0d0d0d;border-radius:16px 16px 0 0;padding:28px 32px;direction:{dir_};text-align:{align};">
+    <p style="margin:0 0 4px;color:#a78bfa;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">{subj_lbl}</p>
+    <h1 style="margin:0;color:#fff;font-size:22px;font-weight:800;">{job_title}</h1>
+    {f'<p style="margin:6px 0 0;color:#888;font-size:13px;">{company}</p>' if company else ""}
+  </td></tr>
+  <!-- Body -->
+  <tr><td style="background:#fff;padding:28px 32px;direction:{dir_};text-align:{align};">
+    <p style="margin:0 0 20px;color:#2c2c2c;font-size:15px;line-height:2;">{cover_html}</p>
+    <hr style="border:none;border-top:1px solid #f0f0f0;margin:20px 0;">
+    <p style="margin:0;color:#888;font-size:13px;">{name_lbl}: <strong style="color:#111;">{name}</strong> &nbsp;·&nbsp; {phone_lbl}: <span dir="ltr">{phone}</span></p>
+  </td></tr>
+  <!-- Footer -->
+  <tr><td style="background:#fafafa;border-radius:0 0 16px 16px;padding:14px 32px;direction:{dir_};text-align:{align};">
+    <p style="margin:0;color:#bbb;font-size:11px;">Jobbots — التقديم التلقائي</p>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>"""
+
+    elif template == "brief":
+        # Ultra-clean minimal, bullet-point friendly
+        lines = [l.strip() for l in cover.split("\n") if l.strip()]
+        if len(lines) > 1:
+            bullets = "".join(f'<li style="margin-bottom:8px;color:#333;">{l}</li>' for l in lines)
+            body_content = f'<ul style="margin:0;padding-right:20px;padding-left:0;direction:{dir_};">{bullets}</ul>'
+        else:
+            body_content = f'<p style="margin:0;color:#333;font-size:15px;line-height:1.9;">{cover_html}</p>'
+        return f"""<!DOCTYPE html><html dir="{dir_}" lang="{'ar' if is_ar else 'en'}">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#fff;font-family:'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 16px;">
+<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;border:1px solid #e8e8e8;border-radius:12px;">
+  <tr><td style="padding:28px 32px;direction:{dir_};text-align:{align};">
+    <!-- label -->
+    <p style="margin:0 0 6px;color:#888;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;">{subj_lbl}</p>
+    <h2 style="margin:0 0 20px;color:#111;font-size:20px;font-weight:800;border-bottom:2px solid #111;padding-bottom:10px;">{job_title}</h2>
+    <!-- cover -->
+    {body_content}
+    <!-- footer -->
+    <div style="margin-top:24px;padding-top:16px;border-top:1px solid #f0f0f0;">
+      <table cellpadding="0" cellspacing="0"><tbody>
+        <tr><td style="color:#999;font-size:12px;padding:3px 8px 3px 0;">{name_lbl}</td><td style="color:#111;font-size:12px;font-weight:600;">{name}</td></tr>
+        <tr><td style="color:#999;font-size:12px;padding:3px 8px 3px 0;" dir="ltr">{phone_lbl}</td><td style="color:#111;font-size:12px;" dir="ltr">{phone}</td></tr>
+        {company_row}
+      </tbody></table>
+    </div>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>"""
+
+    else:  # classic
+        return f"""<!DOCTYPE html><html dir="{dir_}" lang="{'ar' if is_ar else 'en'}">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 16px;">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:8px;border:1px solid #ddd;">
+  <!-- Top bar -->
+  <tr><td style="background:#1a1a1a;border-radius:8px 8px 0 0;padding:18px 28px;direction:{dir_};text-align:{align};">
+    <p style="margin:0;color:#e5e5e5;font-size:13px;">{subj_lbl} — <strong style="color:#fff;">{job_title}</strong></p>
+  </td></tr>
+  <!-- Body -->
+  <tr><td style="padding:28px;direction:{dir_};text-align:{align};">
+    <p style="margin:0 0 18px;color:#1a1a1a;font-size:15px;line-height:2.0;border-right:3px solid #1a1a1a;padding-right:14px;">{cover_html}</p>
+    <hr style="border:none;border-top:1px solid #eee;margin:22px 0;">
+    <table cellpadding="0" cellspacing="0" style="font-size:13px;"><tbody>
+      <tr><td style="color:#666;padding:4px 10px 4px 0;">{name_lbl}</td><td style="color:#111;font-weight:600;">{name}</td></tr>
+      <tr><td style="color:#666;padding:4px 10px 4px 0;">{phone_lbl}</td><td style="color:#111;" dir="ltr">{phone}</td></tr>
+      {company_row}
+    </tbody></table>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>"""
 
 
 async def _send_resend(
@@ -270,6 +394,7 @@ async def run_cycle() -> None:
             name = user.get("full_name") or "المتقدم"
             phone = user.get("phone") or ""
             lang = settings.get("application_language") or "ar"
+            template = settings.get("template_type") or "classic"
             remaining = 10 - count_today
             sent = 0
 
@@ -301,9 +426,9 @@ async def run_cycle() -> None:
                 cv_mime = "application/pdf"
                 if cv_name and cv_name.lower().endswith(".docx"):
                     cv_mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                cover = await _generate_cover_letter(job_title, name, company, desc, lang, cv_bytes, cv_mime)
+                cover = await _generate_cover_letter(job_title, name, company, desc, lang, cv_bytes, cv_mime, template)
                 cover = _strip_emojis(cover)
-                html = _build_email_html(name, phone, job_title, company, cover, lang)
+                html = _build_email_html(name, phone, job_title, company, cover, lang, template)
                 subject = f"التقديم على وظيفة: {_strip_emojis(job_title)}" if lang == "ar" else f"Application for: {_strip_emojis(job_title)}"
 
                 try:

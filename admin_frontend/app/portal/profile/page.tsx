@@ -14,7 +14,7 @@ interface UserData {
   full_name: string; phone: string; age: number | null; city: string;
   subscription_active: boolean; days_left: number; subscription_ends_at: string;
   applications_count: number; email: string; sender_email_alias: string;
-  application_language: string;
+  application_language: string; template_type: string;
 }
 
 type Tab = "profile" | "settings";
@@ -29,6 +29,7 @@ export default function AccountPage() {
   const [emailInput, setEmailInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [savingLang, setSavingLang] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -56,7 +57,7 @@ export default function AccountPage() {
       if (meRes.status === 401) { clearToken(); router.replace("/portal/login"); return; }
       const me = await meRes.json();
       const settings = await setRes.json();
-      setUser({ ...me, application_language: settings.application_language || "ar" });
+      setUser({ ...me, application_language: settings.application_language || "ar", template_type: settings.template_type || "classic" });
       setEmailInput(me.email || "");
     } catch { clearToken(); router.replace("/portal/login"); }
     finally { setLoading(false); }
@@ -85,6 +86,23 @@ export default function AccountPage() {
       else { const d = await res.json(); setMsg({ text: d.error || "فشل التغيير", type: "err" }); }
     } catch { setMsg({ text: "خطأ في الاتصال", type: "err" }); }
     finally { setSavingLang(false); }
+  }
+
+  async function changeTemplate(tpl: string) {
+    if (user?.template_type === tpl) return;
+    setSavingTemplate(true); setMsg(null);
+    try {
+      const res = await portalFetch("/settings", { method: "POST", body: JSON.stringify({ template_type: tpl }) });
+      if (res.ok) {
+        const names: Record<string, string> = { classic: "الكلاسيكي", modern: "الحديث", brief: "المختصر" };
+        setMsg({ text: `تم اختيار القالب ${names[tpl] || tpl}`, type: "ok" });
+        await load();
+      } else {
+        const d = await res.json();
+        setMsg({ text: d.error || "فشل الحفظ", type: "err" });
+      }
+    } catch { setMsg({ text: "خطأ في الاتصال", type: "err" }); }
+    finally { setSavingTemplate(false); }
   }
 
   async function deleteAccount() {
@@ -318,6 +336,95 @@ export default function AccountPage() {
                         {label} {isActive && <CheckCircle size={12} style={{ verticalAlign: "middle" }} />}
                       </p>
                       <p style={{ margin: "3px 0 0", color: t.text3, fontSize: 11 }}>{sub}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* Email Templates */}
+            <Card t={t} title="قالب الإيميل" icon={<Mail size={17} strokeWidth={1.5} />} sub="شكل وأسلوب إيميل التقديم المُرسَل للشركات">
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {([
+                  {
+                    id: "classic",
+                    name: "الكلاسيكي",
+                    desc: "رسمي ومنظّم • مناسب للشركات الكبرى",
+                    preview: (
+                      <div style={{ background: "#fff", borderRadius: 8, padding: "8px 10px", fontSize: 9, color: "#333", direction: "rtl", lineHeight: 1.7 }}>
+                        <div style={{ fontWeight: 700, borderBottom: "1px solid #eee", paddingBottom: 4, marginBottom: 4, color: "#111" }}>طلب توظيف — مهندس برمجيات</div>
+                        <div style={{ color: "#555" }}>السادة المحترمون،</div>
+                        <div style={{ color: "#555" }}>أتقدم بكل احترام للتقديم على هذه الوظيفة استناداً لخبرتي في...</div>
+                        <div style={{ marginTop: 4, borderTop: "1px solid #eee", paddingTop: 4, color: "#888", fontSize: 8 }}>الاسم · الجوال</div>
+                      </div>
+                    ),
+                  },
+                  {
+                    id: "modern",
+                    name: "الحديث",
+                    desc: "عصري وودّي • مناسب للشركات الناشئة",
+                    preview: (
+                      <div style={{ background: "#0f0f0f", borderRadius: 8, padding: "8px 10px", fontSize: 9, color: "#eee", direction: "rtl", lineHeight: 1.7 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
+                          <div style={{ width: 16, height: 16, borderRadius: 4, background: "#a78bfa", flexShrink: 0 }} />
+                          <div style={{ fontWeight: 700, color: "#fff", fontSize: 10 }}>مهندس برمجيات</div>
+                        </div>
+                        <div style={{ color: "#ccc" }}>مرحباً! أنا مهتم بهذه الفرصة وأرى تطابقاً واضحاً مع خلفيتي في...</div>
+                        <div style={{ marginTop: 4, color: "#a78bfa", fontSize: 8 }}>عرض السيرة الذاتية ←</div>
+                      </div>
+                    ),
+                  },
+                  {
+                    id: "brief",
+                    name: "المختصر",
+                    desc: "موجز ومباشر • يوفّر وقت المُوظِّف",
+                    preview: (
+                      <div style={{ background: "#f8f8f8", borderRadius: 8, padding: "8px 10px", fontSize: 9, color: "#333", direction: "rtl", lineHeight: 1.7 }}>
+                        <div style={{ fontWeight: 700, marginBottom: 4, color: "#111" }}>التقديم على: مهندس برمجيات</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                          <div style={{ display: "flex", gap: 4 }}><span style={{ color: "#888" }}>•</span><span style={{ color: "#555" }}>5 سنوات خبرة في React</span></div>
+                          <div style={{ display: "flex", gap: 4 }}><span style={{ color: "#888" }}>•</span><span style={{ color: "#555" }}>خبرة سابقة في نفس المجال</span></div>
+                          <div style={{ display: "flex", gap: 4 }}><span style={{ color: "#888" }}>•</span><span style={{ color: "#555" }}>متاح للبدء فوراً</span></div>
+                        </div>
+                      </div>
+                    ),
+                  },
+                ] as const).map((tpl) => {
+                  const isActive = (user?.template_type || "classic") === tpl.id;
+                  return (
+                    <button
+                      key={tpl.id}
+                      onClick={() => changeTemplate(tpl.id)}
+                      disabled={savingTemplate}
+                      style={{
+                        display: "flex", gap: 12, alignItems: "stretch",
+                        background: isActive ? (dark ? "rgba(167,139,250,0.06)" : "#faf5ff") : t.iconBg,
+                        border: `1.5px solid ${isActive ? (dark ? "#a78bfa66" : "#a78bfa88") : t.border2}`,
+                        borderRadius: 14, padding: "12px 14px", cursor: savingTemplate ? "wait" : "pointer",
+                        textAlign: "right", opacity: savingTemplate ? 0.7 : 1,
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {/* mini preview */}
+                      <div style={{ width: 120, flexShrink: 0, borderRadius: 8, overflow: "hidden", border: `1px solid ${dark ? "#2a2a2a" : "#e4e4e7"}` }}>
+                        {tpl.preview}
+                      </div>
+                      {/* info */}
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <p style={{ margin: 0, color: isActive ? (dark ? "#c4b5fd" : "#7c3aed") : t.text, fontSize: 14, fontWeight: 700 }}>{tpl.name}</p>
+                          {isActive && <CheckCircle size={13} color={dark ? "#a78bfa" : "#7c3aed"} />}
+                        </div>
+                        <p style={{ margin: 0, color: t.text3, fontSize: 12, lineHeight: 1.5 }}>{tpl.desc}</p>
+                        {isActive && (
+                          <span style={{
+                            display: "inline-block", marginTop: 4,
+                            padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600,
+                            background: dark ? "rgba(167,139,250,0.12)" : "#ede9fe",
+                            color: dark ? "#c4b5fd" : "#6d28d9",
+                          }}>مُفعّل</span>
+                        )}
+                      </div>
                     </button>
                   );
                 })}
