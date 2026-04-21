@@ -355,9 +355,22 @@ export default function StorePage() {
             <div style={s.priceStrip}>
               <span style={s.stripLabel}>المبلغ الإجمالي</span>
               <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                <span style={s.stripAmount}>{selected.price}</span>
-                <span style={s.stripCurr}>ر.س</span>
-                <span style={s.stripDur}>/ {durationLabel(selected.duration_days)}</span>
+                {discountState.applied && discountState.final !== undefined ? (
+                  <>
+                    <span style={{ ...s.stripAmount, color: "#a78bfa" }}>{discountState.final}</span>
+                    <span style={s.stripCurr}>ر.س</span>
+                    <span style={{ color: "#666", fontSize: 13, textDecoration: "line-through", marginInlineStart: 6 }}>
+                      {selected.price} ر.س
+                    </span>
+                    <span style={s.stripDur}>/ {durationLabel(selected.duration_days)}</span>
+                  </>
+                ) : (
+                  <>
+                    <span style={s.stripAmount}>{selected.price}</span>
+                    <span style={s.stripCurr}>ر.س</span>
+                    <span style={s.stripDur}>/ {durationLabel(selected.duration_days)}</span>
+                  </>
+                )}
               </div>
             </div>
 
