@@ -25,6 +25,7 @@ type Order = {
   id: string;
   user_name?: string;
   user_email?: string;
+  user_phone?: string;
   status: "pending" | "paid" | "failed" | "cancelled";
   amount?: number;
   notes?: string;
@@ -265,7 +266,13 @@ export default function StoreAdminPage() {
   };
 
   useEffect(() => { loadProducts(); }, [loadProducts]);
-  useEffect(() => { if (tab === "orders") loadOrders(); }, [tab, loadOrders]);
+  useEffect(() => {
+    if (tab === "orders") {
+      loadOrders();
+      // Mark new-orders badge as seen
+      fetch("/api/admin/store/orders/mark-seen", { method: "POST", credentials: "include" }).catch(() => {});
+    }
+  }, [tab, loadOrders]);
   useEffect(() => { if (tab === "banks") loadBanks(); }, [tab, loadBanks]);
   useEffect(() => { if (tab === "discounts") loadDiscounts(); }, [tab, loadDiscounts]);
 
@@ -713,7 +720,8 @@ export default function StoreAdminPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-slate-400">
                           {o.user_name && <span>👤 {o.user_name}</span>}
-                          {o.user_email && <span>✉️ {o.user_email}</span>}
+                          {o.user_email && <span dir="ltr" className="text-right">✉️ {o.user_email}</span>}
+                          {o.user_phone && <span dir="ltr" className="text-right">📞 {o.user_phone}</span>}
                           {o.amount && <span className="text-white font-bold">💳 {o.amount} ر.س</span>}
                           <span>🕒 {fmt(o.created_at)}</span>
                           {o.paid_at && <span className="text-white/80">✅ {fmt(o.paid_at)}</span>}

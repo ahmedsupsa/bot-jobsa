@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase-server";
 import { createCheckoutSession } from "@/lib/tamara";
 import { findOrCreateConsumer, createPaymentLink, createProduct as createStreamPayProduct } from "@/lib/streampay";
 import { reserveDiscount, releaseDiscount } from "@/lib/discount";
+import { validateEmail } from "@/lib/email-validation";
 
 const rawSite = process.env.NEXT_PUBLIC_SITE_URL || process.env.ADMIN_DASHBOARD_URL || "https://www.jobbots.org";
 const SITE = rawSite
@@ -17,6 +18,14 @@ export async function POST(req: Request) {
     if (!product_id || !email?.trim() || !name?.trim() || !phone?.trim()) {
       return NextResponse.json(
         { ok: false, error: "الاسم والبريد الإلكتروني والجوال مطلوبة" },
+        { status: 400 }
+      );
+    }
+
+    const emailCheck = validateEmail(email);
+    if (!emailCheck.ok) {
+      return NextResponse.json(
+        { ok: false, error: emailCheck.error },
         { status: 400 }
       );
     }

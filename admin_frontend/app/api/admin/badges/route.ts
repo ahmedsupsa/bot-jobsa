@@ -43,15 +43,25 @@ export async function GET() {
     );
   }
 
-  // ── Store: pending orders awaiting admin action
+  // ── Store: ALL new orders since this admin last viewed the orders tab
   if (can("store")) {
-    tasks.push(
-      safeCount(
+    tasks.push((async () => {
+      let lastSeen = "1970-01-01T00:00:00Z";
+      try {
+        const { data } = await sb
+          .from("admin_view_state")
+          .select("last_orders_seen_at")
+          .eq("username", session.username)
+          .maybeSingle();
+        if (data?.last_orders_seen_at) lastSeen = String(data.last_orders_seen_at);
+      } catch { /* table may not exist yet → defaults to epoch */ }
+      const c = await safeCount(
         sb.from("store_orders")
           .select("id", { count: "exact", head: true })
-          .eq("status", "pending") as unknown as Promise<{ count: number | null }>
-      ).then(c => { result.store = c; })
-    );
+          .gt("created_at", lastSeen) as unknown as Promise<{ count: number | null }>
+      );
+      result.store = c;
+    })());
   }
 
   // ── Affiliate: pending withdrawal requests
