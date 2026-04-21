@@ -5,7 +5,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Key, BriefcaseBusiness, Bell, LogOut,
-  ShoppingBag, TrendingUp, MessageCircle, MailCheck, FileText, ShieldCheck,
+  ShoppingBag, TrendingUp, MessageCircle, MailCheck, FileText, ShieldCheck, Send,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -27,6 +27,7 @@ const links: { href: string; label: string; icon: any; perm: Perm | null }[] = [
   { href: "/affiliate-admin", label: "برنامج الربح", icon: TrendingUp, perm: "affiliate" },
   { href: "/finance", label: "المالية", icon: TrendingUp, perm: "finance" },
   { href: "/admin/email-test", label: "اختبار الإيميل", icon: MailCheck, perm: "email-test" },
+  { href: "/admin/send-email", label: "إرسال بريد", icon: Send, perm: "email-test" },
   { href: "/admin/admins", label: "إدارة المسؤولين", icon: ShieldCheck, perm: "admins" },
 ];
 
