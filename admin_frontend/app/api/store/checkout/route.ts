@@ -4,6 +4,7 @@ import { createCheckoutSession } from "@/lib/tamara";
 import { findOrCreateConsumer, createPaymentLink, createProduct as createStreamPayProduct } from "@/lib/streampay";
 import { reserveDiscount, releaseDiscount } from "@/lib/discount";
 import { validateEmail } from "@/lib/email-validation";
+import { validatePhoneSA } from "@/lib/phone-validation";
 
 const rawSite = process.env.NEXT_PUBLIC_SITE_URL || process.env.ADMIN_DASHBOARD_URL || "https://www.jobbots.org";
 const SITE = rawSite
@@ -26,6 +27,14 @@ export async function POST(req: Request) {
     if (!emailCheck.ok) {
       return NextResponse.json(
         { ok: false, error: emailCheck.error },
+        { status: 400 }
+      );
+    }
+
+    const phoneCheck = validatePhoneSA(phone);
+    if (!phoneCheck.ok) {
+      return NextResponse.json(
+        { ok: false, error: phoneCheck.error },
         { status: 400 }
       );
     }
