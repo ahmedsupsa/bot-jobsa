@@ -14,17 +14,19 @@ type Perm =
   | "store" | "support" | "affiliate" | "finance" | "email-test" | "admins";
 
 type Me = { ok: true; username: string; isSuper: boolean; permissions: Perm[] } | null;
+type BadgeKey = "support" | "store" | "affiliate";
+type Badges = Partial<Record<BadgeKey, number>>;
 
-const links: { href: string; label: string; icon: any; perm: Perm | null }[] = [
+const links: { href: string; label: string; icon: any; perm: Perm | null; badge?: BadgeKey }[] = [
   { href: "/admin", label: "الرئيسية", icon: LayoutDashboard, perm: null },
   { href: "/users", label: "المستخدمون", icon: Users, perm: "users" },
   { href: "/codes", label: "أكواد التفعيل", icon: Key, perm: "codes" },
   { href: "/jobs", label: "الوظائف", icon: BriefcaseBusiness, perm: "jobs" },
   { href: "/templates", label: "قوالب الرسائل", icon: FileText, perm: "templates" },
   { href: "/notifications", label: "إشعارات Push", icon: Bell, perm: "notifications" },
-  { href: "/store-admin", label: "المتجر", icon: ShoppingBag, perm: "store" },
-  { href: "/support-admin", label: "الدعم الفني", icon: MessageCircle, perm: "support" },
-  { href: "/affiliate-admin", label: "برنامج الربح", icon: TrendingUp, perm: "affiliate" },
+  { href: "/store-admin", label: "المتجر", icon: ShoppingBag, perm: "store", badge: "store" },
+  { href: "/support-admin", label: "الدعم الفني", icon: MessageCircle, perm: "support", badge: "support" },
+  { href: "/affiliate-admin", label: "برنامج الربح", icon: TrendingUp, perm: "affiliate", badge: "affiliate" },
   { href: "/finance", label: "المالية", icon: TrendingUp, perm: "finance" },
   { href: "/admin/email-test", label: "اختبار الإيميل", icon: MailCheck, perm: "email-test" },
   { href: "/admin/send-email", label: "إرسال بريد", icon: Send, perm: "email-test" },
@@ -36,6 +38,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [me, setMe] = useState<Me>(null);
+  const [badges, setBadges] = useState<Badges>({});
 
   useEffect(() => {
     fetch("/api/admin/me", { credentials: "include" })
@@ -43,6 +46,24 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       .then(setMe)
       .catch(() => setMe(null));
   }, []);
+
+  useEffect(() => {
+    if (!me) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const r = await fetch("/api/admin/badges", { credentials: "include", cache: "no-store" });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (!cancelled && j.ok) setBadges(j.badges || {});
+      } catch { /* ignore */ }
+    };
+    load();
+    const id = setInterval(load, 30_000);
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    return () => { cancelled = true; clearInterval(id); window.removeEventListener("focus", onFocus); };
+  }, [me, path]);
 
   const visible = me
     ? links.filter(l => l.perm === null || me.isSuper || me.permissions.includes(l.perm))
@@ -82,6 +103,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
           {visible.map((l) => {
             const active = path === l.href;
+            const count = l.badge ? badges[l.badge] || 0 : 0;
             return (
               <Link
                 key={l.href}
@@ -96,7 +118,15 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 `}
               >
                 <l.icon size={17} className={active ? "text-white" : "text-slate-500"} />
-                {l.label}
+                <span className="flex-1 truncate">{l.label}</span>
+                {count > 0 && (
+                  <span
+                    className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-purple-500 text-white text-[11px] font-bold leading-none"
+                    title={`${count} عنصر يحتاج انتباهك`}
+                  >
+                    {count > 99 ? "99+" : count}
+                  </span>
+                )}
               </Link>
             );
           })}
