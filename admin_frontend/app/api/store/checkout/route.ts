@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { createCheckoutSession } from "@/lib/tamara";
-import { findOrCreateConsumer, createPaymentLink } from "@/lib/streampay";
+import { findOrCreateConsumer, createPaymentLink, createProduct as createStreamPayProduct } from "@/lib/streampay";
 import { reserveDiscount, releaseDiscount } from "@/lib/discount";
 
 const rawSite = process.env.NEXT_PUBLIC_SITE_URL || process.env.ADMIN_DASHBOARD_URL || "https://www.jobbots.org";
@@ -156,10 +156,25 @@ export async function POST(req: Request) {
       );
       const consumerId = consumer?.id || consumer?.data?.id;
 
+      // If a discount code lowered the price, create an ad-hoc StreamPay
+      // product with the discounted amount (StreamPay product prices are
+      // fixed at product-creation time, so we can't override per-link).
+      let streampayProductId = product.streampay_product_id as string;
+      if (appliedDiscount && finalAmount < Number(product.price)) {
+        const adhoc = await createStreamPayProduct({
+          name: `${product.name} — خصم ${appliedDiscount.code}`,
+          description: product.description || product.name,
+          price: finalAmount,
+        });
+        const adhocId = adhoc?.id || adhoc?.data?.id;
+        if (!adhocId) throw new Error("فشل إنشاء منتج الخصم في StreamPay");
+        streampayProductId = adhocId;
+      }
+
       const link = await createPaymentLink({
         name: `اشتراك ${product.name} — Jobbots`,
         description: product.description || product.name,
-        product_id: product.streampay_product_id,
+        product_id: streampayProductId,
         consumer_id: consumerId,
         success_url: `${SITE}/store/success?order_id=${orderId}`,
         failure_url: `${SITE}/store/failure?order_id=${orderId}`,
@@ -167,6 +182,7 @@ export async function POST(req: Request) {
           order_id: orderId,
           user_email: email.trim().toLowerCase(),
           product_name: product.name,
+          discount_code: appliedDiscount?.code || "",
         },
       });
 
