@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ShoppingBag, Package, ClipboardList, Plus, Pencil, Trash2,
   CheckCircle2, XCircle, Clock, RefreshCw, X, Save, Zap,
-  Building2, Wallet, Copy, CheckCheck,
+  Building2, Wallet, Copy, CheckCheck, Tag, Percent, DollarSign,
 } from "lucide-react";
 
 type Product = {
@@ -54,6 +54,29 @@ const EMPTY_PRODUCT = { name: "", description: "", price: "", duration_days: "" 
 
 const EMPTY_BANK = { type: "bank", name: "", account_number: "", iban: "", phone: "", display_order: "0" };
 
+const EMPTY_DISCOUNT = {
+  code: "",
+  discount_type: "percent" as "percent" | "fixed",
+  discount_value: "",
+  product_id: "",
+  usage_limit: "",
+  expires_at: "",
+};
+
+type DiscountCode = {
+  id: string;
+  code: string;
+  discount_type: "percent" | "fixed";
+  discount_value: number;
+  product_id: string | null;
+  usage_limit: number | null;
+  usage_count: number;
+  expires_at: string | null;
+  is_active: boolean;
+  created_at: string;
+  store_products?: { name: string } | null;
+};
+
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   pending:   { label: "معلّق",   color: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20", icon: Clock },
   paid:      { label: "مدفوع",   color: "text-white bg-white/10 border-white/20", icon: CheckCircle2 },
@@ -77,7 +100,7 @@ function fmt(d: string) {
 }
 
 export default function StoreAdminPage() {
-  const [tab, setTab] = useState<"products" | "orders" | "banks">("products");
+  const [tab, setTab] = useState<"products" | "orders" | "banks" | "discounts">("products");
 
   // Products state
   const [products, setProducts] = useState<Product[]>([]);
@@ -173,9 +196,78 @@ export default function StoreAdminPage() {
     loadBanks();
   };
 
+  // ─── Discount codes state ────────────────────────────────────────────────
+  const [discounts, setDiscounts] = useState<DiscountCode[]>([]);
+  const [dLoading, setDLoading] = useState(false);
+  const [dMsg, setDMsg] = useState("");
+  const [dMsgType, setDMsgType] = useState<"ok" | "err">("ok");
+  const [showDiscountForm, setShowDiscountForm] = useState(false);
+  const [dForm, setDForm] = useState(EMPTY_DISCOUNT);
+  const [dSaving, setDSaving] = useState(false);
+  const [dDeletingId, setDDeletingId] = useState<string | null>(null);
+
+  const loadDiscounts = useCallback(async () => {
+    setDLoading(true);
+    const r = await fetch(`${API_BASE}/api/admin/store/discount-codes`, { credentials: "include" });
+    const j = await r.json();
+    setDiscounts(j.codes || []);
+    setDLoading(false);
+  }, []);
+
+  const saveDiscount = async () => {
+    if (!dForm.code.trim() || !dForm.discount_value) {
+      setDMsg("الكود وقيمة الخصم مطلوبة"); setDMsgType("err"); return;
+    }
+    setDSaving(true); setDMsg("");
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/store/discount-codes`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: dForm.code.trim().toUpperCase(),
+          discount_type: dForm.discount_type,
+          discount_value: dForm.discount_value,
+          product_id: dForm.product_id || null,
+          usage_limit: dForm.usage_limit || null,
+          expires_at: dForm.expires_at || null,
+        }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "فشل الحفظ");
+      setDMsg("تمت إضافة الكود ✓"); setDMsgType("ok");
+      setShowDiscountForm(false); setDForm(EMPTY_DISCOUNT);
+      await loadDiscounts();
+    } catch (e) {
+      setDMsg(String(e).replace("Error: ", "")); setDMsgType("err");
+    }
+    setDSaving(false);
+  };
+
+  const toggleDiscountActive = async (d: DiscountCode) => {
+    await fetch(`${API_BASE}/api/admin/store/discount-codes/${d.id}`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_active: !d.is_active }),
+    });
+    await loadDiscounts();
+  };
+
+  const deleteDiscount = async (id: string) => {
+    if (!confirm("حذف هذا الكود؟")) return;
+    setDDeletingId(id);
+    const r = await fetch(`${API_BASE}/api/admin/store/discount-codes/${id}`, {
+      method: "DELETE", credentials: "include",
+    });
+    const j = await r.json();
+    if (j.ok) await loadDiscounts();
+    else { setDMsg("فشل الحذف"); setDMsgType("err"); }
+    setDDeletingId(null);
+  };
+
   useEffect(() => { loadProducts(); }, [loadProducts]);
   useEffect(() => { if (tab === "orders") loadOrders(); }, [tab, loadOrders]);
   useEffect(() => { if (tab === "banks") loadBanks(); }, [tab, loadBanks]);
+  useEffect(() => { if (tab === "discounts") loadDiscounts(); }, [tab, loadDiscounts]);
 
   const openAddProduct = () => {
     setEditProduct(null);
@@ -332,13 +424,14 @@ export default function StoreAdminPage() {
         {/* Tabs */}
         <div className="flex gap-1 rounded-xl border border-line bg-panel p-1 w-fit flex-wrap">
           {[
-            { key: "products", label: "المنتجات",       icon: Package },
-            { key: "orders",   label: "الطلبات",         icon: ClipboardList },
-            { key: "banks",    label: "الحسابات البنكية", icon: Building2 },
+            { key: "products",  label: "المنتجات",        icon: Package },
+            { key: "orders",    label: "الطلبات",          icon: ClipboardList },
+            { key: "banks",     label: "الحسابات البنكية", icon: Building2 },
+            { key: "discounts", label: "أكواد الخصم",      icon: Tag },
           ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
-              onClick={() => setTab(key as "products" | "orders" | "banks")}
+              onClick={() => setTab(key as "products" | "orders" | "banks" | "discounts")}
               className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
                 tab === key ? "bg-white/10 text-white border border-white/15" : "text-slate-400 hover:text-white"
               }`}
@@ -999,6 +1092,206 @@ export default function StoreAdminPage() {
                     </div>
                   </motion.div>
                 ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* ─── DISCOUNT CODES TAB ─── */}
+        {tab === "discounts" && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-400">{discounts.length} كود</span>
+              <button
+                onClick={() => { setDForm(EMPTY_DISCOUNT); setShowDiscountForm(true); setDMsg(""); }}
+                className="flex items-center gap-2 rounded-xl bg-white text-black px-4 py-2 text-sm font-semibold hover:bg-white/90 transition-all"
+              >
+                <Plus size={15} />
+                إضافة كود
+              </button>
+            </div>
+
+            {dMsg && (
+              <div className={`rounded-xl border px-4 py-3 text-sm ${dMsgType === "ok" ? "border-white/20 bg-white/5 text-white" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
+                {dMsg}
+              </div>
+            )}
+
+            {/* Add form */}
+            <AnimatePresence>
+              {showDiscountForm && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  <motion.div className="rounded-2xl border border-line bg-panel p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-white text-sm">إضافة كود خصم</h3>
+                      <button onClick={() => setShowDiscountForm(false)} className="text-slate-500 hover:text-white"><X size={16} /></button>
+                    </div>
+
+                    {/* Type selector */}
+                    <div className="flex gap-2">
+                      {[
+                        { v: "percent" as const, label: "نسبة %", icon: Percent },
+                        { v: "fixed"   as const, label: "مبلغ ثابت", icon: DollarSign },
+                      ].map(({ v, label, icon: Icon }) => (
+                        <button
+                          key={v}
+                          onClick={() => setDForm(f => ({ ...f, discount_type: v }))}
+                          className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${dForm.discount_type === v ? "border-white/30 bg-white/10 text-white" : "border-line text-slate-400 hover:text-white"}`}
+                        >
+                          <Icon size={14} />
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1.5">الكود *</label>
+                        <input
+                          className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30 uppercase"
+                          placeholder="WELCOME10"
+                          value={dForm.code}
+                          onChange={e => setDForm(f => ({ ...f, code: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1.5">
+                          {dForm.discount_type === "percent" ? "النسبة (%) *" : "المبلغ (ر.س) *"}
+                        </label>
+                        <input
+                          type="number"
+                          className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30"
+                          placeholder={dForm.discount_type === "percent" ? "10" : "20"}
+                          value={dForm.discount_value}
+                          onChange={e => setDForm(f => ({ ...f, discount_value: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1.5">المنتج (اختياري)</label>
+                        <select
+                          value={dForm.product_id}
+                          onChange={e => setDForm(f => ({ ...f, product_id: e.target.value }))}
+                          className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white focus:outline-none focus:border-white/30"
+                        >
+                          <option value="">— كل المنتجات —</option>
+                          {products.filter(p => p.is_active).map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1.5">حد الاستخدام (اختياري)</label>
+                        <input
+                          type="number"
+                          className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30"
+                          placeholder="بدون حد"
+                          value={dForm.usage_limit}
+                          onChange={e => setDForm(f => ({ ...f, usage_limit: e.target.value }))}
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs text-slate-400 mb-1.5">تاريخ الانتهاء (اختياري)</label>
+                        <input
+                          type="datetime-local"
+                          className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30"
+                          value={dForm.expires_at}
+                          onChange={e => setDForm(f => ({ ...f, expires_at: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={saveDiscount}
+                        disabled={dSaving}
+                        className="flex items-center gap-2 rounded-xl bg-white text-black px-4 py-2.5 text-sm font-semibold hover:bg-white/90 disabled:opacity-50 transition-all"
+                      >
+                        {dSaving ? <RefreshCw size={13} className="animate-spin" /> : <Save size={13} />}
+                        حفظ
+                      </button>
+                      <button
+                        onClick={() => setShowDiscountForm(false)}
+                        className="rounded-xl border border-line px-4 py-2.5 text-sm text-slate-400 hover:text-white hover:border-white/20 transition-all"
+                      >
+                        إلغاء
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {dLoading ? (
+              <div className="flex items-center justify-center py-16 text-slate-500">
+                <RefreshCw size={18} className="animate-spin ml-2" />جاري التحميل...
+              </div>
+            ) : discounts.length === 0 ? (
+              <div className="rounded-2xl border border-line bg-panel p-12 text-center">
+                <Tag size={32} className="mx-auto mb-3 text-slate-600" />
+                <p className="text-slate-500">لا توجد أكواد خصم بعد</p>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {discounts.map((d, i) => {
+                  const expired = d.expires_at && new Date(d.expires_at).getTime() < Date.now();
+                  const exhausted = d.usage_limit != null && d.usage_count >= d.usage_limit;
+                  return (
+                    <motion.div
+                      key={d.id}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.04 }}
+                      className="rounded-2xl border border-line bg-panel p-4"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white/5 shrink-0">
+                            {d.discount_type === "percent" ? <Percent size={15} className="text-purple-400" /> : <DollarSign size={15} className="text-purple-400" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                              <span className="font-bold text-white text-sm font-mono uppercase">{d.code}</span>
+                              <span className="rounded-full border border-purple-400/25 bg-purple-400/10 px-2 py-0.5 text-xs text-purple-300 font-bold">
+                                {d.discount_type === "percent" ? `${d.discount_value}%` : `${d.discount_value} ر.س`}
+                              </span>
+                              <span className={`rounded-full border px-2 py-0.5 text-xs ${d.is_active && !expired && !exhausted ? "border-white/20 bg-white/5 text-white" : "border-slate-700 text-slate-500"}`}>
+                                {!d.is_active ? "متوقف" : expired ? "منتهي" : exhausted ? "مستنفد" : "نشط"}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
+                              <span>📦 {d.store_products?.name || "كل المنتجات"}</span>
+                              <span>
+                                🔢 {d.usage_count}{d.usage_limit != null ? ` / ${d.usage_limit}` : ""} استخدام
+                              </span>
+                              {d.expires_at && (
+                                <span>⏰ ينتهي {fmt(d.expires_at)}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => toggleDiscountActive(d)}
+                            className="rounded-lg border border-line px-3 py-1.5 text-xs text-slate-400 hover:text-white hover:border-white/20 transition-all"
+                          >
+                            {d.is_active ? "إيقاف" : "تفعيل"}
+                          </button>
+                          <button
+                            onClick={() => deleteDiscount(d.id)}
+                            disabled={dDeletingId === d.id}
+                            className="rounded-lg border border-red-500/20 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50"
+                          >
+                            {dDeletingId === d.id ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
             )}
           </motion.div>

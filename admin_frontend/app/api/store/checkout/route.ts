@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { createCheckoutSession } from "@/lib/tamara";
 import { findOrCreateConsumer, createPaymentLink } from "@/lib/streampay";
+import { reserveDiscount, releaseDiscount } from "@/lib/discount";
 
 const rawSite = process.env.NEXT_PUBLIC_SITE_URL || process.env.ADMIN_DASHBOARD_URL || "https://www.jobbots.org";
 const SITE = rawSite
@@ -9,8 +10,9 @@ const SITE = rawSite
   .replace("http://jobbots.org", "https://www.jobbots.org");
 
 export async function POST(req: Request) {
+  let appliedDiscount: { id: string; code: string } | null = null;
   try {
-    const { product_id, name, email, phone, ref_code, gateway = "tamara" } = await req.json();
+    const { product_id, name, email, phone, ref_code, discount_code, gateway = "tamara" } = await req.json();
 
     if (!product_id || !email?.trim() || !name?.trim() || !phone?.trim()) {
       return NextResponse.json(
@@ -40,33 +42,75 @@ export async function POST(req: Request) {
       if (aff) validRefCode = aff.code;
     }
 
+    // ─── Discount code (optional) ─── atomic reservation ─────────────────
+    let finalAmount = Number(product.price);
+    if (discount_code && typeof discount_code === "string" && discount_code.trim()) {
+      const dr = await reserveDiscount(discount_code, product.id, Number(product.price));
+      if (!dr.ok) {
+        return NextResponse.json({ ok: false, error: dr.error }, { status: 400 });
+      }
+      finalAmount = dr.discounted_amount;
+      appliedDiscount = { id: dr.code.id, code: dr.code.code };
+    }
+
+    // Helper to release the reserved discount on any downstream failure
+    const releaseOnFail = async () => {
+      if (appliedDiscount) {
+        try { await releaseDiscount(appliedDiscount.id); } catch {}
+      }
+    };
+
     const orderBase = {
       product_id: product.id,
       user_name: name.trim(),
       user_email: email.trim().toLowerCase(),
-      amount: product.price,
+      amount: finalAmount,
+      original_amount: Number(product.price),
       status: "pending",
       ref_code: validRefCode,
+      discount_code: appliedDiscount?.code || null,
+      discount_code_id: appliedDiscount?.id || null,
     };
 
-    let { data: order, error: orderErr } = await supabase
-      .from("store_orders")
-      .insert({ ...orderBase, user_phone: phone?.trim() || null })
-      .select()
-      .single();
+    const insertOrder = async (payload: Record<string, unknown>) => {
+      return await supabase.from("store_orders").insert(payload).select().single();
+    };
 
-    if (orderErr?.message?.includes("user_phone")) {
-      const fb = await supabase.from("store_orders").insert(orderBase).select().single();
+    let { data: order, error: orderErr } = await insertOrder({
+      ...orderBase,
+      user_phone: phone?.trim() || null,
+    });
+
+    // Backwards-compat fallbacks for older DB schemas
+    if (orderErr) {
+      const msg = orderErr.message || "";
+      const stripped: Record<string, unknown> = { ...orderBase, user_phone: phone?.trim() || null };
+      if (/user_phone/i.test(msg)) delete stripped.user_phone;
+      if (/discount_code_id/i.test(msg)) delete stripped.discount_code_id;
+      if (/discount_code(?!_id)/i.test(msg)) delete stripped.discount_code;
+      if (/original_amount/i.test(msg)) delete stripped.original_amount;
+      const fb = await insertOrder(stripped);
       order = fb.data;
+      orderErr = fb.error;
     }
 
-    const orderId = order?.id || crypto.randomUUID();
+    // Hard-fail if order persistence failed — never proceed to payment
+    // without a persisted order, otherwise webhook reconciliation breaks.
+    if (!order?.id) {
+      await releaseOnFail();
+      return NextResponse.json(
+        { ok: false, error: "فشل إنشاء الطلب، حاول مجدداً" },
+        { status: 500 }
+      );
+    }
+
+    const orderId = order.id;
 
     // ─── Tamara ───────────────────────────────────────────────────────────
     if (gateway === "tamara") {
       const session = await createCheckoutSession({
         orderId,
-        amount: Number(product.price),
+        amount: finalAmount,
         name: name.trim(),
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
@@ -98,6 +142,7 @@ export async function POST(req: Request) {
     // ─── StreamPay ────────────────────────────────────────────────────────
     if (gateway === "streampay") {
       if (!product.streampay_product_id) {
+        await releaseOnFail();
         return NextResponse.json(
           { ok: false, error: "هذا المنتج غير مرتبط ببوابة StreamPay بعد" },
           { status: 400 }
@@ -142,9 +187,15 @@ export async function POST(req: Request) {
     // ─── Bank Transfer ────────────────────────────────────────────────────
     if (gateway === "bank_transfer") {
       const originalAmount = Number(product.price);
-      const discountedAmount =
-        originalAmount > 40 ? Math.round(originalAmount * 0.85 * 100) / 100 : originalAmount;
+      // Apply legacy 15% bank discount only if no explicit discount code was used
+      let discountedAmount = finalAmount;
+      if (!appliedDiscount && originalAmount > 40) {
+        discountedAmount = Math.round(originalAmount * 0.85 * 100) / 100;
+      }
       const hasDiscount = discountedAmount < originalAmount;
+      const discountLabel = appliedDiscount
+        ? appliedDiscount.code
+        : hasDiscount ? "خصم 15%" : null;
 
       if (order?.id) {
         try {
@@ -168,13 +219,18 @@ export async function POST(req: Request) {
         amount: discountedAmount,
         original_amount: originalAmount,
         has_discount: hasDiscount,
+        discount_label: discountLabel,
         accounts: accounts || [],
       });
     }
 
+    await releaseOnFail();
     return NextResponse.json({ ok: false, error: "بوابة الدفع غير معروفة" }, { status: 400 });
   } catch (err) {
     console.error("Checkout error:", err);
+    if (appliedDiscount) {
+      try { await releaseDiscount(appliedDiscount.id); } catch {}
+    }
     return NextResponse.json(
       { ok: false, error: "حدث خطأ أثناء إنشاء رابط الدفع، حاول مجدداً" },
       { status: 500 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   Sparkles, Check, ShoppingCart, X, RefreshCw, Loader2, ShieldCheck,
-  Copy, CheckCheck, Building2, Wallet,
+  Copy, CheckCheck, Building2, Wallet, Tag,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -77,6 +77,19 @@ export default function StorePage() {
     order_id: string;
   } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Discount code
+  const [discountInput, setDiscountInput] = useState("");
+  const [discountState, setDiscountState] = useState<{
+    applied: boolean;
+    code?: string;
+    original?: number;
+    final?: number;
+    saved?: number;
+    error?: string;
+    loading?: boolean;
+  }>({ applied: false });
+
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadDone, setUploadDone] = useState(false);
@@ -102,11 +115,46 @@ export default function StorePage() {
     }
   }, []);
 
-  const handleBuy = (p: Product) => { setSelected(p); setFormErr(""); setStep("form"); setBankData(null); };
+  const handleBuy = (p: Product) => {
+    setSelected(p); setFormErr(""); setStep("form"); setBankData(null);
+    setDiscountInput(""); setDiscountState({ applied: false });
+  };
 
   const closeModal = () => {
     setSelected(null); setFormErr(""); setStep("form"); setBankData(null);
     setReceiptFile(null); setUploadDone(false); setUploadErr("");
+    setDiscountInput(""); setDiscountState({ applied: false });
+  };
+
+  const applyDiscountCode = async () => {
+    if (!selected || !discountInput.trim()) return;
+    setDiscountState({ applied: false, loading: true });
+    try {
+      const r = await fetch("/api/store/validate-discount", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: discountInput.trim(), product_id: selected.id }),
+      });
+      const j = await r.json();
+      if (!j.ok) {
+        setDiscountState({ applied: false, error: j.error || "كود غير صحيح" });
+        return;
+      }
+      setDiscountState({
+        applied: true,
+        code: j.code,
+        original: j.original_amount,
+        final: j.discounted_amount,
+        saved: j.discount_amount,
+      });
+    } catch {
+      setDiscountState({ applied: false, error: "خطأ في التحقق" });
+    }
+  };
+
+  const removeDiscount = () => {
+    setDiscountInput("");
+    setDiscountState({ applied: false });
   };
 
   const handleReceiptUpload = async () => {
@@ -149,6 +197,7 @@ export default function StorePage() {
           email: form.email.trim().toLowerCase(),
           phone: form.phone.trim() || undefined,
           ref_code: refCode || undefined,
+          discount_code: discountState.applied ? discountState.code : undefined,
           gateway,
         }),
       });
@@ -343,6 +392,70 @@ export default function StorePage() {
             </div>
 
             {formErr && <div style={s.errBox}>{formErr}</div>}
+
+            {/* Discount code */}
+            {step === "form" && (
+              <div style={s.discountBox}>
+                <div style={s.discountHeader}>
+                  <Tag size={13} color="#a78bfa" />
+                  <span style={s.discountTitle}>كود خصم (اختياري)</span>
+                </div>
+                {discountState.applied ? (
+                  <div style={s.discountApplied}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+                      <CheckCheck size={14} color="#a78bfa" />
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                        <span style={{ color: "#fff", fontSize: 13, fontWeight: 700 }}>{discountState.code}</span>
+                        <span style={{ color: "#a78bfa", fontSize: 11, fontWeight: 600 }}>
+                          وفّرت {discountState.saved} ر.س
+                        </span>
+                      </div>
+                    </div>
+                    <button onClick={removeDiscount} style={s.discountRemoveBtn}>
+                      <X size={13} />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        style={{ ...s.input, flex: 1, textTransform: "uppercase" }}
+                        placeholder="مثال: WELCOME10"
+                        value={discountInput}
+                        onChange={e => { setDiscountInput(e.target.value); setDiscountState(s => ({ ...s, error: undefined })); }}
+                        onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); applyDiscountCode(); } }}
+                        disabled={!!submitting || discountState.loading}
+                      />
+                      <button
+                        onClick={applyDiscountCode}
+                        disabled={!discountInput.trim() || discountState.loading || !!submitting}
+                        style={s.discountApplyBtn}
+                      >
+                        {discountState.loading
+                          ? <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} />
+                          : "تطبيق"}
+                      </button>
+                    </div>
+                    {discountState.error && (
+                      <div style={s.discountError}>{discountState.error}</div>
+                    )}
+                  </>
+                )}
+
+                {discountState.applied && (
+                  <div style={s.discountSummary}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#888" }}>
+                      <span>السعر الأصلي</span>
+                      <span style={{ textDecoration: "line-through" }}>{discountState.original} ر.س</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "#fff", fontWeight: 800, marginTop: 4 }}>
+                      <span>الإجمالي بعد الخصم</span>
+                      <span style={{ color: "#a78bfa" }}>{discountState.final} ر.س</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Payment gateway label */}
             <div style={s.gatewayLabel}>
@@ -633,6 +746,16 @@ const s: Record<string, React.CSSProperties> = {
   bankCard: { background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 12, padding: "14px 14px 10px" },
   bankIcon: { width: 28, height: 28, borderRadius: 8, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" },
   bankTypeTag: { marginRight: "auto", background: "#111", color: "#666", fontSize: 10, padding: "2px 8px", borderRadius: 6, border: "1px solid #1f1f1f" },
+
+  // Discount code
+  discountBox: { background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 12, padding: "12px 14px", marginBottom: 14, position: "relative", zIndex: 1 },
+  discountHeader: { display: "flex", alignItems: "center", gap: 7, marginBottom: 9 },
+  discountTitle: { color: "#bbb", fontSize: 12, fontWeight: 700 },
+  discountApplyBtn: { background: "#a78bfa", color: "#0a0a0a", border: "none", borderRadius: 9, padding: "0 14px", fontSize: 12.5, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 64 },
+  discountApplied: { display: "flex", alignItems: "center", gap: 8, background: "#0a0a0a", border: "1px solid #2a1f4a", borderRadius: 9, padding: "9px 12px" },
+  discountRemoveBtn: { background: "#161616", border: "1px solid #252525", borderRadius: 7, padding: 5, cursor: "pointer", color: "#888", display: "flex", lineHeight: 1, flexShrink: 0 },
+  discountError: { color: "#fca5a5", fontSize: 11.5, marginTop: 7 },
+  discountSummary: { marginTop: 10, paddingTop: 10, borderTop: "1px solid #1a1a1a" },
 
   // Receipt upload
   receiptBox: { background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 12, padding: "14px", marginTop: 14 },

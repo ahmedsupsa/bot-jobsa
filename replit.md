@@ -99,6 +99,15 @@ Each notification is personalized with `{name}` → user's first name. Worker au
 ALTER TABLE store_orders ADD COLUMN IF NOT EXISTS user_phone text;
 ```
 
+## Discount Codes
+
+Admin → Store → tab **«أكواد الخصم»** to create/manage codes.
+- Types: `percent` (0–100%) or `fixed` (SAR amount).
+- Optional product restriction, usage limit, and expiry date.
+- Customer enters code in store checkout modal → validates live via `/api/store/validate-discount` → applied amount is sent through Tamara/StreamPay/bank-transfer.
+- The legacy automatic 15% bank-transfer discount still applies only if no explicit discount code is used.
+- Migration: `database/migrations/discount_codes.sql` — creates `discount_codes` table + adds `discount_code`, `discount_code_id`, `original_amount` columns to `store_orders`.
+
 ## Database (Supabase)
 
 Tables: `users`, `admin_jobs`, `applications`, `job_fields`, `user_settings`, `user_cvs`, `user_job_preferences`, `worker_logs`, `push_subscriptions`, `store_orders`, `store_products`, `activation_codes`, `affiliates`, `affiliate_referrals`
