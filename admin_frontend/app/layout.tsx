@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   },
   alternates: { canonical: "https://jobbots.org" },
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Jobbots" },
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "بوت التقديم" },
   other: { "mobile-web-app-capable": "yes" },
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }, { url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
