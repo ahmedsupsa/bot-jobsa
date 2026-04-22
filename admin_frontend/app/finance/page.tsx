@@ -43,28 +43,29 @@ function StatCard({ label, value, sub, icon: Icon, color = "#a78bfa", trend, big
   color?: string; trend?: "up" | "down" | "neutral"; big?: boolean;
 }) {
   const TrendIcon = trend === "up" ? ArrowUpRight : trend === "down" ? ArrowDownRight : Minus;
-  const trendColor = trend === "up" ? "#fff" : trend === "down" ? "#f87171" : "#888";
+  const trendColor = trend === "up" ? "#16a34a" : trend === "down" ? "#dc2626" : "var(--text3)";
   return (
     <div style={{
-      background: big ? `linear-gradient(135deg, ${color}15, #111)` : "#111",
-      border: `1px solid ${big ? color + "44" : "#222"}`,
+      background: big ? `linear-gradient(135deg, ${color}10, var(--bg2))` : "var(--bg2)",
+      border: `1px solid ${big ? color + "55" : "var(--border)"}`,
       borderRadius: 16, padding: "20px 22px",
       display: "flex", flexDirection: "column", gap: 12,
+      boxShadow: "var(--shadow)",
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ color: "#888", fontSize: 12, fontWeight: 500 }}>{label}</span>
+        <span style={{ color: "var(--text3)", fontSize: 12, fontWeight: 500 }}>{label}</span>
         <div style={{
-          width: 34, height: 34, borderRadius: 10, background: color + "22",
+          width: 34, height: 34, borderRadius: 10, background: color + "1a",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           <Icon size={17} color={color} />
         </div>
       </div>
-      <div style={{ fontSize: big ? 30 : 24, fontWeight: 900, color: "#fff", lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: big ? 30 : 24, fontWeight: 900, color: "var(--text)", lineHeight: 1.1 }}>{value}</div>
       {sub && (
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           {trend && <TrendIcon size={12} color={trendColor} />}
-          <span style={{ color: trend ? trendColor : "#666", fontSize: 11 }}>{sub}</span>
+          <span style={{ color: trend ? trendColor : "var(--text4)", fontSize: 11 }}>{sub}</span>
         </div>
       )}
     </div>
@@ -74,14 +75,14 @@ function StatCard({ label, value, sub, icon: Icon, color = "#a78bfa", trend, big
 function StackedBarChart({ data }: { data: ChartPoint[] }) {
   const max = Math.max(...data.map(d => d.direct + d.affiliate), 1);
   return (
-    <div style={{ background: "#111", border: "1px solid #222", borderRadius: 16, padding: 24 }}>
+    <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: 24 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
-        <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 700, margin: 0 }}>الإيرادات الشهرية (آخر 6 أشهر)</h3>
+        <h3 style={{ color: "var(--text)", fontSize: 15, fontWeight: 700, margin: 0 }}>الإيرادات الشهرية (آخر 6 أشهر)</h3>
         <div style={{ display: "flex", gap: 14, fontSize: 11 }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#aaa" }}>
-            <span style={{ width: 10, height: 10, background: "#fff", borderRadius: 2 }} /> مبيعات مباشرة
+          <span style={{ display: "flex", alignItems: "center", gap: 5, color: "var(--text3)" }}>
+            <span style={{ width: 10, height: 10, background: "var(--text)", borderRadius: 2 }} /> مبيعات مباشرة
           </span>
-          <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#aaa" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 5, color: "var(--text3)" }}>
             <span style={{ width: 10, height: 10, background: "#a78bfa", borderRadius: 2 }} /> مع عمولة
           </span>
         </div>
@@ -94,14 +95,14 @@ function StackedBarChart({ data }: { data: ChartPoint[] }) {
           const affH = total > 0 ? (d.affiliate / total) * totalH : 0;
           return (
             <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-              <span style={{ color: "#888", fontSize: 10, fontWeight: 700 }}>{total > 0 ? fmt(total) : ""}</span>
+              <span style={{ color: "var(--text3)", fontSize: 10, fontWeight: 700 }}>{total > 0 ? fmt(total) : ""}</span>
               <div title={`${d.month}: مباشر ${fmt(d.direct)} + عمولة ${fmt(d.affiliate)} ر.س`}
                 style={{ width: "100%", height: totalH, borderRadius: 6, overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
                 <div style={{ height: affH, background: "linear-gradient(180deg, #c4b5fd, #6d28d9)" }} />
-                <div style={{ height: directH, background: "linear-gradient(180deg, #fff, #aaa)" }} />
-                {total === 0 && <div style={{ height: "100%", background: "#1a1a1a" }} />}
+                <div style={{ height: directH, background: "linear-gradient(180deg, #52525b, #18181b)" }} />
+                {total === 0 && <div style={{ height: "100%", background: "var(--surface2)" }} />}
               </div>
-              <span style={{ color: "#555", fontSize: 10 }}>{d.month}</span>
+              <span style={{ color: "var(--text4)", fontSize: 10 }}>{d.month}</span>
             </div>
           );
         })}
@@ -154,15 +155,15 @@ export default function FinancePage() {
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h1 style={{ color: "#fff", fontSize: 24, fontWeight: 900, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
+            <h1 style={{ color: "var(--text)", fontSize: 24, fontWeight: 900, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
               <Wallet size={22} color="#a78bfa" /> المركز المالي
             </h1>
-            <p style={{ color: "#666", fontSize: 13, margin: "5px 0 0" }}>تفصيل المبيعات والعمولات بشفافية كاملة</p>
+            <p style={{ color: "var(--text4)", fontSize: 13, margin: "5px 0 0" }}>تفصيل المبيعات والعمولات بشفافية كاملة</p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={handleExport} disabled={exporting || !data}
               style={{
-                background: "#fff", color: "#000", border: "none",
+                background: "var(--accent)", color: "var(--accent-fg)", border: "none",
                 borderRadius: 10, padding: "10px 16px", cursor: exporting ? "wait" : "pointer",
                 display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700,
                 opacity: exporting || !data ? 0.6 : 1,
@@ -172,8 +173,8 @@ export default function FinancePage() {
             </button>
             <button onClick={load} disabled={loading}
               style={{
-                background: "#1a1a1a", border: "1px solid #333", borderRadius: 10,
-                padding: "10px 14px", color: "#888", cursor: "pointer",
+                background: "var(--surface2)", border: "1px solid var(--border2)", borderRadius: 10,
+                padding: "10px 14px", color: "var(--text3)", cursor: "pointer",
                 display: "flex", alignItems: "center", gap: 6, fontSize: 13,
               }}>
               <RefreshCw size={14} style={{ animation: loading ? "spin 1s linear infinite" : "none" }} />
@@ -183,7 +184,7 @@ export default function FinancePage() {
         </div>
 
         {loading && !data ? (
-          <div style={{ color: "#555", textAlign: "center", padding: "60px 20px" }}>جاري التحميل...</div>
+          <div style={{ color: "var(--text4)", textAlign: "center", padding: "60px 20px" }}>جاري التحميل...</div>
         ) : data ? (
           <>
             {/* Top: Net Revenue Hero Cards */}
@@ -198,7 +199,7 @@ export default function FinancePage() {
                 label="صافي الإيراد بعد العمولة (Net)"
                 value={`${fmt(data.summary.netRevenue)} ر.س`}
                 sub="ما تبقّى لجوبوتس"
-                icon={Target} color="#fff" big
+                icon={Target} color="var(--text)" big
               />
               <StatCard
                 label="إجمالي العمولات المستحقة"
@@ -209,7 +210,7 @@ export default function FinancePage() {
             </div>
 
             {/* Tabs */}
-            <div style={{ display: "flex", gap: 6, marginBottom: 18, borderBottom: "1px solid #222" }}>
+            <div style={{ display: "flex", gap: 6, marginBottom: 18, borderBottom: "1px solid var(--border)" }}>
               {[
                 { k: "overview", l: "نظرة عامة", i: PieChart },
                 { k: "direct", l: `مبيعات مباشرة (${data.summary.directCount})`, i: CheckCircle2 },
@@ -219,7 +220,7 @@ export default function FinancePage() {
                 <button key={k} onClick={() => setTab(k as any)}
                   style={{
                     background: "transparent", border: "none",
-                    color: tab === k ? "#fff" : "#666",
+                    color: tab === k ? "var(--text)" : "var(--text4)",
                     padding: "10px 16px", cursor: "pointer", fontSize: 13, fontWeight: 600,
                     borderBottom: tab === k ? "2px solid #a78bfa" : "2px solid transparent",
                     display: "flex", alignItems: "center", gap: 6,
@@ -234,7 +235,7 @@ export default function FinancePage() {
                 {/* Secondary stats */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 18 }}>
                   <StatCard label="مبيعات مباشرة (بدون عمولة)" value={`${fmt(data.summary.directRevenue)} ر.س`}
-                    sub={`${data.summary.directCount} طلب — تبقى 100%`} icon={CheckCircle2} color="#fff" />
+                    sub={`${data.summary.directCount} طلب — تبقى 100%`} icon={CheckCircle2} color="var(--text)" />
                   <StatCard label="مبيعات عبر مسوّقين" value={`${fmt(data.summary.affiliateRevenue)} ر.س`}
                     sub={`${data.summary.affiliateCount} طلب`} icon={Users} color="#a78bfa" />
                   <StatCard label="إيراد هذا الشهر" value={`${fmt(data.summary.monthlyGross)} ر.س`}
@@ -246,17 +247,17 @@ export default function FinancePage() {
                 </div>
 
                 {/* Commission cashflow */}
-                <div style={{ background: "linear-gradient(135deg, #1a0a2e, #111)", border: "1px solid #6d28d944",
+                <div style={{ background: "var(--info-purple-bg)", border: "1px solid var(--info-purple-border)",
                   borderRadius: 16, padding: 22, marginBottom: 18 }}>
-                  <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 700, margin: "0 0 16px",
+                  <h3 style={{ color: "var(--text)", fontSize: 15, fontWeight: 700, margin: "0 0 16px",
                     display: "flex", alignItems: "center", gap: 8 }}>
                     <Wallet size={16} color="#a78bfa" /> الحركة المالية لبرنامج الربح
                   </h3>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
                     <CashRow icon={<Clock size={14} color="#f59e0b" />} label="عمولات معلّقة (لم تُسحب)"
                       value={`${fmt(data.summary.pendingCommissions)} ر.س`} bg="#f59e0b" />
-                    <CashRow icon={<CheckCircle2 size={14} color="#fff" />} label="عمولات مدفوعة"
-                      value={`${fmt(data.summary.paidCommissions)} ر.س`} bg="#fff" />
+                    <CashRow icon={<CheckCircle2 size={14} color="#16a34a" />} label="عمولات مدفوعة"
+                      value={`${fmt(data.summary.paidCommissions)} ر.س`} bg="#16a34a" />
                     <CashRow icon={<AlertCircle size={14} color="#f59e0b" />} label="طلبات سحب معلّقة"
                       value={`${fmt(data.summary.pendingPayout)} ر.س`} bg="#f59e0b" />
                     <CashRow icon={<DollarSign size={14} color="#3b82f6" />} label="إجمالي ما تم تحويله"
@@ -267,26 +268,26 @@ export default function FinancePage() {
                 {/* Chart + By Product */}
                 <div className="finance-chart-grid" style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 14, marginBottom: 18, alignItems: "start" }}>
                   <StackedBarChart data={data.chart} />
-                  <div style={{ background: "#111", border: "1px solid #222", borderRadius: 16, padding: 24 }}>
-                    <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 700, margin: "0 0 18px", display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: 24 }}>
+                    <h3 style={{ color: "var(--text)", fontSize: 15, fontWeight: 700, margin: "0 0 18px", display: "flex", alignItems: "center", gap: 8 }}>
                       <BarChart3 size={16} color="#a78bfa" /> حسب المنتج
                     </h3>
                     {data.byProduct.length === 0 ? (
-                      <p style={{ color: "#555", fontSize: 13 }}>لا يوجد بيانات</p>
+                      <p style={{ color: "var(--text4)", fontSize: 13 }}>لا يوجد بيانات</p>
                     ) : data.byProduct.map((p, i) => {
                       const total = p.direct + p.affiliate;
                       const max = Math.max(...data.byProduct.map(x => x.direct + x.affiliate), 1);
                       return (
                         <div key={i} style={{ marginBottom: 14 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                            <span style={{ color: "#ccc", fontSize: 12 }}>{p.name}</span>
-                            <span style={{ color: "#fff", fontSize: 12, fontWeight: 700 }}>{fmt(total)} ر.س</span>
+                            <span style={{ color: "var(--text2)", fontSize: 12 }}>{p.name}</span>
+                            <span style={{ color: "var(--text)", fontSize: 12, fontWeight: 700 }}>{fmt(total)} ر.س</span>
                           </div>
-                          <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden", background: "#1a1a1a" }}>
-                            <div style={{ background: "#fff", width: `${(p.direct / max) * 100}%` }} title={`مباشر ${fmt(p.direct)}`} />
+                          <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden", background: "var(--surface2)" }}>
+                            <div style={{ background: "var(--text)", width: `${(p.direct / max) * 100}%` }} title={`مباشر ${fmt(p.direct)}`} />
                             <div style={{ background: "#a78bfa", width: `${(p.affiliate / max) * 100}%` }} title={`عمولة ${fmt(p.affiliate)}`} />
                           </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3, fontSize: 10, color: "#666" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3, fontSize: 10, color: "var(--text4)" }}>
                             <span>{p.count} طلب</span>
                             {p.commissions > 0 && <span style={{ color: "#f87171" }}>− {fmt(p.commissions)} عمولة</span>}
                           </div>
@@ -299,16 +300,16 @@ export default function FinancePage() {
             )}
 
             {tab === "direct" && (
-              <div style={{ background: "#111", border: "1px solid #222", borderRadius: 16, padding: 24 }}>
+              <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: 24 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                  <CheckCircle2 size={18} color="#fff" />
-                  <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 700, margin: 0 }}>المبيعات المباشرة (بدون عمولة)</h3>
+                  <CheckCircle2 size={18} color="var(--text)" />
+                  <h3 style={{ color: "var(--text)", fontSize: 15, fontWeight: 700, margin: 0 }}>المبيعات المباشرة (بدون عمولة)</h3>
                 </div>
-                <p style={{ color: "#666", fontSize: 12, margin: "0 0 18px" }}>طلبات بدون كود إحالة — يحتفظ النظام بكامل المبلغ</p>
+                <p style={{ color: "var(--text4)", fontSize: 12, margin: "0 0 18px" }}>طلبات بدون كود إحالة — يحتفظ النظام بكامل المبلغ</p>
                 <OrdersTable rows={data.directOrders.map(o => ({
                   user_name: o.user_name, user_email: o.user_email, product_name: o.product_name,
                   amount: o.amount, paid_at: o.paid_at,
-                }))} totalLabel="إجمالي مباشر" totalValue={data.summary.directRevenue} totalColor="#fff" />
+                }))} totalLabel="إجمالي مباشر" totalValue={data.summary.directRevenue} totalColor="var(--text)" />
               </div>
             )}
 
@@ -327,13 +328,13 @@ export default function FinancePage() {
                   <StatCard label="الصافي المستلم من تمارا"
                     value={`${fmt(data.summary.tamaraNet)} ر.س`}
                     sub="بعد خصم الرسوم والضريبة"
-                    icon={Target} color="#fff" big />
+                    icon={Target} color="var(--text)" big />
                 </div>
 
                 {/* Fee Formula Explainer */}
-                <div style={{ background: "linear-gradient(135deg, #2a0a1f, #111)", border: "1px solid #ec489944",
+                <div style={{ background: "#fdf2f8", border: "1px solid #fbcfe8",
                   borderRadius: 16, padding: 22 }}>
-                  <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 700, margin: "0 0 14px",
+                  <h3 style={{ color: "var(--text)", fontSize: 15, fontWeight: 700, margin: "0 0 14px",
                     display: "flex", alignItems: "center", gap: 8 }}>
                     <PieChart size={16} color="#ec4899" /> طريقة احتساب رسوم تمارا
                   </h3>
@@ -348,31 +349,31 @@ export default function FinancePage() {
                       label={`ضريبة القيمة المضافة (${(data.summary.tamaraVatRate * 100).toFixed(0)}%)`}
                       value={`${fmt(data.summary.tamaraVat)} ر.س`} bg="#a78bfa" />
                   </div>
-                  <div style={{ background: "#0a0a0a", border: "1px solid #222", borderRadius: 10, padding: "12px 14px",
-                    fontSize: 12, color: "#aaa", lineHeight: 1.9 }}>
+                  <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px",
+                    fontSize: 12, color: "var(--text3)", lineHeight: 1.9 }}>
                     <span style={{ color: "#ec4899", fontWeight: 700 }}>الصيغة:</span>{" "}
                     الرسوم = (المبلغ × {(data.summary.tamaraVariableRate * 100).toFixed(2)}% + {data.summary.tamaraFixedFee}) × (1 + {(data.summary.tamaraVatRate * 100).toFixed(0)}%)
                     <br />
-                    <span style={{ color: "#888" }}>أمثلة:</span>{" "}
-                    <span style={{ color: "#fff" }}>50 ر.س → ~5.74 رسوم</span> ·{" "}
-                    <span style={{ color: "#fff" }}>70 ر.س → ~7.35 رسوم</span> ·{" "}
-                    <span style={{ color: "#fff" }}>90 ر.س → ~8.96 رسوم</span>
+                    <span style={{ color: "var(--text3)" }}>أمثلة:</span>{" "}
+                    <span style={{ color: "var(--text)" }}>50 ر.س → ~5.74 رسوم</span> ·{" "}
+                    <span style={{ color: "var(--text)" }}>70 ر.س → ~7.35 رسوم</span> ·{" "}
+                    <span style={{ color: "var(--text)" }}>90 ر.س → ~8.96 رسوم</span>
                   </div>
                 </div>
 
                 {/* Tamara Orders Table */}
-                <div style={{ background: "#111", border: "1px solid #222", borderRadius: 16, padding: 24 }}>
+                <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: 24 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
                     <Wallet size={18} color="#ec4899" />
-                    <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 700, margin: 0 }}>تفصيل طلبات تمارا</h3>
+                    <h3 style={{ color: "var(--text)", fontSize: 15, fontWeight: 700, margin: 0 }}>تفصيل طلبات تمارا</h3>
                   </div>
-                  <p style={{ color: "#666", fontSize: 12, margin: "0 0 18px" }}>
+                  <p style={{ color: "var(--text4)", fontSize: 12, margin: "0 0 18px" }}>
                     كل صف: المبلغ • رسوم متغيرة • رسوم ثابتة • ضريبة • إجمالي الرسوم • الصافي المستلم
                   </p>
                   <div style={{ overflowX: "auto" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead>
-                        <tr style={{ color: "#666", borderBottom: "1px solid #222" }}>
+                        <tr style={{ color: "var(--text4)", borderBottom: "1px solid var(--border)" }}>
                           <th style={th}>العميل</th>
                           <th style={th}>المنتج</th>
                           <th style={{ ...th, textAlign: "left" }}>المبلغ</th>
@@ -386,32 +387,32 @@ export default function FinancePage() {
                       </thead>
                       <tbody>
                         {data.tamaraOrders.length === 0 ? (
-                          <tr><td colSpan={9} style={{ color: "#555", textAlign: "center", padding: 32 }}>لا توجد طلبات تمارا مدفوعة بعد</td></tr>
+                          <tr><td colSpan={9} style={{ color: "var(--text4)", textAlign: "center", padding: 32 }}>لا توجد طلبات تمارا مدفوعة بعد</td></tr>
                         ) : data.tamaraOrders.map(o => (
-                          <tr key={o.id} style={{ borderBottom: "1px solid #1a1a1a" }}
-                            onMouseEnter={e => (e.currentTarget.style.background = "#161616")}
+                          <tr key={o.id} style={{ borderBottom: "1px solid var(--border)" }}
+                            onMouseEnter={e => (e.currentTarget.style.background = "var(--surface2)")}
                             onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                             <td style={td}>{o.user_name || o.user_email || "—"}</td>
                             <td style={td}>{o.product_name}</td>
-                            <td style={{ ...td, textAlign: "left", color: "#fff", fontWeight: 700 }}>{fmt(o.amount)}</td>
+                            <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 700 }}>{fmt(o.amount)}</td>
                             <td style={{ ...td, textAlign: "left", color: "#ec4899" }}>− {fmt(o.fee_variable)}</td>
                             <td style={{ ...td, textAlign: "left", color: "#f59e0b" }}>− {fmt(o.fee_fixed)}</td>
                             <td style={{ ...td, textAlign: "left", color: "#a78bfa" }}>− {fmt(o.fee_vat)}</td>
                             <td style={{ ...td, textAlign: "left", color: "#f87171", fontWeight: 700 }}>− {fmt(o.fee_total)}</td>
-                            <td style={{ ...td, textAlign: "left", color: "#fff", fontWeight: 800 }}>{fmt(o.net_received)}</td>
-                            <td style={{ ...td, color: "#666" }}>{fmtDate(o.paid_at)}</td>
+                            <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 800 }}>{fmt(o.net_received)}</td>
+                            <td style={{ ...td, color: "var(--text4)" }}>{fmtDate(o.paid_at)}</td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot>
-                        <tr style={{ background: "#1a1a1a" }}>
-                          <td colSpan={2} style={{ ...td, color: "#fff", fontWeight: 700 }}>الإجماليات</td>
-                          <td style={{ ...td, textAlign: "left", color: "#fff", fontWeight: 800 }}>{fmt(data.summary.tamaraGross)}</td>
+                        <tr style={{ background: "var(--surface2)" }}>
+                          <td colSpan={2} style={{ ...td, color: "var(--text)", fontWeight: 700 }}>الإجماليات</td>
+                          <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 800 }}>{fmt(data.summary.tamaraGross)}</td>
                           <td style={{ ...td, textAlign: "left", color: "#ec4899", fontWeight: 800 }}>− {fmt(data.summary.tamaraVariable)}</td>
                           <td style={{ ...td, textAlign: "left", color: "#f59e0b", fontWeight: 800 }}>− {fmt(data.summary.tamaraFixed)}</td>
                           <td style={{ ...td, textAlign: "left", color: "#a78bfa", fontWeight: 800 }}>− {fmt(data.summary.tamaraVat)}</td>
                           <td style={{ ...td, textAlign: "left", color: "#f87171", fontWeight: 800 }}>− {fmt(data.summary.tamaraFees)}</td>
-                          <td style={{ ...td, textAlign: "left", color: "#fff", fontWeight: 800 }}>{fmt(data.summary.tamaraNet)}</td>
+                          <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 800 }}>{fmt(data.summary.tamaraNet)}</td>
                           <td />
                         </tr>
                       </tfoot>
@@ -422,17 +423,17 @@ export default function FinancePage() {
             )}
 
             {tab === "affiliate" && (
-              <div style={{ background: "#111", border: "1px solid #222", borderRadius: 16, padding: 24 }}>
+              <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: 24 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
                   <Users size={18} color="#a78bfa" />
-                  <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 700, margin: 0 }}>المبيعات عبر مسوّقين (مع عمولة 10%)</h3>
+                  <h3 style={{ color: "var(--text)", fontSize: 15, fontWeight: 700, margin: 0 }}>المبيعات عبر مسوّقين (مع عمولة 10%)</h3>
                 </div>
-                <p style={{ color: "#666", fontSize: 12, margin: "0 0 18px" }}>كل صف يبيّن: المبلغ • العمولة المخصومة • الصافي للنظام</p>
+                <p style={{ color: "var(--text4)", fontSize: 12, margin: "0 0 18px" }}>كل صف يبيّن: المبلغ • العمولة المخصومة • الصافي للنظام</p>
 
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
-                      <tr style={{ color: "#666", borderBottom: "1px solid #222" }}>
+                      <tr style={{ color: "var(--text4)", borderBottom: "1px solid var(--border)" }}>
                         <th style={th}>العميل</th>
                         <th style={th}>المسوّق</th>
                         <th style={th}>الكود</th>
@@ -446,35 +447,36 @@ export default function FinancePage() {
                     </thead>
                     <tbody>
                       {data.affiliateOrders.length === 0 ? (
-                        <tr><td colSpan={9} style={{ color: "#555", textAlign: "center", padding: 32 }}>لا توجد مبيعات عبر مسوّقين بعد</td></tr>
+                        <tr><td colSpan={9} style={{ color: "var(--text4)", textAlign: "center", padding: 32 }}>لا توجد مبيعات عبر مسوّقين بعد</td></tr>
                       ) : data.affiliateOrders.map(o => (
-                        <tr key={o.id} style={{ borderBottom: "1px solid #1a1a1a" }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "#161616")}
+                        <tr key={o.id} style={{ borderBottom: "1px solid var(--border)" }}
+                          onMouseEnter={e => (e.currentTarget.style.background = "var(--surface2)")}
                           onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                           <td style={td}>{o.user_name || "—"}</td>
                           <td style={{ ...td, color: "#a78bfa", fontWeight: 600 }}>{o.affiliate_name}</td>
-                          <td style={td}><code style={{ background: "#1a1a1a", padding: "2px 6px", borderRadius: 4, color: "#ccc", fontSize: 11 }}>{o.ref_code}</code></td>
+                          <td style={td}><code style={{ background: "var(--surface2)", padding: "2px 6px", borderRadius: 4, color: "var(--text2)", fontSize: 11 }}>{o.ref_code}</code></td>
                           <td style={td}>{o.product_name}</td>
-                          <td style={{ ...td, textAlign: "left", color: "#fff", fontWeight: 600 }}>{fmt(o.amount || 0)}</td>
+                          <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 600 }}>{fmt(o.amount || 0)}</td>
                           <td style={{ ...td, textAlign: "left", color: "#f87171", fontWeight: 700 }}>− {fmt(o.commission)}</td>
-                          <td style={{ ...td, textAlign: "left", color: "#fff", fontWeight: 700 }}>{fmt(o.net)}</td>
+                          <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 700 }}>{fmt(o.net)}</td>
                           <td style={td}>
                             <span style={{
                               padding: "3px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700,
-                              background: o.commission_status === "paid" ? "#0a2a14" : "#2a1f0a",
-                              color: o.commission_status === "paid" ? "#fff" : "#fbbf24",
+                              background: o.commission_status === "paid" ? "var(--success-bg)" : "var(--alert-bg)",
+                              color: o.commission_status === "paid" ? "var(--success-fg)" : "var(--alert-fg)",
+                              border: `1px solid ${o.commission_status === "paid" ? "var(--success-border)" : "var(--alert-border)"}`,
                             }}>{o.commission_status === "paid" ? "مدفوعة" : "معلّقة"}</span>
                           </td>
-                          <td style={{ ...td, color: "#666" }}>{fmtDate(o.paid_at)}</td>
+                          <td style={{ ...td, color: "var(--text4)" }}>{fmtDate(o.paid_at)}</td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
-                      <tr style={{ background: "#1a1a1a" }}>
-                        <td colSpan={4} style={{ ...td, color: "#fff", fontWeight: 700 }}>الإجماليات</td>
-                        <td style={{ ...td, textAlign: "left", color: "#fff", fontWeight: 800 }}>{fmt(data.summary.affiliateRevenue)}</td>
+                      <tr style={{ background: "var(--surface2)" }}>
+                        <td colSpan={4} style={{ ...td, color: "var(--text)", fontWeight: 700 }}>الإجماليات</td>
+                        <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 800 }}>{fmt(data.summary.affiliateRevenue)}</td>
                         <td style={{ ...td, textAlign: "left", color: "#f87171", fontWeight: 800 }}>− {fmt(data.summary.totalCommissionsAccrued)}</td>
-                        <td style={{ ...td, textAlign: "left", color: "#fff", fontWeight: 800 }}>{fmt(data.summary.affiliateRevenue - data.summary.totalCommissionsAccrued)}</td>
+                        <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 800 }}>{fmt(data.summary.affiliateRevenue - data.summary.totalCommissionsAccrued)}</td>
                         <td colSpan={2} />
                       </tr>
                     </tfoot>
@@ -499,11 +501,11 @@ export default function FinancePage() {
 
 function CashRow({ icon, label, value, bg }: { icon: React.ReactNode; label: string; value: string; bg: string }) {
   return (
-    <div style={{ background: "#111", border: `1px solid ${bg}33`, borderRadius: 12, padding: "12px 14px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#888", fontSize: 11, marginBottom: 6 }}>
+    <div style={{ background: "var(--bg2)", border: `1px solid ${bg}55`, borderRadius: 12, padding: "12px 14px", boxShadow: "var(--shadow)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text2)", fontSize: 11, marginBottom: 6, fontWeight: 600 }}>
         {icon} {label}
       </div>
-      <div style={{ color: "#fff", fontSize: 17, fontWeight: 800 }}>{value}</div>
+      <div style={{ color: "var(--text)", fontSize: 17, fontWeight: 800 }}>{value}</div>
     </div>
   );
 }
@@ -516,7 +518,7 @@ function OrdersTable({ rows, totalLabel, totalValue, totalColor }: {
     <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
         <thead>
-          <tr style={{ color: "#666", borderBottom: "1px solid #222" }}>
+          <tr style={{ color: "var(--text4)", borderBottom: "1px solid var(--border)" }}>
             <th style={th}>العميل</th>
             <th style={th}>البريد</th>
             <th style={th}>المنتج</th>
@@ -526,22 +528,22 @@ function OrdersTable({ rows, totalLabel, totalValue, totalColor }: {
         </thead>
         <tbody>
           {rows.length === 0 ? (
-            <tr><td colSpan={5} style={{ color: "#555", textAlign: "center", padding: 32 }}>لا توجد طلبات</td></tr>
+            <tr><td colSpan={5} style={{ color: "var(--text4)", textAlign: "center", padding: 32 }}>لا توجد طلبات</td></tr>
           ) : rows.map((o, i) => (
-            <tr key={i} style={{ borderBottom: "1px solid #1a1a1a" }}
-              onMouseEnter={e => (e.currentTarget.style.background = "#161616")}
+            <tr key={i} style={{ borderBottom: "1px solid var(--border)" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "var(--surface2)")}
               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
               <td style={td}>{o.user_name || "—"}</td>
-              <td style={{ ...td, color: "#888" }}>{o.user_email || "—"}</td>
+              <td style={{ ...td, color: "var(--text3)" }}>{o.user_email || "—"}</td>
               <td style={td}>{o.product_name}</td>
               <td style={{ ...td, textAlign: "left", color: totalColor, fontWeight: 700 }}>{fmt(o.amount || 0)}</td>
-              <td style={{ ...td, color: "#666" }}>{fmtDate(o.paid_at)}</td>
+              <td style={{ ...td, color: "var(--text4)" }}>{fmtDate(o.paid_at)}</td>
             </tr>
           ))}
         </tbody>
         <tfoot>
-          <tr style={{ background: "#1a1a1a" }}>
-            <td colSpan={3} style={{ ...td, color: "#fff", fontWeight: 700 }}>{totalLabel}</td>
+          <tr style={{ background: "var(--surface2)" }}>
+            <td colSpan={3} style={{ ...td, color: "var(--text)", fontWeight: 700 }}>{totalLabel}</td>
             <td style={{ ...td, textAlign: "left", color: totalColor, fontWeight: 800, fontSize: 14 }}>{fmt(totalValue)} ر.س</td>
             <td />
           </tr>
@@ -552,5 +554,5 @@ function OrdersTable({ rows, totalLabel, totalValue, totalColor }: {
 }
 
 const th: React.CSSProperties = { textAlign: "right", padding: "10px 12px", fontWeight: 600, fontSize: 11 };
-const td: React.CSSProperties = { padding: "10px 12px", color: "#ccc" };
+const td: React.CSSProperties = { padding: "10px 12px", color: "var(--text2)" };
 
