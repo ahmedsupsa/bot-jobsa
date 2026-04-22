@@ -134,14 +134,16 @@ export default function StoreAdminPage() {
   const saveSettings = async () => {
     setStSaving(true); setStMsg("");
     try {
+      const hasContent = !!(settings.banner_image_url || (settings.banner_text && settings.banner_text.trim()));
+      const payload = { ...settings, banner_enabled: hasContent ? settings.banner_enabled : false };
       const r = await fetch(`${API_BASE}/api/admin/store/settings`, {
         method: "PUT", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify(payload),
       });
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || "فشل الحفظ");
-      setStMsg("تم الحفظ ✓"); setStMsgType("ok");
+      setStMsg(payload.banner_enabled ? "تم الحفظ ✓ — البنر يظهر الآن في صفحة المتجر" : "تم الحفظ ✓"); setStMsgType("ok");
     } catch (e) {
       setStMsg(String(e).replace("Error: ", "")); setStMsgType("err");
     }
@@ -158,8 +160,9 @@ export default function StoreAdminPage() {
       });
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || "فشل الرفع");
-      setSettings(s => ({ ...s, banner_image_url: j.url }));
-      setStMsg("تم رفع الصورة ✓"); setStMsgType("ok");
+      // Auto-enable banner when uploading an image
+      setSettings(s => ({ ...s, banner_image_url: j.url, banner_enabled: true }));
+      setStMsg("تم رفع الصورة ✓ — اضغط حفظ لتظهر في المتجر"); setStMsgType("ok");
     } catch (e) {
       setStMsg(String(e).replace("Error: ", "")); setStMsgType("err");
     }
@@ -1384,14 +1387,27 @@ export default function StoreAdminPage() {
                   <p className="text-xs text-muted2 mt-1">يظهر للزوار في أعلى صفحة المتجر — يمكنك إضافة صورة أو نص أو الاثنين معاً.</p>
                 </div>
                 <button
-                  onClick={() => setSettings(s => ({ ...s, banner_enabled: !s.banner_enabled }))}
+                  onClick={async () => {
+                    const next = !settings.banner_enabled;
+                    setSettings(s => ({ ...s, banner_enabled: next }));
+                    try {
+                      await fetch(`${API_BASE}/api/admin/store/settings`, {
+                        method: "PUT", credentials: "include",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ banner_enabled: next }),
+                      });
+                      setStMsg(next ? "البنر يظهر الآن في المتجر ✓" : "تم إخفاء البنر"); setStMsgType("ok");
+                    } catch {
+                      setStMsg("فشل التحديث"); setStMsgType("err");
+                    }
+                  }}
                   className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold border transition-all ${
-                    settings.banner_enabled ? "border-line2 bg-panel2 text-ink" : "border-line bg-panel text-muted"
+                    settings.banner_enabled ? "border-line2 bg-panel2 text-ink" : "border-line bg-panel text-ink"
                   }`}
                   type="button"
                 >
                   {settings.banner_enabled ? <Eye size={14} /> : <EyeOff size={14} />}
-                  {settings.banner_enabled ? "ظاهر" : "مخفي"}
+                  {settings.banner_enabled ? "ظاهر" : "مخفي — اضغط لتفعيله"}
                 </button>
               </div>
 
