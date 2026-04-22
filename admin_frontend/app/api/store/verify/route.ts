@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getTamaraOrder, captureOrder } from "@/lib/tamara";
 import { getPayment, getInvoice } from "@/lib/streampay";
 import { makeToken } from "@/lib/auth";
+import { autoActivateOrder, sendActivationEmail } from "@/lib/order-activation";
 
 export const dynamic = "force-dynamic";
 
@@ -272,8 +273,24 @@ export async function POST(req: Request) {
       if (prod?.duration_days) durationDays = prod.duration_days;
     }
 
-    // Create/update user account
+    // Create/update user account, then send activation email
     const accountResult = await autoCreateAccount(supabase, order, durationDays);
+
+    // Send activation/renewal email with code (uses unified helper that
+    // properly resolves new-vs-existing user and the code to display)
+    try {
+      const act = await autoActivateOrder(supabase, order_id);
+      if (act.email) {
+        const emailSent = await sendActivationEmail(
+          act.email, act.name, act.code, act.durationDays, act.isNew, act.newEndDate
+        );
+        console.log(`Verify activation email — order ${order_id}: sent=${emailSent} new=${act.isNew}`);
+      } else {
+        console.warn(`Verify activation email skipped — order ${order_id} has no email`);
+      }
+    } catch (e) {
+      console.error("Verify activation email error:", e);
+    }
 
     // Track affiliate commission
     if (order.ref_code) {

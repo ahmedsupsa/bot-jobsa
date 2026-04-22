@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { captureOrder, verifyWebhookSignature } from "@/lib/tamara";
 import { makeToken } from "@/lib/auth";
+import { activateAndNotify } from "@/lib/order-activation";
 
 export const dynamic = "force-dynamic";
 
@@ -61,31 +62,9 @@ export async function POST(req: Request) {
           .update({ status: "paid", paid_at: new Date().toISOString() })
           .eq("id", order.id);
 
-        // Create/extend user account
-        if (order.user_email) {
-          const durationDays =
-            (Array.isArray(order.store_products)
-              ? order.store_products[0]?.duration_days
-              : order.store_products?.duration_days) ?? 30;
-
-          const { data: u } = await supabase
-            .from("users")
-            .select("id, subscription_ends_at")
-            .eq("email", order.user_email)
-            .maybeSingle();
-
-          if (u) {
-            const base =
-              u.subscription_ends_at && new Date(u.subscription_ends_at) > new Date()
-                ? new Date(u.subscription_ends_at)
-                : new Date();
-            base.setDate(base.getDate() + durationDays);
-            await supabase
-              .from("users")
-              .update({ subscription_ends_at: base.toISOString() })
-              .eq("id", u.id);
-          }
-        }
+        // Create/extend user account + send activation email with code
+        const result = await activateAndNotify(order.id);
+        console.log(`Tamara webhook activation — order ${order.id}: activated=${result.activated} emailSent=${result.emailSent}`);
       }
     }
 
