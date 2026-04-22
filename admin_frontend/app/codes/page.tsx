@@ -3,7 +3,7 @@
 import Shell from "@/components/shell";
 import { apiGet, apiSend } from "@/lib/api";
 import { useEffect, useState } from "react";
-import { Zap, Copy, CheckCheck, Hash, Calendar, Search, User, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Zap, Copy, CheckCheck, Hash, Calendar, Search, User, CheckCircle2, XCircle, Loader2, Trash2 } from "lucide-react";
 
 type LookupResult = {
   ok: boolean;
@@ -36,6 +36,37 @@ export default function CodesPage() {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupResult, setLookupResult] = useState<LookupResult | null>(null);
   const [lookupError, setLookupError] = useState("");
+
+  const [deletingUnused, setDeletingUnused] = useState(false);
+
+  const deleteAllUnused = async () => {
+    if (unused.length === 0) {
+      setMsg("لا توجد أكواد غير مستخدمة لحذفها");
+      setMsgType("err");
+      return;
+    }
+    const confirmed = window.confirm(
+      `سيتم حذف ${unused.length} كود غير مستخدم نهائياً.\n\nهذه العملية لا يمكن التراجع عنها — الأكواد المحذوفة لن تعمل عند المستخدمين.\n\nهل أنت متأكد؟`
+    );
+    if (!confirmed) return;
+    setDeletingUnused(true);
+    try {
+      const r = await apiSend<{ ok: boolean; deleted: number }>(
+        "/api/admin/codes/unused",
+        "DELETE",
+        {}
+      );
+      setMsg(`تم حذف ${r.deleted} كود غير مستخدم ✓`);
+      setMsgType("ok");
+      setGenerated([]);
+      await load();
+    } catch (e) {
+      setMsg(String(e));
+      setMsgType("err");
+    } finally {
+      setDeletingUnused(false);
+    }
+  };
 
   const load = async () => {
     const r = await apiGet<{ ok: boolean; used_codes: string[]; unused_codes: string[] }>(
@@ -201,7 +232,7 @@ export default function CodesPage() {
               className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm focus:border-accent/50 focus:outline-none"
             />
           </div>
-          <div className="flex items-end">
+          <div className="flex items-end gap-2">
             <button
               onClick={generate}
               disabled={loading}
@@ -209,6 +240,15 @@ export default function CodesPage() {
             >
               <Zap size={14} />
               {loading ? "جاري التوليد..." : "توليد"}
+            </button>
+            <button
+              onClick={deleteAllUnused}
+              disabled={deletingUnused || unused.length === 0}
+              title={unused.length === 0 ? "لا توجد أكواد غير مستخدمة" : `حذف ${unused.length} كود غير مستخدم`}
+              className="flex items-center gap-2 rounded-xl border border-danger-border bg-danger-bg px-4 py-2.5 text-sm text-danger font-medium hover:bg-danger/15 transition-colors disabled:opacity-40"
+            >
+              {deletingUnused ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+              {deletingUnused ? "جاري الحذف..." : `حذف غير المستخدمة (${unused.length})`}
             </button>
           </div>
         </div>

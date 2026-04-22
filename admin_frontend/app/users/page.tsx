@@ -3,7 +3,7 @@
 import Shell from "@/components/shell";
 import { apiGet, apiSend } from "@/lib/api";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Save, User, FileText, Upload, Check, Loader2, ChevronDown, ChevronUp, Tags, Calendar } from "lucide-react";
+import { Search, Save, User, FileText, Upload, Check, Loader2, ChevronDown, ChevronUp, Tags, Calendar, Trash2, KeyRound, Copy } from "lucide-react";
 
 type UserRow = {
   id: string;
@@ -13,6 +13,7 @@ type UserRow = {
   city?: string;
   subscription_ends_at?: string;
   created_at: string;
+  activation_code?: string | null;
 };
 
 type Field = { id: string; name_ar: string };
@@ -66,6 +67,20 @@ export default function UsersPage() {
     await load();
   };
 
+  const deleteUser = async (id: string, name: string) => {
+    const confirmed = window.confirm(
+      `هل أنت متأكد من حذف المستخدم "${name || id}"؟\n\nسيتم حذف كل بياناته (السيرة، التفضيلات، طلبات التقديم...) ويُحرَّر كود التفعيل ليستخدم مجدداً.\n\nلا يمكن التراجع عن هذه العملية.`
+    );
+    if (!confirmed) return;
+    try {
+      await apiSend(`/api/admin/users/${id}`, "DELETE", {});
+      setMsg(`تم حذف المستخدم ✓`); setMsgType("ok");
+      await load();
+    } catch (e) {
+      setMsg(String(e)); setMsgType("err");
+    }
+  };
+
   return (
     <Shell>
       <div className="mb-5">
@@ -110,6 +125,7 @@ export default function UsersPage() {
                 onUploadCv={uploadCv}
                 onSavePrefs={savePrefs}
                 onSaveSubscription={saveSubscription}
+                onDelete={deleteUser}
               />
             ))
           )}
@@ -125,13 +141,22 @@ function UserCard({
   onUploadCv,
   onSavePrefs,
   onSaveSubscription,
+  onDelete,
 }: {
   user: UserRow;
   onSaveEmail: (id: string, email: string) => Promise<void>;
   onUploadCv: (id: string, file: File) => Promise<void>;
   onSavePrefs: (id: string, field_ids: string[]) => Promise<void>;
   onSaveSubscription: (id: string, days: number) => Promise<void>;
+  onDelete: (id: string, name: string) => Promise<void>;
 }) {
+  const [codeCopied, setCodeCopied] = useState(false);
+  const copyCode = async () => {
+    if (!user.activation_code) return;
+    try { await navigator.clipboard.writeText(user.activation_code); } catch {}
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 1800);
+  };
   const [email, setEmail] = useState(user.email || "");
   const [savingEmail, setSavingEmail] = useState(false);
   const [emailSaved, setEmailSaved] = useState(false);
@@ -228,12 +253,36 @@ function UserCard({
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-semibold text-ink truncate">{user.full_name || "—"}</div>
-          <div className="text-xs text-muted2 flex gap-3 flex-wrap mt-0.5">
+          <div className="text-xs text-muted2 flex gap-3 flex-wrap mt-0.5 items-center">
             {user.phone && <span>{user.phone}</span>}
             {user.city && <span>{user.city}</span>}
             {endsAt && <span className="text-muted">ينتهي: {endsAt}</span>}
+            {user.activation_code ? (
+              <button
+                onClick={copyCode}
+                title="نسخ الكود"
+                className="inline-flex items-center gap-1 rounded-md border border-line/70 bg-panel2 px-2 py-0.5 text-[11px] font-mono text-ink hover:border-accent/50 hover:text-accent transition-colors"
+                dir="ltr"
+              >
+                <KeyRound size={10} />
+                {user.activation_code}
+                {codeCopied ? <Check size={10} className="text-ink/70" /> : <Copy size={10} className="opacity-60" />}
+              </button>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[11px] text-muted2">
+                <KeyRound size={10} /> بدون كود
+              </span>
+            )}
           </div>
         </div>
+        <button
+          onClick={() => onDelete(user.id, user.full_name || user.phone || user.id)}
+          title="حذف المستخدم"
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-danger-border bg-danger-bg px-3 py-1.5 text-xs text-danger hover:bg-danger/15 transition-colors"
+        >
+          <Trash2 size={12} />
+          حذف
+        </button>
       </div>
 
       {err && <div className="text-xs text-danger bg-danger-bg border border-danger-border rounded-lg px-3 py-2">{err}</div>}
