@@ -246,7 +246,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2">
             <RefreshCw size={16} className="text-slate-400" />
             <h3 className="font-semibold text-white text-sm">سجل تشغيل الـ Worker</h3>
-            <span className="text-xs text-slate-600">({logs.length} دورة)</span>
+            <span className="text-xs text-slate-600">(آخر {Math.min(logs.length, 7)} دورة)</span>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -321,7 +321,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="divide-y divide-line">
-            {logs.slice(0, 20).map((log) => (
+            {logs.slice(0, 7).map((log) => (
               <div key={log.id}>
                 <button
                   onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
@@ -423,7 +423,7 @@ export default function Dashboard() {
             {data.recent_applications.length === 0 ? (
               <div className="px-5 py-6 text-sm text-slate-500 text-center">لا توجد بيانات</div>
             ) : (
-              data.recent_applications.map((a, i) => (
+              data.recent_applications.slice(0, 7).map((a, i) => (
                 <div key={i} className="px-5 py-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-white truncate">{a.user_name}</div>
@@ -451,7 +451,7 @@ export default function Dashboard() {
             {data.recent_users.length === 0 ? (
               <div className="px-5 py-6 text-sm text-slate-500 text-center">لا توجد بيانات</div>
             ) : (
-              data.recent_users.map((u, i) => (
+              data.recent_users.slice(0, 7).map((u, i) => (
                 <div key={i} className="px-5 py-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-white truncate">{u.name}</div>
