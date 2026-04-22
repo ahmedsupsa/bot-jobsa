@@ -434,13 +434,13 @@ export default function AffiliatePage() {
                 <>
                   <Input label="اسم البنك" value={bankForm.bank_name} onChange={(v) => setBankForm({ ...bankForm, bank_name: v })} placeholder="مثلاً: الراجحي" />
                   <Input label="اسم صاحب الحساب" value={bankForm.account_holder} onChange={(v) => setBankForm({ ...bankForm, account_holder: v })} placeholder="الاسم الكامل" />
-                  <Input label="رقم الآيبان (IBAN)" value={bankForm.iban} onChange={(v) => setBankForm({ ...bankForm, iban: v })} placeholder="SA0000000000000000000000" mono />
+                  <Input label="رقم الآيبان (IBAN)" value={bankForm.iban} onChange={(v) => setBankForm({ ...bankForm, iban: v })} placeholder="" mono />
                 </>
               ) : (
                 <>
                   <Input label="اسم المحفظة" value={walletForm.wallet_provider} onChange={(v) => setWalletForm({ ...walletForm, wallet_provider: v })} placeholder="مثلاً: STC Pay، urpay، باي بال..." />
                   <Input label="اسم صاحب الحساب" value={walletForm.account_holder} onChange={(v) => setWalletForm({ ...walletForm, account_holder: v })} placeholder="الاسم الكامل" />
-                  <Input label="رقم الجوال المسجّل" value={walletForm.wallet_number} onChange={(v) => setWalletForm({ ...walletForm, wallet_number: v })} placeholder="05XXXXXXXX" mono />
+                  <Input label="رقم الجوال المسجّل" value={walletForm.wallet_number} onChange={(v) => setWalletForm({ ...walletForm, wallet_number: v })} placeholder="" mono />
                 </>
               )}
 

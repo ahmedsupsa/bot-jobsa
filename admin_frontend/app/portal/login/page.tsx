@@ -73,10 +73,10 @@ export default function PortalLogin() {
   }
 
   const regFields = [
-    { key: "full_name", label: "الاسم الكامل", placeholder: "أحمد محمد", icon: <User size={16} strokeWidth={1.5} /> },
-    { key: "phone", label: "رقم الجوال", placeholder: "05xxxxxxxx", icon: <Phone size={16} strokeWidth={1.5} />, dir: "ltr" },
-    { key: "age", label: "العمر", placeholder: "25", icon: <Calendar size={16} strokeWidth={1.5} />, type: "number" },
-    { key: "city", label: "المدينة", placeholder: "الرياض", icon: <MapPin size={16} strokeWidth={1.5} /> },
+    { key: "full_name", label: "الاسم الكامل", placeholder: "", icon: <User size={16} strokeWidth={1.5} /> },
+    { key: "phone", label: "رقم الجوال", placeholder: "", icon: <Phone size={16} strokeWidth={1.5} />, dir: "ltr" },
+    { key: "age", label: "العمر", placeholder: "", icon: <Calendar size={16} strokeWidth={1.5} />, type: "number" },
+    { key: "city", label: "المدينة", placeholder: "", icon: <MapPin size={16} strokeWidth={1.5} /> },
   ];
 
   return (
@@ -144,7 +144,7 @@ export default function PortalLogin() {
                     <input
                       style={s.input} type="email" dir="ltr"
                       value={email} onChange={e => setEmail(e.target.value)}
-                      placeholder="example@email.com" autoFocus
+                      placeholder="" autoFocus
                       inputMode="email"
                       autoComplete="email"
                     />

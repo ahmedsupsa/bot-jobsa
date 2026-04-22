@@ -378,7 +378,7 @@ export default function StorePage() {
             <div style={s.formGrid} className="__formgrid">
               <div style={s.formCol}>
                 <label style={s.label}>الاسم الكامل *</label>
-                <input style={s.input} placeholder="أحمد محمد"
+                <input style={s.input} placeholder=""
                   value={form.name}
                   onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
                   disabled={!!submitting}
@@ -387,7 +387,7 @@ export default function StorePage() {
               <div style={s.formCol}>
                 <label style={s.label}>رقم الجوال *</label>
                 <input style={{ ...s.input, direction: "ltr", textAlign: "right" }}
-                  type="tel" placeholder="+966501234567"
+                  type="tel" placeholder=""
                   value={form.phone}
                   onChange={e => setForm(prev => ({ ...prev, phone: e.target.value }))}
                   disabled={!!submitting}
@@ -396,7 +396,7 @@ export default function StorePage() {
               <div style={{ ...s.formCol, gridColumn: "1 / -1" }}>
                 <label style={s.label}>البريد الإلكتروني *</label>
                 <input style={{ ...s.input, direction: "ltr", textAlign: "right" }}
-                  type="email" placeholder="you@example.com"
+                  type="email" placeholder=""
                   value={form.email}
                   onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))}
                   disabled={!!submitting}

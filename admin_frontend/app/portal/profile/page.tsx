@@ -295,7 +295,7 @@ export default function AccountPage() {
                       <input
                         type="email" dir="ltr" value={emailInput}
                         onChange={e => setEmailInput(e.target.value)}
-                        placeholder="example@gmail.com"
+                        placeholder=""
                         style={{
                           width: "100%", padding: "13px 42px 13px 16px",
                           background: t.input, border: `1px solid ${t.border2}`,

@@ -127,7 +127,7 @@ export default function JobsPage() {
               value={form.application_email}
               onChange={set("application_email")}
               type="email"
-              placeholder="hr@company.com"
+              placeholder=""
               className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm text-ink placeholder:text-muted2 focus:border-accent/50 focus:outline-none"
             />
           </div>
