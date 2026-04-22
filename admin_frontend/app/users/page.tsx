@@ -14,6 +14,7 @@ type UserRow = {
   subscription_ends_at?: string;
   created_at: string;
   activation_code?: string | null;
+  preferences?: string[];
 };
 
 type Field = { id: string; name_ar: string };
@@ -286,6 +287,24 @@ function UserCard({
       </div>
 
       {err && <div className="text-xs text-danger bg-danger-bg border border-danger-border rounded-lg px-3 py-2">{err}</div>}
+
+      {/* Preferences preview chips */}
+      <div className="flex items-start gap-2 flex-wrap">
+        <Tags size={12} className="text-muted2 mt-1.5 shrink-0" />
+        {user.preferences && user.preferences.length > 0 ? (
+          user.preferences.map((p, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center rounded-md border border-line/70 bg-panel2 px-2 py-0.5 text-[11px] text-ink2"
+            >
+              {p}
+            </span>
+          ))
+        ) : (
+          <span className="text-[11px] text-muted2 mt-1">لم يحدد المستخدم أي تفضيلات</span>
+        )}
+      </div>
+
 
       {/* Email + CV row */}
       <div className="flex flex-col gap-2 sm:flex-row">
