@@ -169,21 +169,11 @@ button, [role="button"] { -webkit-user-select: none; user-select: none; }
   display: flex;
   direction: rtl;
   background: var(--bg);
-}
-.login-left {
-  flex: 1;
-  background: var(--surface);
-  border-left: 1px solid var(--border);
-  padding: 60px 52px;
-  display: flex;
-  flex-direction: column;
   justify-content: center;
-  position: relative;
-  overflow: hidden;
-  min-width: 300px;
 }
 .login-right {
-  width: 480px;
+  width: 100%;
+  max-width: 480px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -192,7 +182,6 @@ button, [role="button"] { -webkit-user-select: none; user-select: none; }
   flex-shrink: 0;
 }
 @media (max-width: 768px) {
-  .login-left { display: none !important; }
   .login-right {
     width: 100% !important;
     padding: 32px 20px !important;

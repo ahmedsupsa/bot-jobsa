@@ -3,10 +3,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { setToken } from "@/lib/portal-auth";
 import {
-  KeyRound, ArrowRight, Zap, PenLine, BarChart3, Loader2,
+  KeyRound, ArrowRight, Loader2,
   User, Phone, MapPin, Calendar, ChevronLeft, Mail,
 } from "lucide-react";
-import Image from "next/image";
 
 type Tab = "email" | "code";
 type Step = "tab" | "register";
@@ -73,12 +72,6 @@ export default function PortalLogin() {
     finally { setLoading(false); }
   }
 
-  const features = [
-    { icon: <Zap size={18} strokeWidth={1.5} />, text: "تقديم تلقائي كل 30 دقيقة بدون تدخل" },
-    { icon: <PenLine size={18} strokeWidth={1.5} />, text: "رسائل تغطية مخصصة بالذكاء الاصطناعي" },
-    { icon: <BarChart3 size={18} strokeWidth={1.5} />, text: "تتبّع جميع تقديماتك من مكان واحد" },
-  ];
-
   const regFields = [
     { key: "full_name", label: "الاسم الكامل", placeholder: "أحمد محمد", icon: <User size={16} strokeWidth={1.5} /> },
     { key: "phone", label: "رقم الجوال", placeholder: "05xxxxxxxx", icon: <Phone size={16} strokeWidth={1.5} />, dir: "ltr" },
@@ -88,24 +81,6 @@ export default function PortalLogin() {
 
   return (
     <div className="login-split">
-      {/* Left panel */}
-      <div className="login-left">
-        <div style={s.brand}>
-          <div style={s.brandLogo}><Image src="/logo.png" alt="Jobbots" width={56} height={56} style={{ borderRadius: 14 }} /></div>
-          <h1 style={s.brandName}>Jobbots</h1>
-        </div>
-        <p style={s.brandTagline}>التقديم التلقائي على الوظائف<br />بالذكاء الاصطناعي</p>
-        <div style={s.featureList}>
-          {features.map((f, i) => (
-            <div key={i} style={s.featureRow}>
-              <div style={s.featureIconWrap}>{f.icon}</div>
-              <span style={s.featureText}>{f.text}</span>
-            </div>
-          ))}
-        </div>
-        <div style={s.grid} />
-      </div>
-
       {/* Right panel */}
       <div className="login-right">
         <div style={s.formBox}>
@@ -212,28 +187,6 @@ export default function PortalLogin() {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  brand: { display: "flex", alignItems: "center", gap: 14, marginBottom: 24, position: "relative", zIndex: 1 },
-  brandLogo: {
-    width: 52, height: 52, borderRadius: 14, background: "var(--accent)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-  },
-  brandName: { color: "var(--text)", fontSize: 32, fontWeight: 800, margin: 0 },
-  brandTagline: { color: "var(--text3)", fontSize: 16, lineHeight: 1.7, margin: "0 0 40px", position: "relative", zIndex: 1 },
-  featureList: { display: "flex", flexDirection: "column", gap: 14, position: "relative", zIndex: 1 },
-  featureRow: {
-    display: "flex", alignItems: "center", gap: 14,
-    background: "var(--feature-bg)", border: "1px solid var(--border2)", borderRadius: 12, padding: "14px 18px",
-  },
-  featureIconWrap: {
-    width: 36, height: 36, borderRadius: 10, background: "var(--feature-icon)",
-    display: "flex", alignItems: "center", justifyContent: "center", color: "var(--feature-icon-fg)", flexShrink: 0,
-  },
-  featureText: { color: "var(--text2)", fontSize: 14, fontWeight: 500 },
-  grid: {
-    position: "absolute", bottom: 0, left: 0, right: 0, top: 0,
-    backgroundImage: "radial-gradient(circle, var(--grid-dot) 1px, transparent 1px)",
-    backgroundSize: "28px 28px", zIndex: 0, pointerEvents: "none",
-  },
   formBox: { width: "100%", maxWidth: 400 },
   formIcon: {
     width: 52, height: 52, borderRadius: 14, background: "var(--accent)",
