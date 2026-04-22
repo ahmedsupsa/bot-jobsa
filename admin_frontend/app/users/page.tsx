@@ -69,15 +69,15 @@ export default function UsersPage() {
   return (
     <Shell>
       <div className="mb-5">
-        <h1 className="text-xl font-bold text-white">المستخدمون</h1>
-        <p className="text-sm text-slate-400 mt-0.5">إدارة حسابات المشتركين — البريد والسيرة وتفضيلات الوظائف</p>
+        <h1 className="text-xl font-bold text-ink">المستخدمون</h1>
+        <p className="text-sm text-muted mt-0.5">إدارة حسابات المشتركين — البريد والسيرة وتفضيلات الوظائف</p>
       </div>
 
       {msg && (
         <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${
           msgType === "ok"
-            ? "border-white/20 bg-white/5 text-white"
-            : "border-red-500/25 bg-red-950/30 text-red-300"
+            ? "border-line2 bg-panel2 text-ink"
+            : "border-danger-border bg-danger-bg text-danger"
         }`}>
           {msg}
         </div>
@@ -86,21 +86,21 @@ export default function UsersPage() {
       <div className="rounded-2xl border border-line/70 bg-panel shadow-card">
         <div className="border-b border-line/60 px-5 py-4">
           <div className="relative">
-            <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted2" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="بحث بالاسم أو الجوال أو المدينة أو البريد..."
-              className="w-full rounded-xl border border-line/70 bg-panel2 pr-9 pl-3 py-2.5 text-sm placeholder:text-slate-500 focus:border-accent/50 focus:outline-none"
+              className="w-full rounded-xl border border-line/70 bg-panel2 pr-9 pl-3 py-2.5 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none"
             />
           </div>
         </div>
-        <div className="px-5 py-2.5 border-b border-line/40 text-xs text-slate-500">
+        <div className="px-5 py-2.5 border-b border-line/40 text-xs text-muted2">
           {filtered.length} مستخدم
         </div>
         <div className="divide-y divide-line/40">
           {filtered.length === 0 ? (
-            <div className="px-5 py-10 text-center text-sm text-slate-400">لا توجد نتائج</div>
+            <div className="px-5 py-10 text-center text-sm text-muted">لا توجد نتائج</div>
           ) : (
             filtered.map((u) => (
               <UserCard
@@ -227,16 +227,16 @@ function UserCard({
           <User size={16} className="text-accent" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-white truncate">{user.full_name || "—"}</div>
-          <div className="text-xs text-slate-500 flex gap-3 flex-wrap mt-0.5">
+          <div className="text-sm font-semibold text-ink truncate">{user.full_name || "—"}</div>
+          <div className="text-xs text-muted2 flex gap-3 flex-wrap mt-0.5">
             {user.phone && <span>{user.phone}</span>}
             {user.city && <span>{user.city}</span>}
-            {endsAt && <span className="text-slate-600">ينتهي: {endsAt}</span>}
+            {endsAt && <span className="text-muted">ينتهي: {endsAt}</span>}
           </div>
         </div>
       </div>
 
-      {err && <div className="text-xs text-red-400 bg-red-950/30 border border-red-500/20 rounded-lg px-3 py-2">{err}</div>}
+      {err && <div className="text-xs text-danger bg-danger-bg border border-danger-border rounded-lg px-3 py-2">{err}</div>}
 
       {/* Email + CV row */}
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -246,22 +246,22 @@ function UserCard({
             onChange={(e) => setEmail(e.target.value)}
             placeholder="البريد الإلكتروني"
             dir="ltr"
-            className="flex-1 min-w-0 rounded-xl border border-line/70 bg-panel2 px-3 py-2 text-sm placeholder:text-slate-500 focus:border-accent/50 focus:outline-none"
+            className="flex-1 min-w-0 rounded-xl border border-line/70 bg-panel2 px-3 py-2 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none"
           />
           <button
             onClick={handleSaveEmail}
             disabled={savingEmail}
             className="flex items-center gap-1.5 rounded-xl border border-accent/30 bg-accent/15 px-3 py-2 text-xs text-accent font-medium hover:bg-accent/25 transition-colors disabled:opacity-50 whitespace-nowrap"
           >
-            {savingEmail ? <Loader2 size={12} className="animate-spin" /> : emailSaved ? <Check size={12} className="text-white/70" /> : <Save size={12} />}
+            {savingEmail ? <Loader2 size={12} className="animate-spin" /> : emailSaved ? <Check size={12} className="text-ink/70" /> : <Save size={12} />}
             {savingEmail ? "..." : emailSaved ? "تم" : "حفظ"}
           </button>
         </div>
 
         {/* Subscription edit */}
         <div className="flex gap-2 items-center">
-          <Calendar size={13} className="text-slate-500 shrink-0" />
-          <span className="text-xs text-slate-500 shrink-0">
+          <Calendar size={13} className="text-muted2 shrink-0" />
+          <span className="text-xs text-muted2 shrink-0">
             {user.subscription_ends_at ? `ينتهي: ${new Date(user.subscription_ends_at).toLocaleDateString("ar")}` : "لا اشتراك"}
           </span>
           <input
@@ -270,14 +270,14 @@ function UserCard({
             value={subDays}
             onChange={(e) => setSubDays(e.target.value)}
             placeholder="أيام جديدة"
-            className="w-24 rounded-xl border border-line/70 bg-panel2 px-2 py-1.5 text-xs text-center placeholder:text-slate-600 focus:border-accent/50 focus:outline-none"
+            className="w-24 rounded-xl border border-line/70 bg-panel2 px-2 py-1.5 text-xs text-center placeholder:text-muted focus:border-accent/50 focus:outline-none"
           />
           <button
             onClick={handleSaveSub}
             disabled={savingSub || !subDays}
             className="flex items-center gap-1 rounded-xl border border-blue-500/30 bg-blue-950/30 px-3 py-1.5 text-xs text-blue-300 hover:bg-blue-900/40 transition-colors disabled:opacity-40 whitespace-nowrap"
           >
-            {savingSub ? <Loader2 size={11} className="animate-spin" /> : subSaved ? <Check size={11} className="text-white/70" /> : <Save size={11} />}
+            {savingSub ? <Loader2 size={11} className="animate-spin" /> : subSaved ? <Check size={11} className="text-ink/70" /> : <Save size={11} />}
             {subSaved ? "تم" : "تعيين"}
           </button>
         </div>
@@ -287,15 +287,15 @@ function UserCard({
           <button
             onClick={() => fileRef.current?.click()}
             disabled={uploadingCv}
-            className="flex items-center gap-1.5 rounded-xl border border-line/70 bg-panel2 px-3 py-2 text-xs text-slate-300 hover:border-accent/40 hover:text-accent transition-colors disabled:opacity-50 whitespace-nowrap"
+            className="flex items-center gap-1.5 rounded-xl border border-line/70 bg-panel2 px-3 py-2 text-xs text-ink2 hover:border-accent/40 hover:text-accent transition-colors disabled:opacity-50 whitespace-nowrap"
           >
-            {uploadingCv ? <Loader2 size={12} className="animate-spin" /> : cvName ? <FileText size={12} className="text-white/70" /> : <Upload size={12} />}
+            {uploadingCv ? <Loader2 size={12} className="animate-spin" /> : cvName ? <FileText size={12} className="text-ink/70" /> : <Upload size={12} />}
             {uploadingCv ? "جاري الرفع..." : cvName ? "تم الرفع ✓" : "رفع سيرة"}
           </button>
 
           <button
             onClick={togglePrefs}
-            className="flex items-center gap-1.5 rounded-xl border border-line/70 bg-panel2 px-3 py-2 text-xs text-slate-300 hover:border-accent/40 hover:text-accent transition-colors whitespace-nowrap"
+            className="flex items-center gap-1.5 rounded-xl border border-line/70 bg-panel2 px-3 py-2 text-xs text-ink2 hover:border-accent/40 hover:text-accent transition-colors whitespace-nowrap"
           >
             <Tags size={12} />
             التفضيلات
@@ -308,22 +308,22 @@ function UserCard({
       {showPrefs && (
         <div className="rounded-xl border border-line/60 bg-panel2 p-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-slate-300">تفضيلات مجالات الوظائف</span>
+            <span className="text-xs font-semibold text-ink2">تفضيلات مجالات الوظائف</span>
             <button
               onClick={handleSavePrefs}
               disabled={savingPrefs}
               className="flex items-center gap-1.5 rounded-lg border border-accent/30 bg-accent/15 px-3 py-1.5 text-xs text-accent font-medium hover:bg-accent/25 transition-colors disabled:opacity-50"
             >
-              {savingPrefs ? <Loader2 size={11} className="animate-spin" /> : prefsSaved ? <Check size={11} className="text-white/70" /> : <Save size={11} />}
+              {savingPrefs ? <Loader2 size={11} className="animate-spin" /> : prefsSaved ? <Check size={11} className="text-ink/70" /> : <Save size={11} />}
               {savingPrefs ? "..." : prefsSaved ? "تم الحفظ" : "حفظ"}
             </button>
           </div>
           {loadingPrefs ? (
-            <div className="flex items-center gap-2 text-xs text-slate-500 py-3">
+            <div className="flex items-center gap-2 text-xs text-muted2 py-3">
               <Loader2 size={13} className="animate-spin" /> جاري التحميل...
             </div>
           ) : fields.length === 0 ? (
-            <p className="text-xs text-slate-500">لا توجد مجالات محددة في النظام</p>
+            <p className="text-xs text-muted2">لا توجد مجالات محددة في النظام</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {fields.map((f) => {
@@ -334,8 +334,8 @@ function UserCard({
                     onClick={() => toggleField(String(f.id))}
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium border transition-all ${
                       active
-                        ? "bg-white/15 border-white/30 text-white"
-                        : "bg-transparent border-line/60 text-slate-500 hover:border-slate-400 hover:text-slate-300"
+                        ? "bg-panel2 border-line2 text-ink"
+                        : "bg-transparent border-line/60 text-muted2 hover:border-slate-400 hover:text-ink2"
                     }`}
                   >
                     {active ? "✓ " : ""}{f.name_ar}
@@ -344,7 +344,7 @@ function UserCard({
               })}
             </div>
           )}
-          <div className="mt-2 text-xs text-slate-600">{selectedIds.length} مجال محدد</div>
+          <div className="mt-2 text-xs text-muted">{selectedIds.length} مجال محدد</div>
         </div>
       )}
     </div>

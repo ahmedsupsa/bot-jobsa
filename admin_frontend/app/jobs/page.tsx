@@ -81,8 +81,8 @@ export default function JobsPage() {
   return (
     <Shell>
       <div className="mb-5">
-        <h1 className="text-xl font-bold text-white">الوظائف</h1>
-        <p className="text-sm text-slate-400 mt-0.5">أضف الوظائف وسيستخرج الذكاء الاصطناعي التخصصات تلقائياً</p>
+        <h1 className="text-xl font-bold text-ink">الوظائف</h1>
+        <p className="text-sm text-muted mt-0.5">أضف الوظائف وسيستخرج الذكاء الاصطناعي التخصصات تلقائياً</p>
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
@@ -90,56 +90,56 @@ export default function JobsPage() {
         <div className="rounded-2xl border border-line/70 bg-panel shadow-card p-5 space-y-4">
           <div className="flex items-center gap-2">
             <Plus size={17} className="text-accent" />
-            <h2 className="font-semibold text-white">إضافة وظيفة جديدة</h2>
+            <h2 className="font-semibold text-ink">إضافة وظيفة جديدة</h2>
           </div>
 
           {/* Title AR - required */}
           <div>
-            <label className="mb-1.5 block text-xs text-slate-400">
-              عنوان الوظيفة <span className="text-red-400">*</span>
+            <label className="mb-1.5 block text-xs text-muted">
+              عنوان الوظيفة <span className="text-danger">*</span>
             </label>
             <input
               value={form.title_ar}
               onChange={set("title_ar")}
               placeholder="مصمم جرافيك"
-              className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-accent/50 focus:outline-none"
+              className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm text-ink placeholder:text-muted2 focus:border-accent/50 focus:outline-none"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="mb-1.5 block text-xs text-slate-400">الوصف الوظيفي</label>
+            <label className="mb-1.5 block text-xs text-muted">الوصف الوظيفي</label>
             <textarea
               value={form.description_ar}
               onChange={set("description_ar")}
               rows={4}
               placeholder="صف متطلبات الوظيفة والمهام... (يستخدمها الذكاء الاصطناعي لاستخراج التخصصات)"
-              className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-accent/50 focus:outline-none resize-none"
+              className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm text-ink placeholder:text-muted2 focus:border-accent/50 focus:outline-none resize-none"
             />
           </div>
 
           {/* Email - required */}
           <div>
-            <label className="mb-1.5 block text-xs text-slate-400">
-              البريد للتقديم <span className="text-red-400">*</span>
+            <label className="mb-1.5 block text-xs text-muted">
+              البريد للتقديم <span className="text-danger">*</span>
             </label>
             <input
               value={form.application_email}
               onChange={set("application_email")}
               type="email"
               placeholder="hr@company.com"
-              className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-accent/50 focus:outline-none"
+              className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm text-ink placeholder:text-muted2 focus:border-accent/50 focus:outline-none"
             />
           </div>
 
           {/* Company - optional */}
           <div>
-            <label className="mb-1.5 block text-xs text-slate-400">اسم الشركة (اختياري)</label>
+            <label className="mb-1.5 block text-xs text-muted">اسم الشركة (اختياري)</label>
             <input
               value={form.company}
               onChange={set("company")}
               placeholder="شركة ..."
-              className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-accent/50 focus:outline-none"
+              className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm text-ink placeholder:text-muted2 focus:border-accent/50 focus:outline-none"
             />
           </div>
 
@@ -153,11 +153,11 @@ export default function JobsPage() {
 
           {/* AI specs result */}
           {aiSpecs && (
-            <div className="flex items-start gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5">
-              <CheckCircle2 size={14} className="text-white/80 mt-0.5 shrink-0" />
+            <div className="flex items-start gap-2 rounded-xl border border-line2 bg-panel2 px-3 py-2.5">
+              <CheckCircle2 size={14} className="text-ink/80 mt-0.5 shrink-0" />
               <div>
-                <div className="text-xs font-medium text-white mb-1">تخصصات مُولَّدة:</div>
-                <div className="text-xs text-slate-400">{aiSpecs}</div>
+                <div className="text-xs font-medium text-ink mb-1">تخصصات مُولَّدة:</div>
+                <div className="text-xs text-muted">{aiSpecs}</div>
               </div>
             </div>
           )}
@@ -165,8 +165,8 @@ export default function JobsPage() {
           {msg && (
             <div className={`rounded-xl border px-4 py-2.5 text-sm ${
               msgType === "ok"
-                ? "border-white/20 bg-white/5 text-white"
-                : "border-red-500/25 bg-red-950/30 text-red-300"
+                ? "border-line2 bg-panel2 text-ink"
+                : "border-danger-border bg-danger-bg text-danger"
             }`}>
               {msg}
             </div>
@@ -195,36 +195,36 @@ export default function JobsPage() {
         <div className="rounded-2xl border border-line/70 bg-panel shadow-card">
           <div className="flex items-center gap-2 border-b border-line/60 px-5 py-4">
             <BriefcaseBusiness size={16} className="text-accent" />
-            <h2 className="font-semibold text-white">الوظائف ({rows.length})</h2>
+            <h2 className="font-semibold text-ink">الوظائف ({rows.length})</h2>
           </div>
           <div className="divide-y divide-line/40 max-h-[600px] overflow-y-auto">
             {rows.length === 0 ? (
-              <div className="px-5 py-10 text-center text-sm text-slate-400">لا توجد وظائف — أضف أول وظيفة</div>
+              <div className="px-5 py-10 text-center text-sm text-muted">لا توجد وظائف — أضف أول وظيفة</div>
             ) : rows.map((j) => (
               <div key={j.id} className="px-5 py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-white">{j.title_ar || j.title_en || "—"}</div>
+                    <div className="text-sm font-medium text-ink">{j.title_ar || j.title_en || "—"}</div>
                     {j.company && (
-                      <div className="mt-1 flex items-center gap-1 text-xs text-slate-400">
+                      <div className="mt-1 flex items-center gap-1 text-xs text-muted">
                         <Building2 size={11} /> {j.company}
                       </div>
                     )}
                     {j.application_email && (
-                      <div className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
+                      <div className="mt-0.5 flex items-center gap-1 text-xs text-muted2">
                         <Mail size={11} /> {j.application_email}
                       </div>
                     )}
                     {j.specializations && (
                       <div className="mt-1.5 flex items-start gap-1">
                         <Sparkles size={10} className="text-violet-400 mt-0.5 shrink-0" />
-                        <div className="text-[10px] text-slate-600 leading-relaxed">{j.specializations}</div>
+                        <div className="text-[10px] text-muted leading-relaxed">{j.specializations}</div>
                       </div>
                     )}
                   </div>
                   <button
                     onClick={() => del(j.id)}
-                    className="shrink-0 rounded-lg border border-red-500/25 bg-red-950/30 p-2 text-red-400 hover:bg-red-500/20 transition-colors"
+                    className="shrink-0 rounded-lg border border-danger-border bg-danger-bg p-2 text-danger hover:bg-danger-bg transition-colors"
                   >
                     <Trash2 size={14} />
                   </button>

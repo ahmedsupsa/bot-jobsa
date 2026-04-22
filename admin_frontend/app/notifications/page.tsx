@@ -193,11 +193,11 @@ export default function NotificationsPage() {
     <Shell>
       {/* Header */}
       <div className="mb-5">
-        <h1 className="text-xl font-bold text-white flex items-center gap-2">
+        <h1 className="text-xl font-bold text-ink flex items-center gap-2">
           <Bell size={20} className="text-accent" />
           إشعارات Push الذكية
         </h1>
-        <p className="text-sm text-slate-400 mt-0.5">
+        <p className="text-sm text-muted mt-0.5">
           إرسال إشعارات مخصصة بالاسم — تصل حتى وهم خارج الموقع
         </p>
       </div>
@@ -206,15 +206,15 @@ export default function NotificationsPage() {
       <div className="flex items-center gap-3 mb-6">
         <div className="flex items-center gap-2 rounded-xl border border-line/70 bg-panel px-4 py-2.5">
           <Users size={15} className="text-accent" />
-          <span className="text-sm font-semibold text-white">
+          <span className="text-sm font-semibold text-ink">
             {subscribers === null ? "—" : subscribers}
           </span>
-          <span className="text-xs text-slate-400">مشترك</span>
+          <span className="text-xs text-muted">مشترك</span>
         </div>
         <button
           onClick={loadData}
           disabled={loadingCounts}
-          className="flex items-center gap-1.5 rounded-xl border border-line/60 bg-panel px-3 py-2.5 text-xs text-slate-400 hover:text-white transition-colors disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded-xl border border-line/60 bg-panel px-3 py-2.5 text-xs text-muted hover:text-ink transition-colors disabled:opacity-40"
         >
           <RefreshCw size={12} className={loadingCounts ? "animate-spin" : ""} />
           تحديث
@@ -225,7 +225,7 @@ export default function NotificationsPage() {
 
         {/* Segment selector */}
         <div className="xl:col-span-2 rounded-2xl border border-line/70 bg-panel shadow-card p-5">
-          <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
+          <h2 className="font-semibold text-ink mb-3 flex items-center gap-2">
             <Zap size={16} className="text-accent" />
             اختر الفئة المستهدفة
           </h2>
@@ -246,11 +246,11 @@ export default function NotificationsPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2" style={{ color: seg.color }}>
                       {seg.icon}
-                      <span className="text-sm font-semibold text-white">{seg.label}</span>
+                      <span className="text-sm font-semibold text-ink">{seg.label}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       {loadingCounts ? (
-                        <Loader2 size={12} className="animate-spin text-slate-500" />
+                        <Loader2 size={12} className="animate-spin text-muted2" />
                       ) : (
                         <span className="text-xs font-bold px-2 py-0.5 rounded-full"
                           style={{ background: `${seg.color}20`, color: seg.color }}>
@@ -259,7 +259,7 @@ export default function NotificationsPage() {
                       )}
                     </div>
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5 text-right">{seg.desc}</p>
+                  <p className="text-xs text-muted2 mt-0.5 text-right">{seg.desc}</p>
                 </button>
               );
             })}
@@ -274,7 +274,7 @@ export default function NotificationsPage() {
                 <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center">
                   <Bell size={24} className="text-accent" />
                 </div>
-                <p className="text-sm text-slate-400 max-w-xs">
+                <p className="text-sm text-muted max-w-xs">
                   اختر فئة من القائمة اليسار لتخصيص الإشعار وإرساله بالاسم
                 </p>
               </div>
@@ -282,7 +282,7 @@ export default function NotificationsPage() {
               <>
                 <div className="flex items-center gap-2 mb-4">
                   <span style={{ color: selected?.color }}>{selected?.icon}</span>
-                  <h2 className="font-semibold text-white">{selected?.label}</h2>
+                  <h2 className="font-semibold text-ink">{selected?.label}</h2>
                   <span className="mr-auto text-xs px-2.5 py-1 rounded-full font-bold"
                     style={{ background: `${selected?.color}20`, color: selected?.color }}>
                     {counts[activeSegment] ?? 0} مستخدم
@@ -291,49 +291,49 @@ export default function NotificationsPage() {
 
                 <div className="space-y-3">
                   <div>
-                    <label className="mb-1.5 block text-xs text-slate-400">
-                      عنوان الإشعار <span className="text-slate-600">· استخدم {"{"}name{"}"} لاسم المستخدم</span>
+                    <label className="mb-1.5 block text-xs text-muted">
+                      عنوان الإشعار <span className="text-muted">· استخدم {"{"}name{"}"} لاسم المستخدم</span>
                     </label>
                     <input
                       value={customTitle}
                       onChange={e => setCustomTitle(e.target.value)}
-                      className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm placeholder:text-slate-500 focus:border-accent/50 focus:outline-none"
+                      className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-xs text-slate-400">نص الإشعار</label>
+                    <label className="mb-1.5 block text-xs text-muted">نص الإشعار</label>
                     <textarea
                       value={customBody}
                       onChange={e => setCustomBody(e.target.value)}
                       rows={3}
-                      className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm placeholder:text-slate-500 focus:border-accent/50 focus:outline-none resize-none"
+                      className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none resize-none"
                     />
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-xs text-slate-400">رابط عند الضغط</label>
+                    <label className="mb-1.5 block text-xs text-muted">رابط عند الضغط</label>
                     <input
                       value={customUrl}
                       onChange={e => setCustomUrl(e.target.value)}
                       dir="ltr"
-                      className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm placeholder:text-slate-500 focus:border-accent/50 focus:outline-none"
+                      className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none"
                     />
                   </div>
 
                   {/* Preview */}
                   {customTitle && customBody && (
                     <div className="rounded-xl border border-line/50 bg-panel2 p-4">
-                      <p className="text-[10px] text-slate-500 mb-2 uppercase tracking-wide">معاينة الإشعار</p>
+                      <p className="text-[10px] text-muted2 mb-2 uppercase tracking-wide">معاينة الإشعار</p>
                       <div className="flex items-start gap-3">
                         <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
                           <Bell size={14} className="text-accent" />
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-white">
+                          <p className="text-sm font-semibold text-ink">
                             {customTitle.replace("{name}", "أحمد")}
                           </p>
-                          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{customBody}</p>
+                          <p className="text-xs text-muted mt-0.5 leading-relaxed">{customBody}</p>
                         </div>
                       </div>
                     </div>
@@ -342,8 +342,8 @@ export default function NotificationsPage() {
                   {msg && (
                     <div className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm ${
                       msgType === "ok"
-                        ? "border-white/20 bg-white/5 text-white"
-                        : "border-red-500/25 bg-red-950/30 text-red-300"
+                        ? "border-line2 bg-panel2 text-ink"
+                        : "border-danger-border bg-danger-bg text-danger"
                     }`}>
                       {msgType === "ok" ? <CheckCircle size={14} className="shrink-0" /> : <XCircle size={14} className="shrink-0" />}
                       {msg}
@@ -368,7 +368,7 @@ export default function NotificationsPage() {
           <div className="rounded-2xl border border-line/70 bg-panel shadow-card">
             <button
               onClick={() => setShowManual(v => !v)}
-              className="w-full flex items-center justify-between px-5 py-4 text-sm text-slate-400 hover:text-white transition-colors"
+              className="w-full flex items-center justify-between px-5 py-4 text-sm text-muted hover:text-ink transition-colors"
             >
               <span className="flex items-center gap-2">
                 <Send size={14} />
@@ -397,38 +397,38 @@ function ManualCompose({ onSend, sending, msg, msgType, subscribers }: {
 
   return (
     <div className="px-5 pb-5 border-t border-line/50 pt-4 space-y-3">
-      <p className="text-xs text-slate-500">إرسال نفس الرسالة بدون تخصيص — لكل {subscribers ?? 0} مشترك</p>
+      <p className="text-xs text-muted2">إرسال نفس الرسالة بدون تخصيص — لكل {subscribers ?? 0} مشترك</p>
       <div>
-        <label className="mb-1.5 block text-xs text-slate-400">عنوان الإشعار</label>
+        <label className="mb-1.5 block text-xs text-muted">عنوان الإشعار</label>
         <input
           value={title}
           onChange={e => setTitle(e.target.value)}
           placeholder="مثال: وظيفة جديدة تناسبك 🔔"
-          className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm placeholder:text-slate-500 focus:border-accent/50 focus:outline-none"
+          className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none"
         />
       </div>
       <div>
-        <label className="mb-1.5 block text-xs text-slate-400">النص</label>
+        <label className="mb-1.5 block text-xs text-muted">النص</label>
         <textarea
           value={body}
           onChange={e => setBody(e.target.value)}
           rows={3}
-          className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm placeholder:text-slate-500 focus:border-accent/50 focus:outline-none resize-none"
+          className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none resize-none"
         />
       </div>
       <div>
-        <label className="mb-1.5 block text-xs text-slate-400">الرابط</label>
+        <label className="mb-1.5 block text-xs text-muted">الرابط</label>
         <input
           value={url}
           onChange={e => setUrl(e.target.value)}
           dir="ltr"
-          className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm placeholder:text-slate-500 focus:border-accent/50 focus:outline-none"
+          className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none"
         />
       </div>
       <button
         onClick={() => onSend(title, body, url)}
         disabled={sending || !title.trim() || !body.trim()}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-line/60 bg-panel2 py-2.5 text-sm text-slate-300 font-medium hover:text-white transition-colors disabled:opacity-40"
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-line/60 bg-panel2 py-2.5 text-sm text-ink2 font-medium hover:text-ink transition-colors disabled:opacity-40"
       >
         {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
         بث للجميع

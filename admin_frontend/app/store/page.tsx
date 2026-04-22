@@ -31,14 +31,14 @@ function BankField({ label, value, id, copiedId, onCopy }: {
 }) {
   const copied = copiedId === id;
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0d0d0d", border: "1px solid #222", borderRadius: 8, padding: "8px 12px" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 12px" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <span style={{ color: "#666", fontSize: 11 }}>{label}</span>
-        <span style={{ color: "#e5e7eb", fontSize: 13, fontWeight: 600, letterSpacing: "0.2px", direction: "ltr" }}>{value}</span>
+        <span style={{ color: "var(--text3)", fontSize: 11 }}>{label}</span>
+        <span style={{ color: "var(--text)", fontSize: 13, fontWeight: 600, letterSpacing: "0.2px", direction: "ltr" }}>{value}</span>
       </div>
       <button
         onClick={() => onCopy(value, id)}
-        style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: copied ? "#a78bfa" : "#555", transition: "color 0.2s" }}
+        style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: copied ? "var(--text)" : "var(--text4)", transition: "color 0.2s" }}
         title="نسخ"
       >
         {copied ? <CheckCheck size={15} /> : <Copy size={15} />}
@@ -244,18 +244,18 @@ export default function StorePage() {
       <main style={s.main}>
         {refCode && (
           <div style={s.refBanner}>
-            <Sparkles size={13} color="#a78bfa" />
-            <span>تم تطبيق كود الإحالة <strong style={{ color: "#fff" }}>{refCode}</strong></span>
+            <Sparkles size={13} color="var(--text)" />
+            <span>تم تطبيق كود الإحالة <strong style={{ color: "var(--text)" }}>{refCode}</strong></span>
           </div>
         )}
 
         {loading ? (
           <div style={s.loaderWrap}>
-            <Loader2 size={28} color="#666" style={{ animation: "spin 1s linear infinite" }} />
+            <Loader2 size={28} color="var(--text3)" style={{ animation: "spin 1s linear infinite" }} />
           </div>
         ) : products.length === 0 ? (
           <div style={s.empty}>
-            <p style={{ color: "#666", fontSize: 15 }}>لا توجد منتجات متاحة حالياً</p>
+            <p style={{ color: "var(--text3)", fontSize: 15 }}>لا توجد منتجات متاحة حالياً</p>
           </div>
         ) : (
           <div style={{
@@ -299,7 +299,7 @@ export default function StorePage() {
                         {p.description.split("\n").filter(Boolean).map((line, li) => (
                           <li key={li} style={s.featureItem}>
                             <div style={s.checkIcon}>
-                              <Check size={11} strokeWidth={3} color="#a78bfa" />
+                              <Check size={11} strokeWidth={3} color="var(--text)" />
                             </div>
                             <span>{line}</span>
                           </li>
@@ -321,7 +321,7 @@ export default function StorePage() {
 
       <footer style={s.footer}>
         <div style={s.footerInner}>
-          <span style={{ color: "#666", fontSize: 12.5 }}>© 2025 Jobbots</span>
+          <span style={{ color: "var(--text3)", fontSize: 12.5 }}>© 2025 Jobbots</span>
           <div style={{ display: "flex", gap: 22 }}>
             <Link href="/privacy" style={s.footerLink}>الخصوصية</Link>
             <Link href="/terms" style={s.footerLink}>الشروط</Link>
@@ -339,7 +339,7 @@ export default function StorePage() {
             <div style={s.modalHeader}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={s.modalIconWrap}>
-                  <ShoppingCart size={15} color="#a78bfa" />
+                  <ShoppingCart size={15} color="var(--text)" />
                 </div>
                 <div>
                   <div style={s.modalTitle}>إتمام الاشتراك</div>
@@ -357,9 +357,9 @@ export default function StorePage() {
               <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
                 {discountState.applied && discountState.final !== undefined ? (
                   <>
-                    <span style={{ ...s.stripAmount, color: "#a78bfa" }}>{discountState.final}</span>
+                    <span style={{ ...s.stripAmount, color: "var(--text)" }}>{discountState.final}</span>
                     <span style={s.stripCurr}>ر.س</span>
-                    <span style={{ color: "#666", fontSize: 13, textDecoration: "line-through", marginInlineStart: 6 }}>
+                    <span style={{ color: "var(--text3)", fontSize: 13, textDecoration: "line-through", marginInlineStart: 6 }}>
                       {selected.price} ر.س
                     </span>
                     <span style={s.stripDur}>/ {durationLabel(selected.duration_days)}</span>
@@ -410,16 +410,16 @@ export default function StorePage() {
             {step === "form" && (
               <div style={s.discountBox}>
                 <div style={s.discountHeader}>
-                  <Tag size={13} color="#a78bfa" />
+                  <Tag size={13} color="var(--text)" />
                   <span style={s.discountTitle}>كود خصم (اختياري)</span>
                 </div>
                 {discountState.applied ? (
                   <div style={s.discountApplied}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
-                      <CheckCheck size={14} color="#a78bfa" />
+                      <CheckCheck size={14} color="var(--text)" />
                       <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-                        <span style={{ color: "#fff", fontSize: 13, fontWeight: 700 }}>{discountState.code}</span>
-                        <span style={{ color: "#a78bfa", fontSize: 11, fontWeight: 600 }}>
+                        <span style={{ color: "var(--text)", fontSize: 13, fontWeight: 700 }}>{discountState.code}</span>
+                        <span style={{ color: "var(--text)", fontSize: 11, fontWeight: 600 }}>
                           وفّرت {discountState.saved} ر.س
                         </span>
                       </div>
@@ -457,13 +457,13 @@ export default function StorePage() {
 
                 {discountState.applied && (
                   <div style={s.discountSummary}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#888" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text3)" }}>
                       <span>السعر الأصلي</span>
                       <span style={{ textDecoration: "line-through" }}>{discountState.original} ر.س</span>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "#fff", fontWeight: 800, marginTop: 4 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "var(--text)", fontWeight: 800, marginTop: 4 }}>
                       <span>الإجمالي بعد الخصم</span>
-                      <span style={{ color: "#a78bfa" }}>{discountState.final} ر.س</span>
+                      <span style={{ color: "var(--text)" }}>{discountState.final} ر.س</span>
                     </div>
                   </div>
                 )}
@@ -527,17 +527,17 @@ export default function StorePage() {
                 <div style={s.bankAmountBox}>
                   {bankData.has_discount && (
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13 }}>
-                      <span style={{ color: "#aaa" }}>السعر الأصلي</span>
-                      <span style={{ color: "#888", textDecoration: "line-through" }}>{bankData.original_amount} ر.س</span>
+                      <span style={{ color: "var(--text2)" }}>السعر الأصلي</span>
+                      <span style={{ color: "var(--text3)", textDecoration: "line-through" }}>{bankData.original_amount} ر.س</span>
                     </div>
                   )}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ color: "#aaa", fontSize: 13 }}>
+                    <span style={{ color: "var(--text2)", fontSize: 13 }}>
                       {bankData.has_discount ? "بعد الخصم 15%" : "المبلغ المطلوب"}
                     </span>
-                    <span style={{ color: "#fff", fontSize: 22, fontWeight: 900 }}>{bankData.amount} ر.س</span>
+                    <span style={{ color: "var(--text)", fontSize: 22, fontWeight: 900 }}>{bankData.amount} ر.س</span>
                   </div>
-                  <p style={{ color: "#aaa", fontSize: 12, margin: "8px 0 0", lineHeight: 1.7 }}>
+                  <p style={{ color: "var(--text2)", fontSize: 12, margin: "8px 0 0", lineHeight: 1.7 }}>
                     بعد إتمام التحويل، أرسل إيصال الدفع إلى الدعم وسيتم تفعيل حسابك خلال 24 ساعة.
                   </p>
                 </div>
@@ -548,9 +548,9 @@ export default function StorePage() {
                     <div key={acc.id} style={s.bankCard}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                         <div style={s.bankIcon}>
-                          {acc.type === "bank" ? <Building2 size={14} color="#a78bfa" /> : <Wallet size={14} color="#a78bfa" />}
+                          {acc.type === "bank" ? <Building2 size={14} color="var(--text)" /> : <Wallet size={14} color="var(--text)" />}
                         </div>
-                        <span style={{ color: "#e5e7eb", fontWeight: 700, fontSize: 14 }}>{acc.name}</span>
+                        <span style={{ color: "var(--text)", fontWeight: 700, fontSize: 14 }}>{acc.name}</span>
                         <span style={s.bankTypeTag}>{acc.type === "bank" ? "بنك" : "محفظة"}</span>
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -567,7 +567,7 @@ export default function StorePage() {
                     </div>
                   ))}
                   {bankData.accounts.length === 0 && (
-                    <p style={{ color: "#888", textAlign: "center", fontSize: 13, padding: "16px 0" }}>
+                    <p style={{ color: "var(--text3)", textAlign: "center", fontSize: 13, padding: "16px 0" }}>
                       لا توجد حسابات بنكية متاحة حالياً. تواصل مع الدعم.
                     </p>
                   )}
@@ -577,27 +577,27 @@ export default function StorePage() {
                 <div style={s.receiptBox}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                     <div style={s.receiptIcon}>
-                      <ShieldCheck size={14} color="#a78bfa" />
+                      <ShieldCheck size={14} color="var(--text)" />
                     </div>
-                    <span style={{ color: "#e5e7eb", fontSize: 13, fontWeight: 700 }}>رفع إيصال التحويل</span>
-                    <span style={{ color: "#f87171", fontSize: 12, fontWeight: 700 }}>*</span>
-                    <span style={{ color: "#555", fontSize: 11, marginRight: 2 }}>(إلزامي)</span>
+                    <span style={{ color: "var(--text)", fontSize: 13, fontWeight: 700 }}>رفع إيصال التحويل</span>
+                    <span style={{ color: "var(--danger)", fontSize: 12, fontWeight: 700 }}>*</span>
+                    <span style={{ color: "var(--text4)", fontSize: 11, marginRight: 2 }}>(إلزامي)</span>
                   </div>
-                  <p style={{ color: "#777", fontSize: 12, lineHeight: 1.7, margin: "0 0 12px" }}>
+                  <p style={{ color: "var(--text3)", fontSize: 12, lineHeight: 1.7, margin: "0 0 12px" }}>
                     يرجى رفع صورة إيصال التحويل لإتمام طلبك وتفعيل حسابك.
                   </p>
 
                   {uploadDone ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       <div style={s.uploadSuccess}>
-                        <CheckCheck size={16} color="#86efac" />
+                        <CheckCheck size={16} color="var(--success-fg)" />
                         <span>تم رفع الإيصال بنجاح!</span>
                       </div>
-                      <div style={{ background: "#0a0a0a", border: "1px solid #1f1f1f", borderRadius: 10, padding: "12px 14px", color: "#aaa", fontSize: 12.5, lineHeight: 1.8 }}>
+                      <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px", color: "var(--text2)", fontSize: 12.5, lineHeight: 1.8 }}>
                         ✅ تم استلام طلبك وإيصال التحويل.<br />
                         سيتم مراجعته وتفعيل حسابك وإرسال كود التفعيل على بريدك الإلكتروني خلال 24 ساعة.
                       </div>
-                      <button onClick={closeModal} style={{ ...s.payBtn, background: "#fff", color: "#0a0a0a", justifyContent: "center", width: "100%", fontWeight: 800 }}>
+                      <button onClick={closeModal} style={{ ...s.payBtn, background: "var(--accent)", color: "var(--accent-fg)", justifyContent: "center", width: "100%", fontWeight: 800 }}>
                         إغلاق
                       </button>
                     </div>
@@ -611,24 +611,24 @@ export default function StorePage() {
                           onChange={e => { setReceiptFile(e.target.files?.[0] || null); setUploadErr(""); }}
                           disabled={uploading}
                         />
-                        <div style={{ ...s.fileDropzone, borderColor: receiptFile ? "#a78bfa" : "#2a2a2a" }}>
+                        <div style={{ ...s.fileDropzone, borderColor: receiptFile ? "var(--accent)" : "var(--border2)" }}>
                           {receiptFile ? (
-                            <span style={{ color: "#e5e7eb", fontSize: 13 }}>{receiptFile.name}</span>
+                            <span style={{ color: "var(--text)", fontSize: 13 }}>{receiptFile.name}</span>
                           ) : (
-                            <span style={{ color: "#555", fontSize: 13 }}>اضغط لاختيار صورة الإيصال</span>
+                            <span style={{ color: "var(--text4)", fontSize: 13 }}>اضغط لاختيار صورة الإيصال</span>
                           )}
                         </div>
                       </label>
 
                       {uploadErr && (
-                        <div style={{ color: "#f87171", fontSize: 12, marginTop: 6 }}>{uploadErr}</div>
+                        <div style={{ color: "var(--danger)", fontSize: 12, marginTop: 6 }}>{uploadErr}</div>
                       )}
 
                       {receiptFile && (
                         <button
                           onClick={handleReceiptUpload}
                           disabled={uploading}
-                          style={{ ...s.payBtn, background: "linear-gradient(135deg, #a78bfa, #7c3aed)", color: "#fff", width: "100%", justifyContent: "center", marginTop: 10, opacity: uploading ? 0.7 : 1 }}
+                          style={{ ...s.payBtn, background: "var(--accent)", color: "var(--text)", width: "100%", justifyContent: "center", marginTop: 10, opacity: uploading ? 0.7 : 1 }}
                         >
                           {uploading
                             ? <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
@@ -644,7 +644,7 @@ export default function StorePage() {
                 {!uploadDone && (
                   <button
                     onClick={() => { setStep("form"); setBankData(null); setReceiptFile(null); setUploadDone(false); setUploadErr(""); }}
-                    style={{ ...s.payBtn, background: "#1a1a1a", color: "#aaa", border: "1px solid #2a2a2a", marginTop: 4, width: "100%", justifyContent: "center" }}
+                    style={{ ...s.payBtn, background: "var(--surface2)", color: "var(--text2)", border: "1px solid var(--border2)", marginTop: 4, width: "100%", justifyContent: "center" }}
                   >
                     <span>← العودة لخيارات الدفع</span>
                   </button>
@@ -667,26 +667,26 @@ export default function StorePage() {
         }
         .__modal::-webkit-scrollbar { width: 4px; }
         .__modal::-webkit-scrollbar-track { background: transparent; }
-        .__modal::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 4px; }
+        .__modal::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
       `}</style>
     </div>
   );
 }
 
 const s: Record<string, React.CSSProperties> = {
-  page: { minHeight: "100vh", background: "#0a0a0a", display: "flex", flexDirection: "column", color: "#fff", fontFamily: "'Tajawal', system-ui, sans-serif" },
+  page: { minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", color: "var(--text)", fontFamily: "'Tajawal', system-ui, sans-serif" },
 
   // NAV
-  nav: { borderBottom: "1px solid #1a1a1a", padding: "0 24px" },
+  nav: { borderBottom: "1px solid var(--border)", padding: "0 24px", background: "var(--surface)" },
   navInner: { maxWidth: 1100, margin: "0 auto", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" },
   logo: { display: "flex", alignItems: "center", gap: 10, textDecoration: "none" },
-  logoIcon: { width: 34, height: 34, borderRadius: 9, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" },
-  logoText: { color: "#fff", fontSize: 17, fontWeight: 800 },
-  navBtn: { background: "#fff", color: "#0a0a0a", padding: "9px 18px", borderRadius: 9, fontSize: 13, fontWeight: 700, textDecoration: "none", border: "none" },
+  logoIcon: { width: 34, height: 34, borderRadius: 9, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" },
+  logoText: { color: "var(--text)", fontSize: 17, fontWeight: 800 },
+  navBtn: { background: "var(--accent)", color: "var(--accent-fg)", padding: "9px 18px", borderRadius: 9, fontSize: 13, fontWeight: 700, textDecoration: "none", border: "none" },
 
   // MAIN
   main: { flex: 1, padding: "60px 24px", maxWidth: 1100, margin: "0 auto", width: "100%", boxSizing: "border-box" },
-  refBanner: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.25)", borderRadius: 12, padding: "10px 18px", fontSize: 12.5, color: "#c4b5fd", marginBottom: 28, maxWidth: 480, marginLeft: "auto", marginRight: "auto" },
+  refBanner: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 18px", fontSize: 12.5, color: "var(--text2)", marginBottom: 28, maxWidth: 480, marginLeft: "auto", marginRight: "auto" },
   loaderWrap: { textAlign: "center", padding: "120px 0" },
   empty: { textAlign: "center", padding: "120px 0" },
 
@@ -694,95 +694,95 @@ const s: Record<string, React.CSSProperties> = {
   grid: { display: "grid", gap: 18, alignItems: "stretch" },
 
   // CARD
-  card: { background: "linear-gradient(180deg, #111 0%, #0a0a0a 100%)", border: "1px solid #1f1f1f", borderRadius: 20, padding: "28px 26px", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden", transition: "all 0.2s" },
-  cardGlow: { position: "absolute", top: -100, right: -100, width: 220, height: 220, background: "radial-gradient(circle, rgba(167,139,250,0.08), transparent 70%)", pointerEvents: "none" },
+  card: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 20, padding: "28px 26px", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden", transition: "all 0.2s", boxShadow: "var(--shadow)" },
+  cardGlow: { display: "none" },
   cardHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14, position: "relative", zIndex: 1, flexWrap: "wrap" },
-  cardName: { color: "#e5e7eb", fontSize: 16, fontWeight: 700, margin: 0, letterSpacing: "-0.2px", flex: 1, minWidth: 0, overflowWrap: "break-word", wordBreak: "break-word" },
-  savingsBadge: { background: "rgba(34,197,94,0.12)", color: "#86efac", border: "1px solid rgba(34,197,94,0.3)", padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" },
+  cardName: { color: "var(--text)", fontSize: 16, fontWeight: 700, margin: 0, letterSpacing: "-0.2px", flex: 1, minWidth: 0, overflowWrap: "break-word", wordBreak: "break-word" },
+  savingsBadge: { background: "var(--surface2)", color: "var(--text)", border: "1px solid var(--border2)", padding: "3px 9px", borderRadius: 6, fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" },
   cardPrice: { display: "flex", alignItems: "flex-end", gap: 8, position: "relative", zIndex: 1 },
-  priceNum: { fontSize: "clamp(38px, 9vw, 50px)", fontWeight: 900, color: "#fff", lineHeight: 0.9, letterSpacing: "-2px" },
+  priceNum: { fontSize: "clamp(38px, 9vw, 50px)", fontWeight: 900, color: "var(--text)", lineHeight: 0.9, letterSpacing: "-2px" },
   priceMeta: { display: "flex", flexDirection: "column", gap: 2, paddingBottom: 4 },
-  priceCurr: { fontSize: 13, color: "#888", fontWeight: 700 },
-  priceDur: { fontSize: 11, color: "#666", fontWeight: 500 },
-  monthlyEquiv: { fontSize: 12, color: "#888", marginTop: 8, fontWeight: 500, position: "relative", zIndex: 1 },
-  divider: { height: 1, background: "#1f1f1f", margin: "20px 0", position: "relative", zIndex: 1 },
+  priceCurr: { fontSize: 13, color: "var(--text3)", fontWeight: 700 },
+  priceDur: { fontSize: 11, color: "var(--text4)", fontWeight: 500 },
+  monthlyEquiv: { fontSize: 12, color: "var(--text3)", marginTop: 8, fontWeight: 500, position: "relative", zIndex: 1 },
+  divider: { height: 1, background: "var(--border)", margin: "20px 0", position: "relative", zIndex: 1 },
   featureList: { listStyle: "none", padding: 0, margin: "0 0 24px", display: "flex", flexDirection: "column", gap: 11, flex: 1, position: "relative", zIndex: 1 },
-  featureItem: { display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, color: "#bbb" },
-  checkIcon: { width: 18, height: 18, borderRadius: 6, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.25)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  buyBtn: { width: "100%", padding: "13px", borderRadius: 11, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#fff", color: "#0a0a0a", border: "none", marginTop: "auto", position: "relative", zIndex: 1 },
+  featureItem: { display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, color: "var(--text2)" },
+  checkIcon: { width: 18, height: 18, borderRadius: 6, background: "var(--surface2)", border: "1px solid var(--border2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  buyBtn: { width: "100%", padding: "13px", borderRadius: 11, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "var(--accent)", color: "var(--accent-fg)", border: "none", marginTop: "auto", position: "relative", zIndex: 1 },
 
   // FOOTER
-  footer: { borderTop: "1px solid #1a1a1a", padding: "24px" },
+  footer: { borderTop: "1px solid var(--border)", padding: "24px", background: "var(--surface)" },
   footerInner: { maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 },
-  footerLink: { color: "#666", fontSize: 12.5, textDecoration: "none" },
+  footerLink: { color: "var(--text3)", fontSize: 12.5, textDecoration: "none" },
 
   // MODAL
-  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 },
-  modal: { background: "#0d0d0d", border: "1px solid #222", borderRadius: 20, padding: "22px 22px 18px", width: "100%", maxWidth: 440, maxHeight: "92vh", overflowY: "auto", boxShadow: "0 32px 80px rgba(0,0,0,0.9)", position: "relative" },
-  modalGlow: { position: "absolute", top: -60, right: -60, width: 180, height: 180, background: "radial-gradient(circle, rgba(167,139,250,0.12), transparent 70%)", pointerEvents: "none", zIndex: 0 },
+  overlay: { position: "fixed", inset: 0, background: "var(--modal-backdrop)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 },
+  modal: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 20, padding: "22px 22px 18px", width: "100%", maxWidth: 440, maxHeight: "92vh", overflowY: "auto", boxShadow: "var(--shadow)", position: "relative" },
+  modalGlow: { display: "none" },
   modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, position: "relative", zIndex: 1 },
-  modalIconWrap: { width: 34, height: 34, borderRadius: 10, background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  modalTitle: { color: "#fff", fontSize: 16, fontWeight: 800, marginBottom: 2 },
-  modalSub: { color: "#666", fontSize: 12 },
-  closeBtn: { background: "#161616", border: "1px solid #252525", borderRadius: 8, padding: "6px", cursor: "pointer", color: "#666", display: "flex", lineHeight: 1, flexShrink: 0 },
+  modalIconWrap: { width: 34, height: 34, borderRadius: 10, background: "var(--surface2)", border: "1px solid var(--border2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  modalTitle: { color: "var(--text)", fontSize: 16, fontWeight: 800, marginBottom: 2 },
+  modalSub: { color: "var(--text3)", fontSize: 12 },
+  closeBtn: { background: "var(--surface2)", border: "1px solid var(--border2)", borderRadius: 8, padding: "6px", cursor: "pointer", color: "var(--text3)", display: "flex", lineHeight: 1, flexShrink: 0 },
 
   // Price strip
-  priceStrip: { background: "linear-gradient(135deg, rgba(167,139,250,0.08), rgba(109,40,217,0.06))", border: "1px solid rgba(167,139,250,0.15)", borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", zIndex: 1 },
-  stripLabel: { color: "#888", fontSize: 12 },
-  stripAmount: { color: "#a78bfa", fontSize: 22, fontWeight: 900, letterSpacing: "-0.5px" },
-  stripCurr: { color: "#888", fontSize: 12, fontWeight: 600 },
-  stripDur: { color: "#555", fontSize: 11 },
+  priceStrip: { background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", zIndex: 1 },
+  stripLabel: { color: "var(--text3)", fontSize: 12 },
+  stripAmount: { color: "var(--text)", fontSize: 22, fontWeight: 900, letterSpacing: "-0.5px" },
+  stripCurr: { color: "var(--text3)", fontSize: 12, fontWeight: 600 },
+  stripDur: { color: "var(--text4)", fontSize: 11 },
 
   // Form grid
   formGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 12px", marginBottom: 14, position: "relative", zIndex: 1 },
   formCol: { display: "flex", flexDirection: "column" as const },
-  label: { display: "block", color: "#777", fontSize: 11, marginBottom: 5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.3px" },
-  input: { width: "100%", background: "#080808", border: "1px solid #1e1e1e", borderRadius: 9, padding: "10px 12px", color: "#fff", fontSize: 13.5, outline: "none", boxSizing: "border-box" as const },
+  label: { display: "block", color: "var(--text3)", fontSize: 11, marginBottom: 5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.3px" },
+  input: { width: "100%", background: "var(--input-bg)", border: "1px solid var(--border)", borderRadius: 9, padding: "10px 12px", color: "var(--text)", fontSize: 13.5, outline: "none", boxSizing: "border-box" as const },
 
-  errBox: { background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 9, padding: "9px 13px", color: "#fca5a5", fontSize: 12.5, marginBottom: 12, position: "relative", zIndex: 1 },
+  errBox: { background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: 9, padding: "9px 13px", color: "var(--danger)", fontSize: 12.5, marginBottom: 12, position: "relative", zIndex: 1 },
 
   // Gateway divider
   gatewayLabel: { display: "flex", alignItems: "center", gap: 10, margin: "14px 0 12px", position: "relative", zIndex: 1 },
-  gatewayLine: { flex: 1, height: 1, background: "#1e1e1e" },
-  gatewayText: { color: "#555", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" as const },
+  gatewayLine: { flex: 1, height: 1, background: "var(--border)" },
+  gatewayText: { color: "var(--text4)", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" as const },
 
   // Pay buttons side by side
   payBtns: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14, position: "relative", zIndex: 1 },
-  payBtn: { borderRadius: 11, padding: "12px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer", border: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, transition: "opacity 0.15s" },
-  payBtnTamara: { background: "linear-gradient(135deg, #a78bfa, #7c3aed)", color: "#fff", boxShadow: "0 6px 20px rgba(109,40,217,0.35)" },
-  payBtnStream: { background: "#161b27", color: "#94a3b8", border: "1px solid #1e2738" },
-  payBtnBank: { background: "#0f1612", color: "#86efac", border: "1px solid #1a2e20" },
-  discountBadge: { position: "absolute" as const, top: -8, left: 12, background: "#a78bfa", color: "#fff", fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 6 },
+  payBtn: { borderRadius: 11, padding: "12px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, transition: "opacity 0.15s", background: "var(--surface2)", color: "var(--text)" },
+  payBtnTamara: { background: "var(--accent)", color: "var(--accent-fg)", border: "1px solid var(--accent)" },
+  payBtnStream: { background: "var(--surface2)", color: "var(--text2)", border: "1px solid var(--border2)" },
+  payBtnBank: { background: "var(--surface2)", color: "var(--text2)", border: "1px solid var(--border2)" },
+  discountBadge: { position: "absolute" as const, top: -8, left: 12, background: "var(--accent)", color: "var(--accent-fg)", fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 6 },
 
   // Bank transfer styles
-  bankAmountBox: { background: "linear-gradient(135deg, rgba(167,139,250,0.06), rgba(109,40,217,0.04))", border: "1px solid rgba(167,139,250,0.12)", borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column" as const, gap: 6 },
-  bankCard: { background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 12, padding: "14px 14px 10px" },
-  bankIcon: { width: 28, height: 28, borderRadius: 8, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" },
-  bankTypeTag: { marginRight: "auto", background: "#111", color: "#666", fontSize: 10, padding: "2px 8px", borderRadius: 6, border: "1px solid #1f1f1f" },
+  bankAmountBox: { background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column" as const, gap: 6 },
+  bankCard: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 14px 10px" },
+  bankIcon: { width: 28, height: 28, borderRadius: 8, background: "var(--surface2)", border: "1px solid var(--border2)", display: "flex", alignItems: "center", justifyContent: "center" },
+  bankTypeTag: { marginRight: "auto", background: "var(--surface2)", color: "var(--text3)", fontSize: 10, padding: "2px 8px", borderRadius: 6, border: "1px solid var(--border)" },
 
   // Discount code
-  discountBox: { background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 12, padding: "12px 14px", marginBottom: 14, position: "relative", zIndex: 1 },
+  discountBox: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px", marginBottom: 14, position: "relative", zIndex: 1 },
   discountHeader: { display: "flex", alignItems: "center", gap: 7, marginBottom: 9 },
-  discountTitle: { color: "#bbb", fontSize: 12, fontWeight: 700 },
-  discountApplyBtn: { background: "#a78bfa", color: "#0a0a0a", border: "none", borderRadius: 9, padding: "0 14px", fontSize: 12.5, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 64 },
-  discountApplied: { display: "flex", alignItems: "center", gap: 8, background: "#0a0a0a", border: "1px solid #2a1f4a", borderRadius: 9, padding: "9px 12px" },
-  discountRemoveBtn: { background: "#161616", border: "1px solid #252525", borderRadius: 7, padding: 5, cursor: "pointer", color: "#888", display: "flex", lineHeight: 1, flexShrink: 0 },
-  discountError: { color: "#fca5a5", fontSize: 11.5, marginTop: 7 },
-  discountSummary: { marginTop: 10, paddingTop: 10, borderTop: "1px solid #1a1a1a" },
+  discountTitle: { color: "var(--text2)", fontSize: 12, fontWeight: 700 },
+  discountApplyBtn: { background: "var(--accent)", color: "var(--accent-fg)", border: "none", borderRadius: 9, padding: "0 14px", fontSize: 12.5, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 64 },
+  discountApplied: { display: "flex", alignItems: "center", gap: 8, background: "var(--surface2)", border: "1px solid var(--border2)", borderRadius: 9, padding: "9px 12px" },
+  discountRemoveBtn: { background: "var(--surface2)", border: "1px solid var(--border2)", borderRadius: 7, padding: 5, cursor: "pointer", color: "var(--text3)", display: "flex", lineHeight: 1, flexShrink: 0 },
+  discountError: { color: "var(--danger)", fontSize: 11.5, marginTop: 7 },
+  discountSummary: { marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border)" },
 
   // Receipt upload
-  receiptBox: { background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 12, padding: "14px", marginTop: 14 },
-  receiptIcon: { width: 26, height: 26, borderRadius: 7, background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  receiptBox: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px", marginTop: 14 },
+  receiptIcon: { width: 26, height: 26, borderRadius: 7, background: "var(--surface2)", border: "1px solid var(--border2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
   fileLabel: { display: "block", cursor: "pointer" },
-  fileDropzone: { border: "1.5px dashed #2a2a2a", borderRadius: 10, padding: "14px 16px", textAlign: "center" as const, transition: "border-color 0.2s", background: "#080808" },
-  uploadSuccess: { display: "flex", alignItems: "center", gap: 8, background: "rgba(134,239,172,0.06)", border: "1px solid rgba(134,239,172,0.2)", borderRadius: 10, padding: "10px 14px", color: "#86efac", fontSize: 13, fontWeight: 600 },
+  fileDropzone: { border: "1.5px dashed var(--border2)", borderRadius: 10, padding: "14px 16px", textAlign: "center" as const, transition: "border-color 0.2s", background: "var(--input-bg)" },
+  uploadSuccess: { display: "flex", alignItems: "center", gap: 8, background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: 10, padding: "10px 14px", color: "var(--success-fg)", fontSize: 13, fontWeight: 600 },
 
-  secureNote: { textAlign: "center" as const, color: "#444", fontSize: 11, margin: 0, position: "relative", zIndex: 1 },
+  secureNote: { textAlign: "center" as const, color: "var(--text4)", fontSize: 11, margin: 0, position: "relative", zIndex: 1 },
 
   // legacy (kept for card)
-  summaryBox: { background: "#0a0a0a", border: "1px solid #1f1f1f", borderRadius: 12, padding: "14px 16px", marginBottom: 20 },
+  summaryBox: { background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", marginBottom: 20 },
   formFields: { display: "flex", flexDirection: "column" as const, gap: 14, marginBottom: 16 },
-  checkoutBtn: { width: "100%", background: "linear-gradient(135deg, #a78bfa, #6d28d9)", color: "#fff", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12, boxShadow: "0 8px 24px rgba(109,40,217,0.4)" },
+  checkoutBtn: { width: "100%", background: "var(--accent)", color: "var(--accent-fg)", border: "none", borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 },
 };
 
 // rebuild: 1776481799

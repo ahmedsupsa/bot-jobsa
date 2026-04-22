@@ -6,8 +6,10 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Key, BriefcaseBusiness, Bell, LogOut,
   ShoppingBag, TrendingUp, MessageCircle, MailCheck, FileText, ShieldCheck, Send,
+  Sun, Moon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTheme } from "@/contexts/theme-context";
 
 type Perm =
   | "users" | "codes" | "jobs" | "templates" | "notifications"
@@ -36,6 +38,8 @@ const links: { href: string; label: string; icon: any; perm: Perm | null; badge?
 export default function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const router = useRouter();
+  const { theme, toggle } = useTheme();
+  const dark = theme === "dark";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [me, setMe] = useState<Me>(null);
   const [badges, setBadges] = useState<Badges>({});
@@ -93,8 +97,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <Image src="/logo.png" alt="Jobbots" width={36} height={36} className="rounded-xl" />
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-bold text-white truncate">Jobbots</div>
-            <div className="text-xs text-slate-500 truncate">
+            <div className="text-sm font-bold text-ink truncate">Jobbots</div>
+            <div className="text-xs text-muted truncate">
               {me ? (me.isSuper ? "مدير عام" : `أهلاً، ${me.username}`) : "لوحة الإدارة"}
             </div>
           </div>
@@ -112,16 +116,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 className={`
                   flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all
                   ${active
-                    ? "bg-white/10 text-white border border-white/20"
-                    : "text-slate-400 hover:bg-panel2 hover:text-white border border-transparent"
+                    ? "bg-panel2 text-ink border border-line2"
+                    : "text-muted hover:bg-panel2 hover:text-ink border border-transparent"
                   }
                 `}
               >
-                <l.icon size={17} className={active ? "text-white" : "text-slate-500"} />
+                <l.icon size={17} className={active ? "text-ink" : "text-muted2"} />
                 <span className="flex-1 truncate">{l.label}</span>
                 {count > 0 && (
                   <span
-                    className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-purple-500 text-white text-[11px] font-bold leading-none"
+                    className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-accent text-ink text-[11px] font-bold leading-none"
                     title={`${count} عنصر يحتاج انتباهك`}
                   >
                     {count > 99 ? "99+" : count}
@@ -132,13 +136,21 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="px-3 py-4 border-t border-line">
+        <div className="px-3 py-4 border-t border-line space-y-1.5">
+          <button
+            onClick={toggle}
+            aria-label={dark ? "الوضع النهاري" : "الوضع الليلي"}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-ink2 hover:bg-panel2 transition-all border border-transparent hover:border-line"
+          >
+            {dark ? <Sun size={17} /> : <Moon size={17} />}
+            {dark ? "الوضع النهاري" : "الوضع الليلي"}
+          </button>
           <button
             onClick={async () => {
               await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
               window.location.href = "/login";
             }}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-danger hover:bg-danger-bg transition-all border border-transparent hover:border-danger-border"
           >
             <LogOut size={17} />
             تسجيل الخروج
@@ -148,7 +160,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          className="fixed inset-0 z-30 bg-[var(--modal-backdrop)] md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -159,14 +171,23 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <div className="flex h-7 w-7 items-center justify-center rounded-lg overflow-hidden">
               <Image src="/logo.png" alt="Jobbots" width={28} height={28} className="rounded-lg" />
             </div>
-            <span className="text-sm font-semibold text-white">Jobbots</span>
+            <span className="text-sm font-semibold text-ink">Jobbots</span>
           </div>
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="rounded-lg border border-line p-2 text-slate-400 hover:text-white"
-          >
-            ☰
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggle}
+              aria-label={dark ? "الوضع النهاري" : "الوضع الليلي"}
+              className="rounded-lg border border-line p-2 text-ink2 hover:text-ink"
+            >
+              {dark ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="rounded-lg border border-line p-2 text-muted hover:text-ink"
+            >
+              ☰
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-bg">

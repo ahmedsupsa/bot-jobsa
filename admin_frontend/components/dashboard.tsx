@@ -50,12 +50,12 @@ function StatCard({ label, value, icon: Icon, delay, sub }: { label: string; val
     >
       <div className="flex items-start justify-between">
         <div className="min-w-0">
-          <div className="text-xs font-medium text-slate-500 mb-2">{label}</div>
-          <div className="text-3xl font-bold text-white truncate">{value}</div>
-          {sub && <div className="text-[11px] text-slate-500 mt-1.5 truncate">{sub}</div>}
+          <div className="text-xs font-medium text-muted2 mb-2">{label}</div>
+          <div className="text-3xl font-bold text-ink truncate">{value}</div>
+          {sub && <div className="text-[11px] text-muted2 mt-1.5 truncate">{sub}</div>}
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/8 border border-white/10 shrink-0">
-          <Icon size={20} className="text-slate-300" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-panel2 border border-line shrink-0">
+          <Icon size={20} className="text-ink2" />
         </div>
       </div>
     </motion.div>
@@ -64,7 +64,7 @@ function StatCard({ label, value, icon: Icon, delay, sub }: { label: string; val
 
 function StatusBadge({ status }: { status: string }) {
   if (status === "success") return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+    <span className="inline-flex items-center gap-1 rounded-full bg-panel2 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-medium text-ink">
       <CheckCircle2 size={10} /> ناجح
     </span>
   );
@@ -74,7 +74,7 @@ function StatusBadge({ status }: { status: string }) {
     </span>
   );
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-red-950/60 border border-red-500/30 px-2 py-0.5 text-[10px] font-medium text-red-400">
+    <span className="inline-flex items-center gap-1 rounded-full bg-danger-bg border border-danger-border px-2 py-0.5 text-[10px] font-medium text-danger">
       <XCircle size={10} /> خطأ
     </span>
   );
@@ -152,18 +152,18 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-red-500/25 bg-red-950/30 p-5">
-        <div className="flex items-center gap-2 text-red-300 font-medium mb-1">
+      <div className="rounded-2xl border border-danger-border bg-danger-bg p-5">
+        <div className="flex items-center gap-2 text-danger font-medium mb-1">
           <span>⚠️</span> فشل تحميل البيانات
         </div>
-        <div className="text-sm text-red-300/80">{error}</div>
+        <div className="text-sm text-danger">{error}</div>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="flex items-center gap-3 text-sm text-slate-500 py-8">
+      <div className="flex items-center gap-3 text-sm text-muted2 py-8">
         <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
         جاري تحميل البيانات...
       </div>
@@ -191,25 +191,25 @@ export default function Dashboard() {
           transition={{ delay: 0 }}
           className={`rounded-2xl border p-5 ${
             bot.is_active
-              ? "border-emerald-500/25 bg-emerald-950/20"
+              ? "border-emerald-500/25 bg-panel2"
               : "border-amber-500/25 bg-amber-950/20"
           }`}
         >
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
               <div className={`flex h-11 w-11 items-center justify-center rounded-xl border ${
-                bot.is_active ? "bg-emerald-950/50 border-emerald-500/30" : "bg-amber-950/50 border-amber-500/30"
+                bot.is_active ? "bg-panel2 border-emerald-500/30" : "bg-amber-950/50 border-amber-500/30"
               }`}>
-                <Bot size={20} className={bot.is_active ? "text-emerald-400" : "text-amber-400"} />
+                <Bot size={20} className={bot.is_active ? "text-ink" : "text-amber-400"} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <div className={`h-2 w-2 rounded-full ${bot.is_active ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
-                  <span className={`text-sm font-bold ${bot.is_active ? "text-emerald-300" : "text-amber-300"}`}>
+                  <div className={`h-2 w-2 rounded-full ${bot.is_active ? "bg-ink animate-pulse" : "bg-muted"}`} />
+                  <span className={`text-sm font-bold ${bot.is_active ? "text-ink" : "text-amber-300"}`}>
                     {bot.is_active ? "Worker يعمل وآخر تقديم حديث" : "Worker لم يقدّم منذ فترة"}
                   </span>
                 </div>
-                <div className="text-xs text-slate-500 mt-1">
+                <div className="text-xs text-muted2 mt-1">
                   {bot.last_application_at
                     ? `آخر تقديم: ${formatMinutes(bot.minutes_since_last)} — ${new Date(bot.last_application_at).toLocaleString("ar")}`
                     : "لا يوجد تقديم مسجّل بعد"}
@@ -224,8 +224,8 @@ export default function Dashboard() {
                 { icon: FileText, label: "لديهم CV", val: bot.users_with_cv },
               ].map(({ icon: Icon, label, val }) => (
                 <div key={label} className="text-center">
-                  <div className="text-xl font-bold text-white">{val}</div>
-                  <div className="text-xs text-slate-500">{label}</div>
+                  <div className="text-xl font-bold text-ink">{val}</div>
+                  <div className="text-xs text-muted2">{label}</div>
                 </div>
               ))}
             </div>
@@ -249,15 +249,15 @@ export default function Dashboard() {
       >
         <div className="flex items-center justify-between border-b border-line px-5 py-4 flex-wrap gap-3">
           <div className="flex items-center gap-2">
-            <RefreshCw size={16} className="text-slate-400" />
-            <h3 className="font-semibold text-white text-sm">سجل تشغيل الـ Worker</h3>
-            <span className="text-xs text-slate-600">(آخر {Math.min(logs.length, 7)} دورة)</span>
+            <RefreshCw size={16} className="text-muted" />
+            <h3 className="font-semibold text-ink text-sm">سجل تشغيل الـ Worker</h3>
+            <span className="text-xs text-muted">(آخر {Math.min(logs.length, 7)} دورة)</span>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={triggerWorker}
               disabled={triggeringWorker}
-              className="flex items-center gap-1.5 rounded-lg bg-white/8 border border-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/12 transition disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-lg bg-panel2 border border-line px-3 py-1.5 text-xs font-medium text-ink hover:bg-panel2 transition disabled:opacity-50"
             >
               <RefreshCw size={12} className={triggeringWorker ? "animate-spin" : ""} />
               {triggeringWorker ? "يشتغل..." : "تشغيل الآن"}
@@ -269,48 +269,48 @@ export default function Dashboard() {
         {triggeringWorker && (
           <div className="px-5 py-4 border-b border-line flex items-center gap-3">
             <RefreshCw size={14} className="animate-spin text-accent" />
-            <span className="text-sm text-slate-300">Worker يشتغل... قد يستغرق بضع ثوانٍ</span>
+            <span className="text-sm text-ink2">Worker يشتغل... قد يستغرق بضع ثوانٍ</span>
           </div>
         )}
         {!triggeringWorker && workerMsg && (
           <div className={`px-5 py-3 border-b border-line text-xs font-medium ${
-            workerMsgType === "ok" ? "text-emerald-300 bg-emerald-950/20" : "text-red-300 bg-red-950/20"
+            workerMsgType === "ok" ? "text-ink bg-panel2" : "text-danger bg-danger-bg"
           }`}>{workerMsg}</div>
         )}
         {!triggeringWorker && runDetails.length > 0 && (
           <div className="border-b border-line">
-            <div className="px-5 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+            <div className="px-5 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted2">
               تفاصيل آخر تشغيل ({runDetails.filter(d => d.status === "sent").length} أُرسل / {runDetails.filter(d => d.status === "skipped").length} تخطّى / {runDetails.filter(d => d.status === "error").length} خطأ)
             </div>
             <div className="divide-y divide-line/40 max-h-64 overflow-y-auto">
               {runDetails.map((d, i) => (
-                <div key={i} className="flex items-center gap-3 px-5 py-2.5 hover:bg-white/2">
+                <div key={i} className="flex items-center gap-3 px-5 py-2.5 hover:bg-panel2">
                   {d.status === "sent" ? (
-                    <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
+                    <CheckCircle2 size={13} className="text-ink shrink-0" />
                   ) : d.status === "error" ? (
-                    <XCircle size={13} className="text-red-400 shrink-0" />
+                    <XCircle size={13} className="text-danger shrink-0" />
                   ) : (
                     <div className="h-3 w-3 rounded-full border border-slate-600 shrink-0" />
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-medium text-white">{d.user}</span>
-                      <span className="text-[10px] text-slate-500">→</span>
-                      <span className="text-xs text-slate-300">{d.job}</span>
+                      <span className="text-xs font-medium text-ink">{d.user}</span>
+                      <span className="text-[10px] text-muted2">→</span>
+                      <span className="text-xs text-ink2">{d.job}</span>
                       {d.status === "sent" && (
-                        <span className="text-[10px] text-slate-500">→ {d.to_email}</span>
+                        <span className="text-[10px] text-muted2">→ {d.to_email}</span>
                       )}
                     </div>
                     {d.reason && (
-                      <div className="text-[10px] text-slate-600 mt-0.5">{d.reason}</div>
+                      <div className="text-[10px] text-muted mt-0.5">{d.reason}</div>
                     )}
                   </div>
                   <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-md border ${
                     d.status === "sent"
-                      ? "border-emerald-500/25 bg-emerald-950/30 text-emerald-400"
+                      ? "border-emerald-500/25 bg-panel2 text-ink"
                       : d.status === "error"
-                      ? "border-red-500/25 bg-red-950/30 text-red-400"
-                      : "border-slate-700 bg-slate-900 text-slate-500"
+                      ? "border-danger-border bg-danger-bg text-danger"
+                      : "border-slate-700 bg-slate-900 text-muted2"
                   }`}>
                     {d.status === "sent" ? "أُرسل" : d.status === "error" ? "خطأ" : "تخطّى"}
                   </span>
@@ -321,7 +321,7 @@ export default function Dashboard() {
         )}
 
         {logs.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-slate-500">
+          <div className="px-5 py-8 text-center text-sm text-muted2">
             لا توجد دورات مسجّلة بعد — سيظهر السجل بعد أول تشغيل للـ Worker
           </div>
         ) : (
@@ -330,31 +330,31 @@ export default function Dashboard() {
               <div key={log.id}>
                 <button
                   onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
-                  className="w-full px-5 py-3 flex items-center justify-between gap-3 hover:bg-white/4 transition text-right"
+                  className="w-full px-5 py-3 flex items-center justify-between gap-3 hover:bg-panel2 transition text-right"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <StatusBadge status={log.status} />
                     <div className="min-w-0">
-                      <div className="text-xs text-slate-400">
+                      <div className="text-xs text-muted">
                         {new Date(log.ran_at).toLocaleString("ar-SA")}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 shrink-0">
                     <div className="text-center">
-                      <div className="text-sm font-bold text-white">{log.applied_count}</div>
-                      <div className="text-[10px] text-slate-600">تقديم</div>
+                      <div className="text-sm font-bold text-ink">{log.applied_count}</div>
+                      <div className="text-[10px] text-muted">تقديم</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-sm font-bold text-white">{log.active_users}</div>
-                      <div className="text-[10px] text-slate-600">مستخدم</div>
+                      <div className="text-sm font-bold text-ink">{log.active_users}</div>
+                      <div className="text-[10px] text-muted">مستخدم</div>
                     </div>
-                    <div className="flex items-center gap-1 text-xs text-slate-600">
+                    <div className="flex items-center gap-1 text-xs text-muted">
                       <Timer size={11} />
                       {formatDuration(log.duration_ms)}
                     </div>
                     {log.errors?.length > 0 && (
-                      <div className="flex items-center gap-1 text-xs text-red-400">
+                      <div className="flex items-center gap-1 text-xs text-danger">
                         <AlertTriangle size={11} />
                         {log.errors.length}
                       </div>
@@ -362,11 +362,11 @@ export default function Dashboard() {
                   </div>
                 </button>
                 {expandedLog === log.id && log.errors?.length > 0 && (
-                  <div className="border-t border-line bg-red-950/10 px-5 py-3">
-                    <div className="text-xs font-medium text-red-400 mb-2">الأخطاء:</div>
+                  <div className="border-t border-line bg-danger-bg px-5 py-3">
+                    <div className="text-xs font-medium text-danger mb-2">الأخطاء:</div>
                     <div className="space-y-1">
                       {log.errors.map((err, i) => (
-                        <div key={i} className="text-xs text-red-300/80 bg-red-950/30 rounded px-3 py-1.5 font-mono break-all">
+                        <div key={i} className="text-xs text-danger bg-danger-bg rounded px-3 py-1.5 font-mono break-all">
                           {err}
                         </div>
                       ))}
@@ -385,22 +385,22 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.32 }}
-          className="rounded-2xl border border-red-500/20 bg-red-950/10 shadow-card overflow-hidden"
+          className="rounded-2xl border border-danger-border bg-danger-bg shadow-card overflow-hidden"
         >
-          <div className="flex items-center gap-2 border-b border-red-500/15 px-5 py-4">
-            <AlertTriangle size={16} className="text-red-400" />
-            <h3 className="font-semibold text-red-300 text-sm">الأخطاء التشغيلية الأخيرة</h3>
-            <span className="text-xs text-red-500">({errorsOnly.reduce((s, l) => s + l.errors.length, 0)} خطأ)</span>
+          <div className="flex items-center gap-2 border-b border-danger-border px-5 py-4">
+            <AlertTriangle size={16} className="text-danger" />
+            <h3 className="font-semibold text-danger text-sm">الأخطاء التشغيلية الأخيرة</h3>
+            <span className="text-xs text-danger">({errorsOnly.reduce((s, l) => s + l.errors.length, 0)} خطأ)</span>
           </div>
           <div className="divide-y divide-red-500/10">
             {errorsOnly.slice(0, 5).map((log) => (
               <div key={log.id} className="px-5 py-3">
-                <div className="text-[10px] text-red-500 mb-2">
+                <div className="text-[10px] text-danger mb-2">
                   {new Date(log.ran_at).toLocaleString("ar-SA")}
                 </div>
                 <div className="space-y-1">
                   {log.errors.map((err, i) => (
-                    <div key={i} className="text-xs text-red-300/80 font-mono bg-red-950/30 rounded px-3 py-1.5 break-all">
+                    <div key={i} className="text-xs text-danger font-mono bg-danger-bg rounded px-3 py-1.5 break-all">
                       {err}
                     </div>
                   ))}
@@ -421,20 +421,20 @@ export default function Dashboard() {
           className="rounded-2xl border border-line bg-panel shadow-card"
         >
           <div className="flex items-center gap-2 border-b border-line px-5 py-4">
-            <Clock size={16} className="text-slate-400" />
-            <h3 className="font-semibold text-white text-sm">آخر التقديمات</h3>
+            <Clock size={16} className="text-muted" />
+            <h3 className="font-semibold text-ink text-sm">آخر التقديمات</h3>
           </div>
           <div className="divide-y divide-line">
             {data.recent_applications.length === 0 ? (
-              <div className="px-5 py-6 text-sm text-slate-500 text-center">لا توجد بيانات</div>
+              <div className="px-5 py-6 text-sm text-muted2 text-center">لا توجد بيانات</div>
             ) : (
               data.recent_applications.slice(0, 7).map((a, i) => (
                 <div key={i} className="px-5 py-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-sm font-medium text-white truncate">{a.user_name}</div>
-                    <div className="text-xs text-slate-500 truncate">{a.job_title}</div>
+                    <div className="text-sm font-medium text-ink truncate">{a.user_name}</div>
+                    <div className="text-xs text-muted2 truncate">{a.job_title}</div>
                   </div>
-                  <div className="text-xs text-slate-600 whitespace-nowrap">{a.applied_at?.slice(0, 16)}</div>
+                  <div className="text-xs text-muted whitespace-nowrap">{a.applied_at?.slice(0, 16)}</div>
                 </div>
               ))
             )}
@@ -449,19 +449,19 @@ export default function Dashboard() {
           className="rounded-2xl border border-line bg-panel shadow-card"
         >
           <div className="flex items-center gap-2 border-b border-line px-5 py-4">
-            <Users size={16} className="text-slate-400" />
-            <h3 className="font-semibold text-white text-sm">أحدث المستخدمين</h3>
+            <Users size={16} className="text-muted" />
+            <h3 className="font-semibold text-ink text-sm">أحدث المستخدمين</h3>
           </div>
           <div className="divide-y divide-line">
             {data.recent_users.length === 0 ? (
-              <div className="px-5 py-6 text-sm text-slate-500 text-center">لا توجد بيانات</div>
+              <div className="px-5 py-6 text-sm text-muted2 text-center">لا توجد بيانات</div>
             ) : (
               data.recent_users.slice(0, 7).map((u, i) => (
                 <div key={i} className="px-5 py-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-sm font-medium text-white truncate">{u.name}</div>
+                    <div className="text-sm font-medium text-ink truncate">{u.name}</div>
                   </div>
-                  <div className="text-xs text-slate-600 whitespace-nowrap">{u.created_at?.slice(0, 10)}</div>
+                  <div className="text-xs text-muted whitespace-nowrap">{u.created_at?.slice(0, 10)}</div>
                 </div>
               ))
             )}

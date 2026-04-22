@@ -80,10 +80,10 @@ type DiscountCode = {
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   pending:           { label: "بانتظار التأكيد", color: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20", icon: Clock },
-  awaiting_payment:  { label: "لم يكمل الدفع",   color: "text-slate-400 bg-slate-400/10 border-slate-400/20", icon: Clock },
-  paid:              { label: "مدفوع",            color: "text-white bg-white/10 border-white/20", icon: CheckCircle2 },
-  failed:            { label: "فشل",              color: "text-red-400 bg-red-400/10 border-red-400/20", icon: XCircle },
-  cancelled:         { label: "ملغى",             color: "text-slate-400 bg-slate-400/10 border-slate-400/20", icon: XCircle },
+  awaiting_payment:  { label: "لم يكمل الدفع",   color: "text-muted bg-slate-400/10 border-slate-400/20", icon: Clock },
+  paid:              { label: "مدفوع",            color: "text-ink bg-panel2 border-line2", icon: CheckCircle2 },
+  failed:            { label: "فشل",              color: "text-danger bg-danger-bg border-danger-border", icon: XCircle },
+  cancelled:         { label: "ملغى",             color: "text-muted bg-slate-400/10 border-slate-400/20", icon: XCircle },
 };
 
 function Badge({ status }: { status: string }) {
@@ -419,12 +419,12 @@ export default function StoreAdminPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 border border-white/15">
-              <ShoppingBag size={20} className="text-white" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-panel2 border border-line2">
+              <ShoppingBag size={20} className="text-ink" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">المتجر</h1>
-              <p className="text-xs text-slate-500">إدارة المنتجات والطلبات</p>
+              <h1 className="text-xl font-bold text-ink">المتجر</h1>
+              <p className="text-xs text-muted2">إدارة المنتجات والطلبات</p>
             </div>
           </div>
         </div>
@@ -441,7 +441,7 @@ export default function StoreAdminPage() {
               key={key}
               onClick={() => setTab(key as "products" | "orders" | "banks" | "discounts")}
               className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                tab === key ? "bg-white/10 text-white border border-white/15" : "text-slate-400 hover:text-white"
+                tab === key ? "bg-panel2 text-ink border border-line2" : "text-muted hover:text-ink"
               }`}
             >
               <Icon size={15} />
@@ -454,10 +454,10 @@ export default function StoreAdminPage() {
         {tab === "products" && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-400">{products.length} منتج</span>
+              <span className="text-sm text-muted">{products.length} منتج</span>
               <button
                 onClick={openAddProduct}
-                className="flex items-center gap-2 rounded-xl bg-white text-black px-4 py-2 text-sm font-semibold hover:bg-white/90 transition-all"
+                className="flex items-center gap-2 rounded-xl bg-accent text-accent-fg px-4 py-2 text-sm font-semibold hover:bg-panel2 transition-all"
               >
                 <Plus size={15} />
                 إضافة منتج
@@ -465,18 +465,18 @@ export default function StoreAdminPage() {
             </div>
 
             {pMsg && (
-              <div className={`rounded-xl border px-4 py-3 text-sm ${pMsgType === "ok" ? "border-white/20 bg-white/5 text-white" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
+              <div className={`rounded-xl border px-4 py-3 text-sm ${pMsgType === "ok" ? "border-line2 bg-panel2 text-ink" : "border-danger-border bg-danger-bg text-danger"}`}>
                 {pMsg}
               </div>
             )}
 
             {pLoading ? (
-              <div className="flex items-center justify-center py-16 text-slate-500"><RefreshCw size={18} className="animate-spin ml-2" />جاري التحميل...</div>
+              <div className="flex items-center justify-center py-16 text-muted2"><RefreshCw size={18} className="animate-spin ml-2" />جاري التحميل...</div>
             ) : products.length === 0 ? (
               <div className="rounded-2xl border border-line bg-panel p-12 text-center">
-                <Package size={32} className="mx-auto mb-3 text-slate-600" />
-                <p className="text-slate-500">لا توجد منتجات بعد</p>
-                <button onClick={openAddProduct} className="mt-4 text-sm text-white underline">أضف أول منتج</button>
+                <Package size={32} className="mx-auto mb-3 text-muted" />
+                <p className="text-muted2">لا توجد منتجات بعد</p>
+                <button onClick={openAddProduct} className="mt-4 text-sm text-ink underline">أضف أول منتج</button>
               </div>
             ) : (
               <div className="grid gap-3">
@@ -491,8 +491,8 @@ export default function StoreAdminPage() {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="font-semibold text-white text-sm">{p.name}</span>
-                          <span className={`rounded-full border px-2 py-0.5 text-xs ${p.is_active ? "border-white/20 bg-white/5 text-white" : "border-slate-600 bg-slate-700/50 text-slate-400"}`}>
+                          <span className="font-semibold text-ink text-sm">{p.name}</span>
+                          <span className={`rounded-full border px-2 py-0.5 text-xs ${p.is_active ? "border-line2 bg-panel2 text-ink" : "border-slate-600 bg-slate-700/50 text-muted"}`}>
                             {p.is_active ? "نشط" : "متوقف"}
                           </span>
                           {p.streampay_product_id ? (
@@ -501,33 +501,33 @@ export default function StoreAdminPage() {
                               مرتبط بـ StreamPay
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-600 bg-slate-700/30 px-2 py-0.5 text-xs text-slate-500">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-600 bg-slate-700/30 px-2 py-0.5 text-xs text-muted2">
                               غير مرتبط
                             </span>
                           )}
                         </div>
-                        {p.description && <p className="text-xs text-slate-500 mb-2 line-clamp-2">{p.description}</p>}
-                        <div className="flex items-center gap-4 text-xs text-slate-400">
-                          <span className="font-bold text-white text-base">{p.price} ر.س</span>
+                        {p.description && <p className="text-xs text-muted2 mb-2 line-clamp-2">{p.description}</p>}
+                        <div className="flex items-center gap-4 text-xs text-muted">
+                          <span className="font-bold text-ink text-base">{p.price} ر.س</span>
                           <span>مدة: {p.duration_days} يوم</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button
                           onClick={() => toggleActive(p)}
-                          className={`rounded-lg border px-2.5 py-1.5 text-xs transition-all ${p.is_active ? "border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10" : "border-white/20 text-white hover:bg-white/10"}`}
+                          className={`rounded-lg border px-2.5 py-1.5 text-xs transition-all ${p.is_active ? "border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10" : "border-line2 text-ink hover:bg-panel2"}`}
                         >
                           {p.is_active ? "إيقاف" : "تفعيل"}
                         </button>
                         <button
                           onClick={() => openEditProduct(p)}
-                          className="rounded-lg border border-line p-1.5 text-slate-400 hover:text-white hover:border-white/20 transition-all"
+                          className="rounded-lg border border-line p-1.5 text-muted hover:text-ink hover:border-line2 transition-all"
                         >
                           <Pencil size={14} />
                         </button>
                         <button
                           onClick={() => deleteProduct(p.id)}
-                          className="rounded-lg border border-line p-1.5 text-slate-400 hover:text-red-400 hover:border-red-500/30 transition-all"
+                          className="rounded-lg border border-line p-1.5 text-muted hover:text-danger hover:border-danger-border transition-all"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -545,7 +545,7 @@ export default function StoreAdminPage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--input-bg)]/60 backdrop-blur-sm p-4"
                   onClick={e => { if (e.target === e.currentTarget) setShowForm(false); }}
                 >
                   <motion.div
@@ -556,57 +556,57 @@ export default function StoreAdminPage() {
                     dir="rtl"
                   >
                     <div className="flex items-center justify-between mb-5">
-                      <h2 className="font-bold text-white">{editProduct ? "تعديل المنتج" : "إضافة منتج جديد"}</h2>
-                      <button onClick={() => setShowForm(false)} className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+                      <h2 className="font-bold text-ink">{editProduct ? "تعديل المنتج" : "إضافة منتج جديد"}</h2>
+                      <button onClick={() => setShowForm(false)} className="rounded-lg p-1.5 text-muted hover:text-ink hover:bg-panel2 transition-all">
                         <X size={16} />
                       </button>
                     </div>
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-xs text-slate-400 mb-1">اسم المنتج *</label>
+                        <label className="block text-xs text-muted mb-1">اسم المنتج *</label>
                         <input
                           value={pForm.name}
                           onChange={e => setPForm(s => ({ ...s, name: e.target.value }))}
                           placeholder="مثال: خطة شهرية"
-                          className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-white/30 focus:outline-none"
+                          className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted2 focus:border-line2 focus:outline-none"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-slate-400 mb-1">الوصف</label>
+                        <label className="block text-xs text-muted mb-1">الوصف</label>
                         <textarea
                           value={pForm.description}
                           onChange={e => setPForm(s => ({ ...s, description: e.target.value }))}
                           placeholder="وصف مختصر للخطة..."
                           rows={2}
-                          className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-white/30 focus:outline-none resize-none"
+                          className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted2 focus:border-line2 focus:outline-none resize-none"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs text-slate-400 mb-1">السعر (ر.س) *</label>
+                          <label className="block text-xs text-muted mb-1">السعر (ر.س) *</label>
                           <input
                             type="number"
                             value={pForm.price}
                             onChange={e => setPForm(s => ({ ...s, price: e.target.value }))}
                             placeholder="99"
-                            className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-white/30 focus:outline-none"
+                            className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted2 focus:border-line2 focus:outline-none"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-slate-400 mb-1">المدة (أيام) *</label>
+                          <label className="block text-xs text-muted mb-1">المدة (أيام) *</label>
                           <input
                             type="number"
                             value={pForm.duration_days}
                             onChange={e => setPForm(s => ({ ...s, duration_days: e.target.value }))}
                             placeholder="30"
-                            className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-white/30 focus:outline-none"
+                            className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted2 focus:border-line2 focus:outline-none"
                           />
                         </div>
                       </div>
                       {editProduct?.streampay_product_id ? (
                         <div>
-                          <label className="block text-xs text-slate-400 mb-1">StreamPay Product ID</label>
-                          <div className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-white/80 font-mono flex items-center gap-2" dir="ltr">
+                          <label className="block text-xs text-muted mb-1">StreamPay Product ID</label>
+                          <div className="w-full rounded-xl border border-line2 bg-panel2 px-3 py-2 text-xs text-ink/80 font-mono flex items-center gap-2" dir="ltr">
                             <CheckCircle2 size={12} className="flex-shrink-0" />
                             <span className="truncate">{editProduct.streampay_product_id}</span>
                           </div>
@@ -619,7 +619,7 @@ export default function StoreAdminPage() {
                       ) : null}
                     </div>
                     {pMsg && (
-                      <div className={`mt-3 rounded-xl border px-3 py-2 text-xs ${pMsgType === "ok" ? "border-white/20 bg-white/5 text-white" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
+                      <div className={`mt-3 rounded-xl border px-3 py-2 text-xs ${pMsgType === "ok" ? "border-line2 bg-panel2 text-ink" : "border-danger-border bg-danger-bg text-danger"}`}>
                         {pMsg}
                       </div>
                     )}
@@ -627,14 +627,14 @@ export default function StoreAdminPage() {
                       <button
                         onClick={saveProduct}
                         disabled={saving}
-                        className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-white text-black py-2.5 text-sm font-semibold hover:bg-white/90 disabled:opacity-50 transition-all"
+                        className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-accent text-accent-fg py-2.5 text-sm font-semibold hover:bg-panel2 disabled:opacity-50 transition-all"
                       >
                         {saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
                         {editProduct ? "حفظ التغييرات" : "إضافة"}
                       </button>
                       <button
                         onClick={() => setShowForm(false)}
-                        className="rounded-xl border border-line px-4 py-2.5 text-sm text-slate-400 hover:text-white hover:border-white/20 transition-all"
+                        className="rounded-xl border border-line px-4 py-2.5 text-sm text-muted hover:text-ink hover:border-line2 transition-all"
                       >
                         إلغاء
                       </button>
@@ -663,7 +663,7 @@ export default function StoreAdminPage() {
                   <button
                     key={k}
                     onClick={() => setOFilter(k)}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${oFilter === k ? "bg-white/10 text-white border border-white/15" : "text-slate-400 hover:text-white"}`}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${oFilter === k ? "bg-panel2 text-ink border border-line2" : "text-muted hover:text-ink"}`}
                   >
                     {l}
                   </button>
@@ -672,14 +672,14 @@ export default function StoreAdminPage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={loadOrders}
-                  className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-xs text-slate-400 hover:text-white transition-all"
+                  className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-xs text-muted hover:text-ink transition-all"
                 >
                   <RefreshCw size={12} className={oLoading ? "animate-spin" : ""} />
                   تحديث
                 </button>
                 <button
                   onClick={() => setShowAddOrder(true)}
-                  className="flex items-center gap-2 rounded-xl bg-white text-black px-4 py-2 text-sm font-semibold hover:bg-white/90 transition-all"
+                  className="flex items-center gap-2 rounded-xl bg-accent text-accent-fg px-4 py-2 text-sm font-semibold hover:bg-panel2 transition-all"
                 >
                   <Plus size={15} />
                   طلب يدوي
@@ -688,17 +688,17 @@ export default function StoreAdminPage() {
             </div>
 
             {oMsg && (
-              <div className={`rounded-xl border px-4 py-3 text-sm ${oMsgType === "ok" ? "border-white/20 bg-white/5 text-white" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
+              <div className={`rounded-xl border px-4 py-3 text-sm ${oMsgType === "ok" ? "border-line2 bg-panel2 text-ink" : "border-danger-border bg-danger-bg text-danger"}`}>
                 {oMsg}
               </div>
             )}
 
             {oLoading ? (
-              <div className="flex items-center justify-center py-16 text-slate-500"><RefreshCw size={18} className="animate-spin ml-2" />جاري التحميل...</div>
+              <div className="flex items-center justify-center py-16 text-muted2"><RefreshCw size={18} className="animate-spin ml-2" />جاري التحميل...</div>
             ) : filteredOrders.length === 0 ? (
               <div className="rounded-2xl border border-line bg-panel p-12 text-center">
-                <ClipboardList size={32} className="mx-auto mb-3 text-slate-600" />
-                <p className="text-slate-500">لا توجد طلبات</p>
+                <ClipboardList size={32} className="mx-auto mb-3 text-muted" />
+                <p className="text-muted2">لا توجد طلبات</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -715,21 +715,21 @@ export default function StoreAdminPage() {
                         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                           <Badge status={o.status} />
                           {o.store_products && (
-                            <span className="text-xs font-medium text-white bg-white/10 border border-white/10 rounded-full px-2 py-0.5">
+                            <span className="text-xs font-medium text-ink bg-panel2 border border-line rounded-full px-2 py-0.5">
                               {o.store_products.name}
                             </span>
                           )}
                         </div>
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-slate-400">
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-muted">
                           {o.user_name && <span>👤 {o.user_name}</span>}
                           {o.user_email && <span dir="ltr" className="text-right">✉️ {o.user_email}</span>}
                           {o.user_phone && <span dir="ltr" className="text-right">📞 {o.user_phone}</span>}
-                          {o.amount && <span className="text-white font-bold">💳 {o.amount} ر.س</span>}
+                          {o.amount && <span className="text-ink font-bold">💳 {o.amount} ر.س</span>}
                           <span>🕒 {fmt(o.created_at)}</span>
-                          {o.paid_at && <span className="text-white/80">✅ {fmt(o.paid_at)}</span>}
-                          {o.notes && <span className="col-span-2 text-slate-500 italic">📝 {o.notes}</span>}
+                          {o.paid_at && <span className="text-ink/80">✅ {fmt(o.paid_at)}</span>}
+                          {o.notes && <span className="col-span-2 text-muted2 italic">📝 {o.notes}</span>}
                           {o.streampay_invoice_id && (
-                            <span className="col-span-2 font-mono text-slate-500 truncate">INV: {o.streampay_invoice_id}</span>
+                            <span className="col-span-2 font-mono text-muted2 truncate">INV: {o.streampay_invoice_id}</span>
                           )}
                           {o.payment_gateway === "bank_transfer" && (
                             <span className="rounded-full border border-yellow-500/25 bg-yellow-500/5 px-2 py-0.5 text-xs text-yellow-400">
@@ -740,19 +740,19 @@ export default function StoreAdminPage() {
                         {/* Receipt */}
                         {o.receipt_url && (
                           <div className="mt-3 flex items-center gap-2">
-                            <span className="text-xs text-slate-500">الإيصال:</span>
+                            <span className="text-xs text-muted2">الإيصال:</span>
                             <a
                               href={o.receipt_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/25 bg-purple-500/8 px-3 py-1 text-xs text-purple-400 hover:bg-purple-500/15 transition-all"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-line2 bg-accent/8 px-3 py-1 text-xs text-ink hover:bg-accent/15 transition-all"
                             >
                               عرض الإيصال ↗
                             </a>
                             {/\.(jpe?g|png|webp|gif)$/i.test(o.receipt_url) && (
                               <a href={o.receipt_url} target="_blank" rel="noopener noreferrer" className="block mt-1 shrink-0">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={o.receipt_url} alt="إيصال" className="h-12 w-16 rounded-lg object-cover border border-white/10" />
+                                <img src={o.receipt_url} alt="إيصال" className="h-12 w-16 rounded-lg object-cover border border-line" />
                               </a>
                             )}
                           </div>
@@ -769,21 +769,21 @@ export default function StoreAdminPage() {
                             <button
                               disabled={updatingId === o.id}
                               onClick={() => updateOrderStatus(o.id, "paid")}
-                              className="rounded-lg border border-white/20 px-2.5 py-1.5 text-xs text-white hover:bg-white/10 disabled:opacity-50 transition-all"
+                              className="rounded-lg border border-line2 px-2.5 py-1.5 text-xs text-ink hover:bg-panel2 disabled:opacity-50 transition-all"
                             >
                               تأكيد
                             </button>
                             <button
                               disabled={updatingId === o.id}
                               onClick={() => updateOrderStatus(o.id, "cancelled")}
-                              className="rounded-lg border border-slate-600 px-2.5 py-1.5 text-xs text-slate-400 hover:bg-slate-500/10 disabled:opacity-50 transition-all"
+                              className="rounded-lg border border-slate-600 px-2.5 py-1.5 text-xs text-muted hover:bg-slate-500/10 disabled:opacity-50 transition-all"
                             >
                               إلغاء
                             </button>
                           </>
                         )}
                         {o.status === "paid" && (
-                          <span className="text-xs text-white/80 px-2">مكتمل</span>
+                          <span className="text-xs text-ink/80 px-2">مكتمل</span>
                         )}
                         {(o.status === "failed" || o.status === "cancelled") && (
                           <button
@@ -796,7 +796,7 @@ export default function StoreAdminPage() {
                         )}
                         <button
                           onClick={() => deleteOrder(o.id)}
-                          className="rounded-lg border border-line p-1.5 text-slate-400 hover:text-red-400 hover:border-red-500/30 transition-all"
+                          className="rounded-lg border border-line p-1.5 text-muted hover:text-danger hover:border-danger-border transition-all"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -814,7 +814,7 @@ export default function StoreAdminPage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--input-bg)]/60 backdrop-blur-sm p-4"
                   onClick={e => { if (e.target === e.currentTarget) setShowAddOrder(false); }}
                 >
                   <motion.div
@@ -825,18 +825,18 @@ export default function StoreAdminPage() {
                     dir="rtl"
                   >
                     <div className="flex items-center justify-between mb-5">
-                      <h2 className="font-bold text-white">إضافة طلب يدوي</h2>
-                      <button onClick={() => setShowAddOrder(false)} className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-white/10">
+                      <h2 className="font-bold text-ink">إضافة طلب يدوي</h2>
+                      <button onClick={() => setShowAddOrder(false)} className="rounded-lg p-1.5 text-muted hover:text-ink hover:bg-panel2">
                         <X size={16} />
                       </button>
                     </div>
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-xs text-slate-400 mb-1">المنتج *</label>
+                        <label className="block text-xs text-muted mb-1">المنتج *</label>
                         <select
                           value={oForm.product_id}
                           onChange={e => setOForm(s => ({ ...s, product_id: e.target.value }))}
-                          className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none"
+                          className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink focus:border-line2 focus:outline-none"
                         >
                           <option value="">-- اختر منتجاً --</option>
                           {products.filter(p => p.is_active).map(p => (
@@ -846,48 +846,48 @@ export default function StoreAdminPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs text-slate-400 mb-1">اسم العميل</label>
+                          <label className="block text-xs text-muted mb-1">اسم العميل</label>
                           <input
                             value={oForm.user_name}
                             onChange={e => setOForm(s => ({ ...s, user_name: e.target.value }))}
                             placeholder="أحمد محمد"
-                            className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-white/30 focus:outline-none"
+                            className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted2 focus:border-line2 focus:outline-none"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-slate-400 mb-1">المبلغ (ر.س)</label>
+                          <label className="block text-xs text-muted mb-1">المبلغ (ر.س)</label>
                           <input
                             type="number"
                             value={oForm.amount}
                             onChange={e => setOForm(s => ({ ...s, amount: e.target.value }))}
                             placeholder="99"
-                            className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-white/30 focus:outline-none"
+                            className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted2 focus:border-line2 focus:outline-none"
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs text-slate-400 mb-1">البريد الإلكتروني</label>
+                        <label className="block text-xs text-muted mb-1">البريد الإلكتروني</label>
                         <input
                           type="email"
                           value={oForm.user_email}
                           onChange={e => setOForm(s => ({ ...s, user_email: e.target.value }))}
                           placeholder="user@example.com"
-                          className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-white/30 focus:outline-none"
+                          className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted2 focus:border-line2 focus:outline-none"
                           dir="ltr"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-slate-400 mb-1">ملاحظات</label>
+                        <label className="block text-xs text-muted mb-1">ملاحظات</label>
                         <input
                           value={oForm.notes}
                           onChange={e => setOForm(s => ({ ...s, notes: e.target.value }))}
                           placeholder="أي ملاحظات إضافية..."
-                          className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-white/30 focus:outline-none"
+                          className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted2 focus:border-line2 focus:outline-none"
                         />
                       </div>
                     </div>
                     {oMsg && (
-                      <div className={`mt-3 rounded-xl border px-3 py-2 text-xs ${oMsgType === "ok" ? "border-white/20 bg-white/5 text-white" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
+                      <div className={`mt-3 rounded-xl border px-3 py-2 text-xs ${oMsgType === "ok" ? "border-line2 bg-panel2 text-ink" : "border-danger-border bg-danger-bg text-danger"}`}>
                         {oMsg}
                       </div>
                     )}
@@ -895,14 +895,14 @@ export default function StoreAdminPage() {
                       <button
                         onClick={addOrder}
                         disabled={oSaving}
-                        className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-white text-black py-2.5 text-sm font-semibold hover:bg-white/90 disabled:opacity-50 transition-all"
+                        className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-accent text-accent-fg py-2.5 text-sm font-semibold hover:bg-panel2 disabled:opacity-50 transition-all"
                       >
                         {oSaving ? <RefreshCw size={14} className="animate-spin" /> : <Plus size={14} />}
                         إضافة الطلب
                       </button>
                       <button
                         onClick={() => setShowAddOrder(false)}
-                        className="rounded-xl border border-line px-4 py-2.5 text-sm text-slate-400 hover:text-white hover:border-white/20 transition-all"
+                        className="rounded-xl border border-line px-4 py-2.5 text-sm text-muted hover:text-ink hover:border-line2 transition-all"
                       >
                         إلغاء
                       </button>
@@ -918,10 +918,10 @@ export default function StoreAdminPage() {
         {tab === "banks" && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-400">{banks.length} حساب</span>
+              <span className="text-sm text-muted">{banks.length} حساب</span>
               <button
                 onClick={() => { setBForm(EMPTY_BANK); setShowBankForm(true); setBMsg(""); }}
-                className="flex items-center gap-2 rounded-xl bg-white text-black px-4 py-2 text-sm font-semibold hover:bg-white/90 transition-all"
+                className="flex items-center gap-2 rounded-xl bg-accent text-accent-fg px-4 py-2 text-sm font-semibold hover:bg-panel2 transition-all"
               >
                 <Plus size={15} />
                 إضافة حساب
@@ -929,7 +929,7 @@ export default function StoreAdminPage() {
             </div>
 
             {bMsg && (
-              <div className={`rounded-xl border px-4 py-3 text-sm ${bMsgType === "ok" ? "border-white/20 bg-white/5 text-white" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
+              <div className={`rounded-xl border px-4 py-3 text-sm ${bMsgType === "ok" ? "border-line2 bg-panel2 text-ink" : "border-danger-border bg-danger-bg text-danger"}`}>
                 {bMsg}
               </div>
             )}
@@ -944,8 +944,8 @@ export default function StoreAdminPage() {
                 >
                   <motion.div className="rounded-2xl border border-line bg-panel p-5 space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-white text-sm">إضافة حساب جديد</h3>
-                      <button onClick={() => setShowBankForm(false)} className="text-slate-500 hover:text-white"><X size={16} /></button>
+                      <h3 className="font-semibold text-ink text-sm">إضافة حساب جديد</h3>
+                      <button onClick={() => setShowBankForm(false)} className="text-muted2 hover:text-ink"><X size={16} /></button>
                     </div>
 
                     {/* Type selector */}
@@ -954,7 +954,7 @@ export default function StoreAdminPage() {
                         <button
                           key={v}
                           onClick={() => setBForm(f => ({ ...f, type: v }))}
-                          className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${bForm.type === v ? "border-white/30 bg-white/10 text-white" : "border-line text-slate-400 hover:text-white"}`}
+                          className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${bForm.type === v ? "border-line2 bg-panel2 text-ink" : "border-line text-muted hover:text-ink"}`}
                         >
                           <Icon size={14} />
                           {label}
@@ -964,18 +964,18 @@ export default function StoreAdminPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="sm:col-span-2">
-                        <label className="block text-xs text-slate-400 mb-1.5">الاسم *</label>
+                        <label className="block text-xs text-muted mb-1.5">الاسم *</label>
                         <input
-                          className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30"
+                          className="w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-line2"
                           placeholder={bForm.type === "bank" ? "مثال: بنك الراجحي" : "مثال: STC Pay"}
                           value={bForm.name}
                           onChange={e => setBForm(f => ({ ...f, name: e.target.value }))}
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-slate-400 mb-1.5">رقم الحساب</label>
+                        <label className="block text-xs text-muted mb-1.5">رقم الحساب</label>
                         <input
-                          className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30 ltr text-right"
+                          className="w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-line2 ltr text-right"
                           placeholder="SA..."
                           value={bForm.account_number}
                           onChange={e => setBForm(f => ({ ...f, account_number: e.target.value }))}
@@ -983,9 +983,9 @@ export default function StoreAdminPage() {
                       </div>
                       {bForm.type === "bank" && (
                         <div>
-                          <label className="block text-xs text-slate-400 mb-1.5">الآيبان (IBAN)</label>
+                          <label className="block text-xs text-muted mb-1.5">الآيبان (IBAN)</label>
                           <input
-                            className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30 ltr text-right"
+                            className="w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-line2 ltr text-right"
                             placeholder="SA0000000000000000000000"
                             value={bForm.iban}
                             onChange={e => setBForm(f => ({ ...f, iban: e.target.value }))}
@@ -994,10 +994,10 @@ export default function StoreAdminPage() {
                       )}
                       {bForm.type === "wallet" && (
                         <div>
-                          <label className="block text-xs text-slate-400 mb-1.5">رقم الجوال</label>
+                          <label className="block text-xs text-muted mb-1.5">رقم الجوال</label>
                           <input
                             type="tel"
-                            className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30 ltr text-right"
+                            className="w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-line2 ltr text-right"
                             placeholder="+966"
                             value={bForm.phone}
                             onChange={e => setBForm(f => ({ ...f, phone: e.target.value }))}
@@ -1005,10 +1005,10 @@ export default function StoreAdminPage() {
                         </div>
                       )}
                       <div>
-                        <label className="block text-xs text-slate-400 mb-1.5">الترتيب</label>
+                        <label className="block text-xs text-muted mb-1.5">الترتيب</label>
                         <input
                           type="number"
-                          className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30"
+                          className="w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-line2"
                           placeholder="0"
                           value={bForm.display_order}
                           onChange={e => setBForm(f => ({ ...f, display_order: e.target.value }))}
@@ -1020,14 +1020,14 @@ export default function StoreAdminPage() {
                       <button
                         onClick={saveBank}
                         disabled={bSaving}
-                        className="flex items-center gap-2 rounded-xl bg-white text-black px-4 py-2.5 text-sm font-semibold hover:bg-white/90 disabled:opacity-50 transition-all"
+                        className="flex items-center gap-2 rounded-xl bg-accent text-accent-fg px-4 py-2.5 text-sm font-semibold hover:bg-panel2 disabled:opacity-50 transition-all"
                       >
                         {bSaving ? <RefreshCw size={13} className="animate-spin" /> : <Save size={13} />}
                         حفظ
                       </button>
                       <button
                         onClick={() => setShowBankForm(false)}
-                        className="rounded-xl border border-line px-4 py-2.5 text-sm text-slate-400 hover:text-white hover:border-white/20 transition-all"
+                        className="rounded-xl border border-line px-4 py-2.5 text-sm text-muted hover:text-ink hover:border-line2 transition-all"
                       >
                         إلغاء
                       </button>
@@ -1038,13 +1038,13 @@ export default function StoreAdminPage() {
             </AnimatePresence>
 
             {bLoading ? (
-              <div className="flex items-center justify-center py-16 text-slate-500">
+              <div className="flex items-center justify-center py-16 text-muted2">
                 <RefreshCw size={18} className="animate-spin ml-2" />جاري التحميل...
               </div>
             ) : banks.length === 0 ? (
               <div className="rounded-2xl border border-line bg-panel p-12 text-center">
-                <Building2 size={32} className="mx-auto mb-3 text-slate-600" />
-                <p className="text-slate-500">لا توجد حسابات بنكية بعد</p>
+                <Building2 size={32} className="mx-auto mb-3 text-muted" />
+                <p className="text-muted2">لا توجد حسابات بنكية بعد</p>
               </div>
             ) : (
               <div className="grid gap-3">
@@ -1058,28 +1058,28 @@ export default function StoreAdminPage() {
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white/5 shrink-0">
-                          {acc.type === "bank" ? <Building2 size={16} className="text-purple-400" /> : <Wallet size={16} className="text-purple-400" />}
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-panel2 shrink-0">
+                          {acc.type === "bank" ? <Building2 size={16} className="text-ink" /> : <Wallet size={16} className="text-ink" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                            <span className="font-semibold text-white text-sm">{acc.name}</span>
-                            <span className="rounded-full border border-line px-2 py-0.5 text-xs text-slate-400">
+                            <span className="font-semibold text-ink text-sm">{acc.name}</span>
+                            <span className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">
                               {acc.type === "bank" ? "بنك" : "محفظة"}
                             </span>
-                            <span className={`rounded-full border px-2 py-0.5 text-xs ${acc.is_active ? "border-white/20 bg-white/5 text-white" : "border-slate-700 text-slate-500"}`}>
+                            <span className={`rounded-full border px-2 py-0.5 text-xs ${acc.is_active ? "border-line2 bg-panel2 text-ink" : "border-slate-700 text-muted2"}`}>
                               {acc.is_active ? "نشط" : "متوقف"}
                             </span>
                           </div>
                           <div className="space-y-1">
                             {acc.account_number && (
-                              <div className="text-xs text-slate-400">رقم الحساب: <span className="text-slate-300 font-mono">{acc.account_number}</span></div>
+                              <div className="text-xs text-muted">رقم الحساب: <span className="text-ink2 font-mono">{acc.account_number}</span></div>
                             )}
                             {acc.iban && (
-                              <div className="text-xs text-slate-400">الآيبان: <span className="text-slate-300 font-mono">{acc.iban}</span></div>
+                              <div className="text-xs text-muted">الآيبان: <span className="text-ink2 font-mono">{acc.iban}</span></div>
                             )}
                             {acc.phone && (
-                              <div className="text-xs text-slate-400">الجوال: <span className="text-slate-300 font-mono">{acc.phone}</span></div>
+                              <div className="text-xs text-muted">الجوال: <span className="text-ink2 font-mono">{acc.phone}</span></div>
                             )}
                           </div>
                         </div>
@@ -1087,14 +1087,14 @@ export default function StoreAdminPage() {
                       <div className="flex items-center gap-2 shrink-0">
                         <button
                           onClick={() => toggleBankActive(acc)}
-                          className="rounded-lg border border-line px-3 py-1.5 text-xs text-slate-400 hover:text-white hover:border-white/20 transition-all"
+                          className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-ink hover:border-line2 transition-all"
                         >
                           {acc.is_active ? "إيقاف" : "تفعيل"}
                         </button>
                         <button
                           onClick={() => deleteBank(acc.id)}
                           disabled={bDeletingId === acc.id}
-                          className="rounded-lg border border-red-500/20 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50"
+                          className="rounded-lg border border-danger-border px-3 py-1.5 text-xs text-danger hover:bg-danger-bg transition-all disabled:opacity-50"
                         >
                           {bDeletingId === acc.id ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />}
                         </button>
@@ -1111,10 +1111,10 @@ export default function StoreAdminPage() {
         {tab === "discounts" && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-400">{discounts.length} كود</span>
+              <span className="text-sm text-muted">{discounts.length} كود</span>
               <button
                 onClick={() => { setDForm(EMPTY_DISCOUNT); setShowDiscountForm(true); setDMsg(""); }}
-                className="flex items-center gap-2 rounded-xl bg-white text-black px-4 py-2 text-sm font-semibold hover:bg-white/90 transition-all"
+                className="flex items-center gap-2 rounded-xl bg-accent text-accent-fg px-4 py-2 text-sm font-semibold hover:bg-panel2 transition-all"
               >
                 <Plus size={15} />
                 إضافة كود
@@ -1122,7 +1122,7 @@ export default function StoreAdminPage() {
             </div>
 
             {dMsg && (
-              <div className={`rounded-xl border px-4 py-3 text-sm ${dMsgType === "ok" ? "border-white/20 bg-white/5 text-white" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
+              <div className={`rounded-xl border px-4 py-3 text-sm ${dMsgType === "ok" ? "border-line2 bg-panel2 text-ink" : "border-danger-border bg-danger-bg text-danger"}`}>
                 {dMsg}
               </div>
             )}
@@ -1137,8 +1137,8 @@ export default function StoreAdminPage() {
                 >
                   <motion.div className="rounded-2xl border border-line bg-panel p-5 space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-white text-sm">إضافة كود خصم</h3>
-                      <button onClick={() => setShowDiscountForm(false)} className="text-slate-500 hover:text-white"><X size={16} /></button>
+                      <h3 className="font-semibold text-ink text-sm">إضافة كود خصم</h3>
+                      <button onClick={() => setShowDiscountForm(false)} className="text-muted2 hover:text-ink"><X size={16} /></button>
                     </div>
 
                     {/* Type selector */}
@@ -1150,7 +1150,7 @@ export default function StoreAdminPage() {
                         <button
                           key={v}
                           onClick={() => setDForm(f => ({ ...f, discount_type: v }))}
-                          className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${dForm.discount_type === v ? "border-white/30 bg-white/10 text-white" : "border-line text-slate-400 hover:text-white"}`}
+                          className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${dForm.discount_type === v ? "border-line2 bg-panel2 text-ink" : "border-line text-muted hover:text-ink"}`}
                         >
                           <Icon size={14} />
                           {label}
@@ -1160,32 +1160,32 @@ export default function StoreAdminPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs text-slate-400 mb-1.5">الكود *</label>
+                        <label className="block text-xs text-muted mb-1.5">الكود *</label>
                         <input
-                          className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30 uppercase"
+                          className="w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-line2 uppercase"
                           placeholder="WELCOME10"
                           value={dForm.code}
                           onChange={e => setDForm(f => ({ ...f, code: e.target.value }))}
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-slate-400 mb-1.5">
+                        <label className="block text-xs text-muted mb-1.5">
                           {dForm.discount_type === "percent" ? "النسبة (%) *" : "المبلغ (ر.س) *"}
                         </label>
                         <input
                           type="number"
-                          className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30"
+                          className="w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-line2"
                           placeholder={dForm.discount_type === "percent" ? "10" : "20"}
                           value={dForm.discount_value}
                           onChange={e => setDForm(f => ({ ...f, discount_value: e.target.value }))}
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-slate-400 mb-1.5">المنتج (اختياري)</label>
+                        <label className="block text-xs text-muted mb-1.5">المنتج (اختياري)</label>
                         <select
                           value={dForm.product_id}
                           onChange={e => setDForm(f => ({ ...f, product_id: e.target.value }))}
-                          className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white focus:outline-none focus:border-white/30"
+                          className="w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-line2"
                         >
                           <option value="">— كل المنتجات —</option>
                           {products.filter(p => p.is_active).map(p => (
@@ -1194,20 +1194,20 @@ export default function StoreAdminPage() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs text-slate-400 mb-1.5">حد الاستخدام (اختياري)</label>
+                        <label className="block text-xs text-muted mb-1.5">حد الاستخدام (اختياري)</label>
                         <input
                           type="number"
-                          className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30"
+                          className="w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-line2"
                           placeholder="بدون حد"
                           value={dForm.usage_limit}
                           onChange={e => setDForm(f => ({ ...f, usage_limit: e.target.value }))}
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="block text-xs text-slate-400 mb-1.5">تاريخ الانتهاء (اختياري)</label>
+                        <label className="block text-xs text-muted mb-1.5">تاريخ الانتهاء (اختياري)</label>
                         <input
                           type="datetime-local"
-                          className="w-full rounded-xl border border-line bg-black px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-white/30"
+                          className="w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-line2"
                           value={dForm.expires_at}
                           onChange={e => setDForm(f => ({ ...f, expires_at: e.target.value }))}
                         />
@@ -1218,14 +1218,14 @@ export default function StoreAdminPage() {
                       <button
                         onClick={saveDiscount}
                         disabled={dSaving}
-                        className="flex items-center gap-2 rounded-xl bg-white text-black px-4 py-2.5 text-sm font-semibold hover:bg-white/90 disabled:opacity-50 transition-all"
+                        className="flex items-center gap-2 rounded-xl bg-accent text-accent-fg px-4 py-2.5 text-sm font-semibold hover:bg-panel2 disabled:opacity-50 transition-all"
                       >
                         {dSaving ? <RefreshCw size={13} className="animate-spin" /> : <Save size={13} />}
                         حفظ
                       </button>
                       <button
                         onClick={() => setShowDiscountForm(false)}
-                        className="rounded-xl border border-line px-4 py-2.5 text-sm text-slate-400 hover:text-white hover:border-white/20 transition-all"
+                        className="rounded-xl border border-line px-4 py-2.5 text-sm text-muted hover:text-ink hover:border-line2 transition-all"
                       >
                         إلغاء
                       </button>
@@ -1236,13 +1236,13 @@ export default function StoreAdminPage() {
             </AnimatePresence>
 
             {dLoading ? (
-              <div className="flex items-center justify-center py-16 text-slate-500">
+              <div className="flex items-center justify-center py-16 text-muted2">
                 <RefreshCw size={18} className="animate-spin ml-2" />جاري التحميل...
               </div>
             ) : discounts.length === 0 ? (
               <div className="rounded-2xl border border-line bg-panel p-12 text-center">
-                <Tag size={32} className="mx-auto mb-3 text-slate-600" />
-                <p className="text-slate-500">لا توجد أكواد خصم بعد</p>
+                <Tag size={32} className="mx-auto mb-3 text-muted" />
+                <p className="text-muted2">لا توجد أكواد خصم بعد</p>
               </div>
             ) : (
               <div className="grid gap-3">
@@ -1259,20 +1259,20 @@ export default function StoreAdminPage() {
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white/5 shrink-0">
-                            {d.discount_type === "percent" ? <Percent size={15} className="text-purple-400" /> : <DollarSign size={15} className="text-purple-400" />}
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-panel2 shrink-0">
+                            {d.discount_type === "percent" ? <Percent size={15} className="text-ink" /> : <DollarSign size={15} className="text-ink" />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                              <span className="font-bold text-white text-sm font-mono uppercase">{d.code}</span>
-                              <span className="rounded-full border border-purple-400/25 bg-purple-400/10 px-2 py-0.5 text-xs text-purple-300 font-bold">
+                              <span className="font-bold text-ink text-sm font-mono uppercase">{d.code}</span>
+                              <span className="rounded-full border border-line2 bg-panel2 px-2 py-0.5 text-xs text-ink font-bold">
                                 {d.discount_type === "percent" ? `${d.discount_value}%` : `${d.discount_value} ر.س`}
                               </span>
-                              <span className={`rounded-full border px-2 py-0.5 text-xs ${d.is_active && !expired && !exhausted ? "border-white/20 bg-white/5 text-white" : "border-slate-700 text-slate-500"}`}>
+                              <span className={`rounded-full border px-2 py-0.5 text-xs ${d.is_active && !expired && !exhausted ? "border-line2 bg-panel2 text-ink" : "border-slate-700 text-muted2"}`}>
                                 {!d.is_active ? "متوقف" : expired ? "منتهي" : exhausted ? "مستنفد" : "نشط"}
                               </span>
                             </div>
-                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
                               <span>📦 {d.store_products?.name || "كل المنتجات"}</span>
                               <span>
                                 🔢 {d.usage_count}{d.usage_limit != null ? ` / ${d.usage_limit}` : ""} استخدام
@@ -1286,14 +1286,14 @@ export default function StoreAdminPage() {
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             onClick={() => toggleDiscountActive(d)}
-                            className="rounded-lg border border-line px-3 py-1.5 text-xs text-slate-400 hover:text-white hover:border-white/20 transition-all"
+                            className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-ink hover:border-line2 transition-all"
                           >
                             {d.is_active ? "إيقاف" : "تفعيل"}
                           </button>
                           <button
                             onClick={() => deleteDiscount(d.id)}
                             disabled={dDeletingId === d.id}
-                            className="rounded-lg border border-red-500/20 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50"
+                            className="rounded-lg border border-danger-border px-3 py-1.5 text-xs text-danger hover:bg-danger-bg transition-all disabled:opacity-50"
                           >
                             {dDeletingId === d.id ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />}
                           </button>

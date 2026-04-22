@@ -94,25 +94,25 @@ export default function CodesPage() {
   return (
     <Shell>
       <div className="mb-5">
-        <h1 className="text-xl font-bold text-white">أكواد التفعيل</h1>
-        <p className="text-sm text-slate-400 mt-0.5">توليد وإدارة أكواد الاشتراك للمستخدمين</p>
+        <h1 className="text-xl font-bold text-ink">أكواد التفعيل</h1>
+        <p className="text-sm text-muted mt-0.5">توليد وإدارة أكواد الاشتراك للمستخدمين</p>
       </div>
 
       {/* ── Code Lookup ── */}
       <div className="mb-5 rounded-2xl border border-line/70 bg-panel shadow-card p-5">
         <div className="flex items-center gap-2 mb-4">
           <Search size={17} className="text-accent" />
-          <h2 className="font-semibold text-white">البحث عن كود</h2>
+          <h2 className="font-semibold text-ink">البحث عن كود</h2>
         </div>
         <form onSubmit={lookup} className="flex gap-3">
           <div className="relative flex-1">
-            <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted2" />
             <input
               value={lookupCode}
               onChange={e => setLookupCode(e.target.value)}
               placeholder="أدخل الكود هنا..."
               dir="ltr"
-              className="w-full rounded-xl border border-line/70 bg-panel2 pr-9 pl-3 py-2.5 text-sm placeholder:text-slate-500 focus:border-accent/50 focus:outline-none uppercase"
+              className="w-full rounded-xl border border-line/70 bg-panel2 pr-9 pl-3 py-2.5 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none uppercase"
             />
           </div>
           <button
@@ -126,7 +126,7 @@ export default function CodesPage() {
         </form>
 
         {lookupError && (
-          <div className="mt-3 flex items-center gap-2 rounded-xl border border-red-500/25 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-danger-border bg-danger-bg px-4 py-3 text-sm text-danger">
             <XCircle size={15} /> {lookupError}
           </div>
         )}
@@ -134,20 +134,20 @@ export default function CodesPage() {
         {lookupResult && (
           <div className={`mt-3 rounded-xl border p-4 ${
             lookupResult.status === "used"
-              ? "border-white/20 bg-white/5"
+              ? "border-line2 bg-panel2"
               : "border-yellow-500/25 bg-yellow-950/20"
           }`}>
             <div className="flex items-center gap-2 mb-3">
               {lookupResult.status === "used"
-                ? <CheckCircle2 size={16} className="text-white/80" />
+                ? <CheckCircle2 size={16} className="text-ink/80" />
                 : <XCircle size={16} className="text-yellow-400" />}
-              <span className={`text-sm font-semibold ${lookupResult.status === "used" ? "text-white" : "text-yellow-300"}`}>
+              <span className={`text-sm font-semibold ${lookupResult.status === "used" ? "text-ink" : "text-yellow-300"}`}>
                 {lookupResult.status === "used" ? "كود مستخدم" : "كود غير مستخدم"}
               </span>
-              <span className="mr-auto text-xs text-slate-500 font-mono">{lookupResult.code}</span>
+              <span className="mr-auto text-xs text-muted2 font-mono">{lookupResult.code}</span>
             </div>
             {lookupResult.status === "unused" && (
-              <p className="text-sm text-slate-400">اشتراك {lookupResult.subscription_days} يوم — لم يُستخدم بعد</p>
+              <p className="text-sm text-muted">اشتراك {lookupResult.subscription_days} يوم — لم يُستخدم بعد</p>
             )}
             {lookupResult.status === "used" && lookupResult.user && (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -159,9 +159,9 @@ export default function CodesPage() {
                   { label: "البريد", val: lookupResult.user.email || "—" },
                   { label: "ينتهي في", val: lookupResult.user.subscription_ends_at ? new Date(lookupResult.user.subscription_ends_at).toLocaleDateString("ar") : "—" },
                 ].map(({ label, val }) => (
-                  <div key={label} className="rounded-lg bg-white/5 px-3 py-2">
-                    <div className="text-xs text-slate-500 mb-0.5">{label}</div>
-                    <div className="text-sm text-white font-medium">{String(val)}</div>
+                  <div key={label} className="rounded-lg bg-panel2 px-3 py-2">
+                    <div className="text-xs text-muted2 mb-0.5">{label}</div>
+                    <div className="text-sm text-ink font-medium">{String(val)}</div>
                   </div>
                 ))}
               </div>
@@ -174,11 +174,11 @@ export default function CodesPage() {
       <div className="mb-5 rounded-2xl border border-line/70 bg-panel shadow-card p-5">
         <div className="flex items-center gap-2 mb-4">
           <Zap size={17} className="text-accent" />
-          <h2 className="font-semibold text-white">توليد أكواد جديدة</h2>
+          <h2 className="font-semibold text-ink">توليد أكواد جديدة</h2>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
           <div className="flex-1">
-            <label className="mb-1.5 flex items-center gap-1.5 text-xs text-slate-400">
+            <label className="mb-1.5 flex items-center gap-1.5 text-xs text-muted">
               <Hash size={12} /> عدد الأكواد
             </label>
             <input
@@ -190,7 +190,7 @@ export default function CodesPage() {
             />
           </div>
           <div className="flex-1">
-            <label className="mb-1.5 flex items-center gap-1.5 text-xs text-slate-400">
+            <label className="mb-1.5 flex items-center gap-1.5 text-xs text-muted">
               <Calendar size={12} /> أيام الاشتراك
             </label>
             <input
@@ -215,8 +215,8 @@ export default function CodesPage() {
         {msg && (
           <div className={`mt-3 rounded-xl border px-4 py-2.5 text-sm ${
             msgType === "ok"
-              ? "border-white/20 bg-white/5 text-white"
-              : "border-red-500/25 bg-red-950/30 text-red-300"
+              ? "border-line2 bg-panel2 text-ink"
+              : "border-danger-border bg-danger-bg text-danger"
           }`}>
             {msg}
           </div>
@@ -255,22 +255,22 @@ function CodeBlock({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const borderColor = accent === "emerald" ? "border-white/20" : accent === "blue" ? "border-accent/20" : "border-line/70";
+  const borderColor = accent === "emerald" ? "border-line2" : accent === "blue" ? "border-accent/20" : "border-line/70";
 
   return (
     <div className={`rounded-2xl border bg-panel shadow-card ${borderColor}`}>
       <div className="flex items-center justify-between border-b border-line/50 px-5 py-3.5">
-        <h3 className="text-sm font-semibold text-white">{title}</h3>
+        <h3 className="text-sm font-semibold text-ink">{title}</h3>
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-slate-300 hover:border-accent/40 hover:text-accent transition-colors"
+          className="flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-ink2 hover:border-accent/40 hover:text-accent transition-colors"
         >
-          {copied ? <CheckCheck size={12} className="text-white/80" /> : <Copy size={12} />}
+          {copied ? <CheckCheck size={12} className="text-ink/80" /> : <Copy size={12} />}
           {copied ? "تم النسخ" : "نسخ"}
         </button>
       </div>
-      <pre className="max-h-56 overflow-auto p-4 text-xs text-slate-300 leading-relaxed">
-        {text || <span className="text-slate-500">لا توجد بيانات</span>}
+      <pre className="max-h-56 overflow-auto p-4 text-xs text-ink2 leading-relaxed">
+        {text || <span className="text-muted2">لا توجد بيانات</span>}
       </pre>
     </div>
   );
