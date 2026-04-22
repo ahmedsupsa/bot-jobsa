@@ -26,7 +26,7 @@ type Order = {
   user_name?: string;
   user_email?: string;
   user_phone?: string;
-  status: "pending" | "paid" | "failed" | "cancelled";
+  status: "pending" | "awaiting_payment" | "paid" | "failed" | "cancelled";
   amount?: number;
   notes?: string;
   streampay_payment_link_id?: string;
@@ -79,10 +79,11 @@ type DiscountCode = {
 };
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  pending:   { label: "معلّق",   color: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20", icon: Clock },
-  paid:      { label: "مدفوع",   color: "text-white bg-white/10 border-white/20", icon: CheckCircle2 },
-  failed:    { label: "فشل",     color: "text-red-400 bg-red-400/10 border-red-400/20", icon: XCircle },
-  cancelled: { label: "ملغى",    color: "text-slate-400 bg-slate-400/10 border-slate-400/20", icon: XCircle },
+  pending:           { label: "بانتظار التأكيد", color: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20", icon: Clock },
+  awaiting_payment:  { label: "لم يكمل الدفع",   color: "text-slate-400 bg-slate-400/10 border-slate-400/20", icon: Clock },
+  paid:              { label: "مدفوع",            color: "text-white bg-white/10 border-white/20", icon: CheckCircle2 },
+  failed:            { label: "فشل",              color: "text-red-400 bg-red-400/10 border-red-400/20", icon: XCircle },
+  cancelled:         { label: "ملغى",             color: "text-slate-400 bg-slate-400/10 border-slate-400/20", icon: XCircle },
 };
 
 function Badge({ status }: { status: string }) {
@@ -652,11 +653,12 @@ export default function StoreAdminPage() {
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex gap-1 rounded-xl border border-line bg-panel p-1">
                 {[
-                  { k: "all",       l: "الكل" },
-                  { k: "pending",   l: "معلّق" },
-                  { k: "paid",      l: "مدفوع" },
-                  { k: "failed",    l: "فشل" },
-                  { k: "cancelled", l: "ملغى" },
+                  { k: "all",              l: "الكل" },
+                  { k: "pending",          l: "بانتظار التأكيد" },
+                  { k: "awaiting_payment", l: "لم يكمل الدفع" },
+                  { k: "paid",             l: "مدفوع" },
+                  { k: "failed",           l: "فشل" },
+                  { k: "cancelled",        l: "ملغى" },
                 ].map(({ k, l }) => (
                   <button
                     key={k}

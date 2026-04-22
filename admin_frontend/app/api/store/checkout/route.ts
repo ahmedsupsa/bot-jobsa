@@ -78,13 +78,22 @@ export async function POST(req: Request) {
       }
     };
 
+    // Status convention:
+    //  - bank_transfer  → "pending"          (admin must verify the receipt)
+    //  - tamara/streampay → "awaiting_payment" (user hasn't paid yet at the gateway;
+    //                       webhooks bump to "paid" or "failed" once they act)
+    // This keeps the "pending" lane reserved for orders that genuinely need
+    // admin attention.
+    const initialStatus = gateway === "bank_transfer" ? "pending" : "awaiting_payment";
+
     const orderBase = {
       product_id: product.id,
       user_name: name.trim(),
       user_email: email.trim().toLowerCase(),
       amount: finalAmount,
       original_amount: Number(product.price),
-      status: "pending",
+      status: initialStatus,
+      payment_gateway: gateway,
       ref_code: validRefCode,
       discount_code: appliedDiscount?.code || null,
       discount_code_id: appliedDiscount?.id || null,
@@ -107,6 +116,12 @@ export async function POST(req: Request) {
       if (/discount_code_id/i.test(msg)) delete stripped.discount_code_id;
       if (/discount_code(?!_id)/i.test(msg)) delete stripped.discount_code;
       if (/original_amount/i.test(msg)) delete stripped.original_amount;
+      if (/payment_gateway/i.test(msg)) delete stripped.payment_gateway;
+      // Some older deployments have a CHECK constraint on status that doesn't
+      // include "awaiting_payment" — fall back to "pending" in that case.
+      if (/status/i.test(msg) && stripped.status === "awaiting_payment") {
+        stripped.status = "pending";
+      }
       const fb = await insertOrder(stripped);
       order = fb.data;
       orderErr = fb.error;

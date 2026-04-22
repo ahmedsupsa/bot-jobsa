@@ -21,8 +21,12 @@ export async function POST(req: Request) {
       .eq("id", order_id)
       .maybeSingle();
 
-    // Only cancel if pending AND not a bank transfer (those stay pending)
-    if (order && order.status === "pending" && order.payment_gateway !== "bank_transfer") {
+    // Only cancel orders that are still waiting on the gateway. Never touch
+    // bank_transfer (admin verifies those manually) or already-resolved orders.
+    const cancellable = order
+      && (order.status === "awaiting_payment" || order.status === "pending")
+      && order.payment_gateway !== "bank_transfer";
+    if (cancellable) {
       await supabase
         .from("store_orders")
         .update({ status: "failed" })
