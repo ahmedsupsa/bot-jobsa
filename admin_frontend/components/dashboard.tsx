@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import {
-  Users, BriefcaseBusiness, Megaphone, Activity, TrendingUp, Clock,
+  Users, BriefcaseBusiness, TrendingUp, Clock, Wallet, ShoppingBag,
   Bot, FileText, Zap, AlertTriangle, CheckCircle2, RefreshCw, Timer, XCircle
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
@@ -11,9 +11,10 @@ import { API_BASE } from "@/lib/api";
 type Summary = {
   stats: {
     jobs_total: number;
-    announcements_total: number;
     jobs_active: number;
-    announcements_active: number;
+    total_revenue: number;
+    paid_orders: number;
+    pending_orders: number;
   };
   recent_applications: Array<{ user_name: string; job_title: string; applied_at: string }>;
   recent_users: Array<{ name: string; created_at: string }>;
@@ -39,7 +40,7 @@ type WorkerLog = {
   status: "success" | "partial" | "error";
 };
 
-function StatCard({ label, value, icon: Icon, delay }: { label: string; value: number; icon: React.ElementType; delay: number }) {
+function StatCard({ label, value, icon: Icon, delay, sub }: { label: string; value: number | string; icon: React.ElementType; delay: number; sub?: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -48,11 +49,12 @@ function StatCard({ label, value, icon: Icon, delay }: { label: string; value: n
       className="relative overflow-hidden rounded-2xl border border-line bg-panel p-5 shadow-card"
     >
       <div className="flex items-start justify-between">
-        <div>
+        <div className="min-w-0">
           <div className="text-xs font-medium text-slate-500 mb-2">{label}</div>
-          <div className="text-3xl font-bold text-white">{value}</div>
+          <div className="text-3xl font-bold text-white truncate">{value}</div>
+          {sub && <div className="text-[11px] text-slate-500 mt-1.5 truncate">{sub}</div>}
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/8 border border-white/10">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/8 border border-white/10 shrink-0">
           <Icon size={20} className="text-slate-300" />
         </div>
       </div>
@@ -168,11 +170,14 @@ export default function Dashboard() {
     );
   }
 
+  const fmtMoney = (n: number) =>
+    `${n.toLocaleString("ar-SA", { maximumFractionDigits: 0 })} ر.س`;
+
   const stats = [
     { label: "إجمالي الوظائف", value: data.stats.jobs_total, icon: BriefcaseBusiness },
     { label: "وظائف نشطة", value: data.stats.jobs_active, icon: TrendingUp },
-    { label: "إجمالي الإعلانات", value: data.stats.announcements_total, icon: Megaphone },
-    { label: "إعلانات نشطة", value: data.stats.announcements_active, icon: Activity },
+    { label: "إجمالي المبيعات", value: fmtMoney(data.stats.total_revenue), icon: Wallet, sub: `${data.stats.paid_orders} طلب مدفوع` },
+    { label: "طلبات بانتظار التأكيد", value: data.stats.pending_orders, icon: ShoppingBag, sub: "حوالات بنكية تحتاج مراجعة" },
   ];
 
   return (
