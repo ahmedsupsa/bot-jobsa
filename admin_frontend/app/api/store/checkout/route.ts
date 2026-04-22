@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { createCheckoutSession } from "@/lib/tamara";
 import { findOrCreateConsumer, createPaymentLink, createProduct as createStreamPayProduct } from "@/lib/streampay";
-import { reserveDiscount, releaseDiscount } from "@/lib/discount";
+import { validateDiscount, type Gateway } from "@/lib/discount";
 import { validateEmail } from "@/lib/email-validation";
 import { validatePhoneSA } from "@/lib/phone-validation";
 
@@ -60,10 +60,12 @@ export async function POST(req: Request) {
       if (aff) validRefCode = aff.code;
     }
 
-    // ─── Discount code (optional) ─── atomic reservation ─────────────────
+    // ─── Discount code (optional) ─── validate-only; usage is counted by
+    // a DB trigger when the order's status transitions to 'paid'. This
+    // ensures abandoned/failed checkouts NEVER consume a discount slot.
     let finalAmount = Number(product.price);
     if (discount_code && typeof discount_code === "string" && discount_code.trim()) {
-      const dr = await reserveDiscount(discount_code, product.id, Number(product.price));
+      const dr = await validateDiscount(discount_code, product.id, Number(product.price), gateway as Gateway);
       if (!dr.ok) {
         return NextResponse.json({ ok: false, error: dr.error }, { status: 400 });
       }
@@ -71,12 +73,8 @@ export async function POST(req: Request) {
       appliedDiscount = { id: dr.code.id, code: dr.code.code };
     }
 
-    // Helper to release the reserved discount on any downstream failure
-    const releaseOnFail = async () => {
-      if (appliedDiscount) {
-        try { await releaseDiscount(appliedDiscount.id); } catch {}
-      }
-    };
+    // Kept as a no-op for diff stability — discount usage is sales-driven.
+    const releaseOnFail = async () => { /* no-op */ };
 
     // Status convention:
     //  - bank_transfer  → "pending"          (admin must verify the receipt)
@@ -284,9 +282,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "بوابة الدفع غير معروفة" }, { status: 400 });
   } catch (err) {
     console.error("Checkout error:", err);
-    if (appliedDiscount) {
-      try { await releaseDiscount(appliedDiscount.id); } catch {}
-    }
+    // No-op: discount usage is sales-driven now; nothing to release.
     return NextResponse.json(
       { ok: false, error: "حدث خطأ أثناء إنشاء رابط الدفع، حاول مجدداً" },
       { status: 500 }

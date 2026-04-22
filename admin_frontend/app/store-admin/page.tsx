@@ -60,10 +60,17 @@ const EMPTY_DISCOUNT = {
   code: "",
   discount_type: "percent" as "percent" | "fixed",
   discount_value: "",
-  product_id: "",
+  product_ids: [] as string[],
+  gateways: [] as string[],
   usage_limit: "",
   expires_at: "",
 };
+
+const GATEWAY_OPTIONS: { v: "tamara" | "streampay" | "bank_transfer"; label: string }[] = [
+  { v: "tamara",        label: "تمارا" },
+  { v: "streampay",     label: "بطاقة (StreamPay)" },
+  { v: "bank_transfer", label: "تحويل بنكي" },
+];
 
 type DiscountCode = {
   id: string;
@@ -76,7 +83,12 @@ type DiscountCode = {
   expires_at: string | null;
   is_active: boolean;
   created_at: string;
+  applies_to_all_products?: boolean;
+  applies_to_all_gateways?: boolean;
   store_products?: { name: string } | null;
+  products?: { id: string; name: string }[];
+  gateways?: string[];
+  sales?: { paid_orders: number; revenue: number; total_discount: number };
 };
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: React.ElementType }> = {
@@ -294,7 +306,8 @@ export default function StoreAdminPage() {
           code: dForm.code.trim().toUpperCase(),
           discount_type: dForm.discount_type,
           discount_value: dForm.discount_value,
-          product_id: dForm.product_id || null,
+          product_ids: dForm.product_ids,
+          gateways: dForm.gateways,
           usage_limit: dForm.usage_limit || null,
           expires_at: dForm.expires_at || null,
         }),
@@ -1263,18 +1276,47 @@ export default function StoreAdminPage() {
                           onChange={e => setDForm(f => ({ ...f, discount_value: e.target.value }))}
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs text-muted mb-1.5">المنتج (اختياري)</label>
-                        <select
-                          value={dForm.product_id}
-                          onChange={e => setDForm(f => ({ ...f, product_id: e.target.value }))}
-                          className="w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-line2"
-                        >
-                          <option value="">— كل المنتجات —</option>
-                          {products.filter(p => p.is_active).map(p => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                          ))}
-                        </select>
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs text-muted mb-1.5">المنتجات المسموحة (اتركه فاضي = كل المنتجات)</label>
+                        <div className="flex flex-wrap gap-2">
+                          {products.filter(p => p.is_active).map(p => {
+                            const checked = dForm.product_ids.includes(p.id);
+                            return (
+                              <button type="button" key={p.id}
+                                onClick={() => setDForm(f => ({
+                                  ...f,
+                                  product_ids: checked
+                                    ? f.product_ids.filter(x => x !== p.id)
+                                    : [...f.product_ids, p.id],
+                                }))}
+                                className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition-all ${checked ? "border-line2 bg-panel2 text-ink" : "border-line text-muted hover:text-ink"}`}
+                              >
+                                {checked ? "✓ " : ""}{p.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs text-muted mb-1.5">طرق الدفع المسموحة (اتركه فاضي = كل الطرق)</label>
+                        <div className="flex flex-wrap gap-2">
+                          {GATEWAY_OPTIONS.map(g => {
+                            const checked = dForm.gateways.includes(g.v);
+                            return (
+                              <button type="button" key={g.v}
+                                onClick={() => setDForm(f => ({
+                                  ...f,
+                                  gateways: checked
+                                    ? f.gateways.filter(x => x !== g.v)
+                                    : [...f.gateways, g.v],
+                                }))}
+                                className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition-all ${checked ? "border-line2 bg-panel2 text-ink" : "border-line text-muted hover:text-ink"}`}
+                              >
+                                {checked ? "✓ " : ""}{g.label}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                       <div>
                         <label className="block text-xs text-muted mb-1.5">حد الاستخدام (اختياري)</label>
@@ -1356,10 +1398,18 @@ export default function StoreAdminPage() {
                               </span>
                             </div>
                             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-                              <span>📦 {d.store_products?.name || "كل المنتجات"}</span>
+                              <span>📦 {(d.products && d.products.length > 0)
+                                ? d.products.map(p => p.name).join("، ")
+                                : "كل المنتجات"}</span>
+                              <span>💳 {(d.gateways && d.gateways.length > 0)
+                                ? d.gateways.map(g => GATEWAY_OPTIONS.find(o => o.v === g)?.label || g).join("، ")
+                                : "كل طرق الدفع"}</span>
                               <span>
-                                🔢 {d.usage_count}{d.usage_limit != null ? ` / ${d.usage_limit}` : ""} استخدام
+                                🔢 {d.usage_count}{d.usage_limit != null ? ` / ${d.usage_limit}` : ""} طلب مدفوع
                               </span>
+                              {d.sales && d.sales.paid_orders > 0 && (
+                                <span>💰 إيرادات {d.sales.revenue.toFixed(2)} ر.س • خصم {d.sales.total_discount.toFixed(2)} ر.س</span>
+                              )}
                               {d.expires_at && (
                                 <span>⏰ ينتهي {fmt(d.expires_at)}</span>
                               )}

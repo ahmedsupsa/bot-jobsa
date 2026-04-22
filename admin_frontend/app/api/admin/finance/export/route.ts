@@ -569,6 +569,133 @@ export async function GET() {
   setBorder(we);
   wd.getRow(wTotalRow).height = 26;
 
+  // ===== SHEET 6: DISCOUNT CODES PERFORMANCE =====
+  const { data: dcCodes } = await supabase
+    .from("discount_codes")
+    .select("id, code, discount_type, discount_value, usage_limit, usage_count, expires_at, is_active, applies_to_all_products, applies_to_all_gateways, created_at")
+    .order("created_at", { ascending: false });
+
+  const dcList = dcCodes || [];
+  const dcIds = dcList.map((c: any) => c.id);
+
+  let dcProds: Record<string, string[]> = {};
+  let dcGws: Record<string, string[]> = {};
+  let dcSales: Record<string, { paid: number; revenue: number; saved: number }> = {};
+
+  if (dcIds.length > 0) {
+    const [{ data: prodLinks }, { data: gwLinks }, { data: dcOrders }] = await Promise.all([
+      supabase.from("discount_code_products").select("discount_code_id, store_products(name)").in("discount_code_id", dcIds),
+      supabase.from("discount_code_gateways").select("discount_code_id, gateway").in("discount_code_id", dcIds),
+      supabase.from("store_orders").select("discount_code_id, amount, original_amount, status").in("discount_code_id", dcIds).eq("status", "paid"),
+    ]);
+    (prodLinks || []).forEach((r: any) => {
+      const k = r.discount_code_id;
+      const name = r.store_products?.name || "—";
+      (dcProds[k] = dcProds[k] || []).push(name);
+    });
+    (gwLinks || []).forEach((r: any) => {
+      const k = r.discount_code_id;
+      (dcGws[k] = dcGws[k] || []).push(r.gateway);
+    });
+    (dcOrders || []).forEach((o: any) => {
+      const k = o.discount_code_id;
+      const cur = dcSales[k] || { paid: 0, revenue: 0, saved: 0 };
+      cur.paid += 1;
+      cur.revenue += Number(o.amount || 0);
+      const orig = Number(o.original_amount || o.amount || 0);
+      cur.saved += Math.max(0, orig - Number(o.amount || 0));
+      dcSales[k] = cur;
+    });
+  }
+
+  const dc = wb.addWorksheet("6. Discount Codes", {
+    properties: { tabColor: { argb: COLORS.accent } },
+    views: [{ showGridLines: false, state: "frozen", ySplit: 5 }],
+  });
+  dc.columns = [
+    { width: 6 }, { width: 18 }, { width: 14 }, { width: 26 }, { width: 22 },
+    { width: 12 }, { width: 14 }, { width: 16 }, { width: 16 }, { width: 12 },
+  ];
+  addBrandHeader(dc, "Discount Codes — Real-Sales Performance",
+    "Usage = paid orders only (a code is consumed only when an order reaches status='paid'). Cancelled/abandoned checkouts do NOT count.", 10);
+
+  tableHeader(dc, 5, ["#", "Code", "Type", "Products", "Payment Methods",
+    "Used / Limit", "Paid Orders", "Revenue (SAR)", "Total Discount (SAR)", "Status"]);
+
+  let dRow = 6;
+  let totRev = 0, totSaved = 0, totUsed = 0;
+  const gwLabel = (g: string) => g === "tamara" ? "Tamara" : g === "streampay" ? "Card" : g === "bank_transfer" ? "Bank" : g;
+
+  dcList.forEach((c: any, i: number) => {
+    const sales = dcSales[c.id] || { paid: 0, revenue: 0, saved: 0 };
+    totRev += sales.revenue; totSaved += sales.saved; totUsed += sales.paid;
+    const expired = c.expires_at && new Date(c.expires_at).getTime() < Date.now();
+    const exhausted = c.usage_limit != null && c.usage_count >= c.usage_limit;
+    const statusText = !c.is_active ? "Disabled" : expired ? "Expired" : exhausted ? "Exhausted" : "Active";
+    const statusColor = statusText === "Active" ? COLORS.green : statusText === "Disabled" ? COLORS.gray : COLORS.red;
+
+    const cells: any[] = [
+      String(i + 1),
+      c.code,
+      c.discount_type === "percent" ? `${c.discount_value}%` : `${c.discount_value} SAR`,
+      (dcProds[c.id] && dcProds[c.id].length > 0) ? dcProds[c.id].join(", ") : "All products",
+      (dcGws[c.id] && dcGws[c.id].length > 0) ? dcGws[c.id].map(gwLabel).join(", ") : "All methods",
+      `${c.usage_count}${c.usage_limit != null ? ` / ${c.usage_limit}` : ""}`,
+      sales.paid,
+      Number(sales.revenue.toFixed(2)),
+      Number(sales.saved.toFixed(2)),
+      statusText,
+    ];
+    cells.forEach((v, idx) => {
+      const cell = dc.getCell(dRow, idx + 1);
+      cell.value = v;
+      cell.font = { size: 10 };
+      cell.alignment = { vertical: "middle", horizontal: idx === 0 ? "center" : [6, 7, 8].includes(idx) ? "right" : "left", indent: 1, wrapText: true };
+      if (idx === 1) cell.font = { size: 10, bold: true, color: { argb: COLORS.brand } };
+      if (idx === 7) { cell.numFmt = "#,##0.00"; cell.font = { size: 10, bold: true, color: { argb: COLORS.green } }; }
+      if (idx === 8) { cell.numFmt = "#,##0.00"; cell.font = { size: 10, bold: true, color: { argb: COLORS.red } }; }
+      if (idx === 9) cell.font = { size: 10, bold: true, color: { argb: statusColor } };
+      fillCell(cell, i % 2 === 0 ? COLORS.white : COLORS.grayLight);
+      setBorder(cell);
+    });
+    dc.getRow(dRow).height = 22;
+    dRow++;
+  });
+
+  if (dcList.length > 0) {
+    const totRowIdx = dRow;
+    dc.mergeCells(totRowIdx, 1, totRowIdx, 6);
+    const tl = dc.getCell(totRowIdx, 1);
+    tl.value = "TOTALS";
+    tl.font = { bold: true, color: { argb: COLORS.white } };
+    tl.alignment = { vertical: "middle", horizontal: "right", indent: 1 };
+    fillCell(tl, COLORS.accent); setBorder(tl);
+
+    [
+      { col: 7, val: totUsed,  fmt: "#,##0",     color: COLORS.brand },
+      { col: 8, val: totRev,   fmt: "#,##0.00",  color: COLORS.green },
+      { col: 9, val: totSaved, fmt: "#,##0.00",  color: COLORS.red },
+    ].forEach(({ col, val, fmt: f, color }) => {
+      const c = dc.getCell(totRowIdx, col);
+      c.value = Number(typeof val === "number" ? val.toFixed(f.includes(".") ? 2 : 0) : val);
+      c.numFmt = f;
+      c.font = { bold: true, color: { argb: COLORS.white } };
+      c.alignment = { horizontal: "right" };
+      fillCell(c, color); setBorder(c);
+    });
+    const cEnd = dc.getCell(totRowIdx, 10);
+    cEnd.value = "—"; fillCell(cEnd, COLORS.accent); setBorder(cEnd);
+    dc.getRow(totRowIdx).height = 28;
+  } else {
+    dc.mergeCells(dRow, 1, dRow, 10);
+    const empty = dc.getCell(dRow, 1);
+    empty.value = "No discount codes created yet.";
+    empty.alignment = { horizontal: "center", vertical: "middle" };
+    empty.font = { italic: true, color: { argb: COLORS.gray } };
+    fillCell(empty, COLORS.grayLight); setBorder(empty);
+    dc.getRow(dRow).height = 32;
+  }
+
   // Output
   const buffer = await wb.xlsx.writeBuffer();
   const filename = `jobbots-financial-report-${new Date().toISOString().slice(0, 10)}.xlsx`;

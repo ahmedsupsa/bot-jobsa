@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { previewDiscount } from "@/lib/discount";
+import { validateDiscount, type Gateway } from "@/lib/discount";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +10,11 @@ function freshClient() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+const ALLOWED_GATEWAYS = new Set(["tamara", "streampay", "bank_transfer"]);
+
 export async function POST(req: Request) {
   try {
-    const { code, product_id } = await req.json();
+    const { code, product_id, gateway } = await req.json();
     if (!code || !product_id) {
       return NextResponse.json({ ok: false, error: "الكود والمنتج مطلوبان" }, { status: 400 });
     }
@@ -25,7 +27,8 @@ export async function POST(req: Request) {
       .maybeSingle();
     if (!product) return NextResponse.json({ ok: false, error: "المنتج غير متاح" }, { status: 404 });
 
-    const result = await previewDiscount(code, product.id, Number(product.price));
+    const gw = gateway && ALLOWED_GATEWAYS.has(gateway) ? (gateway as Gateway) : undefined;
+    const result = await validateDiscount(code, product.id, Number(product.price), gw);
     if (!result.ok) return NextResponse.json(result, { status: 400 });
     return NextResponse.json({
       ok: true,
