@@ -14,6 +14,15 @@ type Summary = {
   netRevenue: number; monthlyGross: number; lastMonthGross: number;
   paidCount: number; directCount: number; affiliateCount: number; pendingOrdersCount: number;
   avgOrder: number; paidOut: number; pendingPayout: number; commissionRate: number;
+  tamaraGross: number; tamaraFees: number; tamaraNet: number; tamaraCount: number;
+  tamaraVariable: number; tamaraFixed: number; tamaraVat: number;
+  tamaraVariableRate: number; tamaraFixedFee: number; tamaraVatRate: number;
+  bankCount: number; bankGross: number; streampayCount: number; streampayGross: number;
+};
+type TamaraOrder = {
+  id: string; user_name?: string; user_email?: string; amount: number; paid_at?: string;
+  product_name: string; fee_variable: number; fee_fixed: number; fee_vat: number;
+  fee_total: number; net_received: number;
 };
 
 type ProductStat = { name: string; direct: number; affiliate: number; commissions: number; count: number };
@@ -102,9 +111,9 @@ function StackedBarChart({ data }: { data: ChartPoint[] }) {
 }
 
 export default function FinancePage() {
-  const [data, setData] = useState<{ summary: Summary; byProduct: ProductStat[]; chart: ChartPoint[]; directOrders: DirectOrder[]; affiliateOrders: AffOrder[] } | null>(null);
+  const [data, setData] = useState<{ summary: Summary; byProduct: ProductStat[]; chart: ChartPoint[]; directOrders: DirectOrder[]; affiliateOrders: AffOrder[]; tamaraOrders: TamaraOrder[] } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"overview" | "direct" | "affiliate">("overview");
+  const [tab, setTab] = useState<"overview" | "direct" | "affiliate" | "tamara">("overview");
   const [exporting, setExporting] = useState(false);
 
   const load = () => {
@@ -205,6 +214,7 @@ export default function FinancePage() {
                 { k: "overview", l: "نظرة عامة", i: PieChart },
                 { k: "direct", l: `مبيعات مباشرة (${data.summary.directCount})`, i: CheckCircle2 },
                 { k: "affiliate", l: `مبيعات بعمولة (${data.summary.affiliateCount})`, i: Users },
+                { k: "tamara", l: `تمارا (${data.summary.tamaraCount})`, i: Wallet },
               ].map(({ k, l, i: I }) => (
                 <button key={k} onClick={() => setTab(k as any)}
                   style={{
@@ -299,6 +309,115 @@ export default function FinancePage() {
                   user_name: o.user_name, user_email: o.user_email, product_name: o.product_name,
                   amount: o.amount, paid_at: o.paid_at,
                 }))} totalLabel="إجمالي مباشر" totalValue={data.summary.directRevenue} totalColor="#fff" />
+              </div>
+            )}
+
+            {tab === "tamara" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {/* Tamara Summary Cards */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                  <StatCard label="إجمالي مبيعات تمارا"
+                    value={`${fmt(data.summary.tamaraGross)} ر.س`}
+                    sub={`${data.summary.tamaraCount} طلب مدفوع`}
+                    icon={DollarSign} color="#ec4899" big />
+                  <StatCard label="إجمالي رسوم تمارا (مع الضريبة)"
+                    value={`${fmt(data.summary.tamaraFees)} ر.س`}
+                    sub="تُخصم قبل التحويل لحسابك"
+                    icon={Wallet} color="#f87171" big />
+                  <StatCard label="الصافي المستلم من تمارا"
+                    value={`${fmt(data.summary.tamaraNet)} ر.س`}
+                    sub="بعد خصم الرسوم والضريبة"
+                    icon={Target} color="#fff" big />
+                </div>
+
+                {/* Fee Formula Explainer */}
+                <div style={{ background: "linear-gradient(135deg, #2a0a1f, #111)", border: "1px solid #ec489944",
+                  borderRadius: 16, padding: 22 }}>
+                  <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 700, margin: "0 0 14px",
+                    display: "flex", alignItems: "center", gap: 8 }}>
+                    <PieChart size={16} color="#ec4899" /> طريقة احتساب رسوم تمارا
+                  </h3>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 14 }}>
+                    <CashRow icon={<TrendingUp size={14} color="#ec4899" />}
+                      label={`رسوم متغيرة (${(data.summary.tamaraVariableRate * 100).toFixed(2)}%)`}
+                      value={`${fmt(data.summary.tamaraVariable)} ر.س`} bg="#ec4899" />
+                    <CashRow icon={<DollarSign size={14} color="#f59e0b" />}
+                      label={`رسوم ثابتة (${data.summary.tamaraFixedFee} ر.س / طلب)`}
+                      value={`${fmt(data.summary.tamaraFixed)} ر.س`} bg="#f59e0b" />
+                    <CashRow icon={<AlertCircle size={14} color="#a78bfa" />}
+                      label={`ضريبة القيمة المضافة (${(data.summary.tamaraVatRate * 100).toFixed(0)}%)`}
+                      value={`${fmt(data.summary.tamaraVat)} ر.س`} bg="#a78bfa" />
+                  </div>
+                  <div style={{ background: "#0a0a0a", border: "1px solid #222", borderRadius: 10, padding: "12px 14px",
+                    fontSize: 12, color: "#aaa", lineHeight: 1.9 }}>
+                    <span style={{ color: "#ec4899", fontWeight: 700 }}>الصيغة:</span>{" "}
+                    الرسوم = (المبلغ × {(data.summary.tamaraVariableRate * 100).toFixed(2)}% + {data.summary.tamaraFixedFee}) × (1 + {(data.summary.tamaraVatRate * 100).toFixed(0)}%)
+                    <br />
+                    <span style={{ color: "#888" }}>أمثلة:</span>{" "}
+                    <span style={{ color: "#fff" }}>50 ر.س → ~5.74 رسوم</span> ·{" "}
+                    <span style={{ color: "#fff" }}>70 ر.س → ~7.35 رسوم</span> ·{" "}
+                    <span style={{ color: "#fff" }}>90 ر.س → ~8.96 رسوم</span>
+                  </div>
+                </div>
+
+                {/* Tamara Orders Table */}
+                <div style={{ background: "#111", border: "1px solid #222", borderRadius: 16, padding: 24 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                    <Wallet size={18} color="#ec4899" />
+                    <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 700, margin: 0 }}>تفصيل طلبات تمارا</h3>
+                  </div>
+                  <p style={{ color: "#666", fontSize: 12, margin: "0 0 18px" }}>
+                    كل صف: المبلغ • رسوم متغيرة • رسوم ثابتة • ضريبة • إجمالي الرسوم • الصافي المستلم
+                  </p>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ color: "#666", borderBottom: "1px solid #222" }}>
+                          <th style={th}>العميل</th>
+                          <th style={th}>المنتج</th>
+                          <th style={{ ...th, textAlign: "left" }}>المبلغ</th>
+                          <th style={{ ...th, textAlign: "left" }}>متغيرة</th>
+                          <th style={{ ...th, textAlign: "left" }}>ثابتة</th>
+                          <th style={{ ...th, textAlign: "left" }}>ضريبة</th>
+                          <th style={{ ...th, textAlign: "left" }}>إجمالي رسوم</th>
+                          <th style={{ ...th, textAlign: "left" }}>الصافي</th>
+                          <th style={th}>تاريخ الدفع</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.tamaraOrders.length === 0 ? (
+                          <tr><td colSpan={9} style={{ color: "#555", textAlign: "center", padding: 32 }}>لا توجد طلبات تمارا مدفوعة بعد</td></tr>
+                        ) : data.tamaraOrders.map(o => (
+                          <tr key={o.id} style={{ borderBottom: "1px solid #1a1a1a" }}
+                            onMouseEnter={e => (e.currentTarget.style.background = "#161616")}
+                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                            <td style={td}>{o.user_name || o.user_email || "—"}</td>
+                            <td style={td}>{o.product_name}</td>
+                            <td style={{ ...td, textAlign: "left", color: "#fff", fontWeight: 700 }}>{fmt(o.amount)}</td>
+                            <td style={{ ...td, textAlign: "left", color: "#ec4899" }}>− {fmt(o.fee_variable)}</td>
+                            <td style={{ ...td, textAlign: "left", color: "#f59e0b" }}>− {fmt(o.fee_fixed)}</td>
+                            <td style={{ ...td, textAlign: "left", color: "#a78bfa" }}>− {fmt(o.fee_vat)}</td>
+                            <td style={{ ...td, textAlign: "left", color: "#f87171", fontWeight: 700 }}>− {fmt(o.fee_total)}</td>
+                            <td style={{ ...td, textAlign: "left", color: "#fff", fontWeight: 800 }}>{fmt(o.net_received)}</td>
+                            <td style={{ ...td, color: "#666" }}>{fmtDate(o.paid_at)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ background: "#1a1a1a" }}>
+                          <td colSpan={2} style={{ ...td, color: "#fff", fontWeight: 700 }}>الإجماليات</td>
+                          <td style={{ ...td, textAlign: "left", color: "#fff", fontWeight: 800 }}>{fmt(data.summary.tamaraGross)}</td>
+                          <td style={{ ...td, textAlign: "left", color: "#ec4899", fontWeight: 800 }}>− {fmt(data.summary.tamaraVariable)}</td>
+                          <td style={{ ...td, textAlign: "left", color: "#f59e0b", fontWeight: 800 }}>− {fmt(data.summary.tamaraFixed)}</td>
+                          <td style={{ ...td, textAlign: "left", color: "#a78bfa", fontWeight: 800 }}>− {fmt(data.summary.tamaraVat)}</td>
+                          <td style={{ ...td, textAlign: "left", color: "#f87171", fontWeight: 800 }}>− {fmt(data.summary.tamaraFees)}</td>
+                          <td style={{ ...td, textAlign: "left", color: "#fff", fontWeight: 800 }}>{fmt(data.summary.tamaraNet)}</td>
+                          <td />
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
               </div>
             )}
 

@@ -6,6 +6,18 @@ export const dynamic = "force-dynamic";
 
 const COMMISSION_RATE = 0.10;
 
+// Tamara pricing: 6.99% variable + 1.5 SAR fixed, then 15% VAT on top of the fees
+const TAMARA_VARIABLE_RATE = 0.0699;
+const TAMARA_FIXED_FEE = 1.5;
+const TAMARA_VAT_RATE = 0.15;
+function tamaraFee(amount: number): { variable: number; fixed: number; vat: number; total: number } {
+  const variable = amount * TAMARA_VARIABLE_RATE;
+  const fixed = TAMARA_FIXED_FEE;
+  const subtotal = variable + fixed;
+  const vat = subtotal * TAMARA_VAT_RATE;
+  return { variable, fixed, vat, total: subtotal + vat };
+}
+
 function freshClient() {
   const url = process.env.SUPABASE_URL || "";
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
@@ -19,6 +31,7 @@ type OrderRow = {
   amount?: number;
   status: string;
   ref_code?: string | null;
+  payment_gateway?: string | null;
   created_at: string;
   paid_at?: string;
   store_products?: { name: string; duration_days: number } | { name: string; duration_days: number }[] | null;
@@ -36,7 +49,7 @@ export async function GET() {
 
   const { data: rawOrders } = await supabase
     .from("store_orders")
-    .select("id, user_name, user_email, amount, status, ref_code, created_at, paid_at, store_products(name, duration_days)")
+    .select("id, user_name, user_email, amount, status, ref_code, payment_gateway, created_at, paid_at, store_products(name, duration_days)")
     .order("created_at", { ascending: false });
 
   const all: OrderRow[] = (rawOrders || []) as OrderRow[];
@@ -92,6 +105,38 @@ export async function GET() {
   const pendingCommissions = Object.values(referralsByOrder).filter(r => r.status === "pending").reduce((s, r) => s + r.commission, 0);
   const paidCommissions = Object.values(referralsByOrder).filter(r => r.status === "paid").reduce((s, r) => s + r.commission, 0);
   const netRevenue = grossRevenue - totalCommissionsAccrued;
+
+  // Tamara fees breakdown (only paid Tamara orders)
+  const tamaraOrders = paid.filter(o => o.payment_gateway === "tamara");
+  const tamaraGross = tamaraOrders.reduce((s, o) => s + (o.amount || 0), 0);
+  let tamaraVariable = 0, tamaraFixed = 0, tamaraVat = 0, tamaraFees = 0;
+  const tamaraOrdersList = tamaraOrders.slice(0, 100).map(o => {
+    const f = tamaraFee(Number(o.amount || 0));
+    tamaraVariable += f.variable;
+    tamaraFixed += f.fixed;
+    tamaraVat += f.vat;
+    tamaraFees += f.total;
+    return {
+      id: o.id,
+      user_name: o.user_name,
+      user_email: o.user_email,
+      amount: Number(o.amount || 0),
+      paid_at: o.paid_at,
+      product_name: getProduct(o)?.name || "—",
+      fee_variable: f.variable,
+      fee_fixed: f.fixed,
+      fee_vat: f.vat,
+      fee_total: f.total,
+      net_received: Number(o.amount || 0) - f.total,
+    };
+  });
+  const tamaraNet = tamaraGross - tamaraFees;
+
+  // Bank transfer / streampay totals
+  const bankCount = paid.filter(o => o.payment_gateway === "bank_transfer").length;
+  const bankGross = paid.filter(o => o.payment_gateway === "bank_transfer").reduce((s, o) => s + (o.amount || 0), 0);
+  const streampayCount = paid.filter(o => o.payment_gateway === "streampay").length;
+  const streampayGross = paid.filter(o => o.payment_gateway === "streampay").reduce((s, o) => s + (o.amount || 0), 0);
 
   // Monthly chart
   const now = new Date();
@@ -181,10 +226,25 @@ export async function GET() {
       paidOut,
       pendingPayout,
       commissionRate: COMMISSION_RATE,
+      tamaraGross,
+      tamaraFees,
+      tamaraNet,
+      tamaraCount: tamaraOrders.length,
+      tamaraVariable,
+      tamaraFixed,
+      tamaraVat,
+      tamaraVariableRate: TAMARA_VARIABLE_RATE,
+      tamaraFixedFee: TAMARA_FIXED_FEE,
+      tamaraVatRate: TAMARA_VAT_RATE,
+      bankCount,
+      bankGross,
+      streampayCount,
+      streampayGross,
     },
     byProduct: Object.values(byProduct).sort((a, b) => (b.direct + b.affiliate) - (a.direct + a.affiliate)),
     chart,
     directOrders: directList,
     affiliateOrders: affiliateList,
+    tamaraOrders: tamaraOrdersList,
   });
 }
