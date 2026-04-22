@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import { PWAInstallGate } from "@/components/pwa-install-gate";
 
-export const metadata: Metadata = { title: "Jobbots | بوابة المستخدمين" };
+export const metadata: Metadata = { title: "بوت التقديم | بوابة المستخدمين" };
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -18,7 +19,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           font-family: 'Rubik', system-ui, sans-serif !important;
         }
       `}} />
-      {children}
+      <PWAInstallGate>{children}</PWAInstallGate>
     </>
   );
 }
