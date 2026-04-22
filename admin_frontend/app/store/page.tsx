@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   Sparkles, Check, ShoppingCart, X, RefreshCw, Loader2, ShieldCheck,
-  Copy, CheckCheck, Building2, Wallet, Tag,
+  Copy, CheckCheck, Building2, Wallet, Tag, Search, ArrowUpDown,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -95,11 +95,26 @@ export default function StorePage() {
   const [uploadDone, setUploadDone] = useState(false);
   const [uploadErr, setUploadErr] = useState("");
 
+  // Search + sort
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"default" | "price_asc" | "price_desc" | "duration_asc" | "duration_desc">("default");
+
+  // Top banner
+  const [banner, setBanner] = useState<{ enabled: boolean; text: string | null; image_url: string | null } | null>(null);
+
   useEffect(() => {
     fetch(`/api/store/products?t=${Date.now()}`, { cache: "no-store" })
       .then(r => r.json())
       .then(j => { setProducts(j.products || []); setLoading(false); })
       .catch(() => setLoading(false));
+
+    fetch(`/api/store/settings?t=${Date.now()}`, { cache: "no-store" })
+      .then(r => r.json())
+      .then(j => {
+        const st = j.settings || {};
+        setBanner({ enabled: !!st.banner_enabled, text: st.banner_text || null, image_url: st.banner_image_url || null });
+      })
+      .catch(() => {});
 
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -224,9 +239,25 @@ export default function StorePage() {
     }
   };
 
-  const sortedProducts = [...products].sort((a, b) => a.duration_days - b.duration_days);
-  const baseMonthly = sortedProducts.find(p => p.duration_days === 30)?.price
-    || (sortedProducts[0] ? sortedProducts[0].price / (sortedProducts[0].duration_days / 30) : 0);
+  const filteredProducts = products.filter(p => {
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    return (p.name || "").toLowerCase().includes(q)
+      || (p.description || "").toLowerCase().includes(q);
+  });
+
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    switch (sortBy) {
+      case "price_asc":    return a.price - b.price;
+      case "price_desc":   return b.price - a.price;
+      case "duration_asc": return a.duration_days - b.duration_days;
+      case "duration_desc":return b.duration_days - a.duration_days;
+      default:             return a.duration_days - b.duration_days;
+    }
+  });
+
+  const baseMonthly = [...products].sort((a, b) => a.duration_days - b.duration_days).find(p => p.duration_days === 30)?.price
+    || (products[0] ? products[0].price / (products[0].duration_days / 30) : 0);
 
   return (
     <div style={s.page} dir="rtl">
@@ -242,10 +273,51 @@ export default function StorePage() {
       </nav>
 
       <main style={s.main}>
+        {banner?.enabled && (banner.image_url || banner.text) && (
+          <div style={s.topBanner}>
+            {banner.image_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={banner.image_url} alt="" style={s.topBannerImg} />
+            )}
+            {banner.text && (
+              <div style={s.topBannerText}>{banner.text}</div>
+            )}
+          </div>
+        )}
+
         {refCode && (
           <div style={s.refBanner}>
             <Sparkles size={13} color="var(--text)" />
             <span>تم تطبيق كود الإحالة <strong style={{ color: "var(--text)" }}>{refCode}</strong></span>
+          </div>
+        )}
+
+        {/* Search + sort toolbar */}
+        {!loading && products.length > 0 && (
+          <div style={s.toolbar}>
+            <div style={s.searchWrap}>
+              <Search size={15} color="var(--text4)" style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)" }} />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="ابحث عن باقة..."
+                style={s.searchInput}
+              />
+            </div>
+            <div style={s.sortWrap}>
+              <ArrowUpDown size={14} color="var(--text4)" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                style={s.sortSelect}
+              >
+                <option value="default">ترتيب افتراضي</option>
+                <option value="price_asc">السعر: من الأقل للأعلى</option>
+                <option value="price_desc">السعر: من الأعلى للأقل</option>
+                <option value="duration_asc">المدة: من الأقصر للأطول</option>
+                <option value="duration_desc">المدة: من الأطول للأقصر</option>
+              </select>
+            </div>
           </div>
         )}
 
@@ -256,6 +328,10 @@ export default function StorePage() {
         ) : products.length === 0 ? (
           <div style={s.empty}>
             <p style={{ color: "var(--text3)", fontSize: 15 }}>لا توجد منتجات متاحة حالياً</p>
+          </div>
+        ) : sortedProducts.length === 0 ? (
+          <div style={s.empty}>
+            <p style={{ color: "var(--text3)", fontSize: 15 }}>لا توجد نتائج مطابقة لبحثك</p>
           </div>
         ) : (
           <div style={{
@@ -740,6 +816,16 @@ const s: Record<string, React.CSSProperties> = {
   formCol: { display: "flex", flexDirection: "column" as const },
   label: { display: "block", color: "var(--text3)", fontSize: 11, marginBottom: 5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.3px" },
   input: { width: "100%", background: "var(--input-bg)", border: "1px solid var(--border)", borderRadius: 9, padding: "10px 12px", color: "var(--text)", fontSize: 13.5, outline: "none", boxSizing: "border-box" as const },
+
+  topBanner: { marginBottom: 22, borderRadius: 16, overflow: "hidden", border: "1px solid var(--border)", background: "var(--surface)", boxShadow: "var(--shadow)" },
+  topBannerImg: { width: "100%", height: "auto", display: "block", maxHeight: 240, objectFit: "cover" as const },
+  topBannerText: { padding: "14px 18px", fontSize: 14, color: "var(--text)", lineHeight: 1.7, whiteSpace: "pre-wrap" as const, textAlign: "center" as const, fontWeight: 600 },
+
+  toolbar: { display: "flex", gap: 10, marginBottom: 22, flexWrap: "wrap" as const, alignItems: "center" },
+  searchWrap: { position: "relative" as const, flex: "1 1 220px", minWidth: 0 },
+  searchInput: { width: "100%", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 11, padding: "10px 38px 10px 12px", color: "var(--text)", fontSize: 13.5, outline: "none", boxSizing: "border-box" as const, fontFamily: "inherit" },
+  sortWrap: { display: "flex", alignItems: "center", gap: 8, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 11, padding: "0 12px", height: 40 },
+  sortSelect: { background: "transparent", border: "none", color: "var(--text)", fontSize: 13, outline: "none", cursor: "pointer", fontFamily: "inherit", padding: "8px 0", minWidth: 160 },
 
   errBox: { background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: 9, padding: "9px 13px", color: "var(--danger)", fontSize: 12.5, marginBottom: 12, position: "relative", zIndex: 1 },
 
