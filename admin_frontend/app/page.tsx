@@ -62,10 +62,10 @@ export default function LandingPage() {
             <span style={s.logoText}>Jobbots</span>
           </div>
           <div style={s.navLinks} className="landing-nav-links">
-            <Link href="/store" style={{ ...s.navBtn, background: "transparent", color: "#aaa", border: "1px solid #2a2a2a" }} className="nav-secondary">
+            <Link href="/store" style={{ ...s.navBtn, background: "transparent", color: "var(--text2)", border: "1px solid var(--border2)" }} className="nav-secondary">
               المتجر
             </Link>
-            <Link href="/portal/login" style={{ ...s.navBtn, background: "#fff", color: "#0a0a0a", border: "none", fontWeight: 700 }}>
+            <Link href="/portal/login" style={{ ...s.navBtn, background: "var(--accent)", color: "var(--accent-fg)", border: "none", fontWeight: 700 }}>
               دخول المشترك
             </Link>
           </div>
@@ -130,7 +130,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section style={{ ...s.section, background: "#111" }}>
+      <section style={{ ...s.section, background: "var(--surface)" }}>
         <div style={s.sectionInner}>
           <div style={s.sectionTag}>طريقة العمل</div>
           <h2 style={s.sectionTitle}>ابدأ التقديم التلقائي في 3 خطوات</h2>
@@ -168,7 +168,7 @@ export default function LandingPage() {
       {/* ── CTA BANNER ── */}
       <section style={s.ctaBanner}>
         <div style={s.ctaBannerInner}>
-          <CheckCircle2 size={40} strokeWidth={1} color="#fff" style={{ opacity: 0.4, marginBottom: 20 }} />
+          <CheckCircle2 size={40} strokeWidth={1} color="var(--text)" style={{ opacity: 0.4, marginBottom: 20 }} />
           <h2 style={s.ctaBannerTitle}>جاهز تبدأ رحلة البحث عن وظيفة؟</h2>
           <p style={s.ctaBannerSub}>
             سجّل دخولك الآن وخلّ Jobbots يشتغل عنك ويقدّم على الوظائف بدلاً منك
@@ -189,11 +189,11 @@ export default function LandingPage() {
           </div>
           <div style={s.footerLinks}>
             <Link href="/store" style={s.footerLink}>المتجر</Link>
-            <span style={{ color: "#333" }}>·</span>
+            <span style={{ color: "var(--text4)" }}>·</span>
             <Link href="/privacy" style={s.footerLink}>سياسة الخصوصية</Link>
-            <span style={{ color: "#333" }}>·</span>
+            <span style={{ color: "var(--text4)" }}>·</span>
             <Link href="/terms" style={s.footerLink}>الشروط والأحكام</Link>
-            <span style={{ color: "#333" }}>·</span>
+            <span style={{ color: "var(--text4)" }}>·</span>
             <Link href="/portal/login" style={s.footerLink}>دخول المشترك</Link>
           </div>
           <div style={s.footerCopy}>© 2025 Jobbots. جميع الحقوق محفوظة.</div>
@@ -212,88 +212,88 @@ export default function LandingPage() {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  page: { background: "#0a0a0a", minHeight: "100vh", color: "#fff", fontFamily: "'Tajawal', 'Segoe UI', Tahoma, sans-serif" },
+  page: { background: "var(--bg)", minHeight: "100vh", color: "var(--text)", fontFamily: "'Tajawal', 'Segoe UI', Tahoma, sans-serif" },
 
   /* NAV */
   nav: {
     position: "sticky", top: 0, zIndex: 50,
-    borderBottom: "1px solid #1a1a1a",
-    background: "rgba(10,10,10,0.92)",
+    borderBottom: "1px solid var(--border)",
+    background: "var(--nav-bg)",
     WebkitBackdropFilter: "blur(12px)",
     backdropFilter: "blur(12px)",
   },
   navInner: { maxWidth: 1100, margin: "0 auto", padding: "0 20px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" },
   logo: { display: "flex", alignItems: "center", gap: 10 },
-  logoIcon: { width: 34, height: 34, borderRadius: 9, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  logoText: { color: "#fff", fontWeight: 800, fontSize: 18, letterSpacing: "-0.5px" },
+  logoIcon: { width: 34, height: 34, borderRadius: 9, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  logoText: { color: "var(--text)", fontWeight: 800, fontSize: 18, letterSpacing: "-0.5px" },
   navLinks: { display: "flex", gap: 10, alignItems: "center" },
-  navBtn: { padding: "8px 16px", borderRadius: 10, border: "1px solid #2a2a2a", color: "#ccc", fontSize: 13, fontWeight: 500, background: "transparent", cursor: "pointer", whiteSpace: "nowrap" },
+  navBtn: { padding: "8px 16px", borderRadius: 10, border: "1px solid var(--border2)", color: "var(--text2)", fontSize: 13, fontWeight: 500, background: "transparent", cursor: "pointer", whiteSpace: "nowrap" },
 
   /* HERO */
   hero: { maxWidth: 860, margin: "0 auto", padding: "80px 20px 60px", textAlign: "center" },
-  heroBadge: { display: "inline-flex", alignItems: "center", gap: 6, background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 100, padding: "6px 14px", fontSize: 13, color: "#999", marginBottom: 28 },
-  heroTitle: { fontSize: "clamp(30px, 7vw, 58px)", fontWeight: 900, lineHeight: 1.2, margin: "0 0 18px", color: "#fff" },
-  heroAccent: { color: "#aaa" },
-  heroSub: { fontSize: "clamp(15px, 3vw, 18px)", color: "#aaa", lineHeight: 1.9, margin: "0 0 36px", padding: "0 8px" },
+  heroBadge: { display: "inline-flex", alignItems: "center", gap: 6, background: "var(--surface2)", border: "1px solid var(--border2)", borderRadius: 100, padding: "6px 14px", fontSize: 13, color: "var(--text3)", marginBottom: 28 },
+  heroTitle: { fontSize: "clamp(30px, 7vw, 58px)", fontWeight: 900, lineHeight: 1.2, margin: "0 0 18px", color: "var(--text)" },
+  heroAccent: { color: "var(--text2)" },
+  heroSub: { fontSize: "clamp(15px, 3vw, 18px)", color: "var(--text2)", lineHeight: 1.9, margin: "0 0 36px", padding: "0 8px" },
   heroCtas: { display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 52 },
   ctaPrimary: {
     display: "inline-flex", alignItems: "center", gap: 8,
-    background: "#fff", color: "#0a0a0a", padding: "13px 26px",
+    background: "var(--accent)", color: "var(--accent-fg)", padding: "13px 26px",
     borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: "pointer",
     whiteSpace: "nowrap",
   },
   ctaSecondary: {
     display: "inline-flex", alignItems: "center",
-    border: "1px solid #2a2a2a", color: "#aaa", padding: "13px 22px",
+    border: "1px solid var(--border2)", color: "var(--text2)", padding: "13px 22px",
     borderRadius: 12, fontSize: 13, cursor: "pointer",
     whiteSpace: "nowrap",
   },
-  heroStats: { display: "flex", justifyContent: "center", gap: 40, borderTop: "1px solid #1a1a1a", paddingTop: 36, flexWrap: "wrap" },
+  heroStats: { display: "flex", justifyContent: "center", gap: 40, borderTop: "1px solid var(--border)", paddingTop: 36, flexWrap: "wrap" },
   heroStat: { textAlign: "center" },
-  heroStatVal: { fontSize: 26, fontWeight: 800, color: "#fff", marginBottom: 4 },
-  heroStatLabel: { fontSize: 12, color: "#999" },
+  heroStatVal: { fontSize: 26, fontWeight: 800, color: "var(--text)", marginBottom: 4 },
+  heroStatLabel: { fontSize: 12, color: "var(--text3)" },
 
   /* SECTIONS */
   section: { padding: "72px 20px" },
   sectionInner: { maxWidth: 1100, margin: "0 auto" },
-  sectionTag: { display: "inline-block", background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 100, padding: "4px 14px", fontSize: 12, color: "#aaa", marginBottom: 16 },
-  sectionTitle: { fontSize: "clamp(22px, 5vw, 34px)", fontWeight: 800, color: "#fff", margin: "0 0 12px", textAlign: "center" },
-  sectionDesc: { fontSize: 15, color: "#aaa", textAlign: "center", margin: "0 0 44px", lineHeight: 1.7, padding: "0 16px" },
+  sectionTag: { display: "inline-block", background: "var(--surface2)", border: "1px solid var(--border2)", borderRadius: 100, padding: "4px 14px", fontSize: 12, color: "var(--text2)", marginBottom: 16 },
+  sectionTitle: { fontSize: "clamp(22px, 5vw, 34px)", fontWeight: 800, color: "var(--text)", margin: "0 0 12px", textAlign: "center" },
+  sectionDesc: { fontSize: 15, color: "var(--text2)", textAlign: "center", margin: "0 0 44px", lineHeight: 1.7, padding: "0 16px" },
 
   /* FEATURES */
   featureGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 },
-  featureCard: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 16, padding: "24px 20px" },
-  featureIcon: { width: 42, height: 42, borderRadius: 12, background: "#1a1a1a", border: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", marginBottom: 14 },
-  featureTitle: { fontSize: 15, fontWeight: 700, color: "#fff", margin: "0 0 8px" },
-  featureDesc: { fontSize: 13, color: "#aaa", lineHeight: 1.8, margin: 0 },
+  featureCard: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: "24px 20px" },
+  featureIcon: { width: 42, height: 42, borderRadius: 12, background: "var(--surface2)", border: "1px solid var(--border2)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text)", marginBottom: 14 },
+  featureTitle: { fontSize: 15, fontWeight: 700, color: "var(--text)", margin: "0 0 8px" },
+  featureDesc: { fontSize: 13, color: "var(--text2)", lineHeight: 1.8, margin: 0 },
 
   /* STEPS */
   stepsGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 },
-  stepCard: { background: "#0a0a0a", border: "1px solid #2a2a2a", borderRadius: 16, padding: "28px 24px" },
-  stepNum: { fontSize: 38, fontWeight: 900, color: "#333", marginBottom: 14, fontFamily: "monospace" },
-  stepTitle: { fontSize: 17, fontWeight: 700, color: "#fff", margin: "0 0 8px" },
-  stepDesc: { fontSize: 13, color: "#aaa", lineHeight: 1.8, margin: 0 },
+  stepCard: { background: "var(--bg)", border: "1px solid var(--border2)", borderRadius: 16, padding: "28px 24px" },
+  stepNum: { fontSize: 38, fontWeight: 900, color: "var(--text4)", marginBottom: 14, fontFamily: "monospace" },
+  stepTitle: { fontSize: 17, fontWeight: 700, color: "var(--text)", margin: "0 0 8px" },
+  stepDesc: { fontSize: 13, color: "var(--text2)", lineHeight: 1.8, margin: 0 },
 
   /* FAQ */
-  faqCard: { background: "#111", border: "1px solid #1f1f1f", borderRadius: 14, padding: "22px 24px" },
-  faqQ: { fontSize: 15, fontWeight: 700, color: "#fff", margin: "0 0 10px" },
-  faqA: { fontSize: 13, color: "#aaa", lineHeight: 1.8, margin: 0 },
+  faqCard: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px" },
+  faqQ: { fontSize: 15, fontWeight: 700, color: "var(--text)", margin: "0 0 10px" },
+  faqA: { fontSize: 13, color: "var(--text2)", lineHeight: 1.8, margin: 0 },
 
   /* CTA BANNER */
-  ctaBanner: { padding: "72px 20px", background: "#0a0a0a", borderTop: "1px solid #1a1a1a" },
+  ctaBanner: { padding: "72px 20px", background: "var(--bg)", borderTop: "1px solid var(--border)" },
   ctaBannerInner: { maxWidth: 600, margin: "0 auto", textAlign: "center" },
-  ctaBannerTitle: { fontSize: "clamp(20px, 5vw, 30px)", fontWeight: 800, color: "#fff", margin: "0 0 12px" },
-  ctaBannerSub: { fontSize: 15, color: "#aaa", margin: "0 0 28px", lineHeight: 1.7 },
+  ctaBannerTitle: { fontSize: "clamp(20px, 5vw, 30px)", fontWeight: 800, color: "var(--text)", margin: "0 0 12px" },
+  ctaBannerSub: { fontSize: 15, color: "var(--text2)", margin: "0 0 28px", lineHeight: 1.7 },
   ctaBannerBtn: {
     display: "inline-flex", alignItems: "center", gap: 8,
-    background: "#fff", color: "#0a0a0a", padding: "14px 32px",
+    background: "var(--accent)", color: "var(--accent-fg)", padding: "14px 32px",
     borderRadius: 14, fontWeight: 700, fontSize: 15, cursor: "pointer",
   },
 
   /* FOOTER */
-  footer: { borderTop: "1px solid #1a1a1a", padding: "28px 20px" },
+  footer: { borderTop: "1px solid var(--border)", padding: "28px 20px" },
   footerInner: { maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 },
   footerLinks: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" },
-  footerLink: { color: "#aaa", fontSize: 13 },
-  footerCopy: { color: "#888", fontSize: 13 },
+  footerLink: { color: "var(--text2)", fontSize: 13 },
+  footerCopy: { color: "var(--text3)", fontSize: 13 },
 };

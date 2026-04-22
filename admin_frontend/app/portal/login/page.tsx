@@ -229,7 +229,7 @@ const s: Record<string, React.CSSProperties> = {
     fontFamily: "inherit",
   },
   error: {
-    background: "rgba(248,113,113,0.08)", color: "#dc2626", border: "1px solid rgba(248,113,113,0.3)",
+    background: "var(--danger-bg)", color: "var(--danger)", border: "1px solid var(--danger-border)",
     borderRadius: 10, padding: "10px 14px", fontSize: 13, margin: "10px 0",
   },
 };
