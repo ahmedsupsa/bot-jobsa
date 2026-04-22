@@ -799,8 +799,24 @@ export default function StoreAdminPage() {
                             <span className="col-span-2 font-mono text-muted2 truncate">INV: {o.streampay_invoice_id}</span>
                           )}
                           {o.payment_gateway === "bank_transfer" && (
-                            <span className="rounded-full border border-yellow-500/25 bg-yellow-500/5 px-2 py-0.5 text-xs text-yellow-400">
-                              🏦 تحويل بنكي
+                            <span className="col-span-2 inline-flex w-fit items-center gap-1 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2.5 py-0.5 text-xs font-semibold text-ink">
+                              🏦 طريقة الدفع: تحويل بنكي
+                            </span>
+                          )}
+                          {o.payment_gateway === "tamara" && (
+                            <span className="col-span-2 inline-flex w-fit items-center gap-1 rounded-full border border-pink-500/30 bg-pink-500/10 px-2.5 py-0.5 text-xs font-semibold text-ink">
+                              <img src="/payment-logos/tamara.png" alt="Tamara" className="h-4 w-auto" />
+                              طريقة الدفع: تمارا (تقسيط)
+                            </span>
+                          )}
+                          {o.payment_gateway === "streampay" && (
+                            <span className="col-span-2 inline-flex w-fit items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-ink">
+                              💳 طريقة الدفع: بطاقة (Mada / Visa / Mastercard)
+                            </span>
+                          )}
+                          {!o.payment_gateway && (
+                            <span className="col-span-2 inline-flex w-fit items-center gap-1 rounded-full border border-line bg-panel2 px-2.5 py-0.5 text-xs text-muted">
+                              طريقة الدفع: غير محددة
                             </span>
                           )}
                         </div>
