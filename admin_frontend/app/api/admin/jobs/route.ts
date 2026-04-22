@@ -73,7 +73,15 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   const _denied_ = enforcePermission("jobs"); if (_denied_) return _denied_;
   const { id } = await req.json().catch(() => ({}));
-  if (!id) return NextResponse.json({ ok: false, error: "id required" }, { status: 400 });
-  await supabase.from("admin_jobs").delete().eq("id", id);
+  if (!id) return NextResponse.json({ ok: false, error: "معرّف الوظيفة مطلوب" }, { status: 400 });
+
+  const { error } = await supabase.from("admin_jobs").delete().eq("id", id);
+  if (error) {
+    console.error("jobs DELETE error:", error.message);
+    const friendly = /foreign key|violates/i.test(error.message)
+      ? "لا يمكن حذف الوظيفة لارتباطها بسجلات تقديم. شغّل migration: admin_jobs_cascade.sql ثم أعد المحاولة."
+      : error.message;
+    return NextResponse.json({ ok: false, error: friendly }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }

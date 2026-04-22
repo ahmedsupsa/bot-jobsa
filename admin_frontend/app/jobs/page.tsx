@@ -68,14 +68,33 @@ export default function JobsPage() {
     }
   };
 
-  const del = async (id: string) => {
-    await fetch(`${API_BASE}/api/admin/jobs`, {
-      method: "DELETE",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    await load();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const del = async (job: Job) => {
+    const label = job.title_ar || job.title_en || "هذه الوظيفة";
+    if (!window.confirm(`هل تريد حذف "${label}" نهائياً؟\n\nطلبات التقديم السابقة عليها ستبقى محفوظة في السجل بدون ربط بالوظيفة.`)) {
+      return;
+    }
+    setDeletingId(job.id);
+    setMsg("");
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/jobs`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: job.id }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "فشل الحذف");
+      setMsg(`تم حذف "${label}" ✓`);
+      setMsgType("ok");
+      await load();
+    } catch (e: any) {
+      setMsg(e?.message || String(e));
+      setMsgType("err");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -223,10 +242,14 @@ export default function JobsPage() {
                     )}
                   </div>
                   <button
-                    onClick={() => del(j.id)}
-                    className="shrink-0 rounded-lg border border-danger-border bg-danger-bg p-2 text-danger hover:bg-danger-bg transition-colors"
+                    onClick={() => del(j)}
+                    disabled={deletingId === j.id}
+                    title="حذف الوظيفة"
+                    className="shrink-0 rounded-lg border border-danger-border bg-danger-bg p-2 text-danger hover:bg-danger/15 transition-colors disabled:opacity-40"
                   >
-                    <Trash2 size={14} />
+                    {deletingId === j.id
+                      ? <span className="block h-3.5 w-3.5 animate-spin rounded-full border-2 border-danger border-t-transparent" />
+                      : <Trash2 size={14} />}
                   </button>
                 </div>
               </div>
