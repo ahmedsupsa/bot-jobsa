@@ -487,9 +487,8 @@ export default function StorePage() {
                     style={{ ...s.payBtn, ...s.payBtnTamara, opacity: submitting ? 0.65 : 1 }}
                   >
                     {submitting === "tamara"
-                      ? <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
-                      : <ShieldCheck size={14} />}
-                    <span>{submitting === "tamara" ? "جاري..." : "Tamara"}</span>
+                      ? <><RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} /><span>جاري...</span></>
+                      : <img src="/payment-logos/tamara.png" alt="Tamara" style={{ height: 22, width: "auto", display: "block" }} />}
                   </button>
 
                   <button
@@ -498,9 +497,12 @@ export default function StorePage() {
                     style={{ ...s.payBtn, ...s.payBtnStream, opacity: submitting ? 0.65 : 1 }}
                   >
                     {submitting === "streampay"
-                      ? <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
-                      : <ShieldCheck size={14} />}
-                    <span>{submitting === "streampay" ? "جاري..." : "StreamPay"}</span>
+                      ? <><RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} /><span>جاري...</span></>
+                      : <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <img src="/payment-logos/mada.png" alt="مدى" style={{ height: 18, width: "auto", display: "block" }} />
+                          <img src="/payment-logos/visa.png" alt="Visa" style={{ height: 14, width: "auto", display: "block" }} />
+                          <img src="/payment-logos/mastercard.png" alt="Mastercard" style={{ height: 18, width: "auto", display: "block" }} />
+                        </span>}
                   </button>
 
                   <button
@@ -748,9 +750,9 @@ const s: Record<string, React.CSSProperties> = {
 
   // Pay buttons side by side
   payBtns: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14, position: "relative", zIndex: 1 },
-  payBtn: { borderRadius: 11, padding: "12px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, transition: "opacity 0.15s", background: "var(--surface2)", color: "var(--text)" },
-  payBtnTamara: { background: "var(--accent)", color: "var(--accent-fg)", border: "1px solid var(--accent)" },
-  payBtnStream: { background: "var(--surface2)", color: "var(--text2)", border: "1px solid var(--border2)" },
+  payBtn: { borderRadius: 11, padding: "10px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, transition: "opacity 0.15s", background: "var(--surface)", color: "var(--text)", minHeight: 46 },
+  payBtnTamara: { background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border2)" },
+  payBtnStream: { background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border2)" },
   payBtnBank: { background: "var(--surface2)", color: "var(--text2)", border: "1px solid var(--border2)" },
   discountBadge: { position: "absolute" as const, top: -8, left: 12, background: "var(--accent)", color: "var(--accent-fg)", fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 6 },
 
