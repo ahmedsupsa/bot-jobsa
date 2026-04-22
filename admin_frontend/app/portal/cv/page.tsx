@@ -51,6 +51,8 @@ export default function CVPrefsPage() {
   const [aiSummary, setAiSummary] = useState("");
   const [search, setSearch] = useState("");
   const [prefsMsg, setPrefsMsg] = useState<{ text: string; type: "ok" | "err" | "info" } | null>(null);
+  const [customName, setCustomName] = useState("");
+  const [addingCustom, setAddingCustom] = useState(false);
 
   async function loadCV() {
     try {
@@ -110,6 +112,32 @@ export default function CVPrefsPage() {
 
   function toggleField(id: string) {
     setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
+
+  async function addCustomField() {
+    const name = customName.trim().replace(/\s+/g, " ");
+    if (name.length < 2) {
+      setPrefsMsg({ text: "أدخل مسمى لا يقل عن حرفين", type: "err" });
+      return;
+    }
+    setAddingCustom(true); setPrefsMsg(null);
+    try {
+      const res = await portalFetch("/preferences/custom", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setPrefsMsg({ text: d.error || "فشل الإضافة", type: "err" }); return; }
+      const newId = String(d.field.id);
+      setFields(prev => prev.some(f => String(f.id) === newId) ? prev : [...prev, { id: newId, name_ar: d.field.name_ar }]);
+      setSelected(prev => { const n = new Set(prev); n.add(newId); return n; });
+      setCustomName("");
+      setPrefsMsg({ text: `تمت إضافة «${d.field.name_ar}» وحفظها ✓`, type: "ok" });
+    } catch {
+      setPrefsMsg({ text: "خطأ في الاتصال", type: "err" });
+    } finally {
+      setAddingCustom(false);
+    }
   }
 
   async function savePrefs() {
@@ -401,6 +429,43 @@ export default function CVPrefsPage() {
                       borderRadius: 100, padding: "5px 14px", color: t.text2, fontSize: 12, whiteSpace: "nowrap",
                     }}>{selected.size} محدد</span>
                   </div>
+                </div>
+
+                {/* Add custom field */}
+                <div style={{
+                  display: "flex", gap: 8, marginBottom: 14, alignItems: "stretch",
+                }}>
+                  <div style={{
+                    flex: 1, display: "flex", alignItems: "center", gap: 10,
+                    background: t.surface, border: `1px solid ${t.border2}`,
+                    borderRadius: 10, padding: "9px 14px",
+                  }}>
+                    <Sparkles size={14} strokeWidth={1.5} color={dark ? "#a78bfa" : "#7c3aed"} style={{ flexShrink: 0 }} />
+                    <input
+                      type="text"
+                      placeholder="أضف مسمى وظيفي خاص بك…"
+                      value={customName}
+                      onChange={e => setCustomName(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter" && !addingCustom) { e.preventDefault(); addCustomField(); } }}
+                      maxLength={60}
+                      disabled={addingCustom}
+                      style={{ flex: 1, background: "transparent", border: "none", color: t.text, fontSize: 13, outline: "none", fontFamily: "inherit" }}
+                    />
+                  </div>
+                  <button
+                    onClick={addCustomField}
+                    disabled={addingCustom || customName.trim().length < 2}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      padding: "0 18px", borderRadius: 10,
+                      background: dark ? "#a78bfa" : "#7c3aed",
+                      color: "#fff", border: "none", fontSize: 13, fontWeight: 700,
+                      cursor: addingCustom || customName.trim().length < 2 ? "not-allowed" : "pointer",
+                      opacity: addingCustom || customName.trim().length < 2 ? 0.5 : 1,
+                      fontFamily: "inherit", whiteSpace: "nowrap",
+                    }}>
+                    {addingCustom ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <>إضافة</>}
+                  </button>
                 </div>
 
                 {/* Chips */}
