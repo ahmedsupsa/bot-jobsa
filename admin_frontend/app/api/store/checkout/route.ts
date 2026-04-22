@@ -141,8 +141,15 @@ export async function POST(req: Request) {
 
     // ─── Tamara ───────────────────────────────────────────────────────────
     if (gateway === "tamara") {
+      // Short, human-readable reference shown in Tamara dashboard / merchant
+      // notifications. Prefixed with WEB so website orders are easily
+      // distinguishable from other channels. Includes a timestamp suffix
+      // for at-a-glance ordering.
+      const orderRef = `JB-WEB-${String(orderId).replace(/-/g, "").slice(0, 10).toUpperCase()}`;
+
       const session = await createCheckoutSession({
         orderId,
+        orderReference: orderRef,
         amount: finalAmount,
         name: name.trim(),
         email: email.trim().toLowerCase(),

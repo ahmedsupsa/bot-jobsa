@@ -36,6 +36,7 @@ function normalizePhone(raw: string): string {
 /* ─── Create checkout session ─── */
 export interface TamaraCheckoutInput {
   orderId: string;
+  orderReference?: string;
   amount: number;
   name: string;
   email: string;
@@ -53,10 +54,11 @@ export async function createCheckoutSession(p: TamaraCheckoutInput) {
   const firstName = parts[0] || p.name;
   const lastName = parts.slice(1).join(" ") || "—";
   const amountStr = Number(p.amount).toFixed(2);
+  const reference = p.orderReference || p.orderId;
 
   return tamaraFetch("POST", "/checkout", {
-    order_reference_id: p.orderId,
-    order_number: p.orderId,
+    order_reference_id: reference,
+    order_number: reference,
     total_amount: { amount: amountStr, currency: "SAR" },
     description: p.productDescription,
     country_code: "SA",
@@ -65,10 +67,10 @@ export async function createCheckoutSession(p: TamaraCheckoutInput) {
     locale: "ar_SA",
     items: [
       {
-        reference_id: p.orderId,
+        reference_id: reference,
         type: "Digital",
         name: p.productName,
-        sku: p.orderId,
+        sku: reference,
         quantity: 1,
         unit_price: { amount: amountStr, currency: "SAR" },
         discount_amount: { amount: "0.00", currency: "SAR" },
