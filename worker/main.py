@@ -340,9 +340,27 @@ async def run_cycle() -> None:
 
     async with httpx.AsyncClient(timeout=30, base_url=SUPABASE_URL) as client:
         jobs_raw = await sb_get(client, "admin_jobs", {"is_active": "eq.true"})
-        jobs = [j for j in jobs_raw if (j.get("application_email") or "").strip()]
+        # تجاهل الوظائف الأقدم من 10 أيام
+        cutoff = datetime.now(timezone.utc) - timedelta(days=10)
+        jobs = []
+        skipped_old = 0
+        for j in jobs_raw:
+            if not (j.get("application_email") or "").strip():
+                continue
+            created = j.get("created_at")
+            if created:
+                try:
+                    created_dt = datetime.fromisoformat(str(created).replace("Z", "+00:00"))
+                    if created_dt < cutoff:
+                        skipped_old += 1
+                        continue
+                except Exception:
+                    pass
+            jobs.append(j)
+        if skipped_old:
+            logger.info("⏭️  تخطي %d وظيفة أقدم من 10 أيام", skipped_old)
         if not jobs:
-            logger.info("لا توجد وظائف نشطة — تخطي")
+            logger.info("لا توجد وظائف نشطة (ضمن آخر 10 أيام) — تخطي")
             return
 
         users = await sb_get(client, "users")
