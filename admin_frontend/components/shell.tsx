@@ -5,14 +5,14 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Key, BriefcaseBusiness, Bell, LogOut,
-  ShoppingBag, TrendingUp, MessageCircle, MailCheck, FileText, ShieldCheck, Send,
-  Sun, Moon,
+  ShoppingBag, TrendingUp, MessageCircle, MailCheck, ShieldCheck, Send,
+  Sun, Moon, Contact,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "@/contexts/theme-context";
 
 type Perm =
-  | "users" | "codes" | "jobs" | "templates" | "notifications"
+  | "users" | "codes" | "jobs" | "crm" | "notifications"
   | "store" | "support" | "affiliate" | "finance" | "email-test" | "admins";
 
 type Me = { ok: true; username: string; isSuper: boolean; permissions: Perm[] } | null;
@@ -24,7 +24,7 @@ const links: { href: string; label: string; icon: any; perm: Perm | null; badge?
   { href: "/users", label: "المستخدمون", icon: Users, perm: "users" },
   { href: "/codes", label: "أكواد التفعيل", icon: Key, perm: "codes" },
   { href: "/jobs", label: "الوظائف", icon: BriefcaseBusiness, perm: "jobs" },
-  { href: "/templates", label: "قوالب الرسائل", icon: FileText, perm: "templates" },
+  { href: "/crm", label: "علاقات العملاء", icon: Contact, perm: "crm" },
   { href: "/notifications", label: "إشعارات Push", icon: Bell, perm: "notifications" },
   { href: "/store-admin", label: "المتجر", icon: ShoppingBag, perm: "store", badge: "store" },
   { href: "/support-admin", label: "الدعم الفني", icon: MessageCircle, perm: "support", badge: "support" },

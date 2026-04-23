@@ -6,7 +6,7 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const _denied_ = enforcePermission("templates"); if (_denied_) return _denied_;
+  const _denied_ = enforcePermission("notifications"); if (_denied_) return _denied_;
   const { id } = params;
   if (!id) return NextResponse.json({ ok: false, error: "id required" }, { status: 400 });
   const { error } = await supabase.from("admin_announcements").delete().eq("id", id);

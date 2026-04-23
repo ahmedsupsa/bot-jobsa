@@ -5,14 +5,14 @@ import Shell from "@/components/shell";
 import { Loader2, Plus, Trash2, ShieldCheck, X, Save, Lock, User as UserIcon, KeyRound, Power } from "lucide-react";
 
 type Perm =
-  | "users" | "codes" | "jobs" | "templates" | "notifications"
+  | "users" | "codes" | "jobs" | "crm" | "notifications"
   | "store" | "support" | "affiliate" | "finance" | "email-test" | "admins";
 
 const PERMS: { key: Perm; label: string }[] = [
   { key: "users", label: "المستخدمون" },
   { key: "codes", label: "أكواد التفعيل" },
   { key: "jobs", label: "الوظائف" },
-  { key: "templates", label: "قوالب الرسائل" },
+  { key: "crm", label: "علاقات العملاء" },
   { key: "notifications", label: "إشعارات Push" },
   { key: "store", label: "المتجر" },
   { key: "support", label: "الدعم الفني" },

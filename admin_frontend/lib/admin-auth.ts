@@ -22,7 +22,7 @@ export const ALL_PERMISSIONS = [
   "users",
   "codes",
   "jobs",
-  "templates",
+  "crm",
   "notifications",
   "store",
   "support",
