@@ -529,7 +529,9 @@ function FormFields({ form, setForm }: { form: any; setForm: (f: any) => void })
   );
 }
 
-function Field({ label, value, onChange, type = "text", dir }: any) {
+function Field({ label, value, onChange, type = "text", dir }: {
+  label: string; value: string; onChange: (v: string) => void; type?: string; dir?: string;
+}) {
   return (
     <div>
       <label className="text-[11px] font-bold text-muted block mb-1">{label}</label>
