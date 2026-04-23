@@ -172,9 +172,24 @@ export default function StoreAdminPage() {
       });
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || "فشل الرفع");
-      // Auto-enable banner when uploading an image
-      setSettings(s => ({ ...s, banner_image_url: j.url, banner_enabled: true }));
-      setStMsg("تم رفع الصورة ✓ — اضغط حفظ لتظهر في المتجر"); setStMsgType("ok");
+
+      // Persist immediately — auto-enable + save to DB so banner appears in store right away
+      const newSettings = { ...settings, banner_image_url: j.url, banner_enabled: true };
+      setSettings(newSettings);
+
+      const sr = await fetch(`${API_BASE}/api/admin/store/settings`, {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          banner_image_url: j.url,
+          banner_enabled: true,
+          banner_text: newSettings.banner_text || null,
+        }),
+      });
+      const sj = await sr.json();
+      if (!sj.ok) throw new Error(sj.error || "تم الرفع لكن فشل الحفظ");
+
+      setStMsg("تم الحفظ والتفعيل ✓ — البنر يظهر الآن في صفحة المتجر"); setStMsgType("ok");
     } catch (e) {
       setStMsg(String(e).replace("Error: ", "")); setStMsgType("err");
     }
