@@ -339,28 +339,27 @@ async def run_cycle() -> None:
         return
 
     async with httpx.AsyncClient(timeout=30, base_url=SUPABASE_URL) as client:
-        jobs_raw = await sb_get(client, "admin_jobs", {"is_active": "eq.true"})
-        # تجاهل الوظائف الأقدم من 10 أيام
+        # حذف الوظائف الأقدم من 10 أيام نهائياً من قاعدة البيانات
         cutoff = datetime.now(timezone.utc) - timedelta(days=10)
-        jobs = []
-        skipped_old = 0
-        for j in jobs_raw:
-            if not (j.get("application_email") or "").strip():
-                continue
-            created = j.get("created_at")
-            if created:
-                try:
-                    created_dt = datetime.fromisoformat(str(created).replace("Z", "+00:00"))
-                    if created_dt < cutoff:
-                        skipped_old += 1
-                        continue
-                except Exception:
-                    pass
-            jobs.append(j)
-        if skipped_old:
-            logger.info("⏭️  تخطي %d وظيفة أقدم من 10 أيام", skipped_old)
+        try:
+            del_r = await client.delete(
+                f"{SUPABASE_URL}/rest/v1/admin_jobs",
+                headers=_SB_HEADERS,
+                params={"created_at": f"lt.{cutoff.isoformat()}"},
+            )
+            if del_r.is_success:
+                deleted = del_r.json() if del_r.text else []
+                if deleted:
+                    logger.info("🗑️  تم حذف %d وظيفة أقدم من 10 أيام", len(deleted))
+            else:
+                logger.warning("فشل حذف الوظائف القديمة: %s", del_r.text[:200])
+        except Exception as e:
+            logger.warning("خطأ أثناء حذف الوظائف القديمة: %s", e)
+
+        jobs_raw = await sb_get(client, "admin_jobs", {"is_active": "eq.true"})
+        jobs = [j for j in jobs_raw if (j.get("application_email") or "").strip()]
         if not jobs:
-            logger.info("لا توجد وظائف نشطة (ضمن آخر 10 أيام) — تخطي")
+            logger.info("لا توجد وظائف نشطة — تخطي")
             return
 
         users = await sb_get(client, "users")
