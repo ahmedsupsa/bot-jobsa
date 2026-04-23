@@ -2,8 +2,8 @@
 
 import Shell from "@/components/shell";
 import { API_BASE } from "@/lib/api";
-import { useEffect, useState } from "react";
-import { Plus, Trash2, Building2, Mail, BriefcaseBusiness, Sparkles, CheckCircle2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Trash2, Building2, Mail, BriefcaseBusiness, Sparkles, CheckCircle2, FileSpreadsheet, Download, Upload, Loader2 } from "lucide-react";
 
 type Job = {
   id: string;
@@ -70,6 +70,44 @@ export default function JobsPage() {
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Bulk import
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ inserted: number; total: number } | null>(null);
+
+  const downloadTemplate = () => {
+    window.location.href = `${API_BASE}/api/admin/jobs/template`;
+  };
+
+  const onPickFile = () => fileRef.current?.click();
+
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    if (!/\.(xlsx|xls)$/i.test(f.name)) {
+      setMsg("الرجاء اختيار ملف Excel (.xlsx)"); setMsgType("err"); return;
+    }
+    setImporting(true); setMsg(""); setImportResult(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", f);
+      const r = await fetch(`${API_BASE}/api/admin/jobs/bulk`, {
+        method: "POST", credentials: "include", body: fd,
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "فشل الاستيراد");
+      setImportResult({ inserted: j.inserted, total: j.total });
+      setMsg(`تم استيراد ${j.inserted} وظيفة بنجاح ✓`); setMsgType("ok");
+      await load();
+    } catch (e: any) {
+      setMsg(e?.message || String(e)); setMsgType("err");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+
   const del = async (job: Job) => {
     const label = job.title_ar || job.title_en || "هذه الوظيفة";
     if (!window.confirm(`هل تريد حذف "${label}" نهائياً؟\n\nطلبات التقديم السابقة عليها ستبقى محفوظة في السجل بدون ربط بالوظيفة.`)) {
@@ -99,10 +137,50 @@ export default function JobsPage() {
 
   return (
     <Shell>
-      <div className="mb-5">
-        <h1 className="text-xl font-bold text-ink">الوظائف</h1>
-        <p className="text-sm text-muted mt-0.5">أضف الوظائف وسيستخرج الذكاء الاصطناعي التخصصات تلقائياً</p>
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-ink">الوظائف</h1>
+          <p className="text-sm text-muted mt-0.5">أضف الوظائف وسيستخرج الذكاء الاصطناعي التخصصات تلقائياً</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx,.xls"
+            hidden
+            onChange={onFileChange}
+          />
+          <button
+            onClick={downloadTemplate}
+            className="flex items-center gap-1.5 rounded-xl border border-line/70 bg-panel px-3.5 py-2 text-xs text-ink2 font-medium hover:border-accent/40 hover:text-accent transition-colors"
+          >
+            <Download size={13} />
+            تحميل قالب Excel
+          </button>
+          <button
+            onClick={onPickFile}
+            disabled={importing}
+            className="flex items-center gap-1.5 rounded-xl border border-accent/30 bg-accent/15 px-3.5 py-2 text-xs text-accent font-semibold hover:bg-accent/25 transition-colors disabled:opacity-60"
+          >
+            {importing
+              ? <><Loader2 size={13} className="animate-spin" /> جاري الاستيراد...</>
+              : <><Upload size={13} /> رفع ملف Excel</>}
+          </button>
+        </div>
       </div>
+
+      {importResult && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+          <FileSpreadsheet size={16} className="text-green-600 mt-0.5 shrink-0" />
+          <div>
+            <div className="font-semibold">تم الاستيراد بنجاح</div>
+            <div className="text-xs mt-0.5 opacity-80">
+              أُضيفت {importResult.inserted} وظيفة من أصل {importResult.total} في الملف.
+              تم استخراج التخصصات بالذكاء الاصطناعي تلقائياً للحقول الفارغة.
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         {/* Add form */}
