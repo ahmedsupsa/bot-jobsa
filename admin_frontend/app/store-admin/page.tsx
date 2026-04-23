@@ -19,6 +19,7 @@ type Product = {
   duration_days: number;
   streampay_product_id?: string;
   is_active: boolean;
+  is_secret?: boolean;
   created_at: string;
 };
 
@@ -37,6 +38,13 @@ type Order = {
   receipt_url?: string;
   created_at: string;
   paid_at?: string;
+  tamara_order_id?: string;
+  refund_status?: "requested" | "approved" | "rejected" | "refunded" | null;
+  refund_reason?: string | null;
+  refund_admin_notes?: string | null;
+  refund_requested_at?: string | null;
+  refund_processed_at?: string | null;
+  refund_method?: string | null;
   store_products?: { name: string; price: number; duration_days: number };
 };
 
@@ -52,7 +60,7 @@ type BankAccount = {
   created_at: string;
 };
 
-const EMPTY_PRODUCT = { name: "", description: "", price: "", duration_days: "" };
+const EMPTY_PRODUCT = { name: "", description: "", price: "", duration_days: "", is_secret: false };
 
 const EMPTY_BANK = { type: "bank", name: "", account_number: "", iban: "", phone: "", display_order: "0" };
 
@@ -384,6 +392,7 @@ export default function StoreAdminPage() {
       description: p.description || "",
       price: String(p.price),
       duration_days: String(p.duration_days),
+      is_secret: !!p.is_secret,
     });
     setShowForm(true);
   };
@@ -481,6 +490,59 @@ export default function StoreAdminPage() {
       method: "DELETE", credentials: "include",
     });
     await loadOrders();
+  };
+
+  const verifyPayment = async (id: string) => {
+    setUpdatingId(id);
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/store/orders/${id}/verify-payment`, {
+        method: "POST", credentials: "include",
+      });
+      const j = await r.json();
+      const lines = [
+        `حالة البوابة: ${j.gateway_status || "—"}`,
+        `المبلغ في البوابة: ${j.gateway_amount ?? "—"} ${j.gateway_currency || "SAR"}`,
+        `المبلغ في قاعدة البيانات: ${j.db_amount ?? "—"} SAR`,
+        `تطابق المبلغ: ${j.amount_match === true ? "✅ نعم" : j.amount_match === false ? "❌ لا" : "—"}`,
+        j.captured_at ? `وقت الدفع: ${fmt(j.captured_at)}` : "",
+        j.error ? `خطأ: ${j.error}` : "",
+      ].filter(Boolean).join("\n");
+      alert(lines);
+    } catch (e: any) {
+      alert("فشل التحقق: " + (e?.message || e));
+    }
+    setUpdatingId(null);
+  };
+
+  const processRefund = async (id: string, action: "approve" | "reject") => {
+    const promptText = action === "approve"
+      ? "موافقة على استرجاع المبلغ — سنحاول تنفيذه عبر بوابة الدفع تلقائياً.\nملاحظات (اختياري):"
+      : "رفض طلب الاسترجاع.\nسبب الرفض (سيُعرض للعميل):";
+    const notes = window.prompt(promptText, "");
+    if (notes === null) return;
+    setUpdatingId(id);
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/store/orders/${id}/refund`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, notes, try_gateway: true }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "فشل");
+      if (action === "approve") {
+        if (j.method === "gateway_auto") {
+          alert("✅ تم الاسترجاع تلقائياً عبر بوابة الدفع");
+        } else {
+          alert("⚠️ تم تسجيل الاسترجاع كـ يدوي" + (j.gateway_error ? `\n\nخطأ البوابة: ${j.gateway_error}\n\nنفّذ الاسترجاع يدوياً من لوحة البوابة.` : ""));
+        }
+      } else {
+        alert("✅ تم رفض الطلب");
+      }
+      await loadOrders();
+    } catch (e: any) {
+      alert("فشل: " + (e?.message || e));
+    }
+    setUpdatingId(null);
   };
 
   const addOrder = async () => {
@@ -588,8 +650,13 @@ export default function StoreAdminPage() {
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="font-semibold text-ink text-sm">{p.name}</span>
                           <span className={`rounded-full border px-2 py-0.5 text-xs ${p.is_active ? "border-line2 bg-panel2 text-ink" : "border-slate-600 bg-slate-700/50 text-muted"}`}>
-                            {p.is_active ? "نشط" : "متوقف"}
+                              {p.is_active ? "نشط" : "متوقف"}
                           </span>
+                          {p.is_secret && (
+                            <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-xs font-bold text-purple-400">
+                              🔒 سري
+                            </span>
+                          )}
                           {p.streampay_product_id ? (
                             <span className="inline-flex items-center gap-1 rounded-full border border-blue-500/20 bg-blue-500/5 px-2 py-0.5 text-xs text-blue-400">
                               <Zap size={9} />
@@ -698,6 +765,18 @@ export default function StoreAdminPage() {
                           />
                         </div>
                       </div>
+                      <label className="flex items-center gap-2 cursor-pointer rounded-xl border border-line bg-bg px-3 py-2.5 hover:border-line2 transition-all">
+                        <input
+                          type="checkbox"
+                          checked={!!pForm.is_secret}
+                          onChange={e => setPForm(s => ({ ...s, is_secret: e.target.checked }))}
+                          className="h-4 w-4"
+                        />
+                        <div className="flex-1">
+                          <div className="text-xs font-bold text-ink">منتج سري (admin only)</div>
+                          <div className="text-[10px] text-muted2">يظهر في المتجر فقط عند البحث عن "admin"</div>
+                        </div>
+                      </label>
                       {editProduct?.streampay_product_id ? (
                         <div>
                           <label className="block text-xs text-muted mb-1">StreamPay Product ID</label>
@@ -873,8 +952,56 @@ export default function StoreAdminPage() {
                             لم يُرفع إيصال التحويل بعد
                           </div>
                         )}
+                        {/* Refund details */}
+                        {o.refund_status && (
+                          <div className="mt-2 rounded-lg border border-line bg-panel2 p-2.5 text-xs">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="font-bold text-ink">طلب استرجاع:</span>
+                              <span className={
+                                o.refund_status === "requested" ? "rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2 py-0.5 text-yellow-400 font-bold" :
+                                o.refund_status === "refunded" ? "rounded-full border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-green-400 font-bold" :
+                                o.refund_status === "rejected" ? "rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-red-400 font-bold" :
+                                "rounded-full border border-line2 bg-bg px-2 py-0.5 text-ink font-bold"
+                              }>
+                                {o.refund_status === "requested" ? "قيد المراجعة" :
+                                 o.refund_status === "refunded" ? `تم الاسترجاع (${o.refund_method === "gateway_auto" ? "تلقائي" : "يدوي"})` :
+                                 o.refund_status === "rejected" ? "مرفوض" : o.refund_status}
+                              </span>
+                              {o.refund_requested_at && <span className="text-muted2">طُلب: {fmt(o.refund_requested_at)}</span>}
+                            </div>
+                            {o.refund_reason && <div className="text-ink/80 mt-1"><b>سبب العميل:</b> {o.refund_reason}</div>}
+                            {o.refund_admin_notes && <div className="text-ink/80 mt-1"><b>ملاحظات الإدارة:</b> {o.refund_admin_notes}</div>}
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap">
+                        {o.refund_status === "requested" && (
+                          <>
+                            <button
+                              disabled={updatingId === o.id}
+                              onClick={() => processRefund(o.id, "approve")}
+                              className="rounded-lg border border-green-500/30 px-2.5 py-1.5 text-xs text-green-400 hover:bg-green-500/10 disabled:opacity-50 transition-all"
+                            >
+                              ✓ موافقة استرجاع
+                            </button>
+                            <button
+                              disabled={updatingId === o.id}
+                              onClick={() => processRefund(o.id, "reject")}
+                              className="rounded-lg border border-red-500/30 px-2.5 py-1.5 text-xs text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-all"
+                            >
+                              ✗ رفض
+                            </button>
+                          </>
+                        )}
+                        {o.status === "paid" && (o.payment_gateway === "tamara" || o.payment_gateway === "streampay") && (
+                          <button
+                            disabled={updatingId === o.id}
+                            onClick={() => verifyPayment(o.id)}
+                            className="rounded-lg border border-blue-500/30 px-2.5 py-1.5 text-xs text-blue-400 hover:bg-blue-500/10 disabled:opacity-50 transition-all"
+                          >
+                            🔍 تحقق من البوابة
+                          </button>
+                        )}
                         {o.status === "pending" && (
                           <>
                             <button

@@ -107,6 +107,21 @@ export default function StorePage() {
       .then(r => r.json())
       .then(j => { setProducts(j.products || []); setLoading(false); })
       .catch(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Re-fetch with admin key when user searches for "adm" → reveals secret products
+  useEffect(() => {
+    const q = search.trim().toLowerCase();
+    if (q.includes("adm")) {
+      fetch(`/api/store/products?key=admin&t=${Date.now()}`, { cache: "no-store" })
+        .then(r => r.json())
+        .then(j => setProducts(j.products || []))
+        .catch(() => {});
+    }
+  }, [search]);
+
+  useEffect(() => {
 
     fetch(`/api/store/settings?t=${Date.now()}`, { cache: "no-store" })
       .then(r => r.json())
@@ -116,7 +131,8 @@ export default function StorePage() {
       })
       .catch(() => {});
 
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined") { // legacy ref param
+
       const params = new URLSearchParams(window.location.search);
       const ref = params.get("ref");
       if (ref) {

@@ -86,3 +86,11 @@ export async function getPayment(payment_id: string) {
 export async function getInvoice(invoice_id: string) {
   return sp("GET", `/api/v2/invoices/${invoice_id}`);
 }
+
+export async function refundStreamPayPayment(payment_id: string, amount: number, reason?: string) {
+  return sp("POST", `/api/v2/payments/${payment_id}/refunds`, {
+    amount,
+    currency: "SAR",
+    reason: reason || "Customer requested refund",
+  });
+}

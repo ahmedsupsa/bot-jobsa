@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   const _denied_ = enforcePermission("store"); if (_denied_) return _denied_;
   const supabase = freshClient();
   const body = await req.json();
-  const { name, description, price, duration_days } = body;
+  const { name, description, price, duration_days, is_secret } = body;
   if (!name?.trim() || !price || !duration_days) {
     return NextResponse.json({ ok: false, error: "الاسم والسعر وعدد الأيام مطلوبة" }, { status: 400 });
   }
@@ -53,6 +53,7 @@ export async function POST(req: Request) {
       price: parseFloat(price),
       duration_days: parseInt(duration_days),
       streampay_product_id,
+      is_secret: !!is_secret,
     })
     .select()
     .single();
@@ -64,7 +65,7 @@ export async function PUT(req: Request) {
   const _denied_ = enforcePermission("store"); if (_denied_) return _denied_;
   const supabase = freshClient();
   const body = await req.json();
-  const { id, name, description, price, duration_days, streampay_product_id, is_active } = body;
+  const { id, name, description, price, duration_days, streampay_product_id, is_active, is_secret } = body;
   if (!id) return NextResponse.json({ ok: false, error: "id مطلوب" }, { status: 400 });
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = name;
@@ -73,6 +74,7 @@ export async function PUT(req: Request) {
   if (duration_days !== undefined) updates.duration_days = parseInt(duration_days);
   if (streampay_product_id !== undefined) updates.streampay_product_id = streampay_product_id;
   if (is_active !== undefined) updates.is_active = is_active;
+  if (is_secret !== undefined) updates.is_secret = !!is_secret;
   const { error } = await supabase.from("store_products").update(updates).eq("id", id);
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

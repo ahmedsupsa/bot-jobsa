@@ -6,7 +6,7 @@ export const revalidate = 0;
 export const fetchCache = "force-no-store";
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(req: Request) {
   const url = process.env.SUPABASE_URL || "";
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
 
@@ -17,11 +17,14 @@ export async function GET() {
     );
   }
 
+  const { searchParams } = new URL(req.url);
+  const includeSecret = searchParams.get("key") === "admin";
+
   const supabase = createClient(url, key, { auth: { persistSession: false } });
 
   const { data, error } = await supabase
     .from("store_products")
-    .select("id, name, description, price, duration_days, streampay_product_id, is_active, created_at")
+    .select("id, name, description, price, duration_days, streampay_product_id, is_active, is_secret, created_at")
     .order("duration_days", { ascending: true });
 
   if (error) {
@@ -31,9 +34,10 @@ export async function GET() {
     );
   }
 
-  // Filter active in JS (PostgREST .eq("is_active", true) is unreliable in this stack)
+  // Filter active + (optionally) hide secret products from non-admin search
   const products = (data || [])
     .filter((p) => p.is_active === true)
+    .filter((p) => includeSecret ? true : p.is_secret !== true)
     .map(({ is_active: _ia, created_at: _ca, ...rest }) => rest);
 
   return NextResponse.json(

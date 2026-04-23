@@ -135,6 +135,20 @@ export async function cancelTamaraOrder(tamaraOrderId: string) {
   });
 }
 
+/* ─── Refund a captured order ─── */
+export async function refundTamaraOrder(tamaraOrderId: string, amount: number, comment?: string) {
+  const amountStr = Number(amount).toFixed(2);
+  return tamaraFetch("POST", `/orders/${tamaraOrderId}/refunds`, {
+    refunds: [
+      {
+        order_item_reference_id: tamaraOrderId,
+        total_amount: { amount: amountStr, currency: "SAR" },
+        comment: comment || "استرجاع بناءً على طلب العميل",
+      },
+    ],
+  });
+}
+
 /* ─── Verify webhook signature ─── */
 export function verifyWebhookSignature(
   body: string,
