@@ -71,13 +71,13 @@ export async function GET(req: Request) {
   const supabase = freshClient();
   const { data: rows } = await supabase
     .from("user_settings")
-    .select("smtp_email,smtp_host,smtp_port,smtp_secure,email_connected,last_email_test_at")
+    .select("smtp_email,smtp_host,smtp_port,smtp_secure,email_connected,last_email_test_at,email")
     .eq("user_id", uid)
     .limit(1);
 
   const s = (rows?.[0] || {}) as Record<string, any>;
   return NextResponse.json({
-    smtp_email: s.smtp_email || "",
+    smtp_email: s.smtp_email || s.email || "",
     smtp_host: s.smtp_host || "smtp.gmail.com",
     smtp_port: s.smtp_port || 465,
     smtp_secure: s.smtp_secure !== false,
@@ -101,7 +101,6 @@ export async function POST(req: Request) {
   }
 
   const encKey = process.env.SMTP_ENCRYPTION_KEY || "";
-  console.log("[smtp] encKey length:", encKey.length);
   if (!encKey) {
     return NextResponse.json({ error: "خطأ في الإعدادات — تواصل مع الدعم" }, { status: 500 });
   }
