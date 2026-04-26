@@ -59,6 +59,7 @@ NEXT_PUBLIC_VAPID_PUBLIC_KEY = "BOjShV12g7N91R_yg2VlvKZe9s_0U5qBHYek8IkZPDzIRCN-
 VAPID_PRIVATE_KEY = "WYQrf3rzxY_o9hRaEdfhqQftDv5RHDAqGfvHqah2yCA"
 VAPID_EMAIL = "mailto:admin@jobbots.app"
 TAMARA_SANDBOX = "false"
+SMTP_ENCRYPTION_KEY = "45964d76280c76ecce20c17b9d00622ce387cfa3089292e23a1437f8f6c1a64e"
 
 [postMerge]
 path = "scripts/post-merge.sh"

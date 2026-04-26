@@ -6,13 +6,14 @@ import { PushPermissionBanner } from "@/components/PushPermissionBanner";
 import Image from "next/image";
 import {
   Home, ClipboardList, FileText, User, LogOut,
-  MessageCircle, TrendingUp, Sun, Moon, Receipt,
+  MessageCircle, TrendingUp, Sun, Moon, Receipt, Mail,
 } from "lucide-react";
 
 const NAV = [
   { href: "/portal/dashboard",    icon: Home,          label: "الرئيسية"       },
   { href: "/portal/applications", icon: ClipboardList, label: "التقديمات"      },
   { href: "/portal/cv",           icon: FileText,      label: "سيرتي"          },
+  { href: "/portal/email",        icon: Mail,          label: "ربط الإيميل"    },
   { href: "/portal/billing",      icon: Receipt,       label: "الفواتير"       },
   { href: "/portal/profile",      icon: User,          label: "حسابي"          },
   { href: "/portal/affiliate",    icon: TrendingUp,    label: "برنامج الربح"   },
