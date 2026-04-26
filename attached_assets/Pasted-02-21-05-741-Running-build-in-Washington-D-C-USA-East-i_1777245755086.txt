@@ -1,0 +1,45 @@
+02:21:05.741 Running build in Washington, D.C., USA (East) – iad1
+02:21:05.742 Build machine configuration: 2 cores, 8 GB
+02:21:05.863 Cloning github.com/ahmedsupsa/bot-jobsa (Branch: main, Commit: 4df0dfa)
+02:21:06.661 Cloning completed: 798.000ms
+02:21:06.834 Restored build cache from previous deployment (2PQj65SAspwzR978fi6zfehpZ7uq)
+02:21:07.036 Running "vercel build"
+02:21:07.764 Vercel CLI 51.6.1
+02:21:08.054 Running "install" command: `npm install`...
+02:21:12.680 
+02:21:12.681 added 2 packages, and audited 233 packages in 4s
+02:21:12.681 
+02:21:12.682 31 packages are looking for funding
+02:21:12.682   run `npm fund` for details
+02:21:12.727 
+02:21:12.728 4 vulnerabilities (3 moderate, 1 high)
+02:21:12.728 
+02:21:12.728 To address all issues (including breaking changes), run:
+02:21:12.728   npm audit fix --force
+02:21:12.728 
+02:21:12.729 Run `npm audit` for details.
+02:21:12.767 Detected Next.js version: 14.2.35
+02:21:12.768 Running "npm run build"
+02:21:12.874 
+02:21:12.874 > admin-frontend@1.0.0 build
+02:21:12.874 > next build
+02:21:12.874 
+02:21:13.798   ▲ Next.js 14.2.35
+02:21:13.799 
+02:21:13.824    Creating an optimized production build ...
+02:21:31.530  ✓ Compiled successfully
+02:21:31.531    Linting and checking validity of types ...
+02:21:43.797 Failed to compile.
+02:21:43.798 
+02:21:43.798 ./app/api/portal/smtp/route.ts:59:19
+02:21:43.798 Type error: Property 'smtp_email' does not exist on type '{}'.
+02:21:43.798 
+02:21:43.798 [0m [90m 57 |[39m   [36mconst[39m s [33m=[39m rows[33m?[39m[33m.[39m[[35m0[39m] [33m||[39m {}[33m;[39m[0m
+02:21:43.798 [0m [90m 58 |[39m   [36mreturn[39m [33mNextResponse[39m[33m.[39mjson({[0m
+02:21:43.798 [0m[31m[1m>[22m[39m[90m 59 |[39m     smtp_email[33m:[39m s[33m.[39msmtp_email [33m||[39m [32m""[39m[33m,[39m[0m
+02:21:43.799 [0m [90m    |[39m                   [31m[1m^[22m[39m[0m
+02:21:43.799 [0m [90m 60 |[39m     smtp_host[33m:[39m s[33m.[39msmtp_host [33m||[39m [32m"smtp.gmail.com"[39m[33m,[39m[0m
+02:21:43.799 [0m [90m 61 |[39m     smtp_port[33m:[39m s[33m.[39msmtp_port [33m||[39m [35m465[39m[33m,[39m[0m
+02:21:43.799 [0m [90m 62 |[39m     smtp_secure[33m:[39m s[33m.[39msmtp_secure [33m!==[39m [36mfalse[39m[33m,[39m[0m
+02:21:43.838 Next.js build worker exited with code: 1 and signal: null
+02:21:43.866 Error: Command "npm run build" exited with 1

@@ -54,7 +54,7 @@ export async function GET(req: Request) {
     .eq("user_id", uid)
     .limit(1);
 
-  const s = rows?.[0] || {};
+  const s = (rows?.[0] || {}) as Record<string, any>;
   return NextResponse.json({
     smtp_email: s.smtp_email || "",
     smtp_host: s.smtp_host || "smtp.gmail.com",
