@@ -48,6 +48,9 @@ export async function GET(req: Request) {
     email: settings.email || "",
     sender_email_alias: settings.sender_email_alias || "",
     applications_count: apps_count || 0,
+    // SMTP
+    email_connected: settings.email_connected ?? false,
+    smtp_email: settings.smtp_email || "",
   });
   if (refreshedToken) res.headers.set("X-Refresh-Token", refreshedToken);
   return res;

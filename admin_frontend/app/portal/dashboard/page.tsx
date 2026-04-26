@@ -13,6 +13,7 @@ interface UserData {
   subscription_active: boolean; days_left: number;
   subscription_ends_at: string; email: string;
   sender_email_alias: string; applications_count: number;
+  email_connected: boolean; smtp_email: string;
 }
 interface Application { id: string; job_title: string; applied_at: string; }
 
@@ -185,12 +186,12 @@ export default function Dashboard() {
   const stats = [
     { icon: <Send size={20} strokeWidth={1.5} />, value: user.applications_count, label: "تقديمات مرسلة", key: "apps" },
     { icon: <CalendarDays size={20} strokeWidth={1.5} />, value: user.days_left, label: "أيام الاشتراك", key: "days" },
-    { icon: <Mail size={20} strokeWidth={1.5} />, value: user.email ? "مربوط" : "—", label: "الإيميل", key: "email" },
+    { icon: <Mail size={20} strokeWidth={1.5} />, value: user.email_connected ? "مربوط ✓" : "—", label: "الإيميل", key: "email" },
   ];
 
   const quickLinks = [
     { icon: <FileText size={18} strokeWidth={1.5} />, label: "رفع السيرة الذاتية", sub: "PDF أو صورة", href: "/portal/cv" },
-    { icon: <Mail size={18} strokeWidth={1.5} />, label: "ربط الإيميل", sub: user.email || "غير مربوط", href: "/portal/settings" },
+    { icon: <Mail size={18} strokeWidth={1.5} />, label: "ربط الإيميل", sub: user.email_connected ? (user.smtp_email || "مربوط ✓") : "غير مربوط", href: "/portal/email" },
     { icon: <User size={18} strokeWidth={1.5} />, label: "بياناتي", sub: "الاسم والجوال", href: "/portal/profile" },
     { icon: <ClipboardList size={18} strokeWidth={1.5} />, label: "جميع التقديمات", sub: `${user.applications_count} تقديم`, href: "/portal/applications" },
   ];
@@ -234,13 +235,13 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Alert: no email */}
-        {!user.email && (
-          <div style={s.alert} onClick={() => router.push("/portal/settings")}>
+        {/* Alert: email not connected */}
+        {!user.email_connected && (
+          <div style={s.alert} onClick={() => router.push("/portal/email")}>
             <AlertCircle size={20} color="#f59e0b" strokeWidth={1.5} />
             <div>
-              <p style={s.alertTitle}>ربط الإيميل مطلوب للتقديم</p>
-              <p style={s.alertSub}>أضف إيميلك حتى يتمكن النظام من إرسال طلبات التوظيف باسمك</p>
+              <p style={s.alertTitle}>ربط الإيميل مطلوب للتقديم التلقائي</p>
+              <p style={s.alertSub}>أضف بريدك وكلمة مرور التطبيق حتى يُرسل النظام طلبات التوظيف باسمك</p>
             </div>
             <ArrowRight size={16} color="#a16207" style={{ marginRight: "auto" }} />
           </div>
