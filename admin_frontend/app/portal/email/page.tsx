@@ -1,19 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { PortalShell } from "@/components/portal-shell";
 import { useTheme } from "@/contexts/theme-context";
 import { portalFetch } from "@/lib/portal-auth";
 import {
-  Mail, Lock, Server, CheckCircle, XCircle, Loader2,
-  Send, Info, Eye, EyeOff, RefreshCw, Wifi,
+  Mail, Lock, CheckCircle, XCircle, Loader2,
+  Send, Info, Eye, EyeOff,
 } from "lucide-react";
 
 interface SmtpStatus {
   smtp_email: string;
-  smtp_host: string;
-  smtp_port: number;
-  smtp_secure: boolean;
   email_connected: boolean;
   last_email_test_at: string | null;
 }
@@ -21,23 +17,18 @@ interface SmtpStatus {
 export default function EmailPage() {
   const { theme } = useTheme();
   const dark = theme === "dark";
-  const router = useRouter();
 
   const [status, setStatus] = useState<SmtpStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [smtpEmail, setSmtpEmail] = useState("");
   const [appPassword, setAppPassword] = useState("");
-  const [smtpHost, setSmtpHost] = useState("smtp.gmail.com");
-  const [smtpPort, setSmtpPort] = useState(465);
-  const [smtpSecure, setSmtpSecure] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [testMsg, setTestMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const t = {
     bg: dark ? "#0a0a0a" : "#f4f4f5",
@@ -59,9 +50,6 @@ export default function EmailPage() {
       .then((d: SmtpStatus) => {
         setStatus(d);
         if (d.smtp_email) setSmtpEmail(d.smtp_email);
-        if (d.smtp_host) setSmtpHost(d.smtp_host);
-        if (d.smtp_port) setSmtpPort(d.smtp_port);
-        setSmtpSecure(d.smtp_secure);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -76,9 +64,6 @@ export default function EmailPage() {
         body: JSON.stringify({
           smtp_email: smtpEmail,
           app_password: appPassword,
-          smtp_host: smtpHost,
-          smtp_port: smtpPort,
-          smtp_secure: smtpSecure,
         }),
       });
       const d = await r.json();
@@ -251,77 +236,6 @@ export default function EmailPage() {
               <p style={{ margin: "6px 0 0", fontSize: 11, color: t.text3 }}>
                 تُشفَّر وتُحفظ بشكل آمن — لا يمكن قراءتها لاحقاً
               </p>
-            </div>
-
-            {/* إعدادات متقدمة */}
-            <div>
-              <button
-                onClick={() => setShowAdvanced(v => !v)}
-                style={{
-                  background: "none", border: "none", cursor: "pointer",
-                  color: t.blue, fontSize: 13, fontWeight: 600, padding: 0,
-                  display: "flex", alignItems: "center", gap: 4,
-                }}
-              >
-                <Server size={14} />
-                {showAdvanced ? "إخفاء الإعدادات المتقدمة" : "إعدادات SMTP المتقدمة"}
-              </button>
-
-              {showAdvanced && (
-                <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text, marginBottom: 6 }}>خادم SMTP</label>
-                    <input
-                      type="text"
-                      value={smtpHost}
-                      onChange={e => setSmtpHost(e.target.value)}
-                      dir="ltr"
-                      style={{
-                        width: "100%", boxSizing: "border-box",
-                        padding: "10px 14px",
-                        background: t.input, border: `1px solid ${t.inputBorder}`,
-                        borderRadius: 10, color: t.text, fontSize: 13, outline: "none",
-                      }}
-                    />
-                  </div>
-                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text, marginBottom: 6 }}>المنفذ</label>
-                      <input
-                        type="number"
-                        value={smtpPort}
-                        onChange={e => setSmtpPort(Number(e.target.value))}
-                        dir="ltr"
-                        style={{
-                          width: "100%", boxSizing: "border-box",
-                          padding: "10px 14px",
-                          background: t.input, border: `1px solid ${t.inputBorder}`,
-                          borderRadius: 10, color: t.text, fontSize: 13, outline: "none",
-                        }}
-                      />
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 22 }}>
-                      <label style={{ fontSize: 13, color: t.text, fontWeight: 600 }}>SSL</label>
-                      <div
-                        onClick={() => setSmtpSecure(v => !v)}
-                        style={{
-                          width: 44, height: 24, borderRadius: 12,
-                          background: smtpSecure ? t.green : t.border,
-                          cursor: "pointer", position: "relative", transition: "background 0.2s",
-                        }}
-                      >
-                        <div style={{
-                          position: "absolute", top: 3,
-                          right: smtpSecure ? 3 : undefined,
-                          left: smtpSecure ? undefined : 3,
-                          width: 18, height: 18, borderRadius: 9,
-                          background: "#fff", transition: "all 0.2s",
-                        }} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* رسالة الحفظ */}

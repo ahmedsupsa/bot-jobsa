@@ -43,6 +43,27 @@ function decryptAES(encrypted: string, keyHex: string): string {
 
 const EMAIL_RE = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
 
+function smtpSettingsFromEmail(email: string): { smtp_host: string; smtp_port: number; smtp_secure: boolean } {
+  const domain = email.split("@")[1]?.toLowerCase() || "";
+  if (domain === "gmail.com" || domain === "googlemail.com") {
+    return { smtp_host: "smtp.gmail.com", smtp_port: 465, smtp_secure: true };
+  }
+  if (["outlook.com", "hotmail.com", "live.com", "msn.com"].includes(domain)) {
+    return { smtp_host: "smtp.office365.com", smtp_port: 587, smtp_secure: false };
+  }
+  if (domain === "yahoo.com" || domain === "ymail.com") {
+    return { smtp_host: "smtp.mail.yahoo.com", smtp_port: 587, smtp_secure: false };
+  }
+  if (domain === "icloud.com" || domain === "me.com" || domain === "mac.com") {
+    return { smtp_host: "smtp.mail.me.com", smtp_port: 587, smtp_secure: false };
+  }
+  if (domain === "zoho.com") {
+    return { smtp_host: "smtp.zoho.com", smtp_port: 465, smtp_secure: true };
+  }
+  // generic fallback: try port 587 STARTTLS with the mail. subdomain
+  return { smtp_host: `smtp.${domain}`, smtp_port: 587, smtp_secure: false };
+}
+
 export async function GET(req: Request) {
   const uid = await getUserId(req);
   if (!uid) return NextResponse.json({ error: "غير مخوّل" }, { status: 401 });
@@ -70,7 +91,7 @@ export async function POST(req: Request) {
   if (!uid) return NextResponse.json({ error: "غير مخوّل" }, { status: 401 });
 
   const body = await req.json();
-  const { smtp_email, app_password, smtp_host, smtp_port, smtp_secure } = body;
+  const { smtp_email, app_password } = body;
 
   if (!smtp_email || !EMAIL_RE.test(smtp_email)) {
     return NextResponse.json({ error: "البريد الإلكتروني غير صالح" }, { status: 400 });
@@ -85,6 +106,7 @@ export async function POST(req: Request) {
   }
 
   const encrypted = encryptAES(app_password, encKey);
+  const { smtp_host, smtp_port, smtp_secure } = smtpSettingsFromEmail(smtp_email.trim().toLowerCase());
 
   const supabase = freshClient();
   const { error } = await supabase
@@ -93,9 +115,9 @@ export async function POST(req: Request) {
       {
         user_id: uid,
         smtp_email: smtp_email.trim().toLowerCase(),
-        smtp_host: smtp_host || "smtp.gmail.com",
-        smtp_port: Number(smtp_port) || 465,
-        smtp_secure: smtp_secure !== false,
+        smtp_host,
+        smtp_port,
+        smtp_secure,
         smtp_app_password_encrypted: encrypted,
         email_connected: false,
         updated_at: new Date().toISOString(),
