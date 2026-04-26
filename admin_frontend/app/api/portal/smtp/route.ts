@@ -101,6 +101,7 @@ export async function POST(req: Request) {
   }
 
   const encKey = process.env.SMTP_ENCRYPTION_KEY || "";
+  console.log("[smtp] encKey length:", encKey.length);
   if (!encKey) {
     return NextResponse.json({ error: "خطأ في الإعدادات — تواصل مع الدعم" }, { status: 500 });
   }
