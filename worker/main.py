@@ -598,6 +598,14 @@ async def _record_run(client: httpx.AsyncClient) -> None:
 
 
 async def main() -> None:
+    # ─── الـ Worker الرئيسي هو Supabase Edge Function عبر pg_cron ───
+    # هذا الـ worker موقوف — الإرسال يتم عبر Supabase Edge Function
+    if os.getenv("DISABLE_PYTHON_WORKER", "true").lower() in ("true", "1", "yes"):
+        logger.info("⏸️  Python worker موقوف — الـ Edge Function في Supabase هي المسؤولة عن الإرسال")
+        while True:
+            await asyncio.sleep(3600)  # ينتظر بدون أي عمل
+        return
+
     logger.info("🚀 Auto-Apply Worker بدأ (كل %d ثانية) — الإرسال عبر SMTP", CYCLE_INTERVAL)
     while True:
         start_ts = datetime.now(timezone.utc)

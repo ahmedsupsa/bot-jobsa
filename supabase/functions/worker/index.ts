@@ -1,14 +1,14 @@
 // Supabase Edge Function — Auto Apply Worker
 // يعمل تلقائياً كل 30 دقيقة عبر pg_cron
+// الإرسال عبر SMTP الشخصي للمستخدم — مستقل تماماً عن Replit
 
-const SUPABASE_URL   = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
-const SUPABASE_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-const RESEND_FROM    = Deno.env.get("RESEND_FROM_EMAIL") ?? "";
-const RESEND_NAME    = Deno.env.get("RESEND_FROM_NAME") ?? "Jobbots";
-const GEMINI_KEY     = Deno.env.get("GEMINI_API_KEY") ?? "";
-const WORKER_SECRET  = Deno.env.get("WORKER_SECRET") ?? "";
-const APP_URL        = (Deno.env.get("APP_URL") ?? "").replace(/\/$/, "");
+import nodemailer from "npm:nodemailer@6";
+
+const SUPABASE_URL  = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
+const SUPABASE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const GEMINI_KEY    = Deno.env.get("GEMINI_API_KEY") ?? "";
+const WORKER_SECRET = Deno.env.get("WORKER_SECRET") ?? "";
+const ENC_KEY_HEX   = Deno.env.get("SMTP_ENCRYPTION_KEY") ?? "";  // 64 hex chars = 32 bytes AES-256
 
 const SB = {
   apikey: SUPABASE_KEY,
@@ -17,7 +17,9 @@ const SB = {
   Prefer: "return=representation",
 };
 
-// ─── Supabase helpers ─────────────────────────────────────────────────────────
+const EMAIL_RE = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+
+// ─── Supabase helpers ──────────────────────────────────────────────────────────
 
 async function sbGet(table: string, params: Record<string, string> = {}) {
   const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
@@ -43,12 +45,31 @@ async function sbInsert(table: string, data: Record<string, unknown>) {
   });
 }
 
+// ─── AES-256-GCM فك التشفير (Web Crypto) ─────────────────────────────────────
+
+async function decryptAES(encrypted: string, keyHex: string): Promise<string> {
+  const parts = encrypted.split(":");
+  if (parts.length !== 2) throw new Error("تنسيق التشفير غير صحيح");
+
+  const keyBytes = new Uint8Array(keyHex.match(/.{2}/g)!.map((b) => parseInt(b, 16)));
+  const iv       = Uint8Array.from(atob(parts[0]), (c) => c.charCodeAt(0));
+  const data     = Uint8Array.from(atob(parts[1]), (c) => c.charCodeAt(0)); // tag(16) + ciphertext
+
+  const cryptoKey = await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, cryptoKey, data);
+  return new TextDecoder().decode(plain);
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function stripEmojis(text: string): string {
   return (text ?? "")
     .replace(/[\u{1F300}-\u{1FAFF}\u{1F1E6}-\u{1F1FF}\u2600-\u27BF]+/gu, "")
     .replace(/\s+/g, " ").trim();
+}
+
+function isValidEmail(addr: string): boolean {
+  return EMAIL_RE.test((addr ?? "").trim());
 }
 
 function isActiveSubscription(user: Record<string, unknown>): boolean {
@@ -93,17 +114,19 @@ async function generateCoverLetter(
   if (!GEMINI_KEY) return fallback;
 
   const prompt =
-    `اكتب رسالة تغطية مختصرة (3-4 جمل) باللغة ${lang === "ar" ? "العربية" : "الإنجليزية"} ` +
+    `اقرأ السيرة الذاتية واكتب رسالة تغطية مختصرة (3-4 جمل) باللغة ${lang === "ar" ? "العربية" : "الإنجليزية"} ` +
     `للتقديم على وظيفة: ${jobTitle}` +
     (company ? ` في شركة ${company}` : "") +
-    (desc ? `. تفاصيل الوظيفة: ${desc.slice(0, 300)}` : "") +
-    `. الاسم: ${name}. لا تضف إيموجي. فقط نص الرسالة.`;
+    (desc ? `. تفاصيل الوظيفة: ${desc.slice(0, 400)}` : "") +
+    `. الاسم: ${name}. بدون إيموجي. النص فقط.`;
 
   try {
     const r = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_KEY}`,
-      { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
+      {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      }
     );
     const data = await r.json();
     return (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim() || fallback;
@@ -112,79 +135,94 @@ async function generateCoverLetter(
   }
 }
 
-// ─── Email Builder ────────────────────────────────────────────────────────────
+// ─── بناء HTML للإيميل ────────────────────────────────────────────────────────
 
-function buildEmailHtml(name: string, phone: string, jobTitle: string, company: string, cover: string, lang: string) {
+function buildEmailHtml(name: string, phone: string, jobTitle: string, company: string, cover: string, lang: string): string {
   const isAr = lang === "ar";
-  const dir = isAr ? "rtl" : "ltr";
-  const companyHtml = company ? `<p><strong>${isAr ? "الشركة" : "Company"}:</strong> ${company}</p>` : "";
+  const dir  = isAr ? "rtl" : "ltr";
+  const align = isAr ? "right" : "left";
+  const coverHtml = cover.replace(/\n/g, "<br>");
+  const companyRow = company
+    ? `<tr><td style="color:#666;padding:4px 10px 4px 0;">${isAr ? "الشركة" : "Company"}</td><td style="color:#111;font-weight:600;">${company}</td></tr>`
+    : "";
   return `<!DOCTYPE html><html dir="${dir}" lang="${isAr ? "ar" : "en"}">
-<head><meta charset="UTF-8"></head>
-<body style="font-family:'Segoe UI',sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f9f9f9;direction:${dir};text-align:${isAr ? "right" : "left"};">
-<div style="background:#fff;padding:24px;border-radius:8px;">
-<h2 style="color:#333;margin:0 0 12px;">${isAr ? "طلب توظيف" : "Job Application"} — ${jobTitle}</h2>
-<p style="line-height:1.9;color:#2c2c2c;">${cover.replace(/\n/g, "<br>")}</p>
-<hr style="border:none;border-top:1px solid #eee;margin:16px 0;">
-${companyHtml}
-<p><strong>${isAr ? "الاسم" : "Name"}:</strong> ${name}</p>
-<p><strong>${isAr ? "الجوال" : "Phone"}:</strong> ${phone}</p>
-</div></body></html>`;
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 16px;">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:8px;border:1px solid #ddd;">
+  <tr><td style="background:#1a1a1a;border-radius:8px 8px 0 0;padding:18px 28px;direction:${dir};text-align:${align};">
+    <p style="margin:0;color:#e5e5e5;font-size:13px;">${isAr ? "طلب توظيف" : "Job Application"} — <strong style="color:#fff;">${jobTitle}</strong></p>
+  </td></tr>
+  <tr><td style="padding:28px;direction:${dir};text-align:${align};">
+    <p style="margin:0 0 18px;color:#1a1a1a;font-size:15px;line-height:2.0;border-right:3px solid #1a1a1a;padding-right:14px;">${coverHtml}</p>
+    <hr style="border:none;border-top:1px solid #eee;margin:22px 0;">
+    <table cellpadding="0" cellspacing="0" style="font-size:13px;"><tbody>
+      <tr><td style="color:#666;padding:4px 10px 4px 0;">${isAr ? "الاسم" : "Name"}</td><td style="color:#111;font-weight:600;">${name}</td></tr>
+      <tr><td style="color:#666;padding:4px 10px 4px 0;">${isAr ? "الجوال" : "Phone"}</td><td style="color:#111;" dir="ltr">${phone}</td></tr>
+      ${companyRow}
+    </tbody></table>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
 }
 
-// ─── Send Email via Resend ────────────────────────────────────────────────────
+// ─── إرسال عبر SMTP ───────────────────────────────────────────────────────────
 
-async function sendEmail(opts: {
+async function sendSmtp(opts: {
+  smtpHost: string; smtpPort: number; smtpSecure: boolean;
+  smtpEmail: string; appPassword: string;
   to: string; subject: string; html: string;
-  replyTo: string; cc?: string;
-  cvBytes?: Uint8Array | null; cvName?: string;
-  fromName: string; fromEmail?: string;
-}) {
-  const btoa = (b: Uint8Array) => {
-    let s = "";
-    b.forEach((c) => (s += String.fromCharCode(c)));
-    return globalThis.btoa(s);
-  };
-  const from = opts.fromEmail || RESEND_FROM;
-  const payload: Record<string, unknown> = {
-    from: `${opts.fromName} <${from}>`,
-    to: [opts.to], subject: opts.subject, html: opts.html, reply_to: opts.replyTo,
-  };
-  if (opts.cc && opts.cc.toLowerCase() !== opts.to.toLowerCase()) payload.cc = [opts.cc];
-  if (opts.cvBytes && opts.cvName)
-    payload.attachments = [{ filename: opts.cvName, content: btoa(opts.cvBytes) }];
-
-  const r = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+  fromName: string; cvBytes?: Uint8Array | null; cvName?: string;
+}): Promise<void> {
+  const transporter = nodemailer.createTransport({
+    host: opts.smtpHost,
+    port: opts.smtpPort,
+    secure: opts.smtpSecure,
+    auth: { user: opts.smtpEmail, pass: opts.appPassword },
+    connectionTimeout: 20000,
+    greetingTimeout: 15000,
   });
-  if (![200, 201, 202].includes(r.status))
-    throw new Error(`Resend ${r.status}: ${await r.text()}`);
+
+  const mailOptions: Record<string, unknown> = {
+    from: `${opts.fromName} <${opts.smtpEmail}>`,
+    to: opts.to,
+    subject: opts.subject,
+    html: opts.html,
+    replyTo: opts.smtpEmail,
+  };
+
+  if (opts.cvBytes && opts.cvName) {
+    mailOptions.attachments = [{
+      filename: opts.cvName,
+      content: Buffer.from(opts.cvBytes),
+    }];
+  }
+
+  await transporter.sendMail(mailOptions);
 }
 
 // ─── Main Cycle ───────────────────────────────────────────────────────────────
 
-type Detail = { user: string; job: string; email: string; status: "sent" | "skipped" | "error"; reason?: string };
+type Detail = { user: string; job: string; status: "sent" | "skipped" | "error"; reason?: string };
 
 async function runCycle() {
   const errors: string[] = [];
   const details: Detail[] = [];
-  const achievers: Array<{ user_id: string; name: string; applied_count: number }> = [];
   let applied = 0, activeUsers = 0;
 
-  if (!RESEND_API_KEY || !RESEND_FROM) {
-    return { applied: 0, users: 0, errors: ["RESEND_API_KEY / RESEND_FROM_EMAIL غير معرّف"], details: [] };
+  if (!ENC_KEY_HEX) {
+    return { applied: 0, users: 0, errors: ["SMTP_ENCRYPTION_KEY غير معرّف في Supabase Secrets"], details: [] };
   }
 
   const jobsRaw = await sbGet("admin_jobs", { is_active: "eq.true" });
-  const jobs = jobsRaw.filter((j) => String(j.application_email ?? "").trim());
+  const jobs = jobsRaw.filter((j) => isValidEmail(String(j.application_email ?? "").trim()));
   if (!jobs.length) return { applied: 0, users: 0, errors: [], details: [] };
 
   const [usersRaw, fieldsRaw] = await Promise.all([sbGet("users"), sbGet("job_fields")]);
 
-  // ترتيب عشوائي في كل دورة — توزيع عادل ومنع الضغط
+  // ترتيب عشوائي — توزيع عادل بين المستخدمين
   const users = [...usersRaw].sort(() => Math.random() - 0.5);
-
   const today = new Date().toISOString().split("T")[0];
 
   for (const user of users) {
@@ -196,16 +234,37 @@ async function runCycle() {
     if (countToday >= 10) continue;
 
     const [settingsRows, cvRows, prefsRows] = await Promise.all([
-      sbGet("user_settings", { user_id: `eq.${uid}` }),
-      sbGet("user_cvs",      { user_id: `eq.${uid}` }),
+      sbGet("user_settings",        { user_id: `eq.${uid}` }),
+      sbGet("user_cvs",             { user_id: `eq.${uid}` }),
       sbGet("user_job_preferences", { user_id: `eq.${uid}` }),
     ]);
 
     const settings = settingsRows[0] ?? {};
-    const userEmail = String(settings.email ?? "").trim();
-    if (!userEmail) continue;
 
-    const senderAlias = String(settings.sender_email_alias ?? "").trim();
+    // التحقق من ربط الإيميل
+    if (!settings.email_connected) {
+      details.push({ user: String(user.full_name ?? uid), job: "—", status: "skipped", reason: "لم يربط إيميله بعد" });
+      continue;
+    }
+
+    const smtpEmail     = String(settings.smtp_email ?? "").trim();
+    const smtpHost      = String(settings.smtp_host  ?? "smtp.gmail.com");
+    const smtpPort      = Number(settings.smtp_port  ?? 465);
+    const smtpSecure    = settings.smtp_secure !== false;
+    const encryptedPw   = String(settings.smtp_app_password_encrypted ?? "").trim();
+
+    if (!smtpEmail || !encryptedPw) {
+      details.push({ user: String(user.full_name ?? uid), job: "—", status: "skipped", reason: "إعدادات SMTP ناقصة" });
+      continue;
+    }
+
+    let appPassword: string;
+    try {
+      appPassword = await decryptAES(encryptedPw, ENC_KEY_HEX);
+    } catch (e) {
+      errors.push(`${String(user.full_name ?? uid)}: فشل فك التشفير — ${String(e)}`);
+      continue;
+    }
 
     const cv = cvRows[0];
     if (!cv) continue;
@@ -214,14 +273,15 @@ async function runCycle() {
     const cvBytes = storagePath ? await downloadCv(storagePath) : null;
     const cvName  = String(cv.file_name ?? "cv.pdf");
 
-    const prefIds   = new Set(prefsRows.map((p) => String(p.job_field_id)).filter(Boolean));
+    const prefIds    = new Set(prefsRows.map((p) => String(p.job_field_id)).filter(Boolean));
     const fieldNames = fieldsRaw
       .filter((f) => prefIds.has(String(f.id)))
       .map((f) => String(f.name_ar ?? f.name_en ?? ""));
 
-    const name     = String(user.full_name ?? "المتقدم");
-    const phone    = String(user.phone ?? "");
-    const lang     = String(settings.application_language ?? "ar");
+    const name      = String(user.full_name ?? "المتقدم");
+    const phone     = String(user.phone ?? "");
+    const lang      = String(settings.application_language ?? "ar");
+    const template  = String(settings.template_type ?? "classic");
     const remaining = 10 - countToday;
     let sent = 0;
 
@@ -231,11 +291,11 @@ async function runCycle() {
       const jobId = String(job.id);
       const already = await sbCount("applications", { user_id: `eq.${uid}`, job_id: `eq.${jobId}` });
       if (already > 0) {
-        details.push({ user: name, job: String(job.title_ar ?? job.title_en ?? ""), email: String(job.application_email ?? ""), status: "skipped", reason: "قُدِّم سابقاً" });
+        details.push({ user: name, job: String(job.title_ar ?? job.title_en ?? ""), status: "skipped", reason: "قُدِّم سابقاً" });
         continue;
       }
       if (!jobMatchesUser(job, fieldNames)) {
-        details.push({ user: name, job: String(job.title_ar ?? job.title_en ?? ""), email: String(job.application_email ?? ""), status: "skipped", reason: "لا يطابق التفضيلات" });
+        details.push({ user: name, job: String(job.title_ar ?? job.title_en ?? ""), status: "skipped", reason: "لا يطابق التفضيلات" });
         continue;
       }
 
@@ -243,6 +303,16 @@ async function runCycle() {
       const jobTitle = String(job.title_ar ?? job.title_en ?? "وظيفة");
       const company  = String(job.company ?? "");
       const desc     = String(job.description_ar ?? job.description_en ?? "").slice(0, 1200);
+
+      // التحقق النهائي من صحة إيميل الوظيفة
+      if (!isValidEmail(toEmail)) {
+        details.push({ user: name, job: jobTitle, status: "skipped", reason: `إيميل غير صالح: ${toEmail}` });
+        continue;
+      }
+
+      const sentAt = new Date().toISOString();
+      let status: "sent" | "error" = "sent";
+      let errorReason: string | null = null;
 
       try {
         let cover = await generateCoverLetter(jobTitle, name, company, desc, lang);
@@ -252,34 +322,41 @@ async function runCycle() {
           ? `التقديم على وظيفة: ${stripEmojis(jobTitle)}`
           : `Application for: ${stripEmojis(jobTitle)}`;
 
-        const fromEmail = senderAlias || RESEND_FROM;
-        await sendEmail({ to: toEmail, subject, html, replyTo: userEmail, cc: userEmail, cvBytes, cvName, fromName: name, fromEmail });
-        await sbInsert("applications", {
-          user_id: uid, job_id: jobId, job_title: jobTitle,
-          applied_at: new Date().toISOString(),
+        await sendSmtp({
+          smtpHost, smtpPort, smtpSecure, smtpEmail, appPassword,
+          to: toEmail, subject, html, fromName: name, cvBytes, cvName,
         });
-        details.push({ user: name, job: jobTitle, email: toEmail, status: "sent" });
-        sent++; applied++;
 
-        // تأخير 5 ثوانٍ بين كل إيميل — يمنع الضغط ويحمي من فلاتر الـ spam
+        sent++; applied++;
+        details.push({ user: name, job: jobTitle, status: "sent" });
+        console.log(`[worker] ✅ ${name} → ${jobTitle} (${toEmail})`);
+
+        // تأخير 5 ثوانٍ بين كل إيميل — يحمي من فلاتر الـ spam
         await new Promise((r) => setTimeout(r, 5000));
       } catch (e) {
-        const msg = String(e);
-        errors.push(`${name} → ${jobTitle}: ${msg}`);
-        details.push({ user: name, job: jobTitle, email: toEmail, status: "error", reason: msg });
+        status = "error";
+        errorReason = String(e).slice(0, 500);
+        errors.push(`${name} → ${jobTitle}: ${errorReason}`);
+        details.push({ user: name, job: jobTitle, status: "error", reason: errorReason });
+        console.error(`[worker] ❌ ${name} → ${jobTitle}: ${errorReason}`);
       }
-    }
 
-    if (sent > 0) {
-      console.log(`[worker] ✅ ${name}: ${sent} تقديم`);
-      achievers.push({ user_id: uid, name, applied_count: sent });
+      // تسجيل التقديم في قاعدة البيانات (ناجح أو فاشل)
+      await sbInsert("applications", {
+        user_id: uid, job_id: jobId, job_title: jobTitle,
+        applied_at: sentAt, status, provider_used: "smtp",
+        error_reason: errorReason, sent_at: status === "sent" ? sentAt : null,
+      });
     }
   }
 
-  return { applied, users: activeUsers, errors, details, achievers };
+  return { applied, users: activeUsers, errors, details };
 }
 
-async function logRun(data: { applied_count: number; active_users: number; errors: string[]; duration_ms: number; status: string }) {
+async function logRun(data: {
+  applied_count: number; active_users: number;
+  errors: string[]; duration_ms: number; status: string;
+}) {
   try {
     await fetch(`${SUPABASE_URL}/rest/v1/worker_logs`, {
       method: "POST", headers: SB,
@@ -297,7 +374,7 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   }
 
-  console.log("[worker] بدء دورة التقديم التلقائي");
+  console.log("[worker] بدء دورة التقديم التلقائي عبر SMTP");
   const t0 = Date.now();
   try {
     const result = await runCycle();
@@ -305,24 +382,7 @@ Deno.serve(async (req: Request) => {
     const status = result.errors.length === 0 ? "success" : result.applied > 0 ? "partial" : "error";
     await logRun({ applied_count: result.applied, active_users: result.users, errors: result.errors, duration_ms, status });
 
-    // إرسال إشعارات الإنجاز للمستخدمين الذين تمت التقديمات لهم
-    if (result.achievers?.length && APP_URL) {
-      try {
-        await fetch(`${APP_URL}/api/internal/notify-achievements`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(WORKER_SECRET ? { Authorization: `Bearer ${WORKER_SECRET}` } : {}),
-          },
-          body: JSON.stringify({ results: result.achievers }),
-        });
-        console.log(`[worker] 🔔 إشعارات أُرسلت لـ ${result.achievers.length} مستخدم`);
-      } catch (e) {
-        console.warn("[worker] فشل إرسال إشعارات الإنجاز:", String(e));
-      }
-    }
-
-    console.log("[worker] انتهت الدورة:", JSON.stringify(result));
+    console.log("[worker] انتهت الدورة:", JSON.stringify({ applied: result.applied, users: result.users, errors: result.errors.length }));
     return new Response(JSON.stringify({ ok: true, ...result, duration_ms }), {
       headers: { "Content-Type": "application/json" },
     });
