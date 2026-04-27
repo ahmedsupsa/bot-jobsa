@@ -308,6 +308,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const updates: Record<string, unknown> = {};
   if (body.status !== undefined) updates.status = body.status;
   if (body.notes !== undefined) updates.notes = body.notes;
+  if (body.amount !== undefined) updates.amount = Number(body.amount);
   if (body.streampay_invoice_id !== undefined) updates.streampay_invoice_id = body.streampay_invoice_id;
   if (body.streampay_payment_id !== undefined) updates.streampay_payment_id = body.streampay_payment_id;
   if (body.status === "paid" && !body.paid_at) updates.paid_at = new Date().toISOString();

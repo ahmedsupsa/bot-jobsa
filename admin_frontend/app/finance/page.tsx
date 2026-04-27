@@ -56,6 +56,81 @@ function fmtDate(d?: string) {
   return new Date(d).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" });
 }
 
+async function patchOrderAmount(id: string, amount: number): Promise<boolean> {
+  try {
+    const r = await fetch(`/api/admin/store/orders/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ amount }),
+    });
+    const j = await r.json();
+    return j.ok === true;
+  } catch {
+    return false;
+  }
+}
+
+function AmountCell({ id, amount, onSaved }: { id: string; amount: number; onSaved: (id: string, newAmount: number) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(String(amount));
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    const n = parseFloat(val);
+    if (isNaN(n) || n < 0) { setVal(String(amount)); setEditing(false); return; }
+    if (n === amount) { setEditing(false); return; }
+    setSaving(true);
+    const ok = await patchOrderAmount(id, n);
+    setSaving(false);
+    if (ok) onSaved(id, n);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <input
+          autoFocus
+          type="number"
+          step="0.01"
+          min="0"
+          value={val}
+          onChange={e => setVal(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") { setVal(String(amount)); setEditing(false); } }}
+          onBlur={save}
+          disabled={saving}
+          style={{
+            width: 90, padding: "3px 7px", fontSize: 12, fontWeight: 700,
+            border: "1px solid var(--border2)", borderRadius: 6,
+            background: "var(--surface2)", color: "var(--text)",
+            outline: "none",
+          }}
+        />
+        <span style={{ fontSize: 10, color: "var(--text4)" }}>ر.س</span>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => { setVal(String(amount)); setEditing(true); }}
+      title="انقر لتعديل المبلغ"
+      style={{
+        background: "none", border: "none", cursor: "pointer", padding: 0,
+        display: "flex", alignItems: "center", gap: 5, color: "var(--text)", fontWeight: 700,
+      }}
+    >
+      {fmt(amount)}
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+        style={{ color: "var(--text4)", flexShrink: 0 }}>
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+    </button>
+  );
+}
+
 function StatCard({ label, value, sub, icon: Icon, trend, big = false }: {
   label: string; value: string; sub?: string; icon: React.ElementType;
   trend?: "up" | "down" | "neutral"; big?: boolean;
@@ -134,6 +209,15 @@ export default function FinancePage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"overview" | "direct" | "affiliate" | "tamara">("overview");
   const [exporting, setExporting] = useState(false);
+  const [amountOverrides, setAmountOverrides] = useState<Record<string, number>>({});
+
+  function handleAmountSaved(id: string, newAmount: number) {
+    setAmountOverrides(prev => ({ ...prev, [id]: newAmount }));
+  }
+
+  function resolveAmount(id: string, original?: number): number {
+    return amountOverrides[id] ?? (original || 0);
+  }
 
   const load = () => {
     setLoading(true);
@@ -325,9 +409,10 @@ export default function FinancePage() {
                 </div>
                 <p style={{ color: "var(--text4)", fontSize: 12, margin: "0 0 18px" }}>طلبات بدون كود إحالة — يحتفظ النظام بكامل المبلغ</p>
                 <OrdersTable rows={data.directOrders.map(o => ({
-                  user_name: o.user_name, user_email: o.user_email, product_name: o.product_name,
-                  amount: o.amount, paid_at: o.paid_at, invoiceUrl: buildInvoiceUrl(o),
-                }))} totalLabel="إجمالي مباشر" totalValue={data.summary.directRevenue} />
+                  id: o.id, user_name: o.user_name, user_email: o.user_email, product_name: o.product_name,
+                  amount: resolveAmount(o.id, o.amount), paid_at: o.paid_at, invoiceUrl: buildInvoiceUrl(o),
+                }))} totalLabel="إجمالي مباشر" totalValue={data.summary.directRevenue}
+                onAmountSaved={handleAmountSaved} />
               </div>
             )}
 
@@ -413,7 +498,9 @@ export default function FinancePage() {
                             onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                             <td style={td}>{o.user_name || o.user_email || "—"}</td>
                             <td style={td}>{o.product_name}</td>
-                            <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 700 }}>{fmt(o.amount)}</td>
+                            <td style={{ ...td, textAlign: "left" }}>
+                              <AmountCell id={o.id} amount={resolveAmount(o.id, o.amount)} onSaved={handleAmountSaved} />
+                            </td>
                             <td style={{ ...td, textAlign: "left", color: "var(--text3)" }}>− {fmt(o.fee_variable)}</td>
                             <td style={{ ...td, textAlign: "left", color: "var(--text3)" }}>− {fmt(o.fee_fixed)}</td>
                             <td style={{ ...td, textAlign: "left", color: "var(--text3)" }}>− {fmt(o.fee_vat)}</td>
@@ -491,9 +578,11 @@ export default function FinancePage() {
                           <td style={{ ...td, fontWeight: 600 }}>{o.affiliate_name}</td>
                           <td style={td}><code style={{ background: "var(--surface2)", padding: "2px 6px", borderRadius: 4, color: "var(--text2)", fontSize: 11 }}>{o.ref_code}</code></td>
                           <td style={td}>{o.product_name}</td>
-                          <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 600 }}>{fmt(o.amount || 0)}</td>
+                          <td style={{ ...td, textAlign: "left" }}>
+                            <AmountCell id={o.id} amount={resolveAmount(o.id, o.amount)} onSaved={handleAmountSaved} />
+                          </td>
                           <td style={{ ...td, textAlign: "left", color: "var(--text3)", fontWeight: 700 }}>− {fmt(o.commission)}</td>
-                          <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 700 }}>{fmt(o.net)}</td>
+                          <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 700 }}>{fmt(resolveAmount(o.id, o.amount) - o.commission)}</td>
                           <td style={td}>
                             <span style={{
                               padding: "3px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700,
@@ -560,9 +649,10 @@ function CashRow({ icon, label, value }: { icon: React.ReactNode; label: string;
   );
 }
 
-function OrdersTable({ rows, totalLabel, totalValue }: {
-  rows: { user_name?: string; user_email?: string; product_name: string; amount?: number; paid_at?: string; invoiceUrl?: string }[];
+function OrdersTable({ rows, totalLabel, totalValue, onAmountSaved }: {
+  rows: { id: string; user_name?: string; user_email?: string; product_name: string; amount?: number; paid_at?: string; invoiceUrl?: string }[];
   totalLabel: string; totalValue: number;
+  onAmountSaved: (id: string, newAmount: number) => void;
 }) {
   return (
     <div style={{ overflowX: "auto" }}>
@@ -587,7 +677,9 @@ function OrdersTable({ rows, totalLabel, totalValue }: {
               <td style={td}>{o.user_name || "—"}</td>
               <td style={{ ...td, color: "var(--text3)" }}>{o.user_email || "—"}</td>
               <td style={td}>{o.product_name}</td>
-              <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 700 }}>{fmt(o.amount || 0)}</td>
+              <td style={{ ...td, textAlign: "left" }}>
+                <AmountCell id={o.id} amount={o.amount || 0} onSaved={onAmountSaved} />
+              </td>
               <td style={{ ...td, color: "var(--text4)" }}>{fmtDate(o.paid_at)}</td>
               <td style={{ ...td, textAlign: "center" }}>
                 {o.invoiceUrl ? (
