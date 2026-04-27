@@ -52,8 +52,47 @@ export default function LandingPage() {
     { q: "ما هي الوظائف التي يقدّم عليها؟", a: "يقدّم على الوظائف في المجالات التي تحددها أنت، في المناطق التي تفضّلها داخل المملكة العربية السعودية." },
   ];
 
+  const jsonLdOrganization = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Jobbots",
+    url: "https://jobbots.org",
+    logo: "https://jobbots.org/logo.png",
+    description: "منصة Jobbots تقدّم عنك على الوظائف تلقائياً بالذكاء الاصطناعي في المملكة العربية السعودية",
+    foundingLocation: { "@type": "Place", addressCountry: "SA" },
+    sameAs: [],
+  };
+
+  const jsonLdFaq = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.q,
+      acceptedAnswer: { "@type": "Answer", text: faq.a },
+    })),
+  };
+
+  const jsonLdWebsite = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Jobbots",
+    url: "https://jobbots.org",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: "https://jobbots.org/store?q={search_term_string}",
+      },
+      "query-input": "required name=search_term_string",
+    },
+  };
+
   return (
     <div style={s.page} dir="rtl">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdOrganization) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdFaq) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdWebsite) }} />
       {/* ── NAV ── */}
       <nav style={s.nav} className="nav-blur">
         <div style={s.navInner}>
