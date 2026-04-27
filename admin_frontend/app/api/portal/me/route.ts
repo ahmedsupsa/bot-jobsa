@@ -9,7 +9,6 @@ export async function GET(req: Request) {
   if (!payload) return NextResponse.json({ error: "غير مخوّل" }, { status: 401 });
   const uid = payload.user_id;
 
-  // Sliding session: re-issue a fresh 30-day token on every check-in
   const refreshedToken = await makeToken(uid).catch(() => null);
 
   const { data: userRows } = await supabase.from("users").select("*").eq("id", uid).limit(1);
@@ -48,10 +47,47 @@ export async function GET(req: Request) {
     email: settings.email || "",
     sender_email_alias: settings.sender_email_alias || "",
     applications_count: apps_count || 0,
-    // SMTP
     email_connected: settings.email_connected ?? false,
     smtp_email: settings.smtp_email || "",
   });
   if (refreshedToken) res.headers.set("X-Refresh-Token", refreshedToken);
   return res;
+}
+
+export async function PATCH(req: Request) {
+  const token = extractToken(req);
+  if (!token) return NextResponse.json({ error: "غير مخوّل" }, { status: 401 });
+  const payload = await verifyToken(token);
+  if (!payload) return NextResponse.json({ error: "غير مخوّل" }, { status: 401 });
+  const uid = payload.user_id;
+
+  let body: Record<string, unknown>;
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 }); }
+
+  const allowed = ["full_name", "phone", "city", "age"] as const;
+  const updates: Record<string, unknown> = {};
+
+  for (const key of allowed) {
+    if (key in body) {
+      const val = body[key];
+      if (key === "age") {
+        const n = val ? parseInt(String(val), 10) : null;
+        updates[key] = n && n > 0 && n < 100 ? n : null;
+      } else if (key === "full_name") {
+        const s = String(val ?? "").trim();
+        if (!s) return NextResponse.json({ error: "الاسم الكامل مطلوب" }, { status: 400 });
+        updates[key] = s;
+      } else {
+        updates[key] = String(val ?? "").trim() || null;
+      }
+    }
+  }
+
+  if (!Object.keys(updates).length)
+    return NextResponse.json({ error: "لا توجد بيانات للتحديث" }, { status: 400 });
+
+  const { error } = await supabase.from("users").update(updates).eq("id", uid);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
 }

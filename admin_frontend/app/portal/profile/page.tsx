@@ -6,8 +6,8 @@ import { useTheme } from "@/contexts/theme-context";
 import { portalFetch, clearToken } from "@/lib/portal-auth";
 import {
   User, Phone, MapPin, Calendar, Mail, CreditCard, Send,
-  Shield, Languages, CheckCircle, XCircle, AlertTriangle,
-  LogOut, Trash2, Loader2, X, Lock, MessageCircle,
+  Languages, CheckCircle, XCircle, Loader2, Pencil, Save, X,
+  LogOut, Trash2, MessageCircle, Lock,
 } from "lucide-react";
 
 interface UserData {
@@ -15,9 +15,16 @@ interface UserData {
   subscription_active: boolean; days_left: number; subscription_ends_at: string;
   applications_count: number; email: string; sender_email_alias: string;
   application_language: string; template_type: string;
+  email_connected: boolean; smtp_email: string;
 }
 
 type Tab = "profile" | "settings";
+
+const CITIES = [
+  "الرياض", "جدة", "مكة المكرمة", "المدينة المنورة", "الدمام", "الخبر", "الظهران",
+  "الأحساء", "الطائف", "تبوك", "بريدة", "خميس مشيط", "حائل", "الجبيل", "نجران",
+  "أبها", "ينبع", "الخرج", "القطيف", "عرعر", "سكاكا", "جازان", "الباحة",
+];
 
 export default function AccountPage() {
   const router = useRouter();
@@ -26,11 +33,21 @@ export default function AccountPage() {
   const [tab, setTab] = useState<Tab>("profile");
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [emailInput, setEmailInput] = useState("");
+
+  // edit state
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editCity, setEditCity] = useState("");
+  const [editAge, setEditAge] = useState("");
   const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
+
+  // settings state
   const [savingLang, setSavingLang] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
-  const [msg, setMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
+
+  // delete state
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -58,21 +75,48 @@ export default function AccountPage() {
       const me = await meRes.json();
       const settings = await setRes.json();
       setUser({ ...me, application_language: settings.application_language || "ar", template_type: settings.template_type || "classic" });
-      setEmailInput(me.email || "");
     } catch { clearToken(); router.replace("/portal/login"); }
     finally { setLoading(false); }
   }
 
   useEffect(() => { load(); }, []);
 
-  async function saveEmail(e: React.FormEvent) {
-    e.preventDefault(); setSaving(true); setMsg(null);
+  function startEdit() {
+    if (!user) return;
+    setEditName(user.full_name);
+    setEditPhone(user.phone);
+    setEditCity(user.city);
+    setEditAge(user.age ? String(user.age) : "");
+    setMsg(null);
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    setEditing(false);
+    setMsg(null);
+  }
+
+  async function handleSave() {
+    if (!editName.trim()) { setMsg({ text: "الاسم الكامل مطلوب", type: "err" }); return; }
+    setSaving(true); setMsg(null);
     try {
-      const res = await portalFetch("/settings/email", { method: "POST", body: JSON.stringify({ email: emailInput }) });
+      const res = await portalFetch("/me", {
+        method: "PATCH",
+        body: JSON.stringify({
+          full_name: editName.trim(),
+          phone: editPhone.trim(),
+          city: editCity.trim(),
+          age: editAge ? parseInt(editAge) : null,
+        }),
+      });
       const d = await res.json();
-      if (!res.ok) { setMsg({ text: d.error || "خطأ", type: "err" }); return; }
-      setMsg({ text: d.sender_alias ? `تم الربط — إيميل التقديم: ${d.sender_alias}` : "تم حفظ الإيميل", type: "ok" });
-      await load();
+      if (res.ok) {
+        setMsg({ text: "تم حفظ البيانات بنجاح ✓", type: "ok" });
+        await load();
+        setEditing(false);
+      } else {
+        setMsg({ text: d.error || "فشل الحفظ", type: "err" });
+      }
     } catch { setMsg({ text: "خطأ في الاتصال", type: "err" }); }
     finally { setSaving(false); }
   }
@@ -95,12 +139,8 @@ export default function AccountPage() {
       const res = await portalFetch("/settings", { method: "POST", body: JSON.stringify({ template_type: tpl }) });
       if (res.ok) {
         const names: Record<string, string> = { classic: "الكلاسيكي", modern: "الحديث", brief: "المختصر" };
-        setMsg({ text: `تم اختيار القالب ${names[tpl] || tpl}`, type: "ok" });
-        await load();
-      } else {
-        const d = await res.json();
-        setMsg({ text: d.error || "فشل الحفظ", type: "err" });
-      }
+        setMsg({ text: `تم اختيار القالب ${names[tpl] || tpl}`, type: "ok" }); await load();
+      } else { const d = await res.json(); setMsg({ text: d.error || "فشل الحفظ", type: "err" }); }
     } catch { setMsg({ text: "خطأ في الاتصال", type: "err" }); }
     finally { setSavingTemplate(false); }
   }
@@ -121,10 +161,19 @@ export default function AccountPage() {
     ? new Date(user.subscription_ends_at).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" })
     : "—";
 
+  const inputStyle: React.CSSProperties = {
+    width: "100%", boxSizing: "border-box",
+    padding: "11px 14px",
+    background: t.input, border: `1px solid ${t.border2}`,
+    borderRadius: 10, color: t.text, fontSize: 14, outline: "none",
+    fontFamily: "inherit",
+  };
+
   return (
     <PortalShell>
       <div style={{ maxWidth: 680, margin: "0 auto" }}>
-        {/* Header */}
+
+        {/* ─── Header ─── */}
         {!loading && user && (
           <div style={{
             background: t.surface, border: `1px solid ${t.border}`,
@@ -143,9 +192,11 @@ export default function AccountPage() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <h1 style={{ color: t.text, fontSize: 22, fontWeight: 800, margin: "0 0 4px" }}>{user.full_name}</h1>
               <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-                <span style={{ color: t.text3, fontSize: 13, display: "flex", alignItems: "center", gap: 4 }}>
-                  <MapPin size={12} strokeWidth={1.5} /> {user.city}
-                </span>
+                {user.city && (
+                  <span style={{ color: t.text3, fontSize: 13, display: "flex", alignItems: "center", gap: 4 }}>
+                    <MapPin size={12} strokeWidth={1.5} /> {user.city}
+                  </span>
+                )}
                 {user.age && (
                   <span style={{ color: t.text3, fontSize: 13, display: "flex", alignItems: "center", gap: 4 }}>
                     <Calendar size={12} strokeWidth={1.5} /> {user.age} سنة
@@ -167,67 +218,241 @@ export default function AccountPage() {
           </div>
         )}
 
-        {/* Tabs */}
+        {/* ─── Tabs ─── */}
         <div style={{
           display: "flex", gap: 4,
           background: t.surface, border: `1px solid ${t.border}`,
           borderRadius: 14, padding: 4, marginBottom: 20,
         }}>
           {([["profile", "حسابي", <User size={15} key="u" />], ["settings", "الإعدادات", <CreditCard size={15} key="s" />]] as const).map(([key, label, icon]) => (
-            <button
-              key={key}
-              onClick={() => { setTab(key as Tab); setMsg(null); }}
-              style={{
-                flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                padding: "11px 0", borderRadius: 11, border: "none", cursor: "pointer",
-                background: tab === key ? (dark ? "#fff" : "#09090b") : "transparent",
-                color: tab === key ? (dark ? "#0a0a0a" : "#fff") : t.text3,
-                fontSize: 14, fontWeight: tab === key ? 700 : 400,
-                transition: "all 0.18s",
-              }}
-            >
+            <button key={key} onClick={() => { setTab(key as Tab); setMsg(null); setEditing(false); }} style={{
+              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              padding: "11px 0", borderRadius: 11, border: "none", cursor: "pointer",
+              background: tab === key ? (dark ? "#fff" : "#09090b") : "transparent",
+              color: tab === key ? (dark ? "#0a0a0a" : "#fff") : t.text3,
+              fontSize: 14, fontWeight: tab === key ? 700 : 400, transition: "all 0.18s",
+            }}>
               {icon} {label}
             </button>
           ))}
         </div>
 
-        {loading ? (
-          <p style={{ color: t.text3, textAlign: "center", padding: 60 }}>جاري التحميل…</p>
+        {/* ─── Alert ─── */}
+        {msg && !editing && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "12px 16px", borderRadius: 12, fontSize: 13, fontWeight: 500, marginBottom: 14,
+            background: msg.type === "ok" ? (dark ? "#0a1f0a" : "#f0fdf4") : (dark ? "#1a0a0a" : "#fef2f2"),
+            color: msg.type === "ok" ? (dark ? "#fff" : "#166534") : "#f87171",
+            border: `1px solid ${msg.type === "ok" ? (dark ? "#2a2a2a" : "#bbf7d0") : (dark ? "#7f1d1d" : "#fecaca")}`,
+          }}>
+            {msg.type === "ok" ? <CheckCircle size={15} /> : <XCircle size={15} />}
+            {msg.text}
+          </div>
+        )}
+
+        {loading || !user ? (
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: 60 }}>
+            <Loader2 size={28} color={t.text3} style={{ animation: "spin 1s linear infinite" }} />
+          </div>
         ) : tab === "profile" ? (
           /* ── PROFILE TAB ── */
           <div style={{ display: "flex", flexDirection: "column", gap: 14, animation: "fadeIn 0.2s ease" }}>
-            <Card t={t} title="البيانات الشخصية" icon={<User size={17} strokeWidth={1.5} />}>
-              <Row t={t} icon={<User size={13} />} label="الاسم الكامل" value={user!.full_name} />
-              <Row t={t} icon={<Phone size={13} />} label="رقم الجوال" value={user!.phone} dir="ltr" />
-              {user!.age && <Row t={t} icon={<Calendar size={13} />} label="العمر" value={`${user!.age} سنة`} />}
-              <Row t={t} icon={<MapPin size={13} />} label="المدينة" value={user!.city} />
-            </Card>
 
-            <Card t={t} title="الاشتراك" icon={<CreditCard size={17} strokeWidth={1.5} />}>
-              <Row t={t} icon={<CreditCard size={13} />} label="النوع" value="شهري" />
-              <Row t={t} icon={<Calendar size={13} />} label="تاريخ الانتهاء" value={endDate} />
-              <Row t={t} icon={<Calendar size={13} />} label="الأيام المتبقية" value={`${user!.days_left} يوم`} />
-              <Row t={t} icon={<Send size={13} />} label="التقديمات المرسلة" value={`${user!.applications_count} تقديم`} last />
-            </Card>
+            {/* ─── بطاقة البيانات الشخصية ─── */}
+            <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 18, overflow: "hidden" }}>
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "16px 20px", borderBottom: `1px solid ${t.border}`,
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 10, background: t.iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <User size={16} strokeWidth={1.5} color={t.text2} />
+                  </div>
+                  <span style={{ color: t.text, fontSize: 15, fontWeight: 700 }}>البيانات الشخصية</span>
+                </div>
+                {!editing ? (
+                  <button onClick={startEdit} style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "7px 14px", borderRadius: 9, border: `1px solid ${t.border2}`,
+                    background: "transparent", color: t.text2, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                  }}>
+                    <Pencil size={13} /> تعديل
+                  </button>
+                ) : (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={cancelEdit} style={{
+                      display: "flex", alignItems: "center", gap: 5,
+                      padding: "7px 12px", borderRadius: 9, border: `1px solid ${t.border2}`,
+                      background: "transparent", color: t.text3, fontSize: 13, cursor: "pointer",
+                    }}>
+                      <X size={13} /> إلغاء
+                    </button>
+                    <button onClick={handleSave} disabled={saving} style={{
+                      display: "flex", alignItems: "center", gap: 5,
+                      padding: "7px 14px", borderRadius: 9, border: "none",
+                      background: dark ? "#fff" : "#09090b",
+                      color: dark ? "#0a0a0a" : "#fff",
+                      fontSize: 13, fontWeight: 700, cursor: saving ? "wait" : "pointer",
+                    }}>
+                      {saving ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : <Save size={13} />}
+                      {saving ? "جاري الحفظ…" : "حفظ"}
+                    </button>
+                  </div>
+                )}
+              </div>
 
-            <Card t={t} title="الإيميل" icon={<Mail size={17} strokeWidth={1.5} />}>
-              {user!.email ? (
-                <>
-                  <Row t={t} icon={<Mail size={13} />} label="الإيميل الشخصي" value={user!.email} dir="ltr" />
-                  {user!.sender_email_alias && (
-                    <Row t={t} icon={<Mail size={13} />} label="إيميل التقديم" value={user!.sender_email_alias} dir="ltr" last />
-                  )}
-                </>
+              {!editing ? (
+                /* ─── وضع العرض ─── */
+                <div style={{ padding: "4px 0" }}>
+                  <InfoRow t={t} icon={<User size={13} />} label="الاسم الكامل" value={user!.full_name} />
+                  <InfoRow t={t} icon={<Phone size={13} />} label="رقم الجوال" value={user!.phone || "—"} dir="ltr" />
+                  <InfoRow t={t} icon={<Calendar size={13} />} label="العمر" value={user!.age ? `${user!.age} سنة` : "—"} />
+                  <InfoRow t={t} icon={<MapPin size={13} />} label="المدينة" value={user!.city || "—"} last />
+                </div>
               ) : (
-                <button onClick={() => setTab("settings")} style={{
-                  display: "flex", alignItems: "center", gap: 8, background: dark ? "#fff" : "#09090b",
-                  color: dark ? "#0a0a0a" : "#fff", border: "none", borderRadius: 10, padding: "10px 18px",
-                  fontSize: 13, fontWeight: 700, cursor: "pointer", marginTop: 4,
-                }}>
-                  <Mail size={14} /> ربط الإيميل
-                </button>
+                /* ─── وضع التعديل ─── */
+                <div style={{ padding: "20px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+                  {msg && (
+                    <div style={{
+                      padding: "10px 14px", borderRadius: 10, fontSize: 13,
+                      background: msg.type === "ok" ? (dark ? "#0a1f0a" : "#f0fdf4") : (dark ? "#1f0d0d" : "#fff5f5"),
+                      color: msg.type === "ok" ? "#22c55e" : "#f87171",
+                      border: `1px solid ${msg.type === "ok" ? (dark ? "#1a4a1a" : "#bbf7d0") : (dark ? "#4a1a1a" : "#fecaca")}`,
+                    }}>
+                      {msg.text}
+                    </div>
+                  )}
+
+                  <div>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 6 }}>
+                      الاسم الكامل <span style={{ color: "#f87171" }}>*</span>
+                    </label>
+                    <input
+                      value={editName}
+                      onChange={e => setEditName(e.target.value)}
+                      placeholder="الاسم الكامل"
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 6 }}>رقم الجوال</label>
+                    <input
+                      value={editPhone}
+                      onChange={e => setEditPhone(e.target.value)}
+                      placeholder="05xxxxxxxx"
+                      dir="ltr"
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 6 }}>المدينة</label>
+                      <select
+                        value={editCity}
+                        onChange={e => setEditCity(e.target.value)}
+                        style={{ ...inputStyle, appearance: "none", WebkitAppearance: "none" }}
+                      >
+                        <option value="">اختر المدينة</option>
+                        {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 6 }}>العمر</label>
+                      <input
+                        value={editAge}
+                        onChange={e => setEditAge(e.target.value.replace(/\D/g, ""))}
+                        placeholder="25"
+                        maxLength={2}
+                        dir="ltr"
+                        style={inputStyle}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ─── الاشتراك ─── */}
+            <Card t={t} title="الاشتراك" icon={<CreditCard size={17} strokeWidth={1.5} />}>
+              <InfoRow t={t} icon={<CreditCard size={13} />} label="النوع" value="شهري" />
+              <InfoRow t={t} icon={<Calendar size={13} />} label="تاريخ الانتهاء" value={endDate} />
+              <InfoRow t={t} icon={<Calendar size={13} />} label="الأيام المتبقية" value={`${user!.days_left} يوم`} />
+              <InfoRow t={t} icon={<Send size={13} />} label="التقديمات المرسلة" value={`${user!.applications_count} تقديم`} last />
+            </Card>
+
+            {/* ─── الإيميل ─── */}
+            <Card t={t} title="البريد الإلكتروني" icon={<Mail size={17} strokeWidth={1.5} />}>
+              {user!.email_connected ? (
+                <InfoRow t={t} icon={<Mail size={13} />} label="الإيميل المربوط" value={user!.smtp_email} dir="ltr" last badge="مفعّل ✓" />
+              ) : (
+                <div style={{ padding: "4px 0 8px" }}>
+                  <a href="/portal/email" style={{
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                    background: dark ? "#fff" : "#09090b", color: dark ? "#0a0a0a" : "#fff",
+                    border: "none", borderRadius: 10, padding: "10px 18px",
+                    fontSize: 13, fontWeight: 700, textDecoration: "none",
+                  }}>
+                    <Mail size={14} /> ربط الإيميل
+                  </a>
+                </div>
               )}
             </Card>
+
+            {/* ─── تسجيل الخروج وحذف الحساب ─── */}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button onClick={() => { clearToken(); router.replace("/portal/login"); }} style={{
+                flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                padding: "12px", border: `1px solid ${t.border}`, background: t.surface,
+                borderRadius: 12, color: t.text2, fontSize: 13, fontWeight: 600, cursor: "pointer",
+              }}>
+                <LogOut size={15} /> تسجيل الخروج
+              </button>
+              <button onClick={() => setShowDelete(true)} style={{
+                flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                padding: "12px", border: "1px solid #fecaca", background: dark ? "#1a0a0a" : "#fff5f5",
+                borderRadius: 12, color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer",
+              }}>
+                <Trash2 size={15} /> حذف الحساب
+              </button>
+            </div>
+
+            {/* Delete Modal */}
+            {showDelete && (
+              <div style={{
+                position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 999,
+                display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+              }}>
+                <div style={{ background: t.surface, borderRadius: 20, padding: 28, maxWidth: 380, width: "100%" }}>
+                  <h3 style={{ color: "#f87171", margin: "0 0 10px", fontSize: 17, fontWeight: 800 }}>حذف الحساب نهائياً</h3>
+                  <p style={{ color: t.text2, fontSize: 13, lineHeight: 1.7, margin: "0 0 16px" }}>
+                    سيتم حذف جميع بياناتك بشكل دائم ولا يمكن التراجع. اكتب <strong style={{ color: t.text }}>حذف</strong> للتأكيد.
+                  </p>
+                  <input
+                    value={deleteConfirm}
+                    onChange={e => setDeleteConfirm(e.target.value)}
+                    placeholder="اكتب: حذف"
+                    style={{ ...inputStyle, marginBottom: 14 }}
+                  />
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button onClick={() => { setShowDelete(false); setDeleteConfirm(""); }} style={{
+                      flex: 1, padding: "11px", border: `1px solid ${t.border}`, background: t.surface,
+                      borderRadius: 10, color: t.text2, fontSize: 13, cursor: "pointer",
+                    }}>إلغاء</button>
+                    <button onClick={deleteAccount} disabled={deleteConfirm !== "حذف" || deleting} style={{
+                      flex: 1, padding: "11px", border: "none", background: "#ef4444",
+                      borderRadius: 10, color: "#fff", fontSize: 13, fontWeight: 700,
+                      cursor: deleteConfirm !== "حذف" || deleting ? "not-allowed" : "pointer",
+                      opacity: deleteConfirm !== "حذف" ? 0.5 : 1,
+                    }}>
+                      {deleting ? "جاري الحذف…" : "تأكيد الحذف"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           /* ── SETTINGS TAB ── */
@@ -245,81 +470,6 @@ export default function AccountPage() {
               </div>
             )}
 
-            {/* Email */}
-            <Card t={t} title="ربط إيميل Gmail" icon={<Mail size={17} strokeWidth={1.5} />} sub="مطلوب لإرسال طلبات التوظيف باسمك">
-              {user?.email ? (
-                /* الإيميل مربوط — مقفل */
-                <>
-                  {user.sender_email_alias && (
-                    <div style={{
-                      display: "flex", alignItems: "center", gap: 12,
-                      background: dark ? "#0a1f0a" : "#f0fdf4",
-                      border: `1px solid ${dark ? "#2a2a2a" : "#bbf7d0"}`, borderRadius: 12,
-                      padding: "14px 16px", marginBottom: 12,
-                    }}>
-                      <CheckCircle size={18} strokeWidth={1.5} color={dark ? "#fff" : "#166534"} />
-                      <div>
-                        <p style={{ color: dark ? "#fff" : "#166534", fontSize: 11, fontWeight: 600, margin: 0 }}>إيميل التقديم الخاص بك</p>
-                        <p style={{ color: dark ? "#fff" : "#14532d", fontSize: 13, fontWeight: 700, margin: "3px 0 0" }} dir="ltr">{user.sender_email_alias}</p>
-                      </div>
-                    </div>
-                  )}
-                  <div style={{
-                    display: "flex", alignItems: "center", gap: 12,
-                    background: dark ? "#14100a" : "#fffbeb",
-                    border: `1px solid ${dark ? "#78350f" : "#fde68a"}`, borderRadius: 12,
-                    padding: "14px 16px",
-                  }}>
-                    <Lock size={16} strokeWidth={1.8} color="#f59e0b" style={{ flexShrink: 0 }} />
-                    <div style={{ flex: 1 }}>
-                      <p style={{ margin: 0, color: dark ? "#fcd34d" : "#92400e", fontSize: 13, fontWeight: 700 }}>الإيميل مقفل</p>
-                      <p style={{ margin: "3px 0 0", color: dark ? "#a78054" : "#b45309", fontSize: 12 }} dir="ltr">{user.email}</p>
-                    </div>
-                    <a href="/portal/support" style={{
-                      display: "inline-flex", alignItems: "center", gap: 5,
-                      padding: "7px 13px", borderRadius: 9,
-                      background: "#f59e0b", color: "#000",
-                      fontSize: 12, fontWeight: 700, textDecoration: "none", flexShrink: 0,
-                    }}>
-                      <MessageCircle size={12} /> تغيير
-                    </a>
-                  </div>
-                </>
-              ) : (
-                /* أول مرة — يسمح بالربط */
-                <>
-                  <form onSubmit={saveEmail}>
-                    <label style={{ display: "block", color: t.text2, fontSize: 13, fontWeight: 500, marginBottom: 8 }}>إيميل Gmail</label>
-                    <div style={{ position: "relative", marginBottom: 12 }}>
-                      <Mail size={15} strokeWidth={1.5} color={t.text3} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)" } as any} />
-                      <input
-                        type="email" dir="ltr" value={emailInput}
-                        onChange={e => setEmailInput(e.target.value)}
-                        placeholder=""
-                        style={{
-                          width: "100%", padding: "13px 42px 13px 16px",
-                          background: t.input, border: `1px solid ${t.border2}`,
-                          borderRadius: 12, color: t.text, fontSize: 16, outline: "none",
-                          boxSizing: "border-box", WebkitAppearance: "none",
-                        }}
-                      />
-                    </div>
-                    <button style={{
-                      width: "100%", padding: "13px", background: dark ? "#fff" : "#09090b",
-                      color: dark ? "#0a0a0a" : "#fff", border: "none", borderRadius: 12,
-                      fontSize: 14, fontWeight: 700, cursor: "pointer",
-                    }} type="submit" disabled={saving || !emailInput.trim()}>
-                      {saving ? "جاري الحفظ…" : "ربط الإيميل"}
-                    </button>
-                  </form>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 12 }}>
-                    <Shield size={13} strokeWidth={1.5} color={t.text3} style={{ flexShrink: 0, marginTop: 1 }} />
-                    <p style={{ color: t.text3, fontSize: 12, margin: 0, lineHeight: 1.6 }}>نُنشئ عنوان إرسال خاص بك — إيميلك الشخصي لن يظهر للشركات.</p>
-                  </div>
-                </>
-              )}
-            </Card>
-
             {/* Language */}
             <Card t={t} title="لغة التقديم" icon={<Languages size={17} strokeWidth={1.5} />} sub="اللغة التي ستُرسل بها طلبات التوظيف">
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -327,10 +477,9 @@ export default function AccountPage() {
                   const isActive = lang === "ar" ? user?.application_language !== "en" : user?.application_language === "en";
                   return (
                     <button key={lang} onClick={() => changeLanguage(lang)} disabled={savingLang} style={{
-                      background: savingLang ? t.iconBg : (isActive ? (dark ? "#0a1f0a" : "#f0fdf4") : t.iconBg),
+                      background: isActive ? (dark ? "#0a1f0a" : "#f0fdf4") : t.iconBg,
                       border: `1px solid ${isActive ? (dark ? "#2a2a2a" : "#bbf7d0") : t.border2}`,
-                      borderRadius: 12, padding: "12px 14px", cursor: savingLang ? "wait" : "pointer",
-                      textAlign: "right",
+                      borderRadius: 12, padding: "12px 14px", cursor: savingLang ? "wait" : "pointer", textAlign: "right",
                     }}>
                       <p style={{ margin: 0, color: isActive ? (dark ? "#fff" : "#166534") : t.text, fontSize: 14, fontWeight: 700 }}>
                         {label} {isActive && <CheckCircle size={12} style={{ verticalAlign: "middle" }} />}
@@ -346,10 +495,7 @@ export default function AccountPage() {
             <Card t={t} title="قالب الإيميل" icon={<Mail size={17} strokeWidth={1.5} />} sub="شكل وأسلوب إيميل التقديم المُرسَل للشركات">
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {([
-                  {
-                    id: "classic",
-                    name: "الكلاسيكي",
-                    desc: "رسمي ومنظّم • مناسب للشركات الكبرى",
+                  { id: "classic", name: "الكلاسيكي", desc: "رسمي ومنظّم • مناسب للشركات الكبرى",
                     preview: (
                       <div style={{ background: "#fff", borderRadius: 8, padding: "8px 10px", fontSize: 9, color: "#333", direction: "rtl", lineHeight: 1.7 }}>
                         <div style={{ fontWeight: 700, borderBottom: "1px solid #eee", paddingBottom: 4, marginBottom: 4, color: "#111" }}>طلب توظيف — مهندس برمجيات</div>
@@ -359,16 +505,9 @@ export default function AccountPage() {
                       </div>
                     ),
                   },
-                  {
-                    id: "modern",
-                    name: "الحديث",
-                    desc: "عصري وودّي • مناسب للشركات الناشئة",
+                  { id: "modern", name: "الحديث", desc: "عصري وودّي • مناسب للشركات الناشئة",
                     preview: (
-                      <div style={{
-                        background: dark ? "#0f0f0f" : "#1f1b2e",
-                        borderRadius: 8, padding: "8px 10px", fontSize: 9,
-                        color: "#eee", direction: "rtl", lineHeight: 1.7,
-                      }}>
+                      <div style={{ background: dark ? "#0f0f0f" : "#1f1b2e", borderRadius: 8, padding: "8px 10px", fontSize: 9, color: "#eee", direction: "rtl", lineHeight: 1.7 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
                           <div style={{ width: 16, height: 16, borderRadius: 4, background: "#a78bfa", flexShrink: 0 }} />
                           <div style={{ fontWeight: 700, color: "#fff", fontSize: 10 }}>مهندس برمجيات</div>
@@ -378,10 +517,7 @@ export default function AccountPage() {
                       </div>
                     ),
                   },
-                  {
-                    id: "brief",
-                    name: "المختصر",
-                    desc: "موجز ومباشر • يوفّر وقت المُوظِّف",
+                  { id: "brief", name: "المختصر", desc: "موجز ومباشر • يوفّر وقت المُوظِّف",
                     preview: (
                       <div style={{ background: "#f8f8f8", borderRadius: 8, padding: "8px 10px", fontSize: 9, color: "#333", direction: "rtl", lineHeight: 1.7 }}>
                         <div style={{ fontWeight: 700, marginBottom: 4, color: "#111" }}>التقديم على: مهندس برمجيات</div>
@@ -396,24 +532,16 @@ export default function AccountPage() {
                 ] as const).map((tpl) => {
                   const isActive = (user?.template_type || "classic") === tpl.id;
                   return (
-                    <button
-                      key={tpl.id}
-                      onClick={() => changeTemplate(tpl.id)}
-                      disabled={savingTemplate}
-                      style={{
-                        display: "flex", gap: 12, alignItems: "stretch",
-                        background: savingTemplate ? t.iconBg : (isActive ? (dark ? "#0d0d1a" : "#faf5ff") : t.iconBg),
-                        border: `1.5px solid ${isActive ? (dark ? "#4c1d95" : "#c4b5fd") : t.border2}`,
-                        borderRadius: 14, padding: "12px 14px", cursor: savingTemplate ? "wait" : "pointer",
-                        textAlign: "right",
-                        transition: "all 0.15s",
-                      }}
-                    >
-                      {/* mini preview */}
+                    <button key={tpl.id} onClick={() => changeTemplate(tpl.id)} disabled={savingTemplate} style={{
+                      display: "flex", gap: 12, alignItems: "stretch",
+                      background: isActive ? (dark ? "#0d0d1a" : "#faf5ff") : t.iconBg,
+                      border: `1.5px solid ${isActive ? (dark ? "#4c1d95" : "#c4b5fd") : t.border2}`,
+                      borderRadius: 14, padding: "12px 14px", cursor: savingTemplate ? "wait" : "pointer",
+                      textAlign: "right", transition: "all 0.15s",
+                    }}>
                       <div style={{ width: 120, flexShrink: 0, borderRadius: 8, overflow: "hidden", border: `1px solid ${dark ? "#2a2a2a" : "#e4e4e7"}` }}>
                         {tpl.preview}
                       </div>
-                      {/* info */}
                       <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <p style={{ margin: 0, color: isActive ? (dark ? "#c4b5fd" : "#7c3aed") : t.text, fontSize: 14, fontWeight: 700 }}>{tpl.name}</p>
@@ -423,10 +551,11 @@ export default function AccountPage() {
                         {isActive && (
                           <span style={{
                             display: "inline-block", marginTop: 4,
-                            padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600,
-                            background: dark ? "#1e1b3a" : "#ede9fe",
-                            color: dark ? "#c4b5fd" : "#6d28d9",
-                          }}>مُفعّل</span>
+                            padding: "2px 10px", borderRadius: 100,
+                            background: dark ? "#2e1065" : "#ede9fe",
+                            color: dark ? "#c4b5fd" : "#7c3aed",
+                            fontSize: 11, fontWeight: 600,
+                          }}>مفعّل</span>
                         )}
                       </div>
                     </button>
@@ -434,141 +563,62 @@ export default function AccountPage() {
                 })}
               </div>
             </Card>
-
-            {/* Security */}
-            <Card t={t} title="الأمان" icon={<Shield size={17} strokeWidth={1.5} />} sub="تسجيل الدخول عبر إيميلك">
-              <p style={{ color: t.text2, fontSize: 13, lineHeight: 1.7, margin: 0 }}>
-                نظامنا لا يستخدم كلمات سر. تسجيل الدخول يتم بإيميلك المربوط مباشرة، فلا حاجة لتذكر أي كلمة سر.
-              </p>
-            </Card>
-
-            {/* Danger zone */}
-            <div style={{
-              background: t.surface, border: `1px solid ${dark ? "#7f1d1d" : "#fecaca"}`,
-              borderRadius: 16, padding: "18px 16px",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                <div style={{
-                  width: 38, height: 38, borderRadius: 11,
-                  background: dark ? "#1f0a0a" : "#fef2f2",
-                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                }}>
-                  <AlertTriangle size={17} strokeWidth={1.5} color="#f87171" />
-                </div>
-                <div>
-                  <p style={{ color: "#f87171", fontSize: 14, fontWeight: 600, margin: 0 }}>منطقة الخطر</p>
-                  <p style={{ color: t.text3, fontSize: 12, margin: "2px 0 0" }}>إجراءات لا يمكن التراجع عنها</p>
-                </div>
-              </div>
-              <button onClick={() => { clearToken(); router.replace("/portal/login"); }} style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                width: "100%", padding: "12px", background: t.iconBg, color: t.text2,
-                border: `1px solid ${t.border2}`, borderRadius: 10, fontSize: 14, fontWeight: 600,
-                cursor: "pointer", marginBottom: 10,
-              }}>
-                <LogOut size={16} strokeWidth={1.5} /> تسجيل الخروج
-              </button>
-              <button onClick={() => setShowDelete(true)} style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                width: "100%", padding: "12px", background: dark ? "#1f0a0a" : "#fef2f2",
-                color: "#f87171", border: `1px solid ${dark ? "#7f1d1d" : "#fecaca"}`, borderRadius: 10,
-                fontSize: 14, fontWeight: 600, cursor: "pointer",
-              }}>
-                <Trash2 size={16} strokeWidth={1.5} /> حذف الحساب نهائياً
-              </button>
-            </div>
           </div>
         )}
       </div>
-
-      {/* Delete modal */}
-      {showDelete && (
-        <div onClick={() => !deleting && setShowDelete(false)} style={{
-          position: "fixed", inset: 0, background: "#000", zIndex: 200,
-          display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
-        }}>
-          <div onClick={e => e.stopPropagation()} style={{
-            background: dark ? "#0d0d0d" : "#fff",
-            border: `1px solid ${dark ? "#7f1d1d" : "#fecaca"}`,
-            borderRadius: 18, padding: "24px 20px", width: "100%", maxWidth: 440,
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h2 style={{ margin: 0, color: "#f87171", fontSize: 17, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
-                <AlertTriangle size={17} /> حذف الحساب
-              </h2>
-              <button onClick={() => setShowDelete(false)} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer" }}>
-                <X size={20} />
-              </button>
-            </div>
-            <div style={{ background: dark ? "#1a0a0a" : "#fef2f2", border: `1px solid ${dark ? "#7f1d1d" : "#fecaca"}`, borderRadius: 10, padding: 14, marginBottom: 16 }}>
-              <p style={{ margin: 0, color: "#fca5a5", fontSize: 13, lineHeight: 1.7 }}>سيتم حذف كل بياناتك نهائياً وبدون رجعة.</p>
-            </div>
-            <p style={{ color: t.text2, fontSize: 13, margin: "0 0 8px" }}>اكتب كلمة <strong style={{ color: "#f87171" }}>حذف</strong> للتأكيد:</p>
-            <input
-              value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)}
-              placeholder="حذف" disabled={deleting}
-              style={{
-                width: "100%", background: t.input, border: `1px solid ${t.border2}`,
-                borderRadius: 10, padding: "10px 12px", color: t.text, fontSize: 16,
-                outline: "none", boxSizing: "border-box", marginBottom: 14,
-              }}
-            />
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setShowDelete(false)} disabled={deleting} style={{
-                flex: 1, background: t.iconBg, color: t.text, border: `1px solid ${t.border2}`,
-                borderRadius: 10, padding: "11px", fontSize: 14, fontWeight: 600, cursor: "pointer",
-              }}>إلغاء</button>
-              <button onClick={deleteAccount} disabled={deleting || deleteConfirm !== "حذف"} style={{
-                flex: 1, background: deleteConfirm === "حذف" ? "#ef4444" : t.iconBg,
-                color: deleteConfirm === "حذف" ? "#fff" : t.text3,
-                border: "none", borderRadius: 10, padding: "11px", fontSize: 14, fontWeight: 700,
-                cursor: deleteConfirm === "حذف" ? "pointer" : "not-allowed",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              }}>
-                {deleting && <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />}
-                {deleting ? "جاري الحذف..." : "حذف نهائي"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        select option { background: ${dark ? "#141414" : "#fff"}; color: ${dark ? "#fff" : "#09090b"}; }
+      `}</style>
     </PortalShell>
   );
 }
 
-function Card({ t, title, icon, sub, children }: { t: any; title: string; icon: React.ReactNode; sub?: string; children: React.ReactNode }) {
+// ── Sub-components ──────────────────────────────────────────────────────────
+
+function Card({ t, title, icon, sub, children }: {
+  t: Record<string, string>; title: string; icon: React.ReactNode; sub?: string; children: React.ReactNode;
+}) {
   return (
-    <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 16, padding: "18px 16px" }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 16 }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: 11,
-          background: t.iconBg, border: `1px solid ${t.border}`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0, color: t.text,
-        }}>{icon}</div>
+    <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 18, overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 20px", borderBottom: `1px solid ${t.border}` }}>
+        <div style={{ width: 32, height: 32, borderRadius: 10, background: t.iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {icon}
+        </div>
         <div>
-          <p style={{ color: t.text, fontSize: 14, fontWeight: 600, margin: 0 }}>{title}</p>
-          {sub && <p style={{ color: t.text3, fontSize: 12, margin: "3px 0 0" }}>{sub}</p>}
+          <p style={{ margin: 0, color: t.text, fontSize: 14, fontWeight: 700 }}>{title}</p>
+          {sub && <p style={{ margin: "1px 0 0", color: t.text3, fontSize: 11 }}>{sub}</p>}
         </div>
       </div>
-      {children}
+      <div style={{ padding: "4px 0 8px" }}>{children}</div>
     </div>
   );
 }
 
-function Row({ t, icon, label, value, dir, last }: { t: any; icon: React.ReactNode; label: string; value: string; dir?: string; last?: boolean }) {
+function InfoRow({ t, icon, label, value, dir, last, badge }: {
+  t: Record<string, string>; icon: React.ReactNode;
+  label: string; value: string; dir?: "ltr"; last?: boolean; badge?: string;
+}) {
   return (
     <div style={{
-      display: "flex", justifyContent: "space-between", alignItems: "center",
-      padding: "10px 0", borderBottom: last ? "none" : `1px solid ${t.divider}`,
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "12px 20px", borderBottom: last ? "none" : `1px solid ${t.divider}`,
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, color: t.text3 }}>
-        {icon}
-        <span style={{ fontSize: 12 }}>{label}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ color: t.text3 }}>{icon}</span>
+        <span style={{ color: t.text2, fontSize: 13 }}>{label}</span>
       </div>
-      <span style={{ color: t.text, fontSize: 13, fontWeight: 500, direction: dir as any, maxWidth: "60%", textAlign: "left", wordBreak: "break-all" }}>
-        {value || "—"}
-      </span>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {badge && (
+          <span style={{
+            padding: "2px 8px", borderRadius: 100,
+            background: "#f0fdf4", color: "#166534",
+            fontSize: 11, fontWeight: 600,
+          }}>{badge}</span>
+        )}
+        <span style={{ color: t.text, fontSize: 14, fontWeight: 500 }} dir={dir}>{value}</span>
+      </div>
     </div>
   );
 }
