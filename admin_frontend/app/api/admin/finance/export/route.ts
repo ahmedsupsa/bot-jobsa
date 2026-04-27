@@ -77,7 +77,7 @@ function fillCell(cell: ExcelJS.Cell, color: string) {
 function addBrandHeader(ws: ExcelJS.Worksheet, title: string, subtitle: string, columns: number) {
   ws.mergeCells(1, 1, 1, columns);
   const titleCell = ws.getCell(1, 1);
-  titleCell.value = "JOBBOTS — FINANCIAL REPORT";
+  titleCell.value = "جوبوتس — التقرير المالي";
   titleCell.font = { name: "Calibri", size: 22, bold: true, color: { argb: COLORS.white } };
   titleCell.alignment = { vertical: "middle", horizontal: "left", indent: 2 };
   fillCell(titleCell, COLORS.brand);
@@ -177,20 +177,20 @@ export async function GET() {
   wb.created = new Date();
 
   // ===== SHEET 1: SUMMARY =====
-  const sum = wb.addWorksheet("1. Executive Summary", {
+  const sum = wb.addWorksheet("١. الملخص التنفيذي", {
     properties: { tabColor: { argb: COLORS.accent } },
     views: [{ showGridLines: false }],
   });
   sum.columns = [
     { width: 38 }, { width: 22 }, { width: 22 }, { width: 38 },
   ];
-  addBrandHeader(sum, "Executive Summary", `Generated: ${new Date().toUTCString()}  •  Currency: SAR  •  Commission Rate: ${(COMMISSION_RATE * 100).toFixed(0)}%`, 4);
+  addBrandHeader(sum, "الملخص التنفيذي", `تاريخ التصدير: ${new Date().toUTCString()}  •  العملة: ر.س  •  نسبة العمولة: ${(COMMISSION_RATE * 100).toFixed(0)}%`, 4);
 
   let r = 5;
   // Section heading
   sum.mergeCells(r, 1, r, 4);
   let sec = sum.getCell(r, 1);
-  sec.value = "REVENUE BREAKDOWN";
+  sec.value = "تفصيل الإيرادات";
   sec.font = { bold: true, size: 12, color: { argb: COLORS.white } };
   fillCell(sec, COLORS.gray);
   sec.alignment = { vertical: "middle", indent: 1 };
@@ -198,11 +198,11 @@ export async function GET() {
   r++;
 
   const summaryRows: [string, number, string, string][] = [
-    ["Gross Revenue (all paid orders)", grossRevenue, "Sum of all amounts on orders with status = 'paid'", COLORS.blueLight],
-    ["  • Direct Sales (no referral)", directRevenue, "Orders without ref_code — 100% retained by company", COLORS.greenLight],
-    ["  • Affiliate-Driven Sales", affiliateRevenue, "Orders with ref_code — subject to 10% affiliate commission", COLORS.amberLight],
-    ["Total Commissions Accrued", -totalCommissions, "10% of every affiliate sale, owed to affiliates", COLORS.redLight],
-    ["NET REVENUE (Company Profit)", netRevenue, "Gross Revenue − Commissions = Cash retained by Jobbots", COLORS.greenLight],
+    ["إجمالي المبيعات (كل الطلبات المدفوعة)", grossRevenue, "مجموع مبالغ جميع الطلبات ذات الحالة 'paid'", COLORS.blueLight],
+    ["  • المبيعات المباشرة (بدون إحالة)", directRevenue, "طلبات بدون ref_code — تُحتجز بالكامل للشركة", COLORS.greenLight],
+    ["  • مبيعات المسوّقين (بإحالة)", affiliateRevenue, "طلبات بها ref_code — تخضع لعمولة 10%", COLORS.amberLight],
+    ["إجمالي العمولات المستحقة", -totalCommissions, "10% من كل بيعة مسوّق، مستحقة للمسوّقين", COLORS.redLight],
+    ["صافي الإيراد (أرباح الشركة)", netRevenue, "إجمالي المبيعات − العمولات = المبلغ المحتجز في جوبوتس", COLORS.greenLight],
   ];
 
   summaryRows.forEach(([label, value, note, bg]) => {
@@ -231,7 +231,7 @@ export async function GET() {
   r++;
   sum.mergeCells(r, 1, r, 4);
   sec = sum.getCell(r, 1);
-  sec.value = "AFFILIATE PROGRAM CASHFLOW";
+  sec.value = "التدفق النقدي لبرنامج المسوّقين";
   sec.font = { bold: true, size: 12, color: { argb: COLORS.white } };
   fillCell(sec, COLORS.gray);
   sec.alignment = { vertical: "middle", indent: 1 };
@@ -239,10 +239,10 @@ export async function GET() {
   r++;
 
   const cashRows: [string, number, string, string][] = [
-    ["Commissions Paid Out (withdrawals)", paidOut, "Sum of withdrawals with status = 'paid'", COLORS.greenLight],
-    ["Pending Withdrawal Requests", pendingPayout, "Affiliates awaiting bank/wallet transfer — liability", COLORS.amberLight],
-    ["Pending Commissions (un-withdrawn)", pendingCommissions, "Earned by affiliates but not yet requested for withdrawal", COLORS.amberLight],
-    ["Commissions Marked Paid", paidCommissions, "Commissions linked to a paid withdrawal", COLORS.greenLight],
+    ["العمولات المدفوعة (سحوبات مكتملة)", paidOut, "مجموع السحوبات ذات الحالة 'paid'", COLORS.greenLight],
+    ["طلبات السحب المعلّقة", pendingPayout, "مسوّقون ينتظرون التحويل البنكي / المحفظة — التزام على الشركة", COLORS.amberLight],
+    ["العمولات المعلّقة (لم تُسحب بعد)", pendingCommissions, "مكتسبة من المسوّقين ولم يُطلب سحبها بعد", COLORS.amberLight],
+    ["العمولات المُسوّاة (مرتبطة بسحب مدفوع)", paidCommissions, "عمولات مرتبطة بسحب تمّ صرفه", COLORS.greenLight],
   ];
 
   cashRows.forEach(([label, value, note, bg]) => {
@@ -271,7 +271,7 @@ export async function GET() {
   r++;
   sum.mergeCells(r, 1, r, 4);
   sec = sum.getCell(r, 1);
-  sec.value = "ORDER STATISTICS";
+  sec.value = "إحصائيات الطلبات";
   sec.font = { bold: true, size: 12, color: { argb: COLORS.white } };
   fillCell(sec, COLORS.gray);
   sec.alignment = { vertical: "middle", indent: 1 };
@@ -279,11 +279,11 @@ export async function GET() {
   r++;
 
   const statRows: [string, string | number, string][] = [
-    ["Total Paid Orders", paid.length, "Count of orders with status = 'paid'"],
-    ["  • Direct Orders", directOrders.length, "Without affiliate referral"],
-    ["  • Affiliate Orders", affiliateOrders.length, "With ref_code present"],
-    ["Pending Orders", all.filter((o: any) => o.status === "pending").length, "Awaiting payment confirmation"],
-    ["Average Order Value", `${fmt(paid.length ? grossRevenue / paid.length : 0)} SAR`, "Gross Revenue ÷ Paid Order Count"],
+    ["إجمالي الطلبات المدفوعة", paid.length, "عدد الطلبات ذات الحالة 'paid'"],
+    ["  • طلبات مباشرة", directOrders.length, "بدون إحالة مسوّق"],
+    ["  • طلبات المسوّقين", affiliateOrders.length, "بها ref_code"],
+    ["طلبات معلّقة", all.filter((o: any) => o.status === "pending").length, "تنتظر تأكيد الدفع"],
+    ["متوسط قيمة الطلب", `${fmt(paid.length ? grossRevenue / paid.length : 0)} ر.س`, "إجمالي المبيعات ÷ عدد الطلبات المدفوعة"],
   ];
 
   statRows.forEach(([label, value, note]) => {
@@ -307,23 +307,23 @@ export async function GET() {
   r += 2;
   sum.mergeCells(r, 1, r, 4);
   const formula = sum.getCell(r, 1);
-  formula.value = "💡 Formula:  Net Revenue = Gross Revenue − (Affiliate Sales × 10%)";
+  formula.value = "💡 المعادلة:  صافي الإيراد = إجمالي المبيعات − (مبيعات المسوّقين × 10%)";
   formula.font = { italic: true, size: 11, color: { argb: COLORS.brand } };
   fillCell(formula, COLORS.blueLight);
   formula.alignment = { vertical: "middle", indent: 1 };
   sum.getRow(r).height = 24;
 
   // ===== SHEET 2: DIRECT SALES =====
-  const ds = wb.addWorksheet("2. Direct Sales (No Commission)", {
+  const ds = wb.addWorksheet("٢. المبيعات المباشرة", {
     properties: { tabColor: { argb: COLORS.green } },
     views: [{ showGridLines: false, state: "frozen", ySplit: 5 }],
   });
   ds.columns = [
     { width: 6 }, { width: 30 }, { width: 30 }, { width: 24 }, { width: 14 }, { width: 18 }, { width: 18 },
   ];
-  addBrandHeader(ds, "Direct Sales — 100% Retained", "Orders without an affiliate ref_code. Full amount goes to company net revenue.", 7);
+  addBrandHeader(ds, "المبيعات المباشرة — محتجزة 100%", "طلبات بدون ref_code لمسوّق. المبلغ كاملاً يذهب لصافي إيراد الشركة.", 7);
 
-  tableHeader(ds, 5, ["#", "Customer", "Email", "Product", "Amount (SAR)", "Paid Date", "Order ID"]);
+  tableHeader(ds, 5, ["#", "العميل", "البريد الإلكتروني", "المنتج", "المبلغ (ر.س)", "تاريخ الدفع", "رقم الطلب"]);
 
   let row = 6;
   directOrders.forEach((o: any, i: number) => {
@@ -354,7 +354,7 @@ export async function GET() {
   const totalRow = row;
   ds.mergeCells(totalRow, 1, totalRow, 4);
   const tLabel = ds.getCell(totalRow, 1);
-  tLabel.value = "TOTAL DIRECT REVENUE";
+  tLabel.value = "إجمالي إيرادات المبيعات المباشرة";
   tLabel.font = { bold: true, size: 11, color: { argb: COLORS.white } };
   tLabel.alignment = { vertical: "middle", horizontal: "right", indent: 1 };
   fillCell(tLabel, COLORS.green);
@@ -368,7 +368,7 @@ export async function GET() {
   setBorder(tVal);
   ds.mergeCells(totalRow, 6, totalRow, 7);
   const tEnd = ds.getCell(totalRow, 6);
-  tEnd.value = "SAR — kept 100%";
+  tEnd.value = "ر.س — محتجزة بالكامل للشركة";
   tEnd.font = { italic: true, size: 10, color: { argb: COLORS.white } };
   tEnd.alignment = { vertical: "middle", indent: 1 };
   fillCell(tEnd, COLORS.green);
@@ -376,7 +376,7 @@ export async function GET() {
   ds.getRow(totalRow).height = 28;
 
   // ===== SHEET 3: AFFILIATE SALES =====
-  const aff = wb.addWorksheet("3. Affiliate Sales (Commission)", {
+  const aff = wb.addWorksheet("٣. مبيعات المسوّقين", {
     properties: { tabColor: { argb: COLORS.amber } },
     views: [{ showGridLines: false, state: "frozen", ySplit: 5 }],
   });
@@ -384,9 +384,9 @@ export async function GET() {
     { width: 6 }, { width: 24 }, { width: 22 }, { width: 12 }, { width: 24 },
     { width: 14 }, { width: 14 }, { width: 14 }, { width: 12 }, { width: 14 },
   ];
-  addBrandHeader(aff, "Affiliate-Driven Sales — With 10% Commission", "Each row shows: gross order amount, commission owed (10%), and net to company.", 10);
+  addBrandHeader(aff, "مبيعات المسوّقين — عمولة 10%", "كل صف يوضّح: المبلغ الإجمالي، العمولة المستحقة (10%)، وصافي الشركة.", 10);
 
-  tableHeader(aff, 5, ["#", "Customer", "Affiliate", "Ref Code", "Product", "Gross", "Commission 10%", "Net to Co.", "Status", "Paid Date"]);
+  tableHeader(aff, 5, ["#", "العميل", "المسوّق", "كود الإحالة", "المنتج", "الإجمالي", "العمولة 10%", "صافي الشركة", "الحالة", "تاريخ الدفع"]);
 
   row = 6;
   affiliateOrders.forEach((o: any, i: number) => {
@@ -431,7 +431,7 @@ export async function GET() {
   const aTotalRow = row;
   aff.mergeCells(aTotalRow, 1, aTotalRow, 5);
   const al = aff.getCell(aTotalRow, 1);
-  al.value = "TOTALS";
+  al.value = "الإجماليات";
   al.font = { bold: true, size: 11, color: { argb: COLORS.white } };
   al.alignment = { vertical: "middle", horizontal: "right", indent: 1 };
   fillCell(al, COLORS.amber);
@@ -451,7 +451,7 @@ export async function GET() {
   });
   aff.mergeCells(aTotalRow, 9, aTotalRow, 10);
   const aEnd = aff.getCell(aTotalRow, 9);
-  aEnd.value = "SAR";
+  aEnd.value = "ر.س";
   aEnd.font = { italic: true, color: { argb: COLORS.white } };
   aEnd.alignment = { vertical: "middle", indent: 1 };
   fillCell(aEnd, COLORS.amber);
@@ -459,16 +459,16 @@ export async function GET() {
   aff.getRow(aTotalRow).height = 28;
 
   // ===== SHEET 4: COMMISSION CALCULATION =====
-  const calc = wb.addWorksheet("4. Commission Math (Step-by-Step)", {
+  const calc = wb.addWorksheet("٤. حسابات العمولة", {
     properties: { tabColor: { argb: COLORS.red } },
     views: [{ showGridLines: false, state: "frozen", ySplit: 5 }],
   });
   calc.columns = [
     { width: 6 }, { width: 22 }, { width: 24 }, { width: 14 }, { width: 6 }, { width: 14 }, { width: 4 }, { width: 14 }, { width: 14 }, { width: 22 },
   ];
-  addBrandHeader(calc, "Commission Calculation Audit Trail", "Shows the formula applied to every affiliate order:  Commission = Gross × 10%  → recorded in affiliate_referrals table.", 10);
+  addBrandHeader(calc, "مراجعة حسابات العمولة", "يوضّح المعادلة المطبّقة على كل طلب مسوّق:  العمولة = الإجمالي × 10%  ← مسجّلة في جدول affiliate_referrals.", 10);
 
-  tableHeader(calc, 5, ["#", "Order Date", "Affiliate", "Gross", "×", "Rate", "=", "Commission", "Status", "Notes"]);
+  tableHeader(calc, 5, ["#", "تاريخ الطلب", "المسوّق", "الإجمالي", "×", "النسبة", "=", "العمولة", "الحالة", "ملاحظات"]);
 
   row = 6;
   affiliateOrders.forEach((o: any, i: number) => {
@@ -485,7 +485,7 @@ export async function GET() {
       "=",
       Number(commA.toFixed(2)),
       ref?.status || "—",
-      ref?.status === "paid" ? "Paid via withdrawal" : ref?.status === "pending" ? "Awaiting affiliate request" : "No referral record",
+      ref?.status === "paid" ? "صُرفت عبر سحب" : ref?.status === "pending" ? "تنتظر طلب سحب المسوّق" : "لا يوجد سجل إحالة",
     ];
     cells.forEach((v, idx) => {
       const c = calc.getCell(row, idx + 1);
@@ -504,7 +504,7 @@ export async function GET() {
   const cTotalRow = row;
   calc.mergeCells(cTotalRow, 1, cTotalRow, 7);
   const cl = calc.getCell(cTotalRow, 1);
-  cl.value = "Σ Total Commissions Owed";
+  cl.value = "Σ إجمالي العمولات المستحقة";
   cl.font = { bold: true, size: 11, color: { argb: COLORS.white } };
   cl.alignment = { vertical: "middle", horizontal: "right", indent: 1 };
   fillCell(cl, COLORS.red);
@@ -518,7 +518,7 @@ export async function GET() {
   setBorder(ctv);
   calc.mergeCells(cTotalRow, 9, cTotalRow, 10);
   const ce = calc.getCell(cTotalRow, 9);
-  ce.value = "SAR";
+  ce.value = "ر.س";
   ce.font = { italic: true, color: { argb: COLORS.white } };
   ce.alignment = { vertical: "middle", indent: 1 };
   fillCell(ce, COLORS.red);
@@ -526,16 +526,16 @@ export async function GET() {
   calc.getRow(cTotalRow).height = 28;
 
   // ===== SHEET 5: WITHDRAWALS =====
-  const wd = wb.addWorksheet("5. Affiliate Withdrawals", {
+  const wd = wb.addWorksheet("٥. سحوبات المسوّقين", {
     properties: { tabColor: { argb: COLORS.blue } },
     views: [{ showGridLines: false, state: "frozen", ySplit: 5 }],
   });
   wd.columns = [
     { width: 6 }, { width: 24 }, { width: 14 }, { width: 14 }, { width: 18 }, { width: 28 }, { width: 18 }, { width: 18 },
   ];
-  addBrandHeader(wd, "Affiliate Withdrawals — Cash Out Ledger", "Tracks every payout request from affiliates. 'Paid' = money left the company; 'Pending' = liability.", 8);
+  addBrandHeader(wd, "سحوبات المسوّقين — سجل المدفوعات", "تتبّع كل طلبات الصرف. 'مدفوع' = المبلغ غادر الشركة؛ 'معلّق' = التزام على الشركة.", 8);
 
-  tableHeader(wd, 5, ["#", "Affiliate", "Amount (SAR)", "Status", "Method", "Account / Wallet", "Requested", "Processed"]);
+  tableHeader(wd, 5, ["#", "المسوّق", "المبلغ (ر.س)", "الحالة", "طريقة الصرف", "الحساب / المحفظة", "تاريخ الطلب", "تاريخ التنفيذ"]);
 
   row = 6;
   wList.forEach((w: any, i: number) => {
@@ -575,7 +575,7 @@ export async function GET() {
   const wTotalRow = row;
   wd.mergeCells(wTotalRow, 1, wTotalRow, 2);
   const wl = wd.getCell(wTotalRow, 1);
-  wl.value = "Σ Paid Out";
+  wl.value = "Σ إجمالي المدفوع";
   wl.font = { bold: true, color: { argb: COLORS.white } };
   wl.alignment = { vertical: "middle", horizontal: "right", indent: 1 };
   fillCell(wl, COLORS.blue);
@@ -589,7 +589,7 @@ export async function GET() {
   setBorder(wtv);
   wd.mergeCells(wTotalRow, 4, wTotalRow, 8);
   const we = wd.getCell(wTotalRow, 4);
-  we.value = `Pending: ${fmt(pendingPayout)} SAR`;
+  we.value = `معلّق: ${fmt(pendingPayout)} ر.س`;
   we.font = { italic: true, color: { argb: COLORS.white } };
   we.alignment = { vertical: "middle", indent: 1 };
   fillCell(we, COLORS.blue);
@@ -635,7 +635,7 @@ export async function GET() {
     });
   }
 
-  const dc = wb.addWorksheet("6. Discount Codes", {
+  const dc = wb.addWorksheet("٦. أكواد الخصم", {
     properties: { tabColor: { argb: COLORS.accent } },
     views: [{ showGridLines: false, state: "frozen", ySplit: 5 }],
   });
@@ -643,30 +643,30 @@ export async function GET() {
     { width: 6 }, { width: 18 }, { width: 14 }, { width: 26 }, { width: 22 },
     { width: 12 }, { width: 14 }, { width: 16 }, { width: 16 }, { width: 12 },
   ];
-  addBrandHeader(dc, "Discount Codes — Real-Sales Performance",
-    "Usage = paid orders only (a code is consumed only when an order reaches status='paid'). Cancelled/abandoned checkouts do NOT count.", 10);
+  addBrandHeader(dc, "أكواد الخصم — الأداء الفعلي في المبيعات",
+    "الاستخدام = الطلبات المدفوعة فقط (الكود يُحتسب فقط عندما يصل الطلب للحالة 'paid'). الطلبات الملغاة أو المهجورة لا تُحتسب.", 10);
 
-  tableHeader(dc, 5, ["#", "Code", "Type", "Products", "Payment Methods",
-    "Used / Limit", "Paid Orders", "Revenue (SAR)", "Total Discount (SAR)", "Status"]);
+  tableHeader(dc, 5, ["#", "الكود", "النوع", "المنتجات", "وسائل الدفع",
+    "مُستخدم / الحد", "الطلبات المدفوعة", "الإيراد (ر.س)", "إجمالي الخصم (ر.س)", "الحالة"]);
 
   let dRow = 6;
   let totRev = 0, totSaved = 0, totUsed = 0;
-  const gwLabel = (g: string) => g === "tamara" ? "Tamara" : g === "streampay" ? "Card" : g === "bank_transfer" ? "Bank" : g;
+  const gwLabel = (g: string) => g === "tamara" ? "تمارا" : g === "streampay" ? "بطاقة" : g === "bank_transfer" ? "تحويل بنكي" : g;
 
   dcList.forEach((c: any, i: number) => {
     const sales = dcSales[c.id] || { paid: 0, revenue: 0, saved: 0 };
     totRev += sales.revenue; totSaved += sales.saved; totUsed += sales.paid;
     const expired = c.expires_at && new Date(c.expires_at).getTime() < Date.now();
     const exhausted = c.usage_limit != null && c.usage_count >= c.usage_limit;
-    const statusText = !c.is_active ? "Disabled" : expired ? "Expired" : exhausted ? "Exhausted" : "Active";
-    const statusColor = statusText === "Active" ? COLORS.green : statusText === "Disabled" ? COLORS.gray : COLORS.red;
+    const statusText = !c.is_active ? "معطّل" : expired ? "منتهي الصلاحية" : exhausted ? "استُنفد" : "فعّال";
+    const statusColor = statusText === "فعّال" ? COLORS.green : statusText === "معطّل" ? COLORS.gray : COLORS.red;
 
     const cells: any[] = [
       String(i + 1),
       c.code,
       c.discount_type === "percent" ? `${c.discount_value}%` : `${c.discount_value} SAR`,
-      (dcProds[c.id] && dcProds[c.id].length > 0) ? dcProds[c.id].join(", ") : "All products",
-      (dcGws[c.id] && dcGws[c.id].length > 0) ? dcGws[c.id].map(gwLabel).join(", ") : "All methods",
+      (dcProds[c.id] && dcProds[c.id].length > 0) ? dcProds[c.id].join(", ") : "كل المنتجات",
+      (dcGws[c.id] && dcGws[c.id].length > 0) ? dcGws[c.id].map(gwLabel).join(", ") : "كل وسائل الدفع",
       `${c.usage_count}${c.usage_limit != null ? ` / ${c.usage_limit}` : ""}`,
       sales.paid,
       Number(sales.revenue.toFixed(2)),
@@ -693,7 +693,7 @@ export async function GET() {
     const totRowIdx = dRow;
     dc.mergeCells(totRowIdx, 1, totRowIdx, 6);
     const tl = dc.getCell(totRowIdx, 1);
-    tl.value = "TOTALS";
+    tl.value = "الإجماليات";
     tl.font = { bold: true, color: { argb: COLORS.white } };
     tl.alignment = { vertical: "middle", horizontal: "right", indent: 1 };
     fillCell(tl, COLORS.accent); setBorder(tl);
@@ -716,7 +716,7 @@ export async function GET() {
   } else {
     dc.mergeCells(dRow, 1, dRow, 10);
     const empty = dc.getCell(dRow, 1);
-    empty.value = "No discount codes created yet.";
+    empty.value = "لا توجد أكواد خصم حتى الآن.";
     empty.alignment = { horizontal: "center", vertical: "middle" };
     empty.font = { italic: true, color: { argb: COLORS.gray } };
     fillCell(empty, COLORS.grayLight); setBorder(empty);
@@ -725,7 +725,7 @@ export async function GET() {
 
   // ===== SHEET 7: TAMARA ORDERS =====
   const tamaraOrders = paid.filter((o: any) => o.payment_gateway === "tamara");
-  const tm = wb.addWorksheet("7. Tamara Orders", {
+  const tm = wb.addWorksheet("٧. طلبات تمارا", {
     properties: { tabColor: { argb: "FFEC4899" } },
     views: [{ showGridLines: false, state: "frozen", ySplit: 5 }],
   });
@@ -733,9 +733,9 @@ export async function GET() {
     { width: 6 }, { width: 26 }, { width: 24 }, { width: 14 }, { width: 14 },
     { width: 12 }, { width: 12 }, { width: 14 }, { width: 14 }, { width: 14 },
   ];
-  addBrandHeader(tm, "Tamara Orders — Fee Breakdown",
-    `Fee formula: (Amount × ${(TAMARA_VARIABLE_RATE * 100).toFixed(2)}% + ${TAMARA_FIXED_FEE} SAR) × (1 + ${(TAMARA_VAT_RATE * 100).toFixed(0)}% VAT). Total ${tamaraOrders.length} paid orders.`, 10);
-  tableHeader(tm, 5, ["#", "Customer", "Product", "Amount (SAR)", "Variable Fee", "Fixed Fee", "VAT", "Total Fee", "Net Received", "Paid Date"]);
+  addBrandHeader(tm, "طلبات تمارا — تفصيل الرسوم",
+    `المعادلة: (المبلغ × ${(TAMARA_VARIABLE_RATE * 100).toFixed(2)}% + ${TAMARA_FIXED_FEE} ر.س) × (1 + ${(TAMARA_VAT_RATE * 100).toFixed(0)}% ضريبة). إجمالي ${tamaraOrders.length} طلب مدفوع.`, 10);
+  tableHeader(tm, 5, ["#", "العميل", "المنتج", "المبلغ (ر.س)", "رسوم متغيرة", "رسوم ثابتة", "ضريبة", "إجمالي الرسوم", "الصافي المستلم", "تاريخ الدفع"]);
 
   let tmRow = 6;
   let tmGross = 0, tmFeeTotal = 0;
@@ -775,7 +775,7 @@ export async function GET() {
   if (tamaraOrders.length > 0) {
     tm.mergeCells(tmRow, 1, tmRow, 3);
     const tl = tm.getCell(tmRow, 1);
-    tl.value = "TOTALS";
+    tl.value = "الإجماليات";
     tl.font = { bold: true, color: { argb: COLORS.white } };
     tl.alignment = { vertical: "middle", horizontal: "right", indent: 1 };
     fillCell(tl, COLORS.brand); setBorder(tl);
@@ -800,7 +800,7 @@ export async function GET() {
 
   // ===== SHEET 8: STREAMPAY ORDERS =====
   const spOrders = paid.filter((o: any) => o.payment_gateway === "streampay");
-  const sp = wb.addWorksheet("8. StreamPay Orders", {
+  const sp = wb.addWorksheet("8. طلبات ستريم باي", {
     properties: { tabColor: { argb: COLORS.blue } },
     views: [{ showGridLines: false, state: "frozen", ySplit: 5 }],
   });
@@ -808,9 +808,9 @@ export async function GET() {
     { width: 6 }, { width: 26 }, { width: 24 }, { width: 14 },
     { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 },
   ];
-  addBrandHeader(sp, "StreamPay Orders — Fee Breakdown (Mada vs Visa)",
-    `Mada: ${(SP_MADA_RATE * 100)}% + ${SP_FIXED_FEE} SAR + ${(SP_COMMISSION_RATE * 100)}% commission   |   Visa: ${(SP_VISA_RATE * 100)}% + ${SP_FIXED_FEE} SAR + ${(SP_COMMISSION_RATE * 100)}% commission`, 9);
-  tableHeader(sp, 5, ["#", "Customer", "Product", "Amount (SAR)", "Mada Fees", "Mada Net", "Visa Fees", "Visa Net", "Paid Date"]);
+  addBrandHeader(sp, "طلبات ستريم باي — تفصيل الرسوم (مدى مقابل فيزا)",
+    `مدى: ${(SP_MADA_RATE * 100)}% + ${SP_FIXED_FEE} ريال + ${(SP_COMMISSION_RATE * 100)}% عمولة   |   فيزا: ${(SP_VISA_RATE * 100)}% + ${SP_FIXED_FEE} ريال + ${(SP_COMMISSION_RATE * 100)}% عمولة`, 9);
+  tableHeader(sp, 5, ["#", "العميل", "المنتج", "المبلغ (ريال)", "رسوم مدى", "صافي مدى", "رسوم فيزا", "صافي فيزا", "تاريخ الدفع"]);
 
   let spRow = 6;
   let spGross = 0, spMadaFees = 0, spVisaFees = 0;
@@ -849,7 +849,7 @@ export async function GET() {
   if (spOrders.length > 0) {
     sp.mergeCells(spRow, 1, spRow, 3);
     const sl = sp.getCell(spRow, 1);
-    sl.value = "TOTALS";
+    sl.value = "الإجماليات";
     sl.font = { bold: true, color: { argb: COLORS.white } };
     sl.alignment = { vertical: "middle", horizontal: "right", indent: 1 };
     fillCell(sl, COLORS.brand); setBorder(sl);
