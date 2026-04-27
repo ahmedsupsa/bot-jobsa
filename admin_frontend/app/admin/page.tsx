@@ -25,7 +25,7 @@ export default function AdminPage() {
           };
           const perms: string[] = data.permissions ?? [];
           const first = perms.map(p => permMap[p]).find(Boolean);
-          window.location.href = first ?? "/login";
+          window.location.href = first ?? "/admin/chat";
           return;
         }
         setAuthed(true);
