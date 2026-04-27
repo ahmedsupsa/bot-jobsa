@@ -129,10 +129,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── COMPANIES MARQUEE ── */}
+      {/* ── COMPANIES GRID ── */}
       <section style={s.companiesSection}>
         <div style={s.sectionInner}>
-          <div style={{ textAlign: "center", marginBottom: 36 }}>
+          <div style={{ textAlign: "center", marginBottom: 44 }}>
             <div style={{ ...s.sectionTag, marginBottom: 14 }}>شركاء التقديم</div>
             <h2 style={s.sectionTitle}>البوت يقدّم لك على شركات جديدة</h2>
             <p style={s.sectionDesc}>
@@ -140,30 +140,23 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div style={s.marqueeWrap} className="__marquee">
-            <div style={s.marqueeFadeR} className="__marquee-fade-r" />
-            <div style={s.marqueeFadeL} className="__marquee-fade-l" />
-            <div style={s.marqueeTrack} className="__marquee-track">
-              {[...Array(2)].map((_, dup) => (
-                <div key={dup} style={s.marqueeRow}>
-                  {[
-                    { src: "/companies/the-rig.png",  name: "The Rig" },
-                    { src: "/companies/lifera.png",   name: "Lifera" },
-                    { src: "/companies/scai.png",     name: "SCAI" },
-                    { src: "/companies/src.png",      name: "SRC" },
-                    { src: "/companies/bidaya.png",   name: "Bidaya Finance" },
-                    { src: "/companies/salic.png",    name: "SALIC" },
-                    { src: "/companies/nupco.png",    name: "Nupco" },
-                    { src: "/companies/thc.png",      name: "THC" },
-                  ].map((c, i) => (
-                    <div key={`${dup}-${i}`} style={s.companyCard} className="__company-card">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={c.src} alt={c.name} style={s.companyLogo} />
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
+          <div style={s.companiesGrid} className="companies-grid">
+            {[
+              { src: "/companies/the-rig.png",  name: "The Rig" },
+              { src: "/companies/lifera.png",   name: "Lifera" },
+              { src: "/companies/scai.png",     name: "SCAI" },
+              { src: "/companies/src.png",      name: "SRC" },
+              { src: "/companies/bidaya.png",   name: "Bidaya Finance" },
+              { src: "/companies/salic.png",    name: "SALIC" },
+              { src: "/companies/nupco.png",    name: "Nupco" },
+              { src: "/companies/thc.png",      name: "THC" },
+            ].map((c, i) => (
+              <div key={i} style={s.companyCard} className="__company-card">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={c.src} alt={c.name} style={s.companyLogo} />
+                <span style={s.companyName}>{c.name}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -245,16 +238,6 @@ export default function LandingPage() {
           .hero-ctas { flex-direction: column; align-items: stretch !important; }
           .hero-ctas a { text-align: center; justify-content: center; }
         }
-        @keyframes marquee-rtl {
-          from { transform: translateX(0); }
-          to   { transform: translateX(-50%); }
-        }
-        .__marquee-track {
-          animation: marquee-rtl 40s linear infinite;
-        }
-        .__marquee:hover .__marquee-track {
-          animation-play-state: paused;
-        }
         .__company-card {
           transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
@@ -262,9 +245,8 @@ export default function LandingPage() {
           transform: translateY(-4px);
           box-shadow: 0 12px 28px rgba(0,0,0,0.10);
         }
-        @media (max-width: 640px) {
-          .__company-card { width: 130px !important; height: 86px !important; }
-          .__company-card img { max-height: 50px !important; }
+        @media (max-width: 768px) {
+          .companies-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
       `}</style>
     </div>
@@ -350,24 +332,21 @@ const s: Record<string, React.CSSProperties> = {
     borderRadius: 14, fontWeight: 700, fontSize: 15, cursor: "pointer",
   },
 
-  /* COMPANIES MARQUEE */
+  /* COMPANIES GRID */
   companiesSection: { padding: "72px 20px", background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" },
-  marqueeWrap: { position: "relative" as const, overflow: "hidden", width: "100%", maskImage: "linear-gradient(to right, transparent, #000 8%, #000 92%, transparent)", WebkitMaskImage: "linear-gradient(to right, transparent, #000 8%, #000 92%, transparent)" },
-  marqueeFadeR: { position: "absolute" as const, top: 0, right: 0, width: 60, height: "100%", background: "linear-gradient(to left, var(--surface), transparent)", zIndex: 2, pointerEvents: "none" as const },
-  marqueeFadeL: { position: "absolute" as const, top: 0, left: 0, width: 60, height: "100%", background: "linear-gradient(to right, var(--surface), transparent)", zIndex: 2, pointerEvents: "none" as const },
-  marqueeTrack: { display: "flex", width: "max-content", gap: 0 },
-  marqueeRow: { display: "flex", gap: 18, padding: "8px 9px" },
+  companiesGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 },
   companyCard: {
-    flex: "0 0 auto",
-    width: 170, height: 110,
     background: "var(--bg)",
     border: "1px solid var(--border)",
-    borderRadius: 18,
-    display: "flex", alignItems: "center", justifyContent: "center",
-    padding: 18,
+    borderRadius: 20,
+    display: "flex", flexDirection: "column" as const, alignItems: "center", justifyContent: "center",
+    padding: "28px 20px 20px",
+    gap: 14,
     boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+    cursor: "default",
   },
-  companyLogo: { maxWidth: "100%", maxHeight: 64, width: "auto", height: "auto", objectFit: "contain" as const, display: "block" },
+  companyLogo: { maxWidth: "100%", maxHeight: 60, width: "auto", height: "auto", objectFit: "contain" as const, display: "block" },
+  companyName: { fontSize: 12, fontWeight: 600, color: "var(--text3)", textAlign: "center" as const },
 
   /* FOOTER */
   footer: { borderTop: "1px solid var(--border)", padding: "28px 20px" },
