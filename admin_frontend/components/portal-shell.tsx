@@ -1,5 +1,6 @@
 "use client";
 import { useRouter, usePathname } from "next/navigation";
+import { useRef, useEffect } from "react";
 import { clearToken } from "@/lib/portal-auth";
 import { useTheme } from "@/contexts/theme-context";
 import { PushPermissionBanner } from "@/components/PushPermissionBanner";
@@ -36,6 +37,19 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { theme, toggle } = useTheme();
   const dark = theme === "dark";
+  const navScrollRef = useRef<HTMLElement>(null);
+  const activeTabRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-scroll active tab into center when route changes
+  useEffect(() => {
+    const nav = navScrollRef.current;
+    const btn = activeTabRef.current;
+    if (!nav || !btn) return;
+    const navW = nav.offsetWidth;
+    const btnLeft = btn.offsetLeft;
+    const btnW = btn.offsetWidth;
+    nav.scrollTo({ left: btnLeft - navW / 2 + btnW / 2, behavior: "smooth" });
+  }, [pathname]);
 
   function logout() { clearToken(); router.replace("/portal/login"); }
 
@@ -209,7 +223,8 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
 
       {/* ─── FLOATING MOBILE BOTTOM NAV ─── */}
       <nav
-        className="portal-bottom-nav"
+        ref={navScrollRef}
+        className="portal-bottom-nav no-scrollbar"
         style={{
           display: "none",
           position: "fixed",
@@ -223,21 +238,27 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           padding: "6px 8px",
+          overflowX: "auto",
+          overflowY: "hidden",
+          WebkitOverflowScrolling: "touch" as any,
+          scrollbarWidth: "none" as any,
         }}
       >
         <div style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-around",
+          minWidth: "max-content",
+          gap: 2,
         }}>
           {BOTTOM_NAV.map(({ href, icon: Icon, label }) => {
             const active = pathname === href || (href !== "/portal/dashboard" && pathname.startsWith(href));
             return (
               <button
                 key={href}
+                ref={active ? activeTabRef : undefined}
                 onClick={() => router.push(href)}
                 style={{
-                  flex: active ? "0 0 auto" : 1,
+                  flex: "0 0 auto",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
