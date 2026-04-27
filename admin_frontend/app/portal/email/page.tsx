@@ -157,12 +157,23 @@ export default function EmailPage() {
         }}>
           <Info size={18} color={t.blue} strokeWidth={2} style={{ flexShrink: 0, marginTop: 2 }} />
           <div style={{ fontSize: 13, color: dark ? "#93c5fd" : "#1d4ed8", lineHeight: 1.8 }}>
-            <strong>كيف تحصل على App Password في Gmail؟</strong>
+            <strong>كيف تجيب App Password من Gmail؟</strong>
             <ol style={{ margin: "6px 0 0", padding: "0 18px" }}>
-              <li>فعّل التحقق بخطوتين في حسابك</li>
-              <li>اذهب إلى: myaccount.google.com ← الأمان ← كلمات مرور التطبيقات</li>
+              <li>فعّل التحقق بخطوتين في حسابك أول شي</li>
+              <li>
+                روح لـ{" "}
+                <a
+                  href="https://myaccount.google.com/apppasswords"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "inherit", fontWeight: 700, textDecoration: "underline" }}
+                >
+                  كلمات مرور التطبيقات
+                </a>
+                {" "}← الأمان ← myaccount.google.com
+              </li>
               <li>أنشئ كلمة مرور جديدة واختر "بريد إلكتروني"</li>
-              <li>انسخ الكلمة المكوّنة من 16 حرف والصقها هنا</li>
+              <li>انسخ الكلمة اللي طولها 16 حرف والصقها هنا</li>
             </ol>
           </div>
         </div>
