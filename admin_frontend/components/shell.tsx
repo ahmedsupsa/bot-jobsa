@@ -74,7 +74,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         if (l.superOnly && !me.isSuper) return false;
         return l.perm === null || me.isSuper || me.permissions.includes(l.perm);
       })
-    : links;
+    : [];
 
   // Block rendering when current page is forbidden for this admin.
   useEffect(() => {
