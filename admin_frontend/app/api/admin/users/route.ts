@@ -15,7 +15,7 @@ export async function GET() {
   const codeIds = Array.from(new Set(list.map((u: any) => u.activation_code_id).filter(Boolean)));
   const userIds = list.map((u: any) => u.id);
 
-  const [{ data: codes }, { data: settings }, { data: prefs }, { data: fields }] = await Promise.all([
+  const [{ data: codes }, { data: settings }, { data: prefs }, { data: fields }, { data: cvs }] = await Promise.all([
     codeIds.length > 0
       ? supabase.from("activation_codes").select("id,code").in("id", codeIds)
       : Promise.resolve({ data: [] as any[] }),
@@ -26,6 +26,9 @@ export async function GET() {
       ? supabase.from("user_job_preferences").select("user_id,job_field_id").in("user_id", userIds)
       : Promise.resolve({ data: [] as any[] }),
     supabase.from("job_fields").select("id,name_ar"),
+    userIds.length > 0
+      ? supabase.from("user_cvs").select("user_id,file_name,storage_path").in("user_id", userIds)
+      : Promise.resolve({ data: [] as any[] }),
   ]);
 
   const codeMap = new Map((codes || []).map((c: any) => [c.id, c.code]));
@@ -44,6 +47,7 @@ export async function GET() {
     if (!prefMap.has(p.user_id)) prefMap.set(p.user_id, []);
     prefMap.get(p.user_id)!.push(name);
   }
+  const cvMap = new Map((cvs || []).map((c: any) => [c.user_id, { cv_file_name: c.file_name, has_cv: !!c.storage_path }]));
 
   const result = list.map((u: any) => ({
     ...u,
@@ -51,6 +55,7 @@ export async function GET() {
     activation_code: u.activation_code_id ? codeMap.get(u.activation_code_id) || null : null,
     preferences: prefMap.get(u.id) || [],
     ...(smtpMap.get(u.id) || { smtp_email: "", email_connected: false, smtp_host: "", last_email_test_at: null }),
+    ...(cvMap.get(u.id) || { has_cv: false, cv_file_name: null }),
   }));
 
   return NextResponse.json({ ok: true, users: result });

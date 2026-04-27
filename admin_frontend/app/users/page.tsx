@@ -3,7 +3,7 @@
 import Shell from "@/components/shell";
 import { apiGet, apiSend } from "@/lib/api";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Save, User, FileText, Upload, Check, Loader2, ChevronDown, ChevronUp, Tags, Calendar, Trash2, KeyRound, Copy, Mail, WifiOff } from "lucide-react";
+import { Search, Save, User, FileText, Upload, Check, Loader2, ChevronDown, ChevronUp, Tags, Calendar, Trash2, KeyRound, Copy, Mail, WifiOff, Eye } from "lucide-react";
 
 type UserRow = {
   id: string;
@@ -18,6 +18,8 @@ type UserRow = {
   smtp_email?: string;
   email_connected?: boolean;
   last_email_test_at?: string | null;
+  has_cv?: boolean;
+  cv_file_name?: string | null;
 };
 
 type Field = { id: string; name_ar: string };
@@ -166,8 +168,22 @@ function UserCard({
   const [emailSaved, setEmailSaved] = useState(false);
   const [uploadingCv, setUploadingCv] = useState(false);
   const [cvName, setCvName] = useState("");
+  const [hasCv, setHasCv] = useState(!!user.has_cv);
+  const [cvFileName, setCvFileName] = useState(user.cv_file_name || "");
+  const [viewingCv, setViewingCv] = useState(false);
   const [err, setErr] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleViewCv = async () => {
+    setViewingCv(true);
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/cv`, { credentials: "include" });
+      const data = await res.json();
+      if (!data.ok) { setErr(data.error || "فشل جلب السيرة"); return; }
+      window.open(data.url, "_blank", "noopener,noreferrer");
+    } catch { setErr("فشل الاتصال بالخادم"); }
+    finally { setViewingCv(false); }
+  };
 
   const [subDays, setSubDays] = useState("");
   const [savingSub, setSavingSub] = useState(false);
@@ -240,6 +256,8 @@ function UserCard({
     try {
       await onUploadCv(user.id, file);
       setCvName(file.name);
+      setHasCv(true);
+      setCvFileName(file.name);
     } catch (e) { setErr(String(e)); }
     finally { setUploadingCv(false); if (fileRef.current) fileRef.current.value = ""; }
   };
@@ -378,15 +396,30 @@ function UserCard({
           </button>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={handleCvChange} />
+
+          {hasCv && (
+            <button
+              onClick={handleViewCv}
+              disabled={viewingCv}
+              title={cvFileName || "عرض السيرة الذاتية"}
+              className="flex items-center gap-1.5 rounded-xl border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-green-400 hover:bg-green-500/20 transition-colors disabled:opacity-50 whitespace-nowrap max-w-[180px]"
+            >
+              {viewingCv ? <Loader2 size={12} className="animate-spin" /> : <Eye size={12} />}
+              <span className="truncate">
+                {viewingCv ? "جاري الفتح..." : cvFileName ? cvFileName : "عرض السيرة"}
+              </span>
+            </button>
+          )}
+
           <button
             onClick={() => fileRef.current?.click()}
             disabled={uploadingCv}
             className="flex items-center gap-1.5 rounded-xl border border-line/70 bg-panel2 px-3 py-2 text-xs text-ink2 hover:border-accent/40 hover:text-accent transition-colors disabled:opacity-50 whitespace-nowrap"
           >
             {uploadingCv ? <Loader2 size={12} className="animate-spin" /> : cvName ? <FileText size={12} className="text-ink/70" /> : <Upload size={12} />}
-            {uploadingCv ? "جاري الرفع..." : cvName ? "تم الرفع ✓" : "رفع سيرة"}
+            {uploadingCv ? "جاري الرفع..." : cvName ? "تم الرفع ✓" : hasCv ? "استبدال السيرة" : "رفع سيرة"}
           </button>
 
           <button

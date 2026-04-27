@@ -4,6 +4,31 @@ import { enforcePermission } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 
+export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const _denied_ = enforcePermission("users"); if (_denied_) return _denied_;
+
+  const uid = params.id;
+  const { data: cvRow } = await supabase
+    .from("user_cvs")
+    .select("storage_path,file_name")
+    .eq("user_id", uid)
+    .maybeSingle();
+
+  if (!cvRow?.storage_path) {
+    return NextResponse.json({ ok: false, error: "لا توجد سيرة ذاتية لهذا المستخدم" }, { status: 404 });
+  }
+
+  const { data: signed, error: signErr } = await supabase.storage
+    .from("cvs")
+    .createSignedUrl(cvRow.storage_path, 300); // 5 minutes
+
+  if (signErr || !signed?.signedUrl) {
+    return NextResponse.json({ ok: false, error: signErr?.message || "فشل توليد الرابط" }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true, url: signed.signedUrl, file_name: cvRow.file_name });
+}
+
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const _denied_ = enforcePermission("users"); if (_denied_) return _denied_;
 
