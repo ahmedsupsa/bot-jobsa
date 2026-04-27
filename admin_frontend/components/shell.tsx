@@ -6,15 +6,10 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Key, BriefcaseBusiness, Bell, LogOut,
   ShoppingBag, TrendingUp, MessageCircle, MailCheck, ShieldCheck, Send,
-  Sun, Moon, Contact, Download,
+  Sun, Moon, Contact,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "@/contexts/theme-context";
-
-type BIPEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-};
 
 type Perm =
   | "users" | "codes" | "jobs" | "crm" | "notifications"
@@ -48,39 +43,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [me, setMe] = useState<Me>(null);
   const [badges, setBadges] = useState<Badges>({});
-  const [pwaPrompt, setPwaPrompt] = useState<BIPEvent | null>(null);
-  const [pwaInstalled, setPwaInstalled] = useState(false);
-  const [pwaIOS, setPwaIOS] = useState(false);
-  const [pwaIOSHint, setPwaIOSHint] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/me", { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(setMe)
       .catch(() => setMe(null));
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone === true;
-    if (standalone) { setPwaInstalled(true); return; }
-
-    const onPrompt = (e: Event) => { e.preventDefault(); setPwaPrompt(e as BIPEvent); };
-    const onInstalled = () => { setPwaInstalled(true); setPwaPrompt(null); };
-    window.addEventListener("beforeinstallprompt", onPrompt);
-    window.addEventListener("appinstalled", onInstalled);
-
-    const ua = window.navigator.userAgent;
-    const isIOS = /iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream;
-    const isSafari = /^((?!chrome|android|crios|fxios|edgios).)*safari/i.test(ua);
-    if (isIOS && isSafari && !standalone) setPwaIOS(true);
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onPrompt);
-      window.removeEventListener("appinstalled", onInstalled);
-    };
   }, []);
 
   useEffect(() => {
@@ -169,35 +137,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="px-3 py-4 border-t border-line space-y-1.5">
-          {!pwaInstalled && pwaPrompt && (
-            <button
-              onClick={async () => {
-                if (!pwaPrompt) return;
-                pwaPrompt.prompt();
-                const r = await pwaPrompt.userChoice;
-                if (r.outcome === "accepted") setPwaInstalled(true);
-                setPwaPrompt(null);
-              }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-ink2 hover:bg-panel2 transition-all border border-transparent hover:border-line"
-            >
-              <Download size={17} className="text-accent" />
-              تثبيت التطبيق
-            </button>
-          )}
-          {!pwaInstalled && pwaIOS && (
-            <button
-              onClick={() => setPwaIOSHint(h => !h)}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-ink2 hover:bg-panel2 transition-all border border-transparent hover:border-line"
-            >
-              <Download size={17} className="text-accent" />
-              تثبيت التطبيق
-            </button>
-          )}
-          {pwaIOSHint && (
-            <div className="rounded-xl bg-panel2 border border-line px-3 py-2.5 text-xs text-ink leading-relaxed">
-              اضغط <strong>مشاركة</strong> (□↑) في متصفح Safari ثم اختر <strong>"إضافة إلى الشاشة الرئيسية"</strong>
-            </div>
-          )}
           <button
             onClick={toggle}
             aria-label={dark ? "الوضع النهاري" : "الوضع الليلي"}

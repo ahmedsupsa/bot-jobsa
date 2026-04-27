@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Download, Share, X } from "lucide-react";
 
 type BIPEvent = Event & {
@@ -8,10 +9,14 @@ type BIPEvent = Event & {
 };
 
 export function PWAInstallButton() {
+  const pathname = usePathname();
   const [deferred, setDeferred] = useState<BIPEvent | null>(null);
   const [showIOS, setShowIOS] = useState(false);
   const [installed, setInstalled] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+
+  // Only show install prompt on portal pages — not admin
+  const isPortal = pathname?.startsWith("/portal") || pathname === "/store" || pathname === "/";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -62,7 +67,7 @@ export function PWAInstallButton() {
     setDeferred(null);
   };
 
-  if (installed || dismissed) return null;
+  if (!isPortal || installed || dismissed) return null;
 
   if (deferred) {
     return (
