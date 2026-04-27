@@ -7,6 +7,33 @@ export const dynamic = "force-dynamic";
 
 const COMMISSION_RATE = 0.10;
 
+// Tamara fees
+const TAMARA_VARIABLE_RATE = 0.0699;
+const TAMARA_FIXED_FEE = 1.5;
+const TAMARA_VAT_RATE = 0.15;
+function tamaraFee(amount: number) {
+  const variable = amount * TAMARA_VARIABLE_RATE;
+  const fixed = TAMARA_FIXED_FEE;
+  const subtotal = variable + fixed;
+  const vat = subtotal * TAMARA_VAT_RATE;
+  return { variable, fixed, vat, total: subtotal + vat, net: amount - (subtotal + vat) };
+}
+
+// StreamPay fees
+const SP_COMMISSION_RATE = 0.008;
+const SP_MADA_RATE = 0.01;
+const SP_VISA_RATE = 0.025;
+const SP_FIXED_FEE = 1.0;
+function spFee(amount: number) {
+  const madaGateway = amount * SP_MADA_RATE + SP_FIXED_FEE;
+  const madaComm = amount * SP_COMMISSION_RATE;
+  const madaTotal = madaGateway + madaComm;
+  const visaGateway = amount * SP_VISA_RATE + SP_FIXED_FEE;
+  const visaComm = amount * SP_COMMISSION_RATE;
+  const visaTotal = visaGateway + visaComm;
+  return { madaTotal, madaNet: amount - madaTotal, visaTotal, visaNet: amount - visaTotal };
+}
+
 function freshClient() {
   const url = process.env.SUPABASE_URL || "";
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
@@ -92,7 +119,7 @@ export async function GET() {
 
   const { data: rawOrders } = await supabase
     .from("store_orders")
-    .select("id, user_name, user_email, amount, status, ref_code, created_at, paid_at, store_products(name, duration_days)")
+    .select("id, user_name, user_email, amount, status, ref_code, payment_gateway, created_at, paid_at, store_products(name, duration_days)")
     .order("created_at", { ascending: false });
 
   const all = rawOrders || [];
@@ -694,6 +721,155 @@ export async function GET() {
     empty.font = { italic: true, color: { argb: COLORS.gray } };
     fillCell(empty, COLORS.grayLight); setBorder(empty);
     dc.getRow(dRow).height = 32;
+  }
+
+  // ===== SHEET 7: TAMARA ORDERS =====
+  const tamaraOrders = paid.filter((o: any) => o.payment_gateway === "tamara");
+  const tm = wb.addWorksheet("7. Tamara Orders", {
+    properties: { tabColor: { argb: "FFEC4899" } },
+    views: [{ showGridLines: false, state: "frozen", ySplit: 5 }],
+  });
+  tm.columns = [
+    { width: 6 }, { width: 26 }, { width: 24 }, { width: 14 }, { width: 14 },
+    { width: 12 }, { width: 12 }, { width: 14 }, { width: 14 }, { width: 14 },
+  ];
+  addBrandHeader(tm, "Tamara Orders — Fee Breakdown",
+    `Fee formula: (Amount × ${(TAMARA_VARIABLE_RATE * 100).toFixed(2)}% + ${TAMARA_FIXED_FEE} SAR) × (1 + ${(TAMARA_VAT_RATE * 100).toFixed(0)}% VAT). Total ${tamaraOrders.length} paid orders.`, 10);
+  tableHeader(tm, 5, ["#", "Customer", "Product", "Amount (SAR)", "Variable Fee", "Fixed Fee", "VAT", "Total Fee", "Net Received", "Paid Date"]);
+
+  let tmRow = 6;
+  let tmGross = 0, tmFeeTotal = 0;
+  tamaraOrders.forEach((o: any, i: number) => {
+    const amount = Number(o.amount || 0);
+    const f = tamaraFee(amount);
+    const prod = Array.isArray(o.store_products) ? o.store_products[0] : o.store_products;
+    tmGross += amount; tmFeeTotal += f.total;
+    const cells: any[] = [
+      String(i + 1),
+      o.user_name || o.user_email || "—",
+      prod?.name || "—",
+      Number(amount.toFixed(2)),
+      Number(f.variable.toFixed(2)),
+      Number(f.fixed.toFixed(2)),
+      Number(f.vat.toFixed(2)),
+      Number(f.total.toFixed(2)),
+      Number(f.net.toFixed(2)),
+      o.paid_at ? new Date(o.paid_at).toISOString().slice(0, 10) : "—",
+    ];
+    cells.forEach((v, idx) => {
+      const c = tm.getCell(tmRow, idx + 1);
+      c.value = v;
+      c.font = { size: 10 };
+      c.alignment = { vertical: "middle", horizontal: [3, 4, 5, 6, 7, 8].includes(idx) ? "right" : idx === 0 ? "center" : "left", indent: 1 };
+      if ([3, 4, 5, 6, 7, 8].includes(idx)) c.numFmt = "#,##0.00";
+      if (idx === 3) c.font = { size: 10, bold: true, color: { argb: COLORS.brand } };
+      if ([4, 5, 6, 7].includes(idx)) c.font = { size: 10, color: { argb: COLORS.red } };
+      if (idx === 8) c.font = { size: 10, bold: true, color: { argb: COLORS.green } };
+      fillCell(c, i % 2 === 0 ? COLORS.white : COLORS.grayLight);
+      setBorder(c);
+    });
+    tm.getRow(tmRow).height = 22;
+    tmRow++;
+  });
+
+  if (tamaraOrders.length > 0) {
+    tm.mergeCells(tmRow, 1, tmRow, 3);
+    const tl = tm.getCell(tmRow, 1);
+    tl.value = "TOTALS";
+    tl.font = { bold: true, color: { argb: COLORS.white } };
+    tl.alignment = { vertical: "middle", horizontal: "right", indent: 1 };
+    fillCell(tl, COLORS.brand); setBorder(tl);
+    [
+      { col: 4, val: tmGross, color: COLORS.brand },
+      { col: 8, val: tmFeeTotal, color: COLORS.red },
+      { col: 9, val: tmGross - tmFeeTotal, color: COLORS.green },
+    ].forEach(({ col, val, color }) => {
+      const c = tm.getCell(tmRow, col);
+      c.value = Number(val.toFixed(2));
+      c.numFmt = "#,##0.00";
+      c.font = { bold: true, color: { argb: COLORS.white } };
+      c.alignment = { horizontal: "right" };
+      fillCell(c, color); setBorder(c);
+    });
+    [5, 6, 7, 10].forEach(col => {
+      const c = tm.getCell(tmRow, col);
+      fillCell(c, COLORS.brand); setBorder(c);
+    });
+    tm.getRow(tmRow).height = 28;
+  }
+
+  // ===== SHEET 8: STREAMPAY ORDERS =====
+  const spOrders = paid.filter((o: any) => o.payment_gateway === "streampay");
+  const sp = wb.addWorksheet("8. StreamPay Orders", {
+    properties: { tabColor: { argb: COLORS.blue } },
+    views: [{ showGridLines: false, state: "frozen", ySplit: 5 }],
+  });
+  sp.columns = [
+    { width: 6 }, { width: 26 }, { width: 24 }, { width: 14 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 },
+  ];
+  addBrandHeader(sp, "StreamPay Orders — Fee Breakdown (Mada vs Visa)",
+    `Mada: ${(SP_MADA_RATE * 100)}% + ${SP_FIXED_FEE} SAR + ${(SP_COMMISSION_RATE * 100)}% commission   |   Visa: ${(SP_VISA_RATE * 100)}% + ${SP_FIXED_FEE} SAR + ${(SP_COMMISSION_RATE * 100)}% commission`, 9);
+  tableHeader(sp, 5, ["#", "Customer", "Product", "Amount (SAR)", "Mada Fees", "Mada Net", "Visa Fees", "Visa Net", "Paid Date"]);
+
+  let spRow = 6;
+  let spGross = 0, spMadaFees = 0, spVisaFees = 0;
+  spOrders.forEach((o: any, i: number) => {
+    const amount = Number(o.amount || 0);
+    const f = spFee(amount);
+    const prod = Array.isArray(o.store_products) ? o.store_products[0] : o.store_products;
+    spGross += amount; spMadaFees += f.madaTotal; spVisaFees += f.visaTotal;
+    const cells: any[] = [
+      String(i + 1),
+      o.user_name || o.user_email || "—",
+      prod?.name || "—",
+      Number(amount.toFixed(2)),
+      Number(f.madaTotal.toFixed(2)),
+      Number(f.madaNet.toFixed(2)),
+      Number(f.visaTotal.toFixed(2)),
+      Number(f.visaNet.toFixed(2)),
+      o.paid_at ? new Date(o.paid_at).toISOString().slice(0, 10) : "—",
+    ];
+    cells.forEach((v, idx) => {
+      const c = sp.getCell(spRow, idx + 1);
+      c.value = v;
+      c.font = { size: 10 };
+      c.alignment = { vertical: "middle", horizontal: [3, 4, 5, 6, 7].includes(idx) ? "right" : idx === 0 ? "center" : "left", indent: 1 };
+      if ([3, 4, 5, 6, 7].includes(idx)) c.numFmt = "#,##0.00";
+      if (idx === 3) c.font = { size: 10, bold: true, color: { argb: COLORS.brand } };
+      if ([4, 6].includes(idx)) c.font = { size: 10, color: { argb: COLORS.red } };
+      if ([5, 7].includes(idx)) c.font = { size: 10, bold: true, color: { argb: COLORS.green } };
+      fillCell(c, i % 2 === 0 ? COLORS.white : COLORS.grayLight);
+      setBorder(c);
+    });
+    sp.getRow(spRow).height = 22;
+    spRow++;
+  });
+
+  if (spOrders.length > 0) {
+    sp.mergeCells(spRow, 1, spRow, 3);
+    const sl = sp.getCell(spRow, 1);
+    sl.value = "TOTALS";
+    sl.font = { bold: true, color: { argb: COLORS.white } };
+    sl.alignment = { vertical: "middle", horizontal: "right", indent: 1 };
+    fillCell(sl, COLORS.brand); setBorder(sl);
+    [
+      { col: 4, val: spGross, color: COLORS.brand },
+      { col: 5, val: spMadaFees, color: COLORS.red },
+      { col: 6, val: spGross - spMadaFees, color: COLORS.green },
+      { col: 7, val: spVisaFees, color: COLORS.red },
+      { col: 8, val: spGross - spVisaFees, color: COLORS.green },
+    ].forEach(({ col, val, color }) => {
+      const c = sp.getCell(spRow, col);
+      c.value = Number(val.toFixed(2));
+      c.numFmt = "#,##0.00";
+      c.font = { bold: true, color: { argb: COLORS.white } };
+      c.alignment = { horizontal: "right" };
+      fillCell(c, color); setBorder(c);
+    });
+    const sEnd = sp.getCell(spRow, 9);
+    fillCell(sEnd, COLORS.brand); setBorder(sEnd);
+    sp.getRow(spRow).height = 28;
   }
 
   // Output
