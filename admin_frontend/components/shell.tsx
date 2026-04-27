@@ -125,7 +125,13 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 <span className="flex-1 truncate">{l.label}</span>
                 {count > 0 && (
                   <span
-                    className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-accent text-ink text-[11px] font-bold leading-none"
+                    style={{
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999,
+                      background: "#ef4444", color: "#fff",
+                      fontSize: 11, fontWeight: 800, lineHeight: 1,
+                      boxShadow: "0 0 0 2px var(--sidebar, #fff)",
+                    }}
                     title={`${count} عنصر يحتاج انتباهك`}
                   >
                     {count > 99 ? "99+" : count}
