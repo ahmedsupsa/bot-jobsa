@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Shell from "@/components/shell";
 import {
-  Send, Paperclip, X, FileText, Download, ChevronRight,
+  Send, Paperclip, X, FileText, Download,
   MessageCircle, ImageIcon, FileArchive, File,
+  Loader2, ArrowRight, Search,
 } from "lucide-react";
 
 interface Contact {
@@ -29,8 +30,7 @@ interface Message {
 }
 
 function formatTime(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
 }
 
 function formatDate(iso: string) {
@@ -52,110 +52,41 @@ function formatSize(bytes: number | null) {
 
 function Avatar({ name, size = 36 }: { name: string; size?: number }) {
   return (
-    <div
-      style={{
-        width: size, height: size, borderRadius: "50%",
-        background: "var(--accent)", color: "var(--accent-fg, #fff)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: size * 0.38, fontWeight: 700, flexShrink: 0, userSelect: "none",
-      }}
-    >
+    <div style={{
+      width: size, height: size, borderRadius: 12,
+      background: "var(--accent)", color: "var(--accent-fg, #fff)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: size * 0.38, fontWeight: 700, flexShrink: 0, userSelect: "none",
+      border: "1px solid var(--border)",
+    }}>
       {name[0]?.toUpperCase() ?? "؟"}
     </div>
   );
 }
 
-function FileIcon({ type }: { type: string | null }) {
-  if (!type) return <File size={20} />;
-  if (type.startsWith("image/")) return <ImageIcon size={20} />;
-  if (type.includes("zip") || type.includes("rar") || type.includes("7z")) return <FileArchive size={20} />;
-  return <FileText size={20} />;
+function FileIconComp({ type }: { type: string | null }) {
+  if (!type) return <File size={18} />;
+  if (type.startsWith("image/")) return <ImageIcon size={18} />;
+  if (type.includes("zip") || type.includes("rar") || type.includes("7z")) return <FileArchive size={18} />;
+  return <FileText size={18} />;
 }
 
-function MessageBubble({ msg, isMine }: { msg: Message; isMine: boolean }) {
-  const isImage = msg.file_type?.startsWith("image/");
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: isMine ? "flex-end" : "flex-start",
-        marginBottom: 6,
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "72%",
-          borderRadius: isMine ? "18px 4px 18px 18px" : "4px 18px 18px 18px",
-          padding: msg.file_url && isImage ? 4 : "10px 14px",
-          background: isMine ? "var(--accent)" : "var(--panel2)",
-          color: isMine ? "var(--accent-fg, #fff)" : "var(--ink)",
-          border: isMine ? "none" : "1px solid var(--line)",
-          wordBreak: "break-word",
-          fontSize: 14,
-          lineHeight: 1.55,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-        }}
-      >
-        {msg.file_url && isImage && (
-          <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
-            <img
-              src={msg.file_url}
-              alt={msg.file_name || "صورة"}
-              style={{ maxWidth: 280, maxHeight: 220, borderRadius: 12, display: "block" }}
-            />
-          </a>
-        )}
-        {msg.file_url && !isImage && (
-          <a
-            href={msg.file_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            download={msg.file_name || true}
-            style={{
-              display: "flex", alignItems: "center", gap: 10,
-              textDecoration: "none",
-              color: isMine ? "var(--accent-fg, #fff)" : "var(--ink)",
-            }}
-          >
-            <div style={{
-              width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-              background: isMine ? "rgba(255,255,255,0.18)" : "var(--bg)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              border: isMine ? "none" : "1px solid var(--line)",
-            }}>
-              <FileIcon type={msg.file_type} />
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>
-                {msg.file_name || "ملف"}
-              </div>
-              <div style={{ fontSize: 11, opacity: 0.7 }}>{formatSize(msg.file_size)}</div>
-            </div>
-            <Download size={16} style={{ flexShrink: 0, opacity: 0.7 }} />
-          </a>
-        )}
-        {msg.body && (
-          <div style={{ marginTop: msg.file_url ? 6 : 0, padding: msg.file_url && isImage ? "0 6px 4px" : 0 }}>
-            {msg.body}
-          </div>
-        )}
-      </div>
-      <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 2, paddingInline: 4 }}>
-        {formatTime(msg.created_at)}
-        {isMine && (
-          <span style={{ marginRight: 4, color: msg.read_at ? "#3b82f6" : "var(--muted)" }}>
-            {msg.read_at ? "✓✓" : "✓"}
-          </span>
-        )}
-      </div>
-    </div>
-  );
+function groupMessagesByDate(msgs: Message[]) {
+  const groups: { date: string; messages: Message[] }[] = [];
+  let currentDate = "";
+  for (const msg of msgs) {
+    const d = formatDate(msg.created_at);
+    if (d !== currentDate) { groups.push({ date: d, messages: [] }); currentDate = d; }
+    groups[groups.length - 1].messages.push(msg);
+  }
+  return groups;
 }
 
 export default function ChatPage() {
   const [me, setMe] = useState<{ username: string; isSuper: boolean } | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [filtered, setFiltered] = useState<Contact[]>([]);
+  const [searchConv, setSearchConv] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -164,14 +95,29 @@ export default function ChatPage() {
   const [pendingFile, setPendingFile] = useState<{
     path: string; name: string; size: number; type: string; previewUrl?: string;
   } | null>(null);
-  const [showContacts, setShowContacts] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [authed, setAuthed] = useState(false);
 
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const lastMsgCountRef = useRef(0);
+  const lastMsgIdRef = useRef<number | null>(null);
+
+  const isNearBottom = () => {
+    const el = scrollRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  };
+
+  const scrollToBottom = (force = false) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (force || isNearBottom()) {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    }
+  };
 
   useEffect(() => {
     fetch("/api/admin/me", { credentials: "include" })
@@ -194,12 +140,28 @@ export default function ChatPage() {
     loadContacts();
   }, [authed, loadContacts]);
 
+  useEffect(() => {
+    const q = searchConv.trim().toLowerCase();
+    if (!q) { setFiltered(contacts); return; }
+    setFiltered(contacts.filter(c => c.username.toLowerCase().includes(q)));
+  }, [searchConv, contacts]);
+
   const loadMessages = useCallback(async (withUser: string, silent = false) => {
     if (!silent) setLoadingMsgs(true);
     const r = await fetch(`/api/admin/chat/messages?with=${encodeURIComponent(withUser)}`, { credentials: "include" });
     const d = await r.json();
     if (d.ok) {
-      setMessages(d.messages || []);
+      const msgs: Message[] = d.messages || [];
+      const lastId = msgs.length > 0 ? msgs[msgs.length - 1].id : null;
+      const isNew = lastId !== lastMsgIdRef.current;
+
+      setMessages(msgs);
+
+      if (isNew) {
+        lastMsgIdRef.current = lastId;
+        setTimeout(() => scrollToBottom(true), 80);
+      }
+
       fetch("/api/admin/chat/messages", {
         method: "PATCH",
         credentials: "include",
@@ -211,6 +173,7 @@ export default function ChatPage() {
       );
     }
     if (!silent) setLoadingMsgs(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -219,29 +182,28 @@ export default function ChatPage() {
     pollRef.current = setInterval(() => {
       loadMessages(selected, true);
       loadContacts();
-    }, 3000);
+    }, 4000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [selected, loadMessages, loadContacts]);
 
   useEffect(() => {
-    if (selected) loadMessages(selected);
-  }, [selected, loadMessages]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (!selected) return;
+    lastMsgIdRef.current = null;
+    lastMsgCountRef.current = 0;
+    loadMessages(selected);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
 
   useEffect(() => {
     if (authed && contacts.length > 0 && !selected) {
-      const first = contacts[0];
-      setSelected(first.username);
-      setShowContacts(false);
+      setSelected(contacts[0].username);
     }
   }, [authed, contacts, selected]);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { alert("الحد الأقصى 10 ميجا"); return; }
     setUploading(true);
     const fd = new FormData();
     fd.append("file", file);
@@ -275,123 +237,150 @@ export default function ChatPage() {
     });
     const d = await r.json();
     if (d.ok) {
-      setInput("");
-      setPendingFile(null);
+      setInput(""); setPendingFile(null);
       await loadMessages(selected, true);
       await loadContacts();
+      setTimeout(() => scrollToBottom(true), 80);
     }
     setSending(false);
     textareaRef.current?.focus();
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }
 
   if (!authed) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg">
-        <div className="h-5 w-5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+        <Loader2 size={22} className="animate-spin" style={{ color: "var(--text4)" }} />
       </div>
     );
   }
 
   const selectedContact = contacts.find((c) => c.username === selected);
-
-  function groupMessagesByDate(msgs: Message[]) {
-    const groups: { date: string; messages: Message[] }[] = [];
-    let currentDate = "";
-    for (const msg of msgs) {
-      const d = formatDate(msg.created_at);
-      if (d !== currentDate) { groups.push({ date: d, messages: [] }); currentDate = d; }
-      groups[groups.length - 1].messages.push(msg);
-    }
-    return groups;
-  }
-
   const totalUnread = contacts.reduce((s, c) => s + c.unread, 0);
 
   return (
     <Shell>
-      <div style={{ display: "flex", height: "calc(100vh - 120px)", minHeight: 500, borderRadius: 16, overflow: "hidden", border: "1px solid var(--line)", background: "var(--bg)" }}>
+      <style jsx>{`
+        .chat-shell {
+          display: flex;
+          height: calc(100dvh - 120px);
+          min-height: 480px;
+          background: var(--bg2);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: var(--shadow);
+        }
+        .sidebar {
+          width: 300px;
+          flex-shrink: 0;
+          border-inline-end: 1px solid var(--border);
+          display: flex;
+          flex-direction: column;
+          background: var(--bg);
+        }
+        .conv-pane {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+        }
+        @media (max-width: 768px) {
+          .chat-shell {
+            height: calc(100dvh - 90px);
+            border-radius: 12px;
+          }
+          .sidebar { width: 100%; }
+          .chat-shell.has-active .sidebar { display: none; }
+          .chat-shell:not(.has-active) .conv-pane { display: none; }
+          .mobile-back { display: flex !important; }
+        }
+        @media (min-width: 769px) {
+          .mobile-back { display: none !important; }
+        }
+      `}</style>
 
-        {/* Contacts Panel */}
-        <div style={{
-          width: showContacts || !selected ? 280 : 0,
-          minWidth: showContacts || !selected ? 280 : 0,
-          borderLeft: "1px solid var(--line)",
-          background: "var(--sidebar)",
-          display: "flex", flexDirection: "column",
-          overflow: "hidden",
-          transition: "width 0.2s, min-width 0.2s",
-          flexShrink: 0,
-        }}>
-          <div style={{ padding: "16px 14px 12px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 8 }}>
-            <MessageCircle size={18} style={{ color: "var(--muted)" }} />
-            <span style={{ fontWeight: 700, fontSize: 15, color: "var(--ink)" }}>الدردشة الداخلية</span>
-            {totalUnread > 0 && (
-              <span style={{ marginRight: "auto", background: "#ef4444", color: "#fff", fontSize: 11, fontWeight: 800, borderRadius: 999, padding: "1px 7px" }}>
-                {totalUnread}
+      <div className={`chat-shell ${selected ? "has-active" : ""}`}>
+
+        {/* ── Sidebar ── */}
+        <div className="sidebar">
+          <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <MessageCircle size={16} color="var(--text)" />
+              <span style={{ color: "var(--text)", fontSize: 14, fontWeight: 700 }}>
+                الدردشة الداخلية
               </span>
-            )}
+              {totalUnread > 0 && (
+                <span style={{ marginRight: "auto", background: "var(--accent)", color: "var(--accent-fg)", fontSize: 10, fontWeight: 700, borderRadius: 10, padding: "2px 7px" }}>
+                  {totalUnread}
+                </span>
+              )}
+            </div>
+            <div style={{ position: "relative" }}>
+              <Search size={14} color="var(--text4)" style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)" }} />
+              <input
+                value={searchConv}
+                onChange={e => setSearchConv(e.target.value)}
+                placeholder="ابحث بالاسم…"
+                style={{
+                  width: "100%", padding: "9px 32px 9px 10px",
+                  background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 10,
+                  color: "var(--text)", fontSize: 13, fontFamily: "inherit", outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
           </div>
 
-          <div style={{ flex: 1, overflowY: "auto" }}>
+          <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
             {contacts.length === 0 ? (
-              <div style={{ padding: 24, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
+              <div style={{ padding: 30, textAlign: "center", color: "var(--text4)", fontSize: 13 }}>
                 لا يوجد محادثات حتى الآن
               </div>
+            ) : filtered.length === 0 ? (
+              <div style={{ padding: 30, textAlign: "center", color: "var(--text4)", fontSize: 13 }}>لا نتائج</div>
             ) : (
-              contacts.map((c) => (
+              filtered.map((c) => (
                 <button
                   key={c.username}
-                  onClick={() => { setSelected(c.username); setShowContacts(false); }}
+                  onClick={() => setSelected(c.username)}
                   style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: 10,
-                    padding: "12px 14px", border: "none", cursor: "pointer",
-                    background: selected === c.username ? "var(--panel2)" : "transparent",
-                    borderBottom: "1px solid var(--line2)",
-                    textAlign: "right",
-                    borderRight: selected === c.username ? "3px solid var(--accent)" : "3px solid transparent",
+                    width: "100%", padding: "14px",
+                    background: selected === c.username ? "var(--bg2)" : "transparent",
+                    borderBottom: "1px solid var(--border)",
+                    borderInlineStart: selected === c.username ? "3px solid var(--accent)" : "3px solid transparent",
+                    textAlign: "right", cursor: "pointer",
+                    display: "flex", flexDirection: "column", gap: 4,
                   }}
                 >
-                  <div style={{ position: "relative", flexShrink: 0 }}>
-                    <Avatar name={c.username} size={40} />
-                    {c.isSuper && (
-                      <span style={{
-                        position: "absolute", bottom: -1, right: -1,
-                        width: 12, height: 12, borderRadius: "50%",
-                        background: "#22c55e", border: "2px solid var(--sidebar)",
-                      }} />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
+                    <span style={{ color: "var(--text)", fontSize: 13.5, fontWeight: 700, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {c.username}
+                      {c.isSuper && <span style={{ fontSize: 10, marginRight: 5, color: "var(--text4)", fontWeight: 400 }}>مدير</span>}
+                    </span>
+                    {c.lastMessage && (
+                      <span style={{ color: "var(--text4)", fontSize: 11, flexShrink: 0 }}>
+                        {formatTime(c.lastMessage.createdAt)}
+                      </span>
                     )}
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
-                      <span style={{ fontWeight: 600, fontSize: 13, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {c.username}
-                        {c.isSuper && <span style={{ fontSize: 10, marginRight: 4, color: "var(--muted)", fontWeight: 400 }}>مدير</span>}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 12, color: "var(--text3)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {c.lastMessage
+                        ? (c.lastMessage.isMine ? <span style={{ color: "var(--text2)", fontWeight: 600 }}>أنت: </span> : null)
+                        : null}
+                      {c.lastMessage
+                        ? (c.lastMessage.body || (c.lastMessage.fileName ? `📎 ${c.lastMessage.fileName}` : ""))
+                        : "ابدأ محادثة"}
+                    </span>
+                    {c.unread > 0 && (
+                      <span style={{ background: "var(--accent)", color: "var(--accent-fg)", fontSize: 10, fontWeight: 700, borderRadius: 10, padding: "2px 6px", flexShrink: 0 }}>
+                        {c.unread}
                       </span>
-                      {c.lastMessage && (
-                        <span style={{ fontSize: 10, color: "var(--muted)", flexShrink: 0 }}>
-                          {formatTime(c.lastMessage.createdAt)}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4, marginTop: 2 }}>
-                      <span style={{ fontSize: 12, color: "var(--muted2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-                        {c.lastMessage
-                          ? (c.lastMessage.isMine ? "أنت: " : "") + (c.lastMessage.body || (c.lastMessage.fileName ? `📎 ${c.lastMessage.fileName}` : ""))
-                          : "ابدأ محادثة"}
-                      </span>
-                      {c.unread > 0 && (
-                        <span style={{ background: "#ef4444", color: "#fff", fontSize: 10, fontWeight: 800, borderRadius: 999, padding: "1px 6px", flexShrink: 0 }}>
-                          {c.unread}
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </button>
               ))
@@ -399,104 +388,157 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* Chat Area */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, background: "var(--bg)" }}>
+        {/* ── Conversation pane ── */}
+        <div className="conv-pane">
           {!selected ? (
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--muted)", gap: 12 }}>
-              <MessageCircle size={48} strokeWidth={1.2} />
-              <div style={{ fontSize: 15, fontWeight: 500 }}>اختر محادثة للبدء</div>
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12, color: "var(--text4)" }}>
+              <MessageCircle size={40} strokeWidth={1} />
+              <p style={{ margin: 0, fontSize: 14 }}>اختر محادثة للبدء</p>
             </div>
           ) : (
             <>
-              {/* Chat Header */}
-              <div style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "12px 16px", borderBottom: "1px solid var(--line)",
-                background: "var(--sidebar)", flexShrink: 0,
-              }}>
+              {/* Header */}
+              <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", background: "var(--bg)", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                 <button
-                  onClick={() => setShowContacts(true)}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: 4, display: "flex", alignItems: "center" }}
+                  className="mobile-back"
+                  onClick={() => setSelected(null)}
+                  style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 10, width: 38, height: 38, display: "none", alignItems: "center", justifyContent: "center", color: "var(--text)", cursor: "pointer", flexShrink: 0 }}
                 >
-                  <ChevronRight size={20} />
+                  <ArrowRight size={18} />
                 </button>
-                <Avatar name={selected} size={36} />
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)" }}>
+                <Avatar name={selected} size={40} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, color: "var(--text)", fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {selected}
-                    {selectedContact?.isSuper && (
-                      <span style={{ fontSize: 11, marginRight: 6, color: "var(--muted)", fontWeight: 400 }}>مدير</span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 11, color: "#22c55e" }}>متاح</div>
+                    {selectedContact?.isSuper && <span style={{ fontSize: 11, marginRight: 6, color: "var(--text4)", fontWeight: 400 }}>مدير</span>}
+                  </p>
+                  <p style={{ margin: 0, color: "var(--text4)", fontSize: 12 }}>مدير داخلي</p>
                 </div>
               </div>
 
               {/* Messages */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column" }}>
-                {loadingMsgs ? (
+              <div
+                ref={scrollRef}
+                style={{
+                  flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" as const,
+                  padding: "16px 14px", display: "flex", flexDirection: "column", gap: 10,
+                  background: "var(--bg2)",
+                }}
+              >
+                {loadingMsgs && messages.length === 0 ? (
                   <div style={{ display: "flex", justifyContent: "center", paddingTop: 40 }}>
-                    <div className="h-5 w-5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                    <Loader2 size={20} color="var(--text4)" className="animate-spin" />
                   </div>
                 ) : messages.length === 0 ? (
-                  <div style={{ textAlign: "center", color: "var(--muted)", fontSize: 13, marginTop: 40 }}>
-                    لا توجد رسائل — ابدأ المحادثة
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1, flexDirection: "column", gap: 8, color: "var(--text4)" }}>
+                    <MessageCircle size={28} strokeWidth={1} />
+                    <p style={{ margin: 0, fontSize: 13 }}>لا رسائل بعد — ابدأ المحادثة</p>
                   </div>
                 ) : (
                   groupMessagesByDate(messages).map((group) => (
                     <div key={group.date}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "14px 0 10px" }}>
-                        <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
-                        <span style={{ fontSize: 11, color: "var(--muted)", background: "var(--panel2)", padding: "2px 10px", borderRadius: 999, border: "1px solid var(--line)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "10px 0 8px" }}>
+                        <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+                        <span style={{ fontSize: 11, color: "var(--text4)", background: "var(--bg)", padding: "2px 10px", borderRadius: 999, border: "1px solid var(--border)" }}>
                           {group.date}
                         </span>
-                        <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
+                        <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
                       </div>
-                      {group.messages.map((msg) => (
-                        <MessageBubble key={msg.id} msg={msg} isMine={msg.sender === me?.username} />
-                      ))}
+                      {group.messages.map((msg) => {
+                        const isMine = msg.sender === me?.username;
+                        const isImage = msg.file_type?.startsWith("image/");
+                        return (
+                          <div key={msg.id} style={{ alignSelf: isMine ? "flex-end" : "flex-start", maxWidth: "85%", display: "flex", flexDirection: "column", alignItems: isMine ? "flex-end" : "flex-start", marginBottom: 4 }}>
+                            <div style={{
+                              background: isMine ? "var(--accent)" : "var(--bg)",
+                              border: `1px solid ${isMine ? "var(--accent)" : "var(--border)"}`,
+                              color: isMine ? "var(--accent-fg, #fff)" : "var(--text)",
+                              padding: msg.file_url && isImage ? 6 : "10px 14px",
+                              borderRadius: 14,
+                              fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word",
+                              display: "flex", flexDirection: "column", gap: 8,
+                              boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                            }}>
+                              {msg.file_url && isImage && (
+                                <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
+                                  <img src={msg.file_url} alt={msg.file_name || "صورة"}
+                                    style={{ maxWidth: 260, borderRadius: 10, display: "block" }} />
+                                </a>
+                              )}
+                              {msg.file_url && !isImage && (
+                                <a
+                                  href={msg.file_url} target="_blank" rel="noopener noreferrer"
+                                  download={msg.file_name || true}
+                                  style={{
+                                    display: "flex", alignItems: "center", gap: 8, padding: "8px 10px",
+                                    borderRadius: 10,
+                                    background: isMine ? "rgba(255,255,255,0.15)" : "var(--bg2)",
+                                    color: "inherit",
+                                    border: `1px solid ${isMine ? "rgba(255,255,255,0.25)" : "var(--border)"}`,
+                                    textDecoration: "none", fontSize: 13, fontWeight: 600,
+                                  }}
+                                >
+                                  <FileIconComp type={msg.file_type} />
+                                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>
+                                    {msg.file_name || "ملف"}
+                                  </span>
+                                  <span style={{ marginRight: "auto", fontSize: 11, opacity: 0.65 }}>{formatSize(msg.file_size)}</span>
+                                  <Download size={14} style={{ flexShrink: 0, opacity: 0.65 }} />
+                                </a>
+                              )}
+                              {msg.body && (
+                                <span style={{ paddingInline: msg.file_url && isImage ? 8 : 0, paddingBottom: msg.file_url && isImage ? 4 : 0 }}>
+                                  {msg.body}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: 10.5, color: "var(--text4)", marginTop: 3, paddingInline: 4 }}>
+                              {formatTime(msg.created_at)}
+                              {isMine && (
+                                <span style={{ marginRight: 4, color: msg.read_at ? "var(--accent)" : "var(--text4)" }}>
+                                  {msg.read_at ? "✓✓" : "✓"}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   ))
                 )}
-                <div ref={bottomRef} />
               </div>
 
               {/* Pending file preview */}
               {pendingFile && (
                 <div style={{
-                  margin: "0 16px 8px",
+                  margin: "0 14px 8px",
                   padding: "10px 14px",
-                  background: "var(--panel2)",
+                  background: "var(--bg)",
                   borderRadius: 12,
-                  border: "1px solid var(--line)",
+                  border: "1px solid var(--border)",
                   display: "flex", alignItems: "center", gap: 10,
                 }}>
                   {pendingFile.previewUrl ? (
                     <img src={pendingFile.previewUrl} alt="" style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover" }} />
                   ) : (
-                    <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--line)" }}>
-                      <FileIcon type={pendingFile.type} />
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--bg2)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)" }}>
+                      <FileIconComp type={pendingFile.type} />
                     </div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {pendingFile.name}
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--muted)" }}>{formatSize(pendingFile.size)}</div>
+                    <div style={{ fontSize: 11, color: "var(--text4)" }}>{formatSize(pendingFile.size)}</div>
                   </div>
-                  <button onClick={() => setPendingFile(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: 4 }}>
+                  <button onClick={() => setPendingFile(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text4)", padding: 4 }}>
                     <X size={16} />
                   </button>
                 </div>
               )}
 
               {/* Input Area */}
-              <div style={{
-                padding: "10px 14px 14px",
-                borderTop: "1px solid var(--line)",
-                background: "var(--sidebar)",
-                flexShrink: 0,
-              }}>
+              <div style={{ padding: "10px 14px 14px", borderTop: "1px solid var(--border)", background: "var(--bg)", flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
                   <input
                     ref={fileRef}
@@ -510,14 +552,14 @@ export default function ChatPage() {
                     disabled={uploading}
                     title="إرفاق ملف"
                     style={{
-                      flexShrink: 0, width: 40, height: 40, borderRadius: 12,
-                      border: "1px solid var(--line)", background: "var(--panel2)",
+                      flexShrink: 0, width: 40, height: 40, borderRadius: 10,
+                      border: "1px solid var(--border)", background: "var(--bg2)",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      cursor: uploading ? "wait" : "pointer", color: "var(--muted2)",
+                      cursor: uploading ? "wait" : "pointer", color: "var(--text2)",
                     }}
                   >
                     {uploading
-                      ? <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                      ? <Loader2 size={16} className="animate-spin" />
                       : <Paperclip size={18} />
                     }
                   </button>
@@ -527,14 +569,15 @@ export default function ChatPage() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="اكتب رسالة... (Enter للإرسال، Shift+Enter لسطر جديد)"
+                    placeholder="اكتب رسالة… (Enter للإرسال، Shift+Enter لسطر جديد)"
                     rows={1}
                     style={{
                       flex: 1, resize: "none", overflowY: "auto", maxHeight: 120,
-                      borderRadius: 12, border: "1px solid var(--line)",
-                      background: "var(--panel2)", color: "var(--ink)",
+                      borderRadius: 10, border: "1px solid var(--border)",
+                      background: "var(--bg2)", color: "var(--text)",
                       padding: "10px 14px", fontSize: 14, lineHeight: 1.5,
                       outline: "none", fontFamily: "inherit", direction: "rtl",
+                      boxSizing: "border-box",
                     }}
                     onInput={(e) => {
                       const t = e.currentTarget;
@@ -547,16 +590,17 @@ export default function ChatPage() {
                     onClick={handleSend}
                     disabled={(!input.trim() && !pendingFile) || sending || uploading}
                     style={{
-                      flexShrink: 0, width: 40, height: 40, borderRadius: 12,
+                      flexShrink: 0, width: 40, height: 40, borderRadius: 10,
                       border: "none", background: "var(--accent)",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      cursor: "pointer", opacity: (!input.trim() && !pendingFile) || sending ? 0.45 : 1,
+                      cursor: "pointer",
+                      opacity: (!input.trim() && !pendingFile) || sending ? 0.45 : 1,
                       color: "var(--accent-fg, #fff)",
                       transition: "opacity 0.15s",
                     }}
                   >
                     {sending
-                      ? <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                      ? <Loader2 size={16} className="animate-spin" />
                       : <Send size={17} />
                     }
                   </button>
