@@ -106,8 +106,8 @@ export default function AffiliateAdminPage() {
   return (
     <Shell>
       <div style={{ padding: 4 }}>
-        <h1 style={{ margin: "0 0 20px", color: "#fff", fontSize: 22, fontWeight: 700, display: "flex", alignItems: "center", gap: 10 }}>
-          <TrendingUp size={22} color="#fff" /> برنامج الربح
+        <h1 style={{ margin: "0 0 20px", color: "var(--text)", fontSize: 22, fontWeight: 700, display: "flex", alignItems: "center", gap: 10 }}>
+          <TrendingUp size={22} color="var(--text)" /> برنامج الربح
         </h1>
 
         {/* Summary */}
@@ -115,60 +115,60 @@ export default function AffiliateAdminPage() {
           <SumCard icon={Users} color="#a78bfa" label="عدد المسوّقين" value={String(affiliates.length)} />
           <SumCard icon={Wallet} color="#fbbf24" label="طلبات سحب معلّقة" value={String(pendingWds.length)} />
           <SumCard icon={DollarSign} color="#f59e0b" label="إجمالي المعلّق" value={`${totalPendingAmount.toFixed(2)} ر.س`} />
-          <SumCard icon={CheckCircle2} color="#fff" label="إجمالي المبيعات" value={String(affiliates.reduce((s, a) => s + Number(a.referrals_count || 0), 0))} />
+          <SumCard icon={CheckCircle2} color="var(--text)" label="إجمالي المبيعات" value={String(affiliates.reduce((s, a) => s + Number(a.referrals_count || 0), 0))} />
         </div>
 
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 16, borderBottom: "1px solid #1f1f1f" }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16, borderBottom: "1px solid var(--border)" }}>
           <TabBtn active={tab === "withdrawals"} onClick={() => setTab("withdrawals")}>
-            طلبات السحب {pendingWds.length > 0 && <span style={{ background: "#fff", color: "#000", borderRadius: 8, padding: "1px 7px", fontSize: 10, marginInlineStart: 6 }}>{pendingWds.length}</span>}
+            طلبات السحب {pendingWds.length > 0 && <span style={{ background: "var(--text)", color: "var(--bg)", borderRadius: 8, padding: "1px 7px", fontSize: 10, marginInlineStart: 6 }}>{pendingWds.length}</span>}
           </TabBtn>
           <TabBtn active={tab === "affiliates"} onClick={() => setTab("affiliates")}>المسوّقون</TabBtn>
         </div>
 
         {loading ? (
           <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
-            <Loader2 size={24} color="#666" className="animate-spin" />
+            <Loader2 size={24} color="var(--text3)" className="animate-spin" />
           </div>
         ) : tab === "withdrawals" ? (
           withdrawals.length === 0 ? (
-            <div style={{ background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 16, padding: 60, textAlign: "center", color: "#666" }}>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 60, textAlign: "center", color: "var(--text3)" }}>
               لا توجد طلبات سحب
             </div>
           ) : (
-            <div style={{ background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 16, overflow: "hidden" }}>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
               {withdrawals.map((w) => (
                 <div key={w.id} style={{
-                  padding: "14px 18px", borderBottom: "1px solid #181818",
+                  padding: "14px 18px", borderBottom: "1px solid var(--border)",
                   display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap",
                 }}>
                   <div style={{ flex: 1, minWidth: 200 }}>
-                    <p style={{ margin: 0, color: "#fff", fontSize: 14, fontWeight: 600 }}>
-                      {w.full_name || "—"} <span style={{ color: "#666", fontSize: 11, fontWeight: 400 }}>· {w.phone}</span>
+                    <p style={{ margin: 0, color: "var(--text)", fontSize: 14, fontWeight: 600 }}>
+                      {w.full_name || "—"} <span style={{ color: "var(--text3)", fontSize: 11, fontWeight: 400 }}>· {w.phone}</span>
                     </p>
-                    <p style={{ margin: "3px 0 0", color: "#888", fontSize: 12 }}>
+                    <p style={{ margin: "3px 0 0", color: "var(--text3)", fontSize: 12 }}>
                       {new Date(w.created_at).toLocaleString("ar-SA")}
                     </p>
                   </div>
-                  <p style={{ margin: 0, color: "#fff", fontSize: 16, fontWeight: 700 }}>
+                  <p style={{ margin: 0, color: "var(--text)", fontSize: 16, fontWeight: 700 }}>
                     {Number(w.amount).toFixed(2)} ر.س
                   </p>
                   <span style={{
                     fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 8,
                     background: w.status === "paid" ? "rgba(34,197,94,0.1)" : w.status === "rejected" ? "rgba(239,68,68,0.1)" : "rgba(245,158,11,0.1)",
-                    color: w.status === "paid" ? "#fff" : w.status === "rejected" ? "#f87171" : "#fbbf24",
-                    border: `1px solid ${w.status === "paid" ? "#ffffff15" : w.status === "rejected" ? "#ef444433" : "#f59e0b33"}`,
+                    color: w.status === "paid" ? "#22c55e" : w.status === "rejected" ? "#f87171" : "#fbbf24",
+                    border: `1px solid ${w.status === "paid" ? "#22c55e33" : w.status === "rejected" ? "#ef444433" : "#f59e0b33"}`,
                   }}>
                     {w.status === "paid" ? "مدفوع" : w.status === "rejected" ? "مرفوض" : "معلّق"}
                   </span>
                   {w.status === "pending" ? (
                     <button onClick={() => setActiveWd(w)} style={{
-                      background: "#fff", color: "#000", border: "none",
+                      background: "var(--accent)", color: "var(--accent-fg)", border: "none",
                       borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
                     }}>معالجة</button>
                   ) : w.proof_url ? (
                     <button onClick={() => setPreviewProof(w.proof_url)} style={{
-                      background: "#1a1a1a", color: "#3b82f6", border: "1px solid #2a2a2a",
+                      background: "var(--surface2)", color: "#3b82f6", border: "1px solid var(--border2)",
                       borderRadius: 8, padding: "7px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer",
                       display: "inline-flex", alignItems: "center", gap: 4,
                     }}><Eye size={11} /> الإيصال</button>
@@ -178,15 +178,15 @@ export default function AffiliateAdminPage() {
             </div>
           )
         ) : affiliates.length === 0 ? (
-          <div style={{ background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 16, padding: 60, textAlign: "center", color: "#666" }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 60, textAlign: "center", color: "var(--text3)" }}>
             لا يوجد مسوّقون مسجلون بعد
           </div>
         ) : (
-          <div style={{ background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 16, overflow: "hidden" }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
             <div style={{
               display: "grid", gridTemplateColumns: "1.5fr 1fr 0.7fr 0.8fr 1fr 1fr",
-              padding: "12px 16px", borderBottom: "1px solid #1f1f1f",
-              background: "#0a0a0a", fontSize: 12, color: "#888", fontWeight: 600,
+              padding: "12px 16px", borderBottom: "1px solid var(--border)",
+              background: "var(--bg)", fontSize: 12, color: "var(--text3)", fontWeight: 600,
             }}>
               <span>الاسم</span>
               <span>الجوال</span>
@@ -198,12 +198,12 @@ export default function AffiliateAdminPage() {
             {affiliates.map((a) => (
               <div key={a.user_id} style={{
                 display: "grid", gridTemplateColumns: "1.5fr 1fr 0.7fr 0.8fr 1fr 1fr",
-                padding: "14px 16px", borderBottom: "1px solid #181818",
-                fontSize: 13, color: "#fff", alignItems: "center",
+                padding: "14px 16px", borderBottom: "1px solid var(--border)",
+                fontSize: 13, color: "var(--text)", alignItems: "center",
               }}>
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.full_name || "—"}</span>
-                <span style={{ color: "#999", direction: "ltr" }}>{a.phone || "—"}</span>
-                <span style={{ color: "#fff", fontFamily: "monospace", fontWeight: 700 }}>{a.code}</span>
+                <span style={{ color: "var(--text3)", direction: "ltr" }}>{a.phone || "—"}</span>
+                <span style={{ color: "var(--text)", fontFamily: "monospace", fontWeight: 700 }}>{a.code}</span>
                 <span>{a.referrals_count}</span>
                 <span style={{ color: "#fbbf24" }}>{Number(a.total_earnings).toFixed(2)}</span>
                 <span style={{ color: "#3b82f6" }}>{Number(a.paid_earnings).toFixed(2)}</span>
@@ -220,12 +220,12 @@ export default function AffiliateAdminPage() {
           display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
         }}>
           <div onClick={(e) => e.stopPropagation()} style={{
-            background: "#0d0d0d", border: "1px solid #2a2a2a", borderRadius: 16,
+            background: "var(--surface)", border: "1px solid var(--border2)", borderRadius: 16,
             padding: 24, width: "100%", maxWidth: 480,
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-              <h2 style={{ margin: 0, color: "#fff", fontSize: 17, fontWeight: 700 }}>طلب سحب</h2>
-              <button onClick={() => setActiveWd(null)} disabled={uploading} style={{ background: "none", border: "none", color: "#666", cursor: "pointer" }}><X size={20} /></button>
+              <h2 style={{ margin: 0, color: "var(--text)", fontSize: 17, fontWeight: 700 }}>طلب سحب</h2>
+              <button onClick={() => setActiveWd(null)} disabled={uploading} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer" }}><X size={20} /></button>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
@@ -233,10 +233,10 @@ export default function AffiliateAdminPage() {
               <Row label="الجوال" value={activeWd.phone} ltr />
               <Row label="المبلغ" value={`${Number(activeWd.amount).toFixed(2)} ر.س`} highlight />
               <div style={{
-                padding: "8px 0", borderBottom: "1px solid #1a1a1a",
+                padding: "8px 0", borderBottom: "1px solid var(--border)",
                 display: "flex", justifyContent: "space-between", alignItems: "center",
               }}>
-                <span style={{ color: "#888", fontSize: 12 }}>طريقة الاستلام</span>
+                <span style={{ color: "var(--text3)", fontSize: 12 }}>طريقة الاستلام</span>
                 <span style={{
                   background: activeWd.method === "wallet" ? "rgba(168,139,250,0.1)" : "rgba(59,130,246,0.1)",
                   color: activeWd.method === "wallet" ? "#a78bfa" : "#3b82f6",
@@ -261,7 +261,7 @@ export default function AffiliateAdminPage() {
               )}
             </div>
 
-            <p style={{ margin: "0 0 10px", color: "#fbbf24", fontSize: 12, lineHeight: 1.6 }}>
+            <p style={{ margin: "0 0 10px", color: "#f59e0b", fontSize: 12, lineHeight: 1.6 }}>
               ⚠️ بعد تحويل المبلغ يدوياً للحساب، ارفع صورة إيصال التحويل لإكمال الطلب.
             </p>
 
@@ -269,12 +269,12 @@ export default function AffiliateAdminPage() {
 
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => reject(activeWd.id)} disabled={uploading} style={{
-                background: "#1f0a0a", color: "#f87171", border: "1px solid #ef444433",
+                background: "rgba(239,68,68,0.08)", color: "#f87171", border: "1px solid #ef444433",
                 borderRadius: 10, padding: "12px 16px", fontSize: 13, fontWeight: 600,
                 cursor: uploading ? "wait" : "pointer", opacity: uploading ? 0.5 : 1,
               }}>رفض</button>
               <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{
-                flex: 1, background: "#fff", color: "#000", border: "none",
+                flex: 1, background: "var(--accent)", color: "var(--accent-fg)", border: "none",
                 borderRadius: 10, padding: "12px", fontSize: 14, fontWeight: 700,
                 cursor: uploading ? "wait" : "pointer", opacity: uploading ? 0.5 : 1,
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
@@ -302,16 +302,16 @@ export default function AffiliateAdminPage() {
 function CopyRow({ label, value, copied, onCopy }: { label: string; value: string; copied: boolean; onCopy: () => void }) {
   return (
     <div>
-      <p style={{ margin: "0 0 6px", color: "#888", fontSize: 11 }}>{label}</p>
+      <p style={{ margin: "0 0 6px", color: "var(--text3)", fontSize: 11 }}>{label}</p>
       <div style={{
-        background: "#070707", border: "1px solid #1f1f1f", borderRadius: 10,
+        background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10,
         padding: "10px 12px", display: "flex", alignItems: "center", gap: 8,
       }}>
-        <span style={{ flex: 1, color: "#fff", fontSize: 13, fontFamily: "monospace", direction: "ltr" }}>{value}</span>
+        <span style={{ flex: 1, color: "var(--text)", fontSize: 13, fontFamily: "monospace", direction: "ltr" }}>{value}</span>
         <button onClick={onCopy} style={{
-          background: copied ? "#1f3d1f" : "#1a1a1a",
-          border: `1px solid ${copied ? "#fff" : "#2a2a2a"}`,
-          color: copied ? "#fff" : "#fff",
+          background: copied ? "rgba(34,197,94,0.1)" : "var(--surface2)",
+          border: `1px solid ${copied ? "#22c55e44" : "var(--border2)"}`,
+          color: copied ? "#22c55e" : "var(--text2)",
           borderRadius: 8, padding: "5px 10px", fontSize: 11, cursor: "pointer",
           display: "inline-flex", alignItems: "center", gap: 4,
         }}>
@@ -325,9 +325,9 @@ function CopyRow({ label, value, copied, onCopy }: { label: string; value: strin
 
 function Row({ label, value, ltr, highlight }: { label: string; value: string; ltr?: boolean; highlight?: boolean }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #1a1a1a" }}>
-      <span style={{ color: "#888", fontSize: 12 }}>{label}</span>
-      <span style={{ color: highlight ? "#fff" : "#fff", fontSize: highlight ? 16 : 13, fontWeight: highlight ? 700 : 500, direction: ltr ? "ltr" : undefined }}>{value}</span>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+      <span style={{ color: "var(--text3)", fontSize: 12 }}>{label}</span>
+      <span style={{ color: "var(--text)", fontSize: highlight ? 16 : 13, fontWeight: highlight ? 700 : 500, direction: ltr ? "ltr" : undefined }}>{value}</span>
     </div>
   );
 }
@@ -335,8 +335,8 @@ function Row({ label, value, ltr, highlight }: { label: string; value: string; l
 function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button onClick={onClick} style={{
-      background: "none", border: "none", color: active ? "#fff" : "#888",
-      borderBottom: `2px solid ${active ? "#fff" : "transparent"}`,
+      background: "none", border: "none", color: active ? "var(--text)" : "var(--text3)",
+      borderBottom: `2px solid ${active ? "var(--text)" : "transparent"}`,
       padding: "10px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer",
       marginBottom: -1,
     }}>{children}</button>
@@ -345,12 +345,12 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
 
 function SumCard({ icon: Icon, color, label, value }: { icon: any; color: string; label: string; value: string }) {
   return (
-    <div style={{ background: "#0d0d0d", border: "1px solid #1f1f1f", borderRadius: 14, padding: 16 }}>
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <Icon size={14} color={color} />
-        <span style={{ color: "#888", fontSize: 12 }}>{label}</span>
+        <span style={{ color: "var(--text3)", fontSize: 12 }}>{label}</span>
       </div>
-      <p style={{ margin: 0, color: "#fff", fontSize: 18, fontWeight: 700 }}>{value}</p>
+      <p style={{ margin: 0, color: "var(--text)", fontSize: 18, fontWeight: 700 }}>{value}</p>
     </div>
   );
 }
