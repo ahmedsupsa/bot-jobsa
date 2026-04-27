@@ -18,6 +18,15 @@ type Summary = {
   tamaraVariable: number; tamaraFixed: number; tamaraVat: number;
   tamaraVariableRate: number; tamaraFixedFee: number; tamaraVatRate: number;
   bankCount: number; bankGross: number; streampayCount: number; streampayGross: number;
+  spMadaFeesTotal: number; spVisaFeesTotal: number;
+  spMadaNetTotal: number; spVisaNetTotal: number;
+  spCommissionRate: number; spMadaRate: number; spVisaRate: number; spFixedFee: number;
+};
+type StreamPayOrder = {
+  id: string; user_name?: string; user_email?: string; amount: number; paid_at?: string;
+  product_name: string;
+  mada_gateway: number; mada_commission: number; mada_total_fee: number; mada_net: number;
+  visa_gateway: number; visa_commission: number; visa_total_fee: number; visa_net: number;
 };
 type TamaraOrder = {
   id: string; user_name?: string; user_email?: string; amount: number; paid_at?: string;
@@ -205,9 +214,9 @@ function StackedBarChart({ data }: { data: ChartPoint[] }) {
 }
 
 export default function FinancePage() {
-  const [data, setData] = useState<{ summary: Summary; byProduct: ProductStat[]; chart: ChartPoint[]; directOrders: DirectOrder[]; affiliateOrders: AffOrder[]; tamaraOrders: TamaraOrder[] } | null>(null);
+  const [data, setData] = useState<{ summary: Summary; byProduct: ProductStat[]; chart: ChartPoint[]; directOrders: DirectOrder[]; affiliateOrders: AffOrder[]; tamaraOrders: TamaraOrder[]; streampayOrders: StreamPayOrder[] } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"overview" | "direct" | "affiliate" | "tamara">("overview");
+  const [tab, setTab] = useState<"overview" | "direct" | "affiliate" | "tamara" | "streampay">("overview");
   const [exporting, setExporting] = useState(false);
   const [amountOverrides, setAmountOverrides] = useState<Record<string, number>>({});
 
@@ -318,6 +327,7 @@ export default function FinancePage() {
                 { k: "direct", l: `مبيعات مباشرة (${data.summary.directCount})`, i: CheckCircle2 },
                 { k: "affiliate", l: `مبيعات بعمولة (${data.summary.affiliateCount})`, i: Users },
                 { k: "tamara", l: `تمارا (${data.summary.tamaraCount})`, i: Wallet },
+                { k: "streampay", l: `ستريم باي (${data.summary.streampayCount})`, i: DollarSign },
               ].map(({ k, l, i: I }) => (
                 <button key={k} onClick={() => setTab(k as any)}
                   style={{
@@ -620,6 +630,106 @@ export default function FinancePage() {
                       </tr>
                     </tfoot>
                   </table>
+                </div>
+              </div>
+            )}
+            {tab === "streampay" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {/* Summary cards */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                  <StatCard label="إجمالي مبيعات ستريم باي"
+                    value={`${fmt(data.summary.streampayGross)} ر.س`}
+                    sub={`${data.summary.streampayCount} طلب مدفوع`}
+                    icon={DollarSign} big />
+                  <StatCard label="الصافي (لو كلهم مدى)"
+                    value={`${fmt(data.summary.spMadaNetTotal)} ر.س`}
+                    sub={`بعد رسوم مدى + عمولة ستريم`}
+                    icon={Target} big />
+                  <StatCard label="الصافي (لو كلهم فيزا)"
+                    value={`${fmt(data.summary.spVisaNetTotal)} ر.س`}
+                    sub={`بعد رسوم فيزا + عمولة ستريم`}
+                    icon={Target} big />
+                </div>
+
+                {/* Fee explainer */}
+                <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: 22 }}>
+                  <h3 style={{ color: "var(--text)", fontSize: 15, fontWeight: 700, margin: "0 0 14px",
+                    display: "flex", alignItems: "center", gap: 8 }}>
+                    <PieChart size={16} color="var(--text3)" /> طريقة احتساب رسوم ستريم باي
+                  </h3>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 14 }}>
+                    <CashRow icon={<DollarSign size={14} color="var(--text3)" />}
+                      label={`عمولة ستريم (${(data.summary.spCommissionRate * 100).toFixed(1)}%)`}
+                      value="مطبّقة على كل العمليات" />
+                    <CashRow icon={<TrendingUp size={14} color="var(--text3)" />}
+                      label={`مدى: ${(data.summary.spMadaRate * 100).toFixed(0)}% + ${data.summary.spFixedFee} ر.س`}
+                      value={`إجمالي رسوم: ${(data.summary.spMadaRate + data.summary.spCommissionRate) * 100}% + ${data.summary.spFixedFee} ر.س`} />
+                    <CashRow icon={<TrendingUp size={14} color="var(--text3)" />}
+                      label={`فيزا: ${(data.summary.spVisaRate * 100).toFixed(1)}% + ${data.summary.spFixedFee} ر.س`}
+                      value={`إجمالي رسوم: ${(data.summary.spVisaRate + data.summary.spCommissionRate) * 100}% + ${data.summary.spFixedFee} ر.س`} />
+                  </div>
+                  <div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px", fontSize: 12, color: "var(--text3)", lineHeight: 1.9 }}>
+                    <span style={{ color: "var(--text)", fontWeight: 700 }}>الصيغة (مدى):</span> الصافي = المبلغ − (المبلغ × {(data.summary.spMadaRate * 100).toFixed(0)}% + {data.summary.spFixedFee}) − (المبلغ × {(data.summary.spCommissionRate * 100).toFixed(1)}%)<br />
+                    <span style={{ color: "var(--text)", fontWeight: 700 }}>الصيغة (فيزا):</span> الصافي = المبلغ − (المبلغ × {(data.summary.spVisaRate * 100).toFixed(1)}% + {data.summary.spFixedFee}) − (المبلغ × {(data.summary.spCommissionRate * 100).toFixed(1)}%)
+                  </div>
+                </div>
+
+                {/* Orders table */}
+                <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: 24 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                    <DollarSign size={18} color="var(--text3)" />
+                    <h3 style={{ color: "var(--text)", fontSize: 15, fontWeight: 700, margin: 0 }}>تفصيل طلبات ستريم باي</h3>
+                  </div>
+                  <p style={{ color: "var(--text4)", fontSize: 12, margin: "0 0 18px" }}>
+                    كل صف يعرض المبلغ والصافي المتوقع حسب طريقة الدفع (مدى أو فيزا)
+                  </p>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ color: "var(--text4)", borderBottom: "1px solid var(--border)" }}>
+                          <th style={th}>العميل</th>
+                          <th style={th}>المنتج</th>
+                          <th style={{ ...th, textAlign: "left" }}>المبلغ</th>
+                          <th style={{ ...th, textAlign: "left" }}>رسوم مدى</th>
+                          <th style={{ ...th, textAlign: "left" }}>صافي مدى</th>
+                          <th style={{ ...th, textAlign: "left" }}>رسوم فيزا</th>
+                          <th style={{ ...th, textAlign: "left" }}>صافي فيزا</th>
+                          <th style={th}>تاريخ الدفع</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.streampayOrders.length === 0 ? (
+                          <tr><td colSpan={8} style={{ color: "var(--text4)", textAlign: "center", padding: 32 }}>لا توجد طلبات ستريم باي بعد</td></tr>
+                        ) : data.streampayOrders.map(o => (
+                          <tr key={o.id} style={{ borderBottom: "1px solid var(--border)" }}
+                            onMouseEnter={e => (e.currentTarget.style.background = "var(--surface2)")}
+                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                            <td style={td}>{o.user_name || o.user_email || "—"}</td>
+                            <td style={td}>{o.product_name}</td>
+                            <td style={{ ...td, textAlign: "left" }}>
+                              <AmountCell id={o.id} amount={resolveAmount(o.id, o.amount)} onSaved={handleAmountSaved} />
+                            </td>
+                            <td style={{ ...td, textAlign: "left", color: "var(--text3)" }}>− {fmt(o.mada_total_fee)}</td>
+                            <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 700 }}>{fmt(o.mada_net)}</td>
+                            <td style={{ ...td, textAlign: "left", color: "var(--text3)" }}>− {fmt(o.visa_total_fee)}</td>
+                            <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 700 }}>{fmt(o.visa_net)}</td>
+                            <td style={{ ...td, color: "var(--text4)" }}>{fmtDate(o.paid_at)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ background: "var(--surface2)" }}>
+                          <td colSpan={2} style={{ ...td, color: "var(--text)", fontWeight: 700 }}>الإجماليات</td>
+                          <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 800 }}>{fmt(data.summary.streampayGross)}</td>
+                          <td style={{ ...td, textAlign: "left", color: "var(--text3)", fontWeight: 800 }}>− {fmt(data.summary.spMadaFeesTotal)}</td>
+                          <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 800 }}>{fmt(data.summary.spMadaNetTotal)}</td>
+                          <td style={{ ...td, textAlign: "left", color: "var(--text3)", fontWeight: 800 }}>− {fmt(data.summary.spVisaFeesTotal)}</td>
+                          <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 800 }}>{fmt(data.summary.spVisaNetTotal)}</td>
+                          <td />
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}

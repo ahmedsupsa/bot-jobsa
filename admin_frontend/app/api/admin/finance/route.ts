@@ -18,6 +18,27 @@ function tamaraFee(amount: number): { variable: number; fixed: number; vat: numb
   return { variable, fixed, vat, total: subtotal + vat };
 }
 
+// StreamPay pricing: gateway fee (Mada: 1%+1 SAR | Visa: 2.5%+1 SAR) + 0.8% StreamPay commission on top
+const SP_COMMISSION_RATE = 0.008;
+const SP_MADA_RATE = 0.01;
+const SP_VISA_RATE = 0.025;
+const SP_FIXED_FEE = 1.0;
+function streamPayFee(amount: number): {
+  madaGateway: number; madaCommission: number; madaTotal: number; madaNet: number;
+  visaGateway: number; visaCommission: number; visaTotal: number; visaNet: number;
+} {
+  const madaGateway = amount * SP_MADA_RATE + SP_FIXED_FEE;
+  const madaCommission = amount * SP_COMMISSION_RATE;
+  const madaTotal = madaGateway + madaCommission;
+  const visaGateway = amount * SP_VISA_RATE + SP_FIXED_FEE;
+  const visaCommission = amount * SP_COMMISSION_RATE;
+  const visaTotal = visaGateway + visaCommission;
+  return {
+    madaGateway, madaCommission, madaTotal, madaNet: amount - madaTotal,
+    visaGateway, visaCommission, visaTotal, visaNet: amount - visaTotal,
+  };
+}
+
 function freshClient() {
   const url = process.env.SUPABASE_URL || "";
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
@@ -132,11 +153,39 @@ export async function GET() {
   });
   const tamaraNet = tamaraGross - tamaraFees;
 
-  // Bank transfer / streampay totals
+  // Bank transfer totals
   const bankCount = paid.filter(o => o.payment_gateway === "bank_transfer").length;
   const bankGross = paid.filter(o => o.payment_gateway === "bank_transfer").reduce((s, o) => s + (o.amount || 0), 0);
-  const streampayCount = paid.filter(o => o.payment_gateway === "streampay").length;
-  const streampayGross = paid.filter(o => o.payment_gateway === "streampay").reduce((s, o) => s + (o.amount || 0), 0);
+
+  // StreamPay detailed fee breakdown
+  const streampayOrdersRaw = paid.filter(o => o.payment_gateway === "streampay");
+  const streampayCount = streampayOrdersRaw.length;
+  const streampayGross = streampayOrdersRaw.reduce((s, o) => s + (o.amount || 0), 0);
+  let spMadaFeesTotal = 0, spVisaFeesTotal = 0, spMadaCommTotal = 0, spVisaCommTotal = 0;
+  const streampayOrdersList = streampayOrdersRaw.slice(0, 100).map(o => {
+    const amount = Number(o.amount || 0);
+    const f = streamPayFee(amount);
+    spMadaFeesTotal += f.madaTotal;
+    spVisaFeesTotal += f.visaTotal;
+    spMadaCommTotal += f.madaCommission;
+    spVisaCommTotal += f.visaCommission;
+    return {
+      id: o.id,
+      user_name: o.user_name,
+      user_email: o.user_email,
+      amount,
+      paid_at: o.paid_at,
+      product_name: getProduct(o)?.name || "—",
+      mada_gateway: f.madaGateway,
+      mada_commission: f.madaCommission,
+      mada_total_fee: f.madaTotal,
+      mada_net: f.madaNet,
+      visa_gateway: f.visaGateway,
+      visa_commission: f.visaCommission,
+      visa_total_fee: f.visaTotal,
+      visa_net: f.visaNet,
+    };
+  });
 
   // Monthly chart
   const now = new Date();
@@ -240,11 +289,20 @@ export async function GET() {
       bankGross,
       streampayCount,
       streampayGross,
+      spMadaFeesTotal,
+      spVisaFeesTotal,
+      spMadaNetTotal: streampayGross - spMadaFeesTotal,
+      spVisaNetTotal: streampayGross - spVisaFeesTotal,
+      spCommissionRate: SP_COMMISSION_RATE,
+      spMadaRate: SP_MADA_RATE,
+      spVisaRate: SP_VISA_RATE,
+      spFixedFee: SP_FIXED_FEE,
     },
     byProduct: Object.values(byProduct).sort((a, b) => (b.direct + b.affiliate) - (a.direct + a.affiliate)),
     chart,
     directOrders: directList,
     affiliateOrders: affiliateList,
     tamaraOrders: tamaraOrdersList,
+    streampayOrders: streampayOrdersList,
   });
 }
