@@ -25,13 +25,13 @@ args = "Auto Apply Worker"
 name = "Start application"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd admin_frontend && npm run dev"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd admin_frontend && NEXT_PRIVATE_WORKER_THREADS=false NODE_OPTIONS='--max-old-space-size=1500' npm run dev"
+waitForPort = 5000
 
 [[workflows.workflow]]
 name = "Auto Apply Worker"

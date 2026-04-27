@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Key, BriefcaseBusiness, Bell, LogOut,
   ShoppingBag, TrendingUp, MessageCircle, MailCheck, ShieldCheck, Send,
-  Sun, Moon, Contact, MessagesSquare,
+  Sun, Moon, Contact, MessagesSquare, ClipboardList,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "@/contexts/theme-context";
@@ -22,6 +22,7 @@ type Badges = Partial<Record<BadgeKey, number>>;
 const links: { href: string; label: string; icon: any; perm: Perm | null; superOnly?: boolean; badge?: BadgeKey }[] = [
   { href: "/admin", label: "الرئيسية", icon: LayoutDashboard, perm: null, superOnly: true },
   { href: "/admin/chat", label: "الدردشة الداخلية", icon: MessagesSquare, perm: null },
+  { href: "/admin/tasks", label: "المهام", icon: ClipboardList, perm: null },
   { href: "/users", label: "المستخدمون", icon: Users, perm: "users" },
   { href: "/codes", label: "أكواد التفعيل", icon: Key, perm: "codes" },
   { href: "/jobs", label: "الوظائف", icon: BriefcaseBusiness, perm: "jobs" },
