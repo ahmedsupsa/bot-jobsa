@@ -22,9 +22,19 @@ async function sp(method: string, path: string, body?: unknown) {
 }
 
 export async function findOrCreateConsumer(name: string, email: string, phone?: string) {
-  const listRes = await sp("GET", `/api/v2/consumers?external_id=${encodeURIComponent(email)}`);
-  const existing = listRes?.data?.[0] || listRes?.[0] || null;
-  if (existing) return existing;
+  // StreamPay's list endpoint does NOT support ?external_id= filtering —
+  // it only supports search_term. We search by email and then verify the match.
+  try {
+    const listRes = await sp("GET", `/api/v2/consumers?search_term=${encodeURIComponent(email)}&limit=50`);
+    const items: Record<string, unknown>[] = listRes?.data ?? [];
+    const match = items.find(
+      (c) => c.email === email || c.external_id === email
+    );
+    if (match) return match;
+  } catch {
+    // If the search fails, fall through to creation
+  }
+
   const body: Record<string, unknown> = {
     name,
     email,
@@ -33,8 +43,22 @@ export async function findOrCreateConsumer(name: string, email: string, phone?: 
     preferred_language: "ar",
   };
   if (phone) body.phone_number = phone;
-  const created = await sp("POST", "/api/v2/consumers", body);
-  return created;
+
+  try {
+    return await sp("POST", "/api/v2/consumers", body);
+  } catch (err: unknown) {
+    // DUPLICATE_CONSUMER means the email/phone already exists — search again and return the existing record
+    if (String(err).includes("DUPLICATE_CONSUMER")) {
+      const retry = await sp("GET", `/api/v2/consumers?search_term=${encodeURIComponent(email)}&limit=50`);
+      const items: Record<string, unknown>[] = retry?.data ?? [];
+      const match = items.find(
+        (c) => c.email === email || c.external_id === email
+      );
+      if (match) return match;
+      if (items.length > 0) return items[0];
+    }
+    throw err;
+  }
 }
 
 export async function createPaymentLink(opts: {
