@@ -7,7 +7,7 @@ import { portalFetch, clearToken } from "@/lib/portal-auth";
 import {
   User, Phone, MapPin, Calendar, Mail, CreditCard, Send,
   Languages, CheckCircle, XCircle, Loader2, Pencil, Save, X,
-  LogOut, Trash2,
+  LogOut, Trash2, FileDown, Receipt,
 } from "lucide-react";
 
 interface UserData {
@@ -18,7 +18,7 @@ interface UserData {
   email_connected: boolean; smtp_email: string;
 }
 
-type Tab = "profile" | "settings";
+type Tab = "profile" | "settings" | "invoices";
 
 const CITIES = [
   "الرياض", "جدة", "مكة المكرمة", "المدينة المنورة", "الدمام", "الخبر", "الظهران",
@@ -52,6 +52,44 @@ export default function AccountPage() {
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
+
+  // invoices state
+  type PortalOrder = {
+    id: string; status: string; amount: number; paid_at: string | null;
+    payment_gateway: string | null;
+    store_products: { name: string; duration_days: number } | null;
+  };
+  const [invoices, setInvoices] = useState<PortalOrder[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [invoicesLoaded, setInvoicesLoaded] = useState(false);
+
+  const GATEWAY_AR: Record<string, string> = { tamara: "تمارا", streampay: "StreamPay", bank_transfer: "تحويل بنكي" };
+
+  function buildPortalInvoiceUrl(o: PortalOrder, u: UserData) {
+    const year = o.paid_at ? new Date(o.paid_at).getFullYear() : new Date().getFullYear();
+    const invNum = `JBT-${year}-${o.id.slice(0, 8).toUpperCase()}`;
+    const gw = GATEWAY_AR[o.payment_gateway || ""] || o.payment_gateway || "";
+    const params = new URLSearchParams({
+      client:  u.full_name || "",
+      email:   u.email || "",
+      inv:     invNum,
+      date:    o.paid_at ? o.paid_at.split("T")[0] : new Date().toISOString().split("T")[0],
+      plan:    o.store_products?.name || "—",
+      amount:  String(o.amount ?? ""),
+      gateway: gw,
+    });
+    return `/invoice.html?${params.toString()}`;
+  }
+
+  async function loadInvoices() {
+    setInvoicesLoading(true);
+    try {
+      const res = await portalFetch("/refunds");
+      const d = await res.json();
+      if (d.ok) setInvoices((d.orders || []).filter((o: PortalOrder) => o.status === "paid"));
+    } catch { /* silent */ }
+    finally { setInvoicesLoading(false); setInvoicesLoaded(true); }
+  }
 
   const t = {
     bg:      dark ? "#0a0a0a" : "#f4f4f5",
@@ -156,6 +194,7 @@ export default function AccountPage() {
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: "profile",  label: "حسابي",    icon: <User size={15} key="u" /> },
     { key: "settings", label: "الإعدادات", icon: <CreditCard size={15} key="s" /> },
+    { key: "invoices", label: "فواتيري",   icon: <Receipt size={15} key="i" /> },
   ];
 
   return (
@@ -213,7 +252,10 @@ export default function AccountPage() {
           borderRadius: 14, padding: 4, marginBottom: 20,
         }}>
           {tabs.map(({ key, label, icon }) => (
-            <button key={key} onClick={() => { setTab(key); setMsg(null); setEditing(false); }} style={{
+            <button key={key} onClick={() => {
+              setTab(key); setMsg(null); setEditing(false);
+              if (key === "invoices" && !invoicesLoaded) loadInvoices();
+            }} style={{
               flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               padding: "11px 0", borderRadius: 11, border: "none", cursor: "pointer",
               background: tab === key ? (dark ? "#fff" : "#09090b") : "transparent",
@@ -410,6 +452,72 @@ export default function AccountPage() {
                 </div>
               </div>
             )}
+          </div>
+
+        ) : tab === "invoices" ? (
+          /* ══════════════ INVOICES TAB ══════════════ */
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, animation: "fadeIn 0.2s ease" }}>
+            <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 18, overflow: "hidden" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 20px", borderBottom: `1px solid ${t.border}` }}>
+                <div style={{ width: 32, height: 32, borderRadius: 10, background: t.iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Receipt size={16} strokeWidth={1.5} color={t.text2} />
+                </div>
+                <span style={{ color: t.text, fontSize: 15, fontWeight: 700 }}>فواتير الاشتراكات</span>
+              </div>
+              {invoicesLoading ? (
+                <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
+                  <Loader2 size={24} color={t.text3} style={{ animation: "spin 1s linear infinite" }} />
+                </div>
+              ) : invoices.length === 0 ? (
+                <div style={{ padding: "40px 20px", textAlign: "center", color: t.text3, fontSize: 14 }}>
+                  لا توجد فواتير مدفوعة حتى الآن
+                </div>
+              ) : (
+                <div style={{ padding: "8px 0" }}>
+                  {invoices.map((o, i) => {
+                    const invoiceUrl = buildPortalInvoiceUrl(o, user!);
+                    const productName = o.store_products?.name || "—";
+                    const dateStr = o.paid_at ? new Date(o.paid_at).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" }) : "—";
+                    const year = o.paid_at ? new Date(o.paid_at).getFullYear() : new Date().getFullYear();
+                    const invNum = `JBT-${year}-${o.id.slice(0, 8).toUpperCase()}`;
+                    const isLast = i === invoices.length - 1;
+                    return (
+                      <div key={o.id} style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        padding: "14px 20px", flexWrap: "wrap", gap: 10,
+                        borderBottom: isLast ? "none" : `1px solid ${t.divider}`,
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <div style={{
+                            width: 38, height: 38, borderRadius: 10, background: t.iconBg,
+                            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                          }}>
+                            <FileDown size={16} color={t.text3} />
+                          </div>
+                          <div>
+                            <p style={{ margin: 0, color: t.text, fontSize: 14, fontWeight: 700 }}>{productName}</p>
+                            <p style={{ margin: "2px 0 0", color: t.text3, fontSize: 12 }}>
+                              {invNum} · {dateStr}
+                            </p>
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <span style={{ color: t.text, fontSize: 15, fontWeight: 800 }}>{o.amount} ر.س</span>
+                          <a href={invoiceUrl} target="_blank" rel="noopener noreferrer" style={{
+                            display: "inline-flex", alignItems: "center", gap: 6,
+                            padding: "8px 14px", borderRadius: 9,
+                            background: dark ? "#fff" : "#09090b", color: dark ? "#0a0a0a" : "#fff",
+                            fontSize: 13, fontWeight: 700, textDecoration: "none",
+                          }}>
+                            <FileDown size={13} /> تحميل
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
         ) : (

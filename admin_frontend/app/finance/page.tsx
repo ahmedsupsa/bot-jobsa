@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import {
   TrendingUp, DollarSign, ShoppingCart, BarChart3, RefreshCw,
   ArrowUpRight, ArrowDownRight, Minus, Download, Users, Wallet,
-  PieChart, FileSpreadsheet, AlertCircle, CheckCircle2, Clock, Target,
+  PieChart, FileSpreadsheet, AlertCircle, CheckCircle2, Clock, Target, FileDown,
 } from "lucide-react";
 
 type Summary = {
@@ -27,8 +27,26 @@ type TamaraOrder = {
 
 type ProductStat = { name: string; direct: number; affiliate: number; commissions: number; count: number };
 type ChartPoint = { month: string; direct: number; affiliate: number; commissions: number; net: number };
-type DirectOrder = { id: string; user_name?: string; user_email?: string; amount?: number; paid_at?: string; product_name: string };
+type DirectOrder = { id: string; user_name?: string; user_email?: string; amount?: number; paid_at?: string; product_name: string; payment_gateway?: string | null };
 type AffOrder = DirectOrder & { ref_code?: string; commission: number; commission_status: string; affiliate_name: string; net: number };
+
+const GATEWAY_AR: Record<string, string> = { tamara: "تمارا", streampay: "StreamPay", bank_transfer: "تحويل بنكي" };
+
+function buildInvoiceUrl(o: { id: string; user_name?: string; user_email?: string; product_name: string; amount?: number; paid_at?: string; payment_gateway?: string | null }) {
+  const year = o.paid_at ? new Date(o.paid_at).getFullYear() : new Date().getFullYear();
+  const invNum = `JBT-${year}-${o.id.slice(0, 8).toUpperCase()}`;
+  const gw = GATEWAY_AR[o.payment_gateway || ""] || o.payment_gateway || "";
+  const params = new URLSearchParams({
+    client:  o.user_name  || "",
+    email:   o.user_email || "",
+    inv:     invNum,
+    date:    o.paid_at ? o.paid_at.split("T")[0] : new Date().toISOString().split("T")[0],
+    plan:    o.product_name,
+    amount:  String(o.amount ?? ""),
+    gateway: gw,
+  });
+  return `/invoice.html?${params.toString()}`;
+}
 
 function fmt(n: number) {
   return Number(n || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -308,7 +326,7 @@ export default function FinancePage() {
                 <p style={{ color: "var(--text4)", fontSize: 12, margin: "0 0 18px" }}>طلبات بدون كود إحالة — يحتفظ النظام بكامل المبلغ</p>
                 <OrdersTable rows={data.directOrders.map(o => ({
                   user_name: o.user_name, user_email: o.user_email, product_name: o.product_name,
-                  amount: o.amount, paid_at: o.paid_at,
+                  amount: o.amount, paid_at: o.paid_at, invoiceUrl: buildInvoiceUrl(o),
                 }))} totalLabel="إجمالي مباشر" totalValue={data.summary.directRevenue} totalColor="var(--text)" />
               </div>
             )}
@@ -383,11 +401,12 @@ export default function FinancePage() {
                           <th style={{ ...th, textAlign: "left" }}>إجمالي رسوم</th>
                           <th style={{ ...th, textAlign: "left" }}>الصافي</th>
                           <th style={th}>تاريخ الدفع</th>
+                          <th style={th}>فاتورة</th>
                         </tr>
                       </thead>
                       <tbody>
                         {data.tamaraOrders.length === 0 ? (
-                          <tr><td colSpan={9} style={{ color: "var(--text4)", textAlign: "center", padding: 32 }}>لا توجد طلبات تمارا مدفوعة بعد</td></tr>
+                          <tr><td colSpan={10} style={{ color: "var(--text4)", textAlign: "center", padding: 32 }}>لا توجد طلبات تمارا مدفوعة بعد</td></tr>
                         ) : data.tamaraOrders.map(o => (
                           <tr key={o.id} style={{ borderBottom: "1px solid var(--border)" }}
                             onMouseEnter={e => (e.currentTarget.style.background = "var(--surface2)")}
@@ -401,6 +420,21 @@ export default function FinancePage() {
                             <td style={{ ...td, textAlign: "left", color: "#f87171", fontWeight: 700 }}>− {fmt(o.fee_total)}</td>
                             <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 800 }}>{fmt(o.net_received)}</td>
                             <td style={{ ...td, color: "var(--text4)" }}>{fmtDate(o.paid_at)}</td>
+                            <td style={{ ...td, textAlign: "center" }}>
+                              <a href={buildInvoiceUrl({ ...o, payment_gateway: "tamara" })} target="_blank" rel="noopener noreferrer"
+                                title="تحميل الفاتورة"
+                                style={{
+                                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                  width: 30, height: 30, borderRadius: 8,
+                                  background: "var(--surface2)", border: "1px solid var(--border2)",
+                                  color: "var(--text3)", textDecoration: "none",
+                                }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = "#ec489922"; (e.currentTarget as HTMLAnchorElement).style.color = "#ec4899"; }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--surface2)"; (e.currentTarget as HTMLAnchorElement).style.color = "var(--text3)"; }}
+                              >
+                                <FileDown size={14} />
+                              </a>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -413,7 +447,7 @@ export default function FinancePage() {
                           <td style={{ ...td, textAlign: "left", color: "#a78bfa", fontWeight: 800 }}>− {fmt(data.summary.tamaraVat)}</td>
                           <td style={{ ...td, textAlign: "left", color: "#f87171", fontWeight: 800 }}>− {fmt(data.summary.tamaraFees)}</td>
                           <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 800 }}>{fmt(data.summary.tamaraNet)}</td>
-                          <td />
+                          <td colSpan={2} />
                         </tr>
                       </tfoot>
                     </table>
@@ -443,11 +477,12 @@ export default function FinancePage() {
                         <th style={{ ...th, textAlign: "left" }}>الصافي</th>
                         <th style={th}>الحالة</th>
                         <th style={th}>تاريخ الدفع</th>
+                        <th style={th}>فاتورة</th>
                       </tr>
                     </thead>
                     <tbody>
                       {data.affiliateOrders.length === 0 ? (
-                        <tr><td colSpan={9} style={{ color: "var(--text4)", textAlign: "center", padding: 32 }}>لا توجد مبيعات عبر مسوّقين بعد</td></tr>
+                        <tr><td colSpan={10} style={{ color: "var(--text4)", textAlign: "center", padding: 32 }}>لا توجد مبيعات عبر مسوّقين بعد</td></tr>
                       ) : data.affiliateOrders.map(o => (
                         <tr key={o.id} style={{ borderBottom: "1px solid var(--border)" }}
                           onMouseEnter={e => (e.currentTarget.style.background = "var(--surface2)")}
@@ -468,6 +503,21 @@ export default function FinancePage() {
                             }}>{o.commission_status === "paid" ? "مدفوعة" : "معلّقة"}</span>
                           </td>
                           <td style={{ ...td, color: "var(--text4)" }}>{fmtDate(o.paid_at)}</td>
+                          <td style={{ ...td, textAlign: "center" }}>
+                            <a href={buildInvoiceUrl(o)} target="_blank" rel="noopener noreferrer"
+                              title="تحميل الفاتورة"
+                              style={{
+                                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                width: 30, height: 30, borderRadius: 8,
+                                background: "var(--surface2)", border: "1px solid var(--border2)",
+                                color: "var(--text3)", textDecoration: "none",
+                              }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = "#a78bfa22"; (e.currentTarget as HTMLAnchorElement).style.color = "#a78bfa"; }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--surface2)"; (e.currentTarget as HTMLAnchorElement).style.color = "var(--text3)"; }}
+                            >
+                              <FileDown size={14} />
+                            </a>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -477,7 +527,7 @@ export default function FinancePage() {
                         <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 800 }}>{fmt(data.summary.affiliateRevenue)}</td>
                         <td style={{ ...td, textAlign: "left", color: "#f87171", fontWeight: 800 }}>− {fmt(data.summary.totalCommissionsAccrued)}</td>
                         <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 800 }}>{fmt(data.summary.affiliateRevenue - data.summary.totalCommissionsAccrued)}</td>
-                        <td colSpan={2} />
+                        <td colSpan={3} />
                       </tr>
                     </tfoot>
                   </table>
@@ -511,7 +561,7 @@ function CashRow({ icon, label, value, bg }: { icon: React.ReactNode; label: str
 }
 
 function OrdersTable({ rows, totalLabel, totalValue, totalColor }: {
-  rows: { user_name?: string; user_email?: string; product_name: string; amount?: number; paid_at?: string }[];
+  rows: { user_name?: string; user_email?: string; product_name: string; amount?: number; paid_at?: string; invoiceUrl?: string }[];
   totalLabel: string; totalValue: number; totalColor: string;
 }) {
   return (
@@ -524,11 +574,12 @@ function OrdersTable({ rows, totalLabel, totalValue, totalColor }: {
             <th style={th}>المنتج</th>
             <th style={{ ...th, textAlign: "left" }}>المبلغ</th>
             <th style={th}>تاريخ الدفع</th>
+            <th style={th}>فاتورة</th>
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 ? (
-            <tr><td colSpan={5} style={{ color: "var(--text4)", textAlign: "center", padding: 32 }}>لا توجد طلبات</td></tr>
+            <tr><td colSpan={6} style={{ color: "var(--text4)", textAlign: "center", padding: 32 }}>لا توجد طلبات</td></tr>
           ) : rows.map((o, i) => (
             <tr key={i} style={{ borderBottom: "1px solid var(--border)" }}
               onMouseEnter={e => (e.currentTarget.style.background = "var(--surface2)")}
@@ -538,6 +589,23 @@ function OrdersTable({ rows, totalLabel, totalValue, totalColor }: {
               <td style={td}>{o.product_name}</td>
               <td style={{ ...td, textAlign: "left", color: totalColor, fontWeight: 700 }}>{fmt(o.amount || 0)}</td>
               <td style={{ ...td, color: "var(--text4)" }}>{fmtDate(o.paid_at)}</td>
+              <td style={{ ...td, textAlign: "center" }}>
+                {o.invoiceUrl ? (
+                  <a href={o.invoiceUrl} target="_blank" rel="noopener noreferrer"
+                    title="تحميل الفاتورة"
+                    style={{
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      width: 30, height: 30, borderRadius: 8,
+                      background: "var(--surface2)", border: "1px solid var(--border2)",
+                      color: "var(--text3)", textDecoration: "none",
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = "#a78bfa22"; (e.currentTarget as HTMLAnchorElement).style.color = "#a78bfa"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--surface2)"; (e.currentTarget as HTMLAnchorElement).style.color = "var(--text3)"; }}
+                  >
+                    <FileDown size={14} />
+                  </a>
+                ) : "—"}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -545,7 +613,7 @@ function OrdersTable({ rows, totalLabel, totalValue, totalColor }: {
           <tr style={{ background: "var(--surface2)" }}>
             <td colSpan={3} style={{ ...td, color: "var(--text)", fontWeight: 700 }}>{totalLabel}</td>
             <td style={{ ...td, textAlign: "left", color: totalColor, fontWeight: 800, fontSize: 14 }}>{fmt(totalValue)} ر.س</td>
-            <td />
+            <td colSpan={2} />
           </tr>
         </tfoot>
       </table>
