@@ -1,18 +1,20 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase-server";
+import { db } from "@/lib/local-db";
 import { getAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
 
 export async function GET() {
   const session = getAdminSession();
   if (!session) return unauthorizedResponse();
 
-  const { data, error } = await supabase
-    .from("admin_task_groups")
-    .select("*")
-    .order("position", { ascending: true });
-
-  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, groups: data || [] });
+  try {
+    const rows = await db`
+      SELECT * FROM admin_task_groups ORDER BY position ASC, id ASC
+    `;
+    return NextResponse.json({ ok: true, groups: rows });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {
@@ -24,23 +26,22 @@ export async function POST(req: Request) {
   const color = String(body.color || "#6366f1").trim();
   if (!name) return NextResponse.json({ ok: false, error: "اسم المجموعة مطلوب" }, { status: 400 });
 
-  const { data: maxPos } = await supabase
-    .from("admin_task_groups")
-    .select("position")
-    .order("position", { ascending: false })
-    .limit(1)
-    .single();
+  try {
+    const [maxPos] = await db`
+      SELECT COALESCE(MAX(position), 0) AS pos FROM admin_task_groups
+    `;
+    const position = Number(maxPos.pos) + 1;
 
-  const position = (maxPos?.position ?? 0) + 1;
-
-  const { data, error } = await supabase
-    .from("admin_task_groups")
-    .insert({ name, color, position, created_by: session.username })
-    .select()
-    .single();
-
-  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, group: data });
+    const [row] = await db`
+      INSERT INTO admin_task_groups (name, color, position, created_by)
+      VALUES (${name}, ${color}, ${position}, ${session.username})
+      RETURNING *
+    `;
+    return NextResponse.json({ ok: true, group: row });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  }
 }
 
 export async function PATCH(req: Request) {
@@ -51,20 +52,26 @@ export async function PATCH(req: Request) {
   const id = Number(body.id);
   if (!id) return NextResponse.json({ ok: false, error: "id مطلوب" }, { status: 400 });
 
-  const updates: Record<string, unknown> = {};
-  if (body.name !== undefined) updates.name = String(body.name).trim();
-  if (body.color !== undefined) updates.color = String(body.color).trim();
-  if (body.position !== undefined) updates.position = Number(body.position);
+  try {
+    const sets: string[] = [];
+    const vals: (string | number)[] = [];
 
-  const { data, error } = await supabase
-    .from("admin_task_groups")
-    .update(updates)
-    .eq("id", id)
-    .select()
-    .single();
+    if (body.name !== undefined) { sets.push("name"); vals.push(String(body.name).trim()); }
+    if (body.color !== undefined) { sets.push("color"); vals.push(String(body.color).trim()); }
+    if (body.position !== undefined) { sets.push("position"); vals.push(Number(body.position)); }
 
-  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, group: data });
+    if (sets.length === 0) return NextResponse.json({ ok: false, error: "لا يوجد بيانات للتحديث" }, { status: 400 });
+
+    const setClauses = sets.map((col, i) => `${col} = $${i + 1}`).join(", ");
+    const [row] = await db.unsafe(
+      `UPDATE admin_task_groups SET ${setClauses} WHERE id = $${sets.length + 1} RETURNING *`,
+      [...vals, id]
+    );
+    return NextResponse.json({ ok: true, group: row });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  }
 }
 
 export async function DELETE(req: Request) {
@@ -75,9 +82,12 @@ export async function DELETE(req: Request) {
   const id = Number(searchParams.get("id"));
   if (!id) return NextResponse.json({ ok: false, error: "id مطلوب" }, { status: 400 });
 
-  await supabase.from("admin_tasks").delete().eq("group_id", id);
-  const { error } = await supabase.from("admin_task_groups").delete().eq("id", id);
-
-  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+  try {
+    await db`DELETE FROM admin_tasks WHERE group_id = ${id}`;
+    await db`DELETE FROM admin_task_groups WHERE id = ${id}`;
+    return NextResponse.json({ ok: true });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  }
 }

@@ -18,6 +18,7 @@
     "lucide-react": "^0.469.0",
     "next": "^14.2.25",
     "nodemailer": "^8.0.6",
+    "postgres": "^3.4.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "web-push": "^3.6.7"
