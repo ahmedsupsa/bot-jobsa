@@ -8,8 +8,13 @@ const RESEND_API_KEY   = process.env.RESEND_API_KEY || "";
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.jobbots.org";
 
-function buildHtml(subject: string, body: string, from_name: string, trackingToken: string) {
-  const safeBody = body
+function personalize(text: string, name: string) {
+  return text.replace(/\{\{name\}\}/gi, name || "");
+}
+
+function buildHtml(subject: string, body: string, from_name: string, trackingToken: string, recipientName: string) {
+  const personalizedBody = personalize(body, recipientName);
+  const safeBody = personalizedBody
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -121,11 +126,13 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   for (let i = 0; i < recipients.length; i += BATCH) {
     const batch = recipients.slice(i, i + BATCH);
     await Promise.all(batch.map(async (r) => {
-      const html = buildHtml(campaign.subject, campaign.body, campaign.from_name, r.token);
+      const recipientName = r.name || "";
+      const personalizedSubject = personalize(campaign.subject, recipientName);
+      const html = buildHtml(campaign.subject, campaign.body, campaign.from_name, r.token, recipientName);
       const payload: Record<string, unknown> = {
         from: `${campaign.from_name} <${RESEND_FROM_EMAIL}>`,
         to: [r.name ? `${r.name} <${r.email}>` : r.email],
-        subject: campaign.subject,
+        subject: personalizedSubject,
         html,
       };
       if (campaign.reply_to) payload.reply_to = campaign.reply_to;

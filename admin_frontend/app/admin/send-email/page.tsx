@@ -67,6 +67,7 @@ export default function SendEmailPage() {
 // ─── Quick Send ───────────────────────────────────────────────────────────────
 function QuickSend() {
   const [toEmail, setToEmail]   = useState("");
+  const [toName, setToName]     = useState("");
   const [subject, setSubject]   = useState("");
   const [message, setMessage]   = useState("");
   const [fromName, setFromName] = useState("");
@@ -80,11 +81,11 @@ function QuickSend() {
       const r = await fetch("/api/admin/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to_email: toEmail, subject, message, from_name: fromName || undefined, reply_to: replyTo || undefined }),
+        body: JSON.stringify({ to_email: toEmail, to_name: toName || undefined, subject, message, from_name: fromName || undefined, reply_to: replyTo || undefined }),
       });
       const j = await r.json();
       if (!j.ok) { setStatus({ ok: false, msg: j.error || "فشل الإرسال" }); }
-      else { setStatus({ ok: true, msg: "تم إرسال البريد بنجاح ✉️" }); setToEmail(""); setSubject(""); setMessage(""); setReplyTo(""); }
+      else { setStatus({ ok: true, msg: "تم إرسال البريد بنجاح ✉️" }); setToEmail(""); setToName(""); setSubject(""); setMessage(""); setReplyTo(""); }
     } catch { setStatus({ ok: false, msg: "خطأ في الاتصال" }); }
     setSending(false);
   };
@@ -93,10 +94,16 @@ function QuickSend() {
 
   return (
     <div className="rounded-2xl border border-line bg-panel p-6 space-y-4 max-w-2xl">
-      <Field label="البريد المرسَل إليه *" icon={<User size={13} />}>
-        <input type="email" dir="ltr" className={inputCls} placeholder="user@example.com"
-          value={toEmail} onChange={e => setToEmail(e.target.value)} disabled={sending} />
-      </Field>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label="البريد المرسَل إليه *" icon={<User size={13} />}>
+          <input type="email" dir="ltr" className={inputCls} placeholder="user@example.com"
+            value={toEmail} onChange={e => setToEmail(e.target.value)} disabled={sending} />
+        </Field>
+        <Field label="اسم المستلم — اختياري" icon={<User size={13} />}>
+          <input className={inputCls} placeholder="مثلاً: أحمد"
+            value={toName} onChange={e => setToName(e.target.value)} disabled={sending} />
+        </Field>
+      </div>
       <Field label="اسم المرسِل — اختياري" icon={<User size={13} />}>
         <input className={inputCls} placeholder="مثلاً: إدارة Jobbots"
           value={fromName} onChange={e => setFromName(e.target.value)} disabled={sending} />
@@ -113,7 +120,9 @@ function QuickSend() {
         <textarea rows={8} className={`${inputCls} resize-y leading-relaxed`}
           placeholder={"السلام عليكم،\n\nنود إعلامكم بأن..."}
           value={message} onChange={e => setMessage(e.target.value)} disabled={sending} />
-        <p className="text-xs text-muted2 mt-1">يدعم الأسطر الجديدة. لا تضف HTML — يتم تنسيق الرسالة تلقائياً.</p>
+        <p className="text-xs text-muted2 mt-1">
+          اكتب <span dir="ltr" className="font-mono bg-panel2 border border-line rounded px-1">{"{{name}}"}</span> ليُستبدل باسم المستلم. يدعم الأسطر الجديدة، لا تضف HTML.
+        </p>
       </Field>
       {status && (
         <div className={`rounded-xl border px-4 py-3 text-sm flex items-center gap-2 ${status.ok ? "border-line2 bg-panel2 text-ink" : "border-danger-border bg-danger-bg text-danger"}`}>
@@ -239,9 +248,11 @@ function CampaignCreate({ onSent }: { onSent: () => void }) {
           </Field>
           <Field label="نص الرسالة *" icon={<MessageSquare size={13} />}>
             <textarea rows={10} className={`${inputCls} resize-y leading-relaxed`}
-              placeholder={"السلام عليكم،\n\nنود إعلامكم بأن..."}
+              placeholder={"السلام عليكم {{name}}،\n\nنود إعلامكم بأن..."}
               value={body} onChange={e => setBody(e.target.value)} />
-            <p className="text-xs text-muted2 mt-1">يدعم الأسطر الجديدة. ستُضاف بكسل التتبع تلقائياً لمعرفة من فتح الإيميل.</p>
+            <p className="text-xs text-muted2 mt-1">
+              اكتب <span dir="ltr" className="font-mono bg-panel2 border border-line rounded px-1">{"{{name}}"}</span> في أي مكان ليُستبدل باسم كل مستلم تلقائياً. يدعم الأسطر الجديدة، ويُضاف بكسل التتبع آلياً.
+            </p>
           </Field>
           {err && <div className="rounded-xl border border-danger-border bg-danger-bg px-3 py-2 text-sm text-danger flex items-center gap-2"><AlertCircle size={14} />{err}</div>}
           <div className="flex justify-end">

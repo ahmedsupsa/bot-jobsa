@@ -7,6 +7,10 @@ const RESEND_FROM_NAME = process.env.RESEND_FROM_NAME || "Jobbots";
 
 export const dynamic = "force-dynamic";
 
+function personalize(text: string, name: string) {
+  return text.replace(/\{\{name\}\}/gi, name || "");
+}
+
 function buildHtml(subject: string, body: string) {
   const safeBody = body
     .replace(/&/g, "&amp;")
@@ -33,9 +37,10 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const { to_email, subject, message, from_name, reply_to } = body;
+  const { to_email, to_name, subject, message, from_name, reply_to } = body;
 
   const cleanTo = String(to_email || "").trim().toLowerCase();
+  const cleanName = String(to_name || "").trim();
   const cleanSubject = String(subject || "").trim();
   const cleanMessage = String(message || "").trim();
 
@@ -52,12 +57,17 @@ export async function POST(req: Request) {
   const senderName = String(from_name || "").trim() || RESEND_FROM_NAME;
   const cleanReplyTo = String(reply_to || "").trim();
 
+  const personalizedSubject = personalize(cleanSubject, cleanName);
+  const personalizedMessage = personalize(cleanMessage, cleanName);
+
+  const toAddress = cleanName ? `${cleanName} <${cleanTo}>` : cleanTo;
+
   const payload: Record<string, unknown> = {
     from: `${senderName} <${RESEND_FROM_EMAIL}>`,
-    to: [cleanTo],
-    subject: cleanSubject,
-    html: buildHtml(cleanSubject, cleanMessage),
-    text: cleanMessage,
+    to: [toAddress],
+    subject: personalizedSubject,
+    html: buildHtml(personalizedSubject, personalizedMessage),
+    text: personalizedMessage,
   };
   if (cleanReplyTo && cleanReplyTo.includes("@")) {
     payload.reply_to = cleanReplyTo;
