@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   Sparkles, Check, ShoppingCart, X, RefreshCw, Loader2, ShieldCheck,
-  Copy, CheckCheck, Building2, Wallet, Tag, Search, ArrowUpDown,
+  Copy, CheckCheck, Building2, Wallet, Tag, Search, ArrowUpDown, Clock,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -95,6 +95,9 @@ export default function StorePage() {
   const [uploadDone, setUploadDone] = useState(false);
   const [uploadErr, setUploadErr] = useState("");
 
+  const [pendingBanner, setPendingBanner] = useState<{ order_id: string; product_name: string; amount: number } | null>(null);
+  const [resuming, setResuming] = useState(false);
+
   // Search + sort
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"default" | "price_asc" | "price_desc" | "duration_asc" | "duration_desc">("default");
@@ -143,8 +146,63 @@ export default function StorePage() {
         const stored = localStorage.getItem("jobbots_ref");
         if (stored) setRefCode(stored);
       }
+
+      // Check for pending bank transfer order
+      const raw = localStorage.getItem("jobbots_pending_bank");
+      if (raw) {
+        try {
+          const saved = JSON.parse(raw) as { order_id: string; product_name: string; amount: number; saved_at: number };
+          const age = Date.now() - (saved.saved_at || 0);
+          // Only show if less than 7 days old
+          if (age < 7 * 24 * 60 * 60 * 1000 && saved.order_id) {
+            setPendingBanner({ order_id: saved.order_id, product_name: saved.product_name, amount: saved.amount });
+          } else {
+            localStorage.removeItem("jobbots_pending_bank");
+          }
+        } catch {
+          localStorage.removeItem("jobbots_pending_bank");
+        }
+      }
     }
   }, []);
+
+  const handleResumeOrder = async () => {
+    if (!pendingBanner) return;
+    setResuming(true);
+    try {
+      const r = await fetch(`/api/store/resume-order?order_id=${pendingBanner.order_id}&t=${Date.now()}`);
+      const j = await r.json();
+      if (!j.ok) {
+        // Order already processed or not found — clear banner
+        localStorage.removeItem("jobbots_pending_bank");
+        setPendingBanner(null);
+        if (j.status === "paid" || j.status === "active") {
+          alert("تم تفعيل اشتراكك بالفعل! تحقق من بريدك الإلكتروني.");
+        } else {
+          alert(j.error || "لم يتم العثور على الطلب أو تم إلغاؤه.");
+        }
+        return;
+      }
+      // Open modal in bank_details step directly
+      setSelected({
+        id: "__resume__",
+        name: j.product_name,
+        price: j.original_amount,
+        duration_days: 30,
+      });
+      setBankData({
+        accounts: j.accounts || [],
+        amount: j.amount,
+        original_amount: j.original_amount,
+        has_discount: j.has_discount,
+        order_id: j.order_id,
+      });
+      setStep("bank_details");
+    } catch {
+      alert("حدث خطأ أثناء جلب بيانات الطلب. حاول مجدداً.");
+    }
+    setResuming(false);
+  };
 
   const handleBuy = (p: Product) => {
     setSelected(p); setFormErr(""); setStep("form"); setBankData(null);
@@ -200,6 +258,11 @@ export default function StorePage() {
       if (!j.ok) throw new Error(j.error || "فشل الرفع");
       setUploadDone(true);
       setReceiptFile(null);
+      // Clear pending order from localStorage
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("jobbots_pending_bank");
+        setPendingBanner(null);
+      }
     } catch (e) {
       setUploadErr(String(e).replace("Error: ", ""));
     }
@@ -236,15 +299,26 @@ export default function StorePage() {
       if (!j.ok) throw new Error(j.error || "فشل إنشاء رابط الدفع");
 
       if (gateway === "bank_transfer") {
-        setBankData({
+        const bData = {
           accounts: j.accounts || [],
           amount: j.amount,
           original_amount: j.original_amount,
           has_discount: j.has_discount,
           order_id: j.order_id,
-        });
+        };
+        setBankData(bData);
         setStep("bank_details");
         setSubmitting(null);
+        // Save to localStorage so user can resume later
+        if (typeof window !== "undefined" && j.order_id) {
+          localStorage.setItem("jobbots_pending_bank", JSON.stringify({
+            order_id: j.order_id,
+            product_name: selected?.name || "اشتراك",
+            amount: j.amount,
+            saved_at: Date.now(),
+          }));
+          setPendingBanner(null); // hide banner if it was showing
+        }
         return;
       }
 
@@ -305,6 +379,47 @@ export default function StorePage() {
           <div style={s.refBanner}>
             <Sparkles size={13} color="var(--text)" />
             <span>تم تطبيق كود الإحالة <strong style={{ color: "var(--text)" }}>{refCode}</strong></span>
+          </div>
+        )}
+
+        {/* Pending bank transfer banner */}
+        {pendingBanner && (
+          <div style={s.resumeBanner}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+              <div style={s.resumeIconWrap}>
+                <Clock size={14} color="var(--text)" />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                <span style={{ color: "var(--text)", fontSize: 13, fontWeight: 700 }}>
+                  لديك طلب حوالة بنكية معلق
+                </span>
+                <span style={{ color: "var(--text3)", fontSize: 11.5 }}>
+                  {pendingBanner.product_name} · {pendingBanner.amount} ر.س — أرفع إيصالك لإتمام الاشتراك
+                </span>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <button
+                onClick={handleResumeOrder}
+                disabled={resuming}
+                style={s.resumeBtn}
+              >
+                {resuming
+                  ? <RefreshCw size={12} style={{ animation: "spin 1s linear infinite" }} />
+                  : null}
+                <span>{resuming ? "جاري..." : "استكمال"}</span>
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.removeItem("jobbots_pending_bank");
+                  setPendingBanner(null);
+                }}
+                style={s.resumeDismissBtn}
+                title="إخفاء"
+              >
+                <X size={13} />
+              </button>
+            </div>
           </div>
         )}
 
@@ -466,8 +581,8 @@ export default function StorePage() {
               </div>
             </div>
 
-            {/* Form — two columns on desktop */}
-            <div style={s.formGrid} className="__formgrid">
+            {/* Form — two columns on desktop — hidden in resume mode */}
+            <div style={{ ...s.formGrid, display: selected?.id === "__resume__" ? "none" : "grid" }} className="__formgrid">
               <div style={s.formCol}>
                 <label style={s.label}>الاسم الكامل *</label>
                 <input style={s.input} placeholder=""
@@ -562,8 +677,8 @@ export default function StorePage() {
               </div>
             )}
 
-            {/* Payment gateway label */}
-            <div style={s.gatewayLabel}>
+            {/* Payment gateway label — hidden in bank_details step */}
+            <div style={{ ...s.gatewayLabel, display: step === "bank_details" ? "none" : "flex" }}>
               <span style={s.gatewayLine} />
               <span style={s.gatewayText}>اختر بوابة الدفع</span>
               <span style={s.gatewayLine} />
@@ -737,10 +852,17 @@ export default function StorePage() {
                 {/* Back button — hidden after upload */}
                 {!uploadDone && (
                   <button
-                    onClick={() => { setStep("form"); setBankData(null); setReceiptFile(null); setUploadDone(false); setUploadErr(""); }}
+                    onClick={() => {
+                      if (selected?.id === "__resume__") {
+                        // In resume mode, back = close modal
+                        closeModal();
+                      } else {
+                        setStep("form"); setBankData(null); setReceiptFile(null); setUploadDone(false); setUploadErr("");
+                      }
+                    }}
                     style={{ ...s.payBtn, background: "var(--surface2)", color: "var(--text2)", border: "1px solid var(--border2)", marginTop: 4, width: "100%", justifyContent: "center" }}
                   >
-                    <span>← العودة لخيارات الدفع</span>
+                    <span>{selected?.id === "__resume__" ? "← إغلاق" : "← العودة لخيارات الدفع"}</span>
                   </button>
                 )}
               </div>
@@ -882,6 +1004,12 @@ const s: Record<string, React.CSSProperties> = {
   uploadSuccess: { display: "flex", alignItems: "center", gap: 8, background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: 10, padding: "10px 14px", color: "var(--success-fg)", fontSize: 13, fontWeight: 600 },
 
   secureNote: { textAlign: "center" as const, color: "var(--text4)", fontSize: 11, margin: 0, position: "relative", zIndex: 1 },
+
+  // Resume pending bank order
+  resumeBanner: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "var(--surface)", border: "1px solid var(--border2)", borderRadius: 14, padding: "12px 16px", marginBottom: 22, flexWrap: "wrap" as const, boxShadow: "var(--shadow)" },
+  resumeIconWrap: { width: 30, height: 30, borderRadius: 9, background: "var(--surface2)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  resumeBtn: { background: "var(--accent)", color: "var(--accent-fg)", border: "none", borderRadius: 9, padding: "8px 14px", fontSize: 12.5, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 },
+  resumeDismissBtn: { background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 7px", cursor: "pointer", color: "var(--text3)", display: "flex", lineHeight: 1, alignItems: "center" },
 
   // legacy (kept for card)
   summaryBox: { background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", marginBottom: 20 },
