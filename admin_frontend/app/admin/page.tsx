@@ -9,15 +9,28 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
 
   useEffect(() => {
-    fetch("/api/admin/summary", { credentials: "include" })
-      .then((r) => {
-        if (r.status === 401 || r.status === 403) {
-          window.location.href = "/login";
-        } else {
-          setAuthed(true);
+    fetch("/api/admin/me", { credentials: "include" })
+      .then(async (r) => {
+        if (!r.ok) { window.location.href = "/login"; return; }
+        const data = await r.json();
+        if (!data.ok) { window.location.href = "/login"; return; }
+        if (!data.isSuper) {
+          // Redirect non-super admins to their first allowed page
+          const permMap: Record<string, string> = {
+            users: "/users", support: "/support-admin", jobs: "/jobs",
+            codes: "/codes", crm: "/crm", store: "/store-admin",
+            affiliate: "/affiliate-admin", finance: "/finance",
+            notifications: "/notifications", admins: "/admin/admins",
+            "email-test": "/admin/email-test",
+          };
+          const perms: string[] = data.permissions ?? [];
+          const first = perms.map(p => permMap[p]).find(Boolean);
+          window.location.href = first ?? "/login";
+          return;
         }
+        setAuthed(true);
       })
-      .catch(() => setAuthed(true))
+      .catch(() => { window.location.href = "/login"; })
       .finally(() => setChecked(true));
   }, []);
 

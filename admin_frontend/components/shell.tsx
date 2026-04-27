@@ -19,8 +19,8 @@ type Me = { ok: true; username: string; isSuper: boolean; permissions: Perm[] } 
 type BadgeKey = "support" | "store" | "affiliate";
 type Badges = Partial<Record<BadgeKey, number>>;
 
-const links: { href: string; label: string; icon: any; perm: Perm | null; badge?: BadgeKey }[] = [
-  { href: "/admin", label: "الرئيسية", icon: LayoutDashboard, perm: null },
+const links: { href: string; label: string; icon: any; perm: Perm | null; superOnly?: boolean; badge?: BadgeKey }[] = [
+  { href: "/admin", label: "الرئيسية", icon: LayoutDashboard, perm: null, superOnly: true },
   { href: "/users", label: "المستخدمون", icon: Users, perm: "users" },
   { href: "/codes", label: "أكواد التفعيل", icon: Key, perm: "codes" },
   { href: "/jobs", label: "الوظائف", icon: BriefcaseBusiness, perm: "jobs" },
@@ -70,15 +70,31 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   }, [me, path]);
 
   const visible = me
-    ? links.filter(l => l.perm === null || me.isSuper || me.permissions.includes(l.perm))
+    ? links.filter(l => {
+        if (l.superOnly && !me.isSuper) return false;
+        return l.perm === null || me.isSuper || me.permissions.includes(l.perm);
+      })
     : links;
 
   // Block rendering when current page is forbidden for this admin.
   useEffect(() => {
     if (!me) return;
+    const firstAllowed = links.find(l => {
+      if (l.superOnly && !me.isSuper) return false;
+      return l.perm === null || me.isSuper || me.permissions.includes(l.perm);
+    });
+    const fallback = firstAllowed?.href ?? "/login";
+
+    // If on home page but not super → redirect to first allowed page
+    if (path === "/admin" && !me.isSuper) {
+      router.replace(fallback);
+      return;
+    }
+
     const link = links.find(l => l.href !== "/admin" && path.startsWith(l.href));
-    if (link && link.perm && !me.isSuper && !me.permissions.includes(link.perm)) {
-      router.replace("/admin");
+    if (link) {
+      const blocked = (link.superOnly && !me.isSuper) || (link.perm && !me.isSuper && !me.permissions.includes(link.perm));
+      if (blocked) router.replace(fallback);
     }
   }, [me, path, router]);
 
