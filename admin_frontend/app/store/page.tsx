@@ -102,9 +102,6 @@ export default function StorePage() {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"default" | "price_asc" | "price_desc" | "duration_asc" | "duration_desc">("default");
 
-  // Top banner
-  const [banner, setBanner] = useState<{ enabled: boolean; text: string | null; image_url: string | null } | null>(null);
-
   useEffect(() => {
     fetch(`/api/store/products?t=${Date.now()}`, { cache: "no-store" })
       .then(r => r.json())
@@ -125,14 +122,6 @@ export default function StorePage() {
   }, [search]);
 
   useEffect(() => {
-
-    fetch(`/api/store/settings?t=${Date.now()}`, { cache: "no-store" })
-      .then(r => r.json())
-      .then(j => {
-        const st = j.settings || {};
-        setBanner({ enabled: !!st.banner_enabled, text: st.banner_text || null, image_url: st.banner_image_url || null });
-      })
-      .catch(() => {});
 
     if (typeof window !== "undefined") { // legacy ref param
 
@@ -363,18 +352,6 @@ export default function StorePage() {
       </nav>
 
       <main style={s.main}>
-        {banner?.enabled && (banner.image_url || banner.text) && (
-          <div style={s.topBanner}>
-            {banner.image_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={banner.image_url} alt="" style={s.topBannerImg} />
-            )}
-            {banner.text && (
-              <div style={s.topBannerText}>{banner.text}</div>
-            )}
-          </div>
-        )}
-
         {refCode && (
           <div style={s.refBanner}>
             <Sparkles size={13} color="var(--text)" />
@@ -955,9 +932,6 @@ const s: Record<string, React.CSSProperties> = {
   label: { display: "block", color: "var(--text3)", fontSize: 11, marginBottom: 5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.3px" },
   input: { width: "100%", background: "var(--input-bg)", border: "1px solid var(--border)", borderRadius: 9, padding: "10px 12px", color: "var(--text)", fontSize: 13.5, outline: "none", boxSizing: "border-box" as const },
 
-  topBanner: { marginBottom: 22, borderRadius: 16, overflow: "hidden", border: "1px solid var(--border)", background: "var(--surface)", boxShadow: "var(--shadow)" },
-  topBannerImg: { width: "100%", height: "auto", display: "block", maxHeight: 240, objectFit: "cover" as const },
-  topBannerText: { padding: "14px 18px", fontSize: 14, color: "var(--text)", lineHeight: 1.7, whiteSpace: "pre-wrap" as const, textAlign: "center" as const, fontWeight: 600 },
 
   toolbar: { display: "flex", gap: 10, marginBottom: 22, flexWrap: "wrap" as const, alignItems: "center" },
   searchWrap: { position: "relative" as const, flex: "1 1 220px", minWidth: 0 },
