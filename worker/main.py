@@ -139,6 +139,95 @@ def _is_subscription_active(user: dict) -> bool:
         return False
 
 
+# ─── مطابقة AI للسيرة الذاتية مع الوظيفة ───
+
+_AI_MATCH_PROMPT = """\
+أنت متخصص موارد بشرية خبير ومحرك مطابقة وظيفية دقيق.
+
+مهمتك: تحليل السيرة الذاتية المرفقة ومقارنتها بتفاصيل الوظيفة التالية بفهم عميق، لا بمطابقة كلمات مفتاحية فقط.
+
+الوظيفة: {job_title}
+الشركة: {company}
+تفاصيل الوظيفة ومتطلباتها:
+{job_desc}
+
+خطوات التحليل:
+1. استخرج من السيرة الذاتية: المؤهل والتخصص والبلد، سنوات الخبرة، المهارات، الشهادات والرخص المهنية، العضويات (هيئة المهندسين السعودية، هيئة المحاسبين SOCPA، SCFHS، رخصة التعليم، غيرها)، اللغات.
+2. استخرج من الوظيفة: المؤهل المطلوب، الشهادات والرخص الإلزامية، الخبرة المطلوبة، الشروط الصارمة.
+3. تحقق بشكل صارم:
+   - هل الشهادات أو الرخص صالحة ومعترف بها في السعودية؟
+   - إذا كانت الوظيفة تشترط رخصة سعودية محددة والمتقدم لا يملكها → "مرفوض" فوراً.
+   - اذا كانت الرخصة موجودة لكن غير معترف بها في السعودية → اكتبها كـ "غير مقبولة".
+4. المطابقة: لا تعتمد على الكلمات فقط — افهم السياق (مثال: المحاسبة ≠ المالية إلا مع تداخل واضح، الهندسة ≠ تقنية المعلومات).
+
+أجب بهذا الشكل الحرفي فقط بدون أي نص إضافي:
+SCORE: [رقم من 0 إلى 100]
+DECISION: [Strong Match / متوسط / ضعيف / مرفوض]
+MISSING: [الشروط الناقصة أو "لا يوجد"]
+NOTES: [سبب القرار في جملة واحدة]
+"""
+
+
+def _parse_ai_match(text: str) -> tuple[int, str, str, str]:
+    """تحليل رد Gemini وإرجاع (score, decision, missing, notes)."""
+    score = 0
+    decision = "ضعيف"
+    missing = ""
+    notes = ""
+    for line in (text or "").splitlines():
+        line = line.strip()
+        if line.startswith("SCORE:"):
+            try:
+                score = int(re.search(r"\d+", line.split(":", 1)[1]).group())
+                score = max(0, min(100, score))
+            except Exception:
+                pass
+        elif line.startswith("DECISION:"):
+            decision = line.split(":", 1)[1].strip()
+        elif line.startswith("MISSING:"):
+            missing = line.split(":", 1)[1].strip()
+        elif line.startswith("NOTES:"):
+            notes = line.split(":", 1)[1].strip()
+    return score, decision, missing, notes
+
+
+async def _ai_match_cv_job(
+    job_title: str,
+    company: str,
+    job_desc: str,
+    cv_bytes: bytes | None,
+    cv_mime: str = "application/pdf",
+) -> tuple[int, str, str, str]:
+    """
+    يرسل السيرة الذاتية + وصف الوظيفة لـ Gemini ويعيد (score, decision, missing, notes).
+    decision: "Strong Match" / "متوسط" / "ضعيف" / "مرفوض"
+    """
+    if not GEMINI_API_KEY or not cv_bytes:
+        return 50, "متوسط", "", "لا يوجد API Key أو سيرة ذاتية"
+
+    prompt = _AI_MATCH_PROMPT.format(
+        job_title=job_title,
+        company=company or "غير محدد",
+        job_desc=(job_desc or "")[:1500],
+    )
+    parts: list[dict] = [
+        {"inline_data": {"mime_type": cv_mime, "data": base64.b64encode(cv_bytes).decode("ascii")}},
+        {"text": prompt},
+    ]
+    try:
+        async with httpx.AsyncClient(timeout=45) as client:
+            r = await client.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key={GEMINI_API_KEY}",
+                json={"contents": [{"parts": parts}]},
+            )
+            data = r.json()
+            text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+            return _parse_ai_match(text)
+    except Exception as e:
+        logger.warning("⚠️  AI Match error: %s", e)
+        return 50, "متوسط", "", f"خطأ في الـ AI: {e}"
+
+
 # ─── توليد رسالة التغطية ───
 
 def _build_prompt(job_title: str, name: str, company: str, desc: str, lang: str, template: str) -> str:
@@ -503,8 +592,36 @@ async def run_cycle() -> None:
                     continue
 
                 matched = _job_matches_user(job, field_names)
-                logger.info("   🔎 وظيفة [%s] → %s", job.get("title_ar") or job.get("title_en"), "✓ تطابق" if matched else "✗ لا تطابق")
+                job_title = job.get("title_ar") or job.get("title_en") or "وظيفة"
+                company = job.get("company") or ""
+                desc = (job.get("description_ar") or job.get("description_en") or "")[:1500]
+                logger.info("   🔎 وظيفة [%s] → %s", job_title, "✓ تطابق مبدئي" if matched else "✗ لا تطابق")
                 if not matched:
+                    continue
+
+                to_email = (job.get("application_email") or "").strip()
+                if not _is_valid_email(to_email):
+                    logger.warning("   ⚠️  إيميل الوظيفة غير صالح: [%s] — تخطي", to_email)
+                    continue
+
+                cv_mime = "application/pdf"
+                if cv_name and cv_name.lower().endswith(".docx"):
+                    cv_mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+                # ── مطابقة AI عميقة (السيرة × الوظيفة) ──
+                ai_score, ai_decision, ai_missing, ai_notes = await _ai_match_cv_job(
+                    job_title=job_title,
+                    company=company,
+                    job_desc=desc,
+                    cv_bytes=cv_bytes,
+                    cv_mime=cv_mime,
+                )
+                logger.info(
+                    "   🤖 AI Match [%s] → قرار: %s | نقاط: %d | ناقص: %s | ملاحظة: %s",
+                    job_title, ai_decision, ai_score, ai_missing or "لا يوجد", ai_notes or "—",
+                )
+                if ai_decision in ("مرفوض", "ضعيف") or ai_score < 50:
+                    logger.info("   ⛔ تخطي — قرار AI: %s (%d/100)", ai_decision, ai_score)
                     continue
 
                 # الانتظار بين الإرسالات
@@ -513,20 +630,6 @@ async def run_cycle() -> None:
                 wait = _SEND_INTERVAL - (now_m - last_m)
                 if wait > 0:
                     await asyncio.sleep(wait)
-
-                to_email = (job.get("application_email") or "").strip()
-                job_title = job.get("title_ar") or job.get("title_en") or "وظيفة"
-                company = job.get("company") or ""
-                desc = (job.get("description_ar") or job.get("description_en") or "")[:1200]
-
-                # التحقق من صحة إيميل الوظيفة
-                if not _is_valid_email(to_email):
-                    logger.warning("   ⚠️  إيميل الوظيفة غير صالح: [%s] — تخطي", to_email)
-                    continue
-
-                cv_mime = "application/pdf"
-                if cv_name and cv_name.lower().endswith(".docx"):
-                    cv_mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
                 cover = await _generate_cover_letter(job_title, name, company, desc, lang, cv_bytes, cv_mime, template)
                 cover = _strip_emojis(cover)
@@ -574,6 +677,9 @@ async def run_cycle() -> None:
                             "provider_used": "smtp",
                             "error_reason": error_reason,
                             "sent_at": sent_at if status == "sent" else None,
+                            "ai_match_score": ai_score,
+                            "ai_decision": ai_decision,
+                            "ai_notes": ai_notes or None,
                         },
                     )
                 except Exception as e:
