@@ -20,12 +20,14 @@ const SIDEBAR_NAV = [
   { href: "/portal/support",      icon: MessageCircle, label: "الدعم"        },
 ];
 
-// 5 primary tabs shown in the floating bottom bar
+// All tabs shown in the floating bottom bar
 const BOTTOM_NAV = [
   { href: "/portal/dashboard",    icon: Home,          label: "الرئيسية"  },
   { href: "/portal/applications", icon: ClipboardList, label: "التقديمات" },
   { href: "/portal/cv",           icon: FileText,      label: "سيرتي"     },
   { href: "/portal/email",        icon: Mail,          label: "الإيميل"   },
+  { href: "/portal/affiliate",    icon: TrendingUp,    label: "الربح"     },
+  { href: "/portal/support",      icon: MessageCircle, label: "الدعم"     },
   { href: "/portal/profile",      icon: User,          label: "حسابي"     },
 ];
 
@@ -235,47 +237,53 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
                 key={href}
                 onClick={() => router.push(href)}
                 style={{
-                  flex: 1,
+                  flex: active ? "0 0 auto" : 1,
                   display: "flex",
-                  flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 0,
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
                   padding: "4px 2px",
                   WebkitTapHighlightColor: "transparent",
-                  position: "relative",
                 }}
               >
-                {/* Icon pill */}
-                <div style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 3,
-                  padding: active ? "7px 18px" : "7px 12px",
-                  borderRadius: 18,
-                  background: active ? t.pillBg : "transparent",
-                  transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                }}>
-                  <Icon
-                    size={20}
-                    strokeWidth={active ? 2.2 : 1.6}
-                    color={active ? t.pillText : t.iconInactive}
-                  />
-                  <span style={{
-                    fontSize: 10,
-                    fontWeight: active ? 700 : 500,
-                    color: active ? t.pillText : t.labelInactive,
-                    whiteSpace: "nowrap",
-                    letterSpacing: active ? "-0.2px" : "0",
-                    lineHeight: 1,
+                {active ? (
+                  /* Active: filled pill with icon + label */
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "8px 14px",
+                    borderRadius: 18,
+                    background: t.pillBg,
+                    transition: "all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)",
                   }}>
-                    {label}
-                  </span>
-                </div>
+                    <Icon size={18} strokeWidth={2.2} color={t.pillText} />
+                    <span style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: t.pillText,
+                      whiteSpace: "nowrap",
+                      letterSpacing: "-0.2px",
+                      lineHeight: 1,
+                    }}>
+                      {label}
+                    </span>
+                  </div>
+                ) : (
+                  /* Inactive: icon only */
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "8px 10px",
+                    borderRadius: 14,
+                    transition: "all 0.15s",
+                  }}>
+                    <Icon size={20} strokeWidth={1.6} color={t.iconInactive} />
+                  </div>
+                )}
               </button>
             );
           })}
