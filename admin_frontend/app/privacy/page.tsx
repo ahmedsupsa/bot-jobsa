@@ -14,7 +14,9 @@ export default function PrivacyPage() {
       <nav style={s.nav}>
         <div style={s.navInner}>
           <Link href="/" style={s.logo}>
-            <Image src="/logo.png" alt="Jobbots" width={34} height={34} style={{ borderRadius: 9 }} />
+            <div style={{ width: 34, height: 34, borderRadius: 9, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: 5, flexShrink: 0 }}>
+              <Image src="/logo-transparent.png" alt="Jobbots" width={24} height={24} style={{ display: "block" }} />
+            </div>
             <span style={s.logoText}>Jobbots</span>
           </Link>
           <Link href="/portal/login" style={s.navBtn}>دخول المشترك</Link>

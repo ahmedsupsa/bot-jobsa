@@ -93,8 +93,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         `}
       >
         <div className="flex items-center gap-3 px-5 py-5 border-b border-line">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden">
-            <Image src="/logo.png" alt="Jobbots" width={36} height={36} className="rounded-xl" />
+          <div style={{ width: 38, height: 38, borderRadius: 11, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 5 }}>
+            <Image src="/logo-transparent.png" alt="Jobbots" width={28} height={28} style={{ display: "block" }} />
           </div>
           <div className="min-w-0">
             <div className="text-sm font-bold text-ink truncate">Jobbots</div>
@@ -168,8 +168,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 flex-col min-w-0">
         <header className="flex items-center justify-between border-b border-line bg-sidebar px-4 py-3 md:hidden">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg overflow-hidden">
-              <Image src="/logo.png" alt="Jobbots" width={28} height={28} className="rounded-lg" />
+            <div style={{ width: 30, height: 30, borderRadius: 9, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: 4 }}>
+              <Image src="/logo-transparent.png" alt="Jobbots" width={22} height={22} style={{ display: "block" }} />
             </div>
             <span className="text-sm font-semibold text-ink">Jobbots</span>
           </div>

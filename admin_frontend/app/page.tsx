@@ -97,7 +97,9 @@ export default function LandingPage() {
       <nav style={s.nav} className="nav-blur">
         <div style={s.navInner}>
           <div style={s.logo}>
-            <Image src="/logo.png" alt="Jobbots" width={34} height={34} style={{ borderRadius: 9 }} />
+            <div style={{ width: 34, height: 34, borderRadius: 9, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: 5, flexShrink: 0 }}>
+              <Image src="/logo-transparent.png" alt="Jobbots" width={24} height={24} style={{ display: "block" }} />
+            </div>
             <span style={s.logoText}>Jobbots</span>
           </div>
           <div style={s.navLinks} className="landing-nav-links">
@@ -255,7 +257,9 @@ export default function LandingPage() {
       <footer style={s.footer}>
         <div style={s.footerInner}>
           <div style={s.logo}>
-            <Image src="/logo.png" alt="Jobbots" width={28} height={28} style={{ borderRadius: 7 }} />
+            <div style={{ width: 28, height: 28, borderRadius: 7, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: 4, flexShrink: 0 }}>
+              <Image src="/logo-transparent.png" alt="Jobbots" width={20} height={20} style={{ display: "block" }} />
+            </div>
             <span style={{ ...s.logoText, fontSize: 16 }}>Jobbots</span>
           </div>
           <div style={s.footerLinks}>

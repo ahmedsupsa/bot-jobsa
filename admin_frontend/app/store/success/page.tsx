@@ -65,7 +65,9 @@ function SuccessContent() {
   return (
     <div dir="rtl" style={s.page}>
       <Link href="/" style={s.logo}>
-        <Image src="/logo.png" alt="Jobbots" width={36} height={36} style={{ borderRadius: 10 }} />
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: 5, flexShrink: 0 }}>
+          <Image src="/logo-transparent.png" alt="Jobbots" width={26} height={26} style={{ display: "block" }} />
+        </div>
         <span style={s.logoText}>Jobbots</span>
       </Link>
 

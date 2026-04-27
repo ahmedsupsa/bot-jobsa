@@ -91,8 +91,8 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
           borderBottom: `1px solid ${t.border}`,
           marginBottom: 10, flexShrink: 0,
         }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, overflow: "hidden", flexShrink: 0 }}>
-            <Image src="/logo.png" alt="Jobbots" width={40} height={40} style={{ borderRadius: 12 }} />
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 6 }}>
+            <Image src="/logo-transparent.png" alt="Jobbots" width={28} height={28} style={{ display: "block" }} />
           </div>
           <div>
             <p style={{ color: t.text, fontSize: 15, fontWeight: 800, margin: 0 }}>Jobbots</p>
@@ -189,8 +189,8 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
             paddingTop: "max(0px, env(safe-area-inset-top))",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 11, overflow: "hidden", flexShrink: 0 }}>
-                <Image src="/logo.png" alt="Jobbots" width={36} height={36} style={{ borderRadius: 11 }} />
+              <div style={{ width: 36, height: 36, borderRadius: 11, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 5 }}>
+                <Image src="/logo-transparent.png" alt="Jobbots" width={26} height={26} style={{ display: "block" }} />
               </div>
               <span style={{ color: t.text, fontSize: 15, fontWeight: 800 }}>Jobbots</span>
             </div>
