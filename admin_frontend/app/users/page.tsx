@@ -3,7 +3,7 @@
 import Shell from "@/components/shell";
 import { apiGet, apiSend } from "@/lib/api";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Save, User, FileText, Upload, Check, Loader2, ChevronDown, ChevronUp, Tags, Calendar, Trash2, KeyRound, Copy, Mail } from "lucide-react";
+import { Search, Save, User, FileText, Upload, Check, Loader2, ChevronDown, ChevronUp, Tags, Calendar, Trash2, KeyRound, Copy, Mail, WifiOff } from "lucide-react";
 
 type UserRow = {
   id: string;
@@ -15,6 +15,9 @@ type UserRow = {
   created_at: string;
   activation_code?: string | null;
   preferences?: string[];
+  smtp_email?: string;
+  email_connected?: boolean;
+  last_email_test_at?: string | null;
 };
 
 type Field = { id: string; name_ar: string };
@@ -288,17 +291,27 @@ function UserCard({
 
       {err && <div className="text-xs text-danger bg-danger-bg border border-danger-border rounded-lg px-3 py-2">{err}</div>}
 
-      {/* Jobbots Email */}
+      {/* SMTP Status */}
       <div className="flex items-center gap-2 flex-wrap">
-        {user.email ? (
-          <span className="inline-flex items-center gap-1.5 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-400 font-mono">
+        {user.email_connected ? (
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-400">
             <Mail size={11} />
-            {user.email}
+            مربوط: {user.smtp_email}
+            {user.last_email_test_at && (
+              <span className="text-green-500/60 font-normal">
+                · {new Date(user.last_email_test_at).toLocaleDateString("ar")}
+              </span>
+            )}
+          </span>
+        ) : user.smtp_email ? (
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-1 text-xs font-medium text-yellow-400">
+            <WifiOff size={11} />
+            محفوظ (غير مختبر): {user.smtp_email}
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-line/50 bg-panel2 px-3 py-1 text-xs text-muted2">
-            <Mail size={11} />
-            لا يوجد إيميل jobbots.org
+            <WifiOff size={11} />
+            لم يربط إيميله بعد
           </span>
         )}
       </div>

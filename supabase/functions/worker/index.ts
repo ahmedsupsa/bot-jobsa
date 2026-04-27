@@ -1,12 +1,14 @@
 // Supabase Edge Function — Auto Apply Worker
-// يعمل تلقائياً كل 30 دقيقة عبر pg_cron
-// الإرسال عبر Resend API من إيميل jobbots.org المخصص لكل مستخدم
+// يعمل تلقائياً كل 30 دقيقة عبر pg_cron — مستقل تماماً عن Replit
+// الإرسال عبر SMTP الشخصي لكل مستخدم
+
+import nodemailer from "npm:nodemailer@6";
 
 const SUPABASE_URL  = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SUPABASE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const GEMINI_KEY    = Deno.env.get("GEMINI_API_KEY") ?? "";
 const WORKER_SECRET = Deno.env.get("WORKER_SECRET") ?? "";
-const RESEND_KEY    = Deno.env.get("RESEND_API_KEY") ?? "";
+const ENC_KEY_HEX   = Deno.env.get("SMTP_ENCRYPTION_KEY") ?? "";
 
 const SB = {
   apikey: SUPABASE_KEY,
@@ -41,6 +43,19 @@ async function sbInsert(table: string, data: Record<string, unknown>) {
   await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
     method: "POST", headers: SB, body: JSON.stringify(data),
   });
+}
+
+// ─── AES-256-GCM فك التشفير (Web Crypto) ─────────────────────────────────────
+
+async function decryptAES(encrypted: string, keyHex: string): Promise<string> {
+  const parts = encrypted.split(":");
+  if (parts.length !== 2) throw new Error("تنسيق التشفير غير صحيح");
+  const keyBytes = new Uint8Array(keyHex.match(/.{2}/g)!.map((b) => parseInt(b, 16)));
+  const iv       = Uint8Array.from(atob(parts[0]), (c) => c.charCodeAt(0));
+  const data     = Uint8Array.from(atob(parts[1]), (c) => c.charCodeAt(0));
+  const cryptoKey = await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, cryptoKey, data);
+  return new TextDecoder().decode(plain);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -97,7 +112,7 @@ async function generateCoverLetter(
   if (!GEMINI_KEY) return fallback;
 
   const prompt =
-    `اقرأ السيرة الذاتية واكتب رسالة تغطية مختصرة (3-4 جمل) باللغة ${lang === "ar" ? "العربية" : "الإنجليزية"} ` +
+    `اكتب رسالة تغطية مختصرة (3-4 جمل) باللغة ${lang === "ar" ? "العربية" : "الإنجليزية"} ` +
     `للتقديم على وظيفة: ${jobTitle}` +
     (company ? ` في شركة ${company}` : "") +
     (desc ? `. تفاصيل الوظيفة: ${desc.slice(0, 400)}` : "") +
@@ -150,46 +165,39 @@ function buildEmailHtml(name: string, phone: string, jobTitle: string, company: 
 </body></html>`;
 }
 
-// ─── الإرسال عبر Resend API ───────────────────────────────────────────────────
+// ─── إرسال عبر SMTP الشخصي ────────────────────────────────────────────────────
 
-async function sendResend(opts: {
-  fromName: string;
-  fromEmail: string;
-  to: string;
-  subject: string;
-  html: string;
-  cvBytes?: Uint8Array | null;
-  cvName?: string;
+async function sendSmtp(opts: {
+  smtpHost: string; smtpPort: number; smtpSecure: boolean;
+  smtpEmail: string; appPassword: string;
+  to: string; subject: string; html: string;
+  fromName: string; cvBytes?: Uint8Array | null; cvName?: string;
 }): Promise<void> {
-  const payload: Record<string, unknown> = {
-    from: `${opts.fromName} <${opts.fromEmail}>`,
-    to: [opts.to],
+  const transporter = nodemailer.createTransport({
+    host: opts.smtpHost,
+    port: opts.smtpPort,
+    secure: opts.smtpSecure,
+    auth: { user: opts.smtpEmail, pass: opts.appPassword },
+    connectionTimeout: 20000,
+    greetingTimeout: 15000,
+  });
+
+  const mailOptions: Record<string, unknown> = {
+    from: `${opts.fromName} <${opts.smtpEmail}>`,
+    to: opts.to,
     subject: opts.subject,
     html: opts.html,
-    reply_to: opts.fromEmail,
+    replyTo: opts.smtpEmail,
   };
 
   if (opts.cvBytes && opts.cvName) {
-    const binary = Array.from(opts.cvBytes, (b) => String.fromCharCode(b)).join("");
-    payload.attachments = [{
+    mailOptions.attachments = [{
       filename: opts.cvName,
-      content: btoa(binary),
+      content: Buffer.from(opts.cvBytes),
     }];
   }
 
-  const r = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${RESEND_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!r.ok) {
-    const errText = await r.text().catch(() => r.statusText);
-    throw new Error(`Resend ${r.status}: ${errText}`);
-  }
+  await transporter.sendMail(mailOptions);
 }
 
 // ─── Main Cycle ───────────────────────────────────────────────────────────────
@@ -201,8 +209,8 @@ async function runCycle() {
   const details: Detail[] = [];
   let applied = 0, activeUsers = 0;
 
-  if (!RESEND_KEY) {
-    return { applied: 0, users: 0, errors: ["RESEND_API_KEY غير معرّف في Supabase Secrets"], details: [] };
+  if (!ENC_KEY_HEX) {
+    return { applied: 0, users: 0, errors: ["SMTP_ENCRYPTION_KEY غير معرّف في Supabase Secrets"], details: [] };
   }
 
   const jobsRaw = await sbGet("admin_jobs", { is_active: "eq.true" });
@@ -211,7 +219,6 @@ async function runCycle() {
 
   const [usersRaw, fieldsRaw] = await Promise.all([sbGet("users"), sbGet("job_fields")]);
 
-  // ترتيب عشوائي — توزيع عادل بين المستخدمين
   const users = [...usersRaw].sort(() => Math.random() - 0.5);
   const today = new Date().toISOString().split("T")[0];
 
@@ -231,10 +238,28 @@ async function runCycle() {
 
     const settings = settingsRows[0] ?? {};
 
-    // إيميل المستخدم على jobbots.org
-    const senderEmail = String(settings.email ?? "").trim();
-    if (!senderEmail || !isValidEmail(senderEmail)) {
-      details.push({ user: String(user.full_name ?? uid), job: "—", status: "skipped", reason: "لا يوجد إيميل jobbots.org مخصص" });
+    // التحقق من ربط SMTP
+    if (!settings.email_connected) {
+      details.push({ user: String(user.full_name ?? uid), job: "—", status: "skipped", reason: "لم يربط إيميله بعد" });
+      continue;
+    }
+
+    const smtpEmail   = String(settings.smtp_email ?? "").trim();
+    const smtpHost    = String(settings.smtp_host  ?? "smtp.gmail.com");
+    const smtpPort    = Number(settings.smtp_port  ?? 465);
+    const smtpSecure  = settings.smtp_secure !== false;
+    const encryptedPw = String(settings.smtp_app_password_encrypted ?? "").trim();
+
+    if (!smtpEmail || !encryptedPw) {
+      details.push({ user: String(user.full_name ?? uid), job: "—", status: "skipped", reason: "إعدادات SMTP ناقصة" });
+      continue;
+    }
+
+    let appPassword: string;
+    try {
+      appPassword = await decryptAES(encryptedPw, ENC_KEY_HEX);
+    } catch (e) {
+      errors.push(`${String(user.full_name ?? uid)}: فشل فك التشفير — ${String(e)}`);
       continue;
     }
 
@@ -295,17 +320,16 @@ async function runCycle() {
           ? `التقديم على وظيفة: ${stripEmojis(jobTitle)}`
           : `Application for: ${stripEmojis(jobTitle)}`;
 
-        await sendResend({
-          fromName: name, fromEmail: senderEmail,
-          to: toEmail, subject, html, cvBytes, cvName,
+        await sendSmtp({
+          smtpHost, smtpPort, smtpSecure, smtpEmail, appPassword,
+          to: toEmail, subject, html, fromName: name, cvBytes, cvName,
         });
 
         sent++; applied++;
         details.push({ user: name, job: jobTitle, status: "sent" });
-        console.log(`[worker] ✅ ${name} (${senderEmail}) → ${jobTitle} (${toEmail})`);
+        console.log(`[worker] ✅ ${name} → ${jobTitle} (${toEmail})`);
 
-        // تأخير 3 ثوانٍ بين كل إيميل
-        await new Promise((r) => setTimeout(r, 3000));
+        await new Promise((r) => setTimeout(r, 5000));
       } catch (e) {
         status = "error";
         errorReason = String(e).slice(0, 500);
@@ -316,7 +340,7 @@ async function runCycle() {
 
       await sbInsert("applications", {
         user_id: uid, job_id: jobId, job_title: jobTitle,
-        applied_at: sentAt, status, provider_used: "resend",
+        applied_at: sentAt, status, provider_used: "smtp",
         error_reason: errorReason, sent_at: status === "sent" ? sentAt : null,
       });
     }
@@ -346,14 +370,13 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   }
 
-  console.log("[worker] بدء دورة التقديم التلقائي عبر Resend API");
+  console.log("[worker] بدء دورة التقديم التلقائي عبر SMTP");
   const t0 = Date.now();
   try {
     const result = await runCycle();
     const duration_ms = Date.now() - t0;
     const status = result.errors.length === 0 ? "success" : result.applied > 0 ? "partial" : "error";
     await logRun({ applied_count: result.applied, active_users: result.users, errors: result.errors, duration_ms, status });
-
     console.log("[worker] انتهت الدورة:", JSON.stringify({ applied: result.applied, users: result.users, errors: result.errors.length }));
     return new Response(JSON.stringify({ ok: true, ...result, duration_ms }), {
       headers: { "Content-Type": "application/json" },
