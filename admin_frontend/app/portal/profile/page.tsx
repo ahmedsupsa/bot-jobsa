@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { PortalShell } from "@/components/portal-shell";
 import { useTheme } from "@/contexts/theme-context";
@@ -7,7 +7,8 @@ import { portalFetch, clearToken } from "@/lib/portal-auth";
 import {
   User, Phone, MapPin, Calendar, Mail, CreditCard, Send,
   Languages, CheckCircle, XCircle, Loader2, Pencil, Save, X,
-  LogOut, Trash2, MessageCircle, Lock,
+  LogOut, Trash2, Receipt, CheckCircle2, Clock, AlertCircle,
+  RotateCcw,
 } from "lucide-react";
 
 interface UserData {
@@ -18,13 +19,41 @@ interface UserData {
   email_connected: boolean; smtp_email: string;
 }
 
-type Tab = "profile" | "settings";
+interface Order {
+  id: string; status: string; amount: number | null;
+  paid_at: string | null; created_at: string;
+  payment_gateway: string | null; refund_status: string | null;
+  refund_reason: string | null; refund_admin_notes: string | null;
+  refund_requested_at: string | null; refund_processed_at: string | null;
+  store_products: { name: string; duration_days: number } | null;
+}
+
+type Tab = "profile" | "billing" | "settings";
 
 const CITIES = [
   "الرياض", "جدة", "مكة المكرمة", "المدينة المنورة", "الدمام", "الخبر", "الظهران",
   "الأحساء", "الطائف", "تبوك", "بريدة", "خميس مشيط", "حائل", "الجبيل", "نجران",
   "أبها", "ينبع", "الخرج", "القطيف", "عرعر", "سكاكا", "جازان", "الباحة",
 ];
+
+const GATEWAY: Record<string, string> = {
+  tamara: "تمارا (تقسيط)",
+  streampay: "بطاقة (Mada / Visa / Mastercard)",
+  bank_transfer: "تحويل بنكي",
+};
+
+const REFUND_BADGE: Record<string, { text: string; color: string; bg: string }> = {
+  requested: { text: "قيد المراجعة", color: "#f59e0b", bg: "rgba(245,158,11,.12)" },
+  approved:  { text: "تمت الموافقة", color: "#3b82f6", bg: "rgba(59,130,246,.12)" },
+  rejected:  { text: "مرفوض",        color: "#ef4444", bg: "rgba(239,68,68,.12)" },
+  refunded:  { text: "تم الاسترجاع ✓", color: "#10b981", bg: "rgba(16,185,129,.12)" },
+};
+
+function fmtDate(s: string | null) {
+  if (!s) return "—";
+  try { return new Date(s).toLocaleString("ar-SA", { dateStyle: "medium", timeStyle: "short" }); }
+  catch { return s; }
+}
 
 export default function AccountPage() {
   const router = useRouter();
@@ -46,6 +75,15 @@ export default function AccountPage() {
   // settings state
   const [savingLang, setSavingLang] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
+
+  // billing state
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [openOrder, setOpenOrder] = useState<Order | null>(null);
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [refundErr, setRefundErr] = useState("");
+  const [refundOk, setRefundOk] = useState("");
 
   // delete state
   const [showDelete, setShowDelete] = useState(false);
@@ -79,7 +117,17 @@ export default function AccountPage() {
     finally { setLoading(false); }
   }
 
+  const loadOrders = useCallback(async () => {
+    setLoadingOrders(true);
+    try {
+      const r = await portalFetch("/refunds");
+      const j = await r.json();
+      if (j.ok) setOrders(j.orders);
+    } finally { setLoadingOrders(false); }
+  }, []);
+
   useEffect(() => { load(); }, []);
+  useEffect(() => { if (tab === "billing") loadOrders(); }, [tab]);
 
   function startEdit() {
     if (!user) return;
@@ -87,14 +135,9 @@ export default function AccountPage() {
     setEditPhone(user.phone);
     setEditCity(user.city);
     setEditAge(user.age ? String(user.age) : "");
-    setMsg(null);
-    setEditing(true);
+    setMsg(null); setEditing(true);
   }
-
-  function cancelEdit() {
-    setEditing(false);
-    setMsg(null);
-  }
+  function cancelEdit() { setEditing(false); setMsg(null); }
 
   async function handleSave() {
     if (!editName.trim()) { setMsg({ text: "الاسم الكامل مطلوب", type: "err" }); return; }
@@ -102,21 +145,11 @@ export default function AccountPage() {
     try {
       const res = await portalFetch("/me", {
         method: "PATCH",
-        body: JSON.stringify({
-          full_name: editName.trim(),
-          phone: editPhone.trim(),
-          city: editCity.trim(),
-          age: editAge ? parseInt(editAge) : null,
-        }),
+        body: JSON.stringify({ full_name: editName.trim(), phone: editPhone.trim(), city: editCity.trim(), age: editAge ? parseInt(editAge) : null }),
       });
       const d = await res.json();
-      if (res.ok) {
-        setMsg({ text: "تم حفظ البيانات بنجاح ✓", type: "ok" });
-        await load();
-        setEditing(false);
-      } else {
-        setMsg({ text: d.error || "فشل الحفظ", type: "err" });
-      }
+      if (res.ok) { setMsg({ text: "تم حفظ البيانات بنجاح ✓", type: "ok" }); await load(); setEditing(false); }
+      else { setMsg({ text: d.error || "فشل الحفظ", type: "err" }); }
     } catch { setMsg({ text: "خطأ في الاتصال", type: "err" }); }
     finally { setSaving(false); }
   }
@@ -145,6 +178,21 @@ export default function AccountPage() {
     finally { setSavingTemplate(false); }
   }
 
+  async function submitRefund() {
+    if (!openOrder) return;
+    setRefundErr(""); setSubmitting(true);
+    try {
+      const r = await portalFetch("/refunds", { method: "POST", body: JSON.stringify({ order_id: openOrder.id, reason }) });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "فشل الإرسال");
+      setOpenOrder(null); setReason("");
+      setRefundOk("تم استلام طلب الاسترجاع — سيراجعه فريق الإدارة قريباً");
+      setTimeout(() => setRefundOk(""), 5000);
+      await loadOrders();
+    } catch (e) { setRefundErr(String(e).replace("Error: ", "")); }
+    setSubmitting(false);
+  }
+
   async function deleteAccount() {
     if (deleteConfirm !== "حذف") return;
     setDeleting(true);
@@ -162,12 +210,16 @@ export default function AccountPage() {
     : "—";
 
   const inputStyle: React.CSSProperties = {
-    width: "100%", boxSizing: "border-box",
-    padding: "11px 14px",
+    width: "100%", boxSizing: "border-box", padding: "11px 14px",
     background: t.input, border: `1px solid ${t.border2}`,
-    borderRadius: 10, color: t.text, fontSize: 14, outline: "none",
-    fontFamily: "inherit",
+    borderRadius: 10, color: t.text, fontSize: 14, outline: "none", fontFamily: "inherit",
   };
+
+  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
+    { key: "profile",  label: "حسابي",    icon: <User size={15} key="u" /> },
+    { key: "billing",  label: "الفواتير",  icon: <Receipt size={15} key="b" /> },
+    { key: "settings", label: "الإعدادات", icon: <CreditCard size={15} key="s" /> },
+  ];
 
   return (
     <PortalShell>
@@ -205,8 +257,7 @@ export default function AccountPage() {
               </div>
             </div>
             <div style={{
-              display: "flex", alignItems: "center", gap: 8,
-              padding: "8px 16px", borderRadius: 100,
+              display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 100,
               background: active ? (dark ? "#0a1f0a" : "#f0fdf4") : (dark ? "#1a0a0a" : "#fef2f2"),
               border: `1px solid ${active ? (dark ? "#2a2a2a" : "#bbf7d0") : (dark ? "#7f1d1d" : "#fecaca")}`,
               color: active ? (dark ? "#fff" : "#166534") : "#ef4444",
@@ -224,21 +275,21 @@ export default function AccountPage() {
           background: t.surface, border: `1px solid ${t.border}`,
           borderRadius: 14, padding: 4, marginBottom: 20,
         }}>
-          {([["profile", "حسابي", <User size={15} key="u" />], ["settings", "الإعدادات", <CreditCard size={15} key="s" />]] as const).map(([key, label, icon]) => (
-            <button key={key} onClick={() => { setTab(key as Tab); setMsg(null); setEditing(false); }} style={{
-              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          {tabs.map(({ key, label, icon }) => (
+            <button key={key} onClick={() => { setTab(key); setMsg(null); setEditing(false); }} style={{
+              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               padding: "11px 0", borderRadius: 11, border: "none", cursor: "pointer",
               background: tab === key ? (dark ? "#fff" : "#09090b") : "transparent",
               color: tab === key ? (dark ? "#0a0a0a" : "#fff") : t.text3,
-              fontSize: 14, fontWeight: tab === key ? 700 : 400, transition: "all 0.18s",
+              fontSize: 13, fontWeight: tab === key ? 700 : 400, transition: "all 0.18s",
             }}>
               {icon} {label}
             </button>
           ))}
         </div>
 
-        {/* ─── Alert ─── */}
-        {msg && !editing && (
+        {/* ─── Global alert (profile/settings tabs) ─── */}
+        {msg && !editing && tab !== "billing" && (
           <div style={{
             display: "flex", alignItems: "center", gap: 8,
             padding: "12px 16px", borderRadius: 12, fontSize: 13, fontWeight: 500, marginBottom: 14,
@@ -255,11 +306,12 @@ export default function AccountPage() {
           <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: 60 }}>
             <Loader2 size={28} color={t.text3} style={{ animation: "spin 1s linear infinite" }} />
           </div>
+
         ) : tab === "profile" ? (
-          /* ── PROFILE TAB ── */
+          /* ══════════════ PROFILE TAB ══════════════ */
           <div style={{ display: "flex", flexDirection: "column", gap: 14, animation: "fadeIn 0.2s ease" }}>
 
-            {/* ─── بطاقة البيانات الشخصية ─── */}
+            {/* البيانات الشخصية */}
             <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 18, overflow: "hidden" }}>
               <div style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -273,26 +325,25 @@ export default function AccountPage() {
                 </div>
                 {!editing ? (
                   <button onClick={startEdit} style={{
-                    display: "flex", alignItems: "center", gap: 6,
-                    padding: "7px 14px", borderRadius: 9, border: `1px solid ${t.border2}`,
-                    background: "transparent", color: t.text2, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                    display: "flex", alignItems: "center", gap: 6, padding: "7px 14px",
+                    borderRadius: 9, border: `1px solid ${t.border2}`, background: "transparent",
+                    color: t.text2, fontSize: 13, fontWeight: 600, cursor: "pointer",
                   }}>
                     <Pencil size={13} /> تعديل
                   </button>
                 ) : (
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={cancelEdit} style={{
-                      display: "flex", alignItems: "center", gap: 5,
-                      padding: "7px 12px", borderRadius: 9, border: `1px solid ${t.border2}`,
-                      background: "transparent", color: t.text3, fontSize: 13, cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: 5, padding: "7px 12px",
+                      borderRadius: 9, border: `1px solid ${t.border2}`, background: "transparent",
+                      color: t.text3, fontSize: 13, cursor: "pointer",
                     }}>
                       <X size={13} /> إلغاء
                     </button>
                     <button onClick={handleSave} disabled={saving} style={{
-                      display: "flex", alignItems: "center", gap: 5,
-                      padding: "7px 14px", borderRadius: 9, border: "none",
-                      background: dark ? "#fff" : "#09090b",
-                      color: dark ? "#0a0a0a" : "#fff",
+                      display: "flex", alignItems: "center", gap: 5, padding: "7px 14px",
+                      borderRadius: 9, border: "none",
+                      background: dark ? "#fff" : "#09090b", color: dark ? "#0a0a0a" : "#fff",
                       fontSize: 13, fontWeight: 700, cursor: saving ? "wait" : "pointer",
                     }}>
                       {saving ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : <Save size={13} />}
@@ -303,92 +354,65 @@ export default function AccountPage() {
               </div>
 
               {!editing ? (
-                /* ─── وضع العرض ─── */
                 <div style={{ padding: "4px 0" }}>
-                  <InfoRow t={t} icon={<User size={13} />} label="الاسم الكامل" value={user!.full_name} />
-                  <InfoRow t={t} icon={<Phone size={13} />} label="رقم الجوال" value={user!.phone || "—"} dir="ltr" />
-                  <InfoRow t={t} icon={<Calendar size={13} />} label="العمر" value={user!.age ? `${user!.age} سنة` : "—"} />
-                  <InfoRow t={t} icon={<MapPin size={13} />} label="المدينة" value={user!.city || "—"} last />
+                  <InfoRow t={t} icon={<User size={13} />} label="الاسم الكامل" value={user.full_name} />
+                  <InfoRow t={t} icon={<Phone size={13} />} label="رقم الجوال" value={user.phone || "—"} dir="ltr" />
+                  <InfoRow t={t} icon={<Calendar size={13} />} label="العمر" value={user.age ? `${user.age} سنة` : "—"} />
+                  <InfoRow t={t} icon={<MapPin size={13} />} label="المدينة" value={user.city || "—"} last />
                 </div>
               ) : (
-                /* ─── وضع التعديل ─── */
-                <div style={{ padding: "20px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
                   {msg && (
                     <div style={{
                       padding: "10px 14px", borderRadius: 10, fontSize: 13,
                       background: msg.type === "ok" ? (dark ? "#0a1f0a" : "#f0fdf4") : (dark ? "#1f0d0d" : "#fff5f5"),
                       color: msg.type === "ok" ? "#22c55e" : "#f87171",
                       border: `1px solid ${msg.type === "ok" ? (dark ? "#1a4a1a" : "#bbf7d0") : (dark ? "#4a1a1a" : "#fecaca")}`,
-                    }}>
-                      {msg.text}
-                    </div>
+                    }}>{msg.text}</div>
                   )}
-
                   <div>
                     <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 6 }}>
                       الاسم الكامل <span style={{ color: "#f87171" }}>*</span>
                     </label>
-                    <input
-                      value={editName}
-                      onChange={e => setEditName(e.target.value)}
-                      placeholder="الاسم الكامل"
-                      style={inputStyle}
-                    />
+                    <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="الاسم الكامل" style={inputStyle} />
                   </div>
-
                   <div>
                     <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 6 }}>رقم الجوال</label>
-                    <input
-                      value={editPhone}
-                      onChange={e => setEditPhone(e.target.value)}
-                      placeholder="05xxxxxxxx"
-                      dir="ltr"
-                      style={inputStyle}
-                    />
+                    <input value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="05xxxxxxxx" dir="ltr" style={inputStyle} />
                   </div>
-
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div>
                       <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 6 }}>المدينة</label>
-                      <select
-                        value={editCity}
-                        onChange={e => setEditCity(e.target.value)}
-                        style={{ ...inputStyle, appearance: "none", WebkitAppearance: "none" }}
-                      >
+                      <select value={editCity} onChange={e => setEditCity(e.target.value)}
+                        style={{ ...inputStyle, appearance: "none", WebkitAppearance: "none" }}>
                         <option value="">اختر المدينة</option>
                         {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
                     <div>
                       <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 6 }}>العمر</label>
-                      <input
-                        value={editAge}
-                        onChange={e => setEditAge(e.target.value.replace(/\D/g, ""))}
-                        placeholder="25"
-                        maxLength={2}
-                        dir="ltr"
-                        style={inputStyle}
-                      />
+                      <input value={editAge} onChange={e => setEditAge(e.target.value.replace(/\D/g, ""))}
+                        placeholder="25" maxLength={2} dir="ltr" style={inputStyle} />
                     </div>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* ─── الاشتراك ─── */}
+            {/* الاشتراك */}
             <Card t={t} title="الاشتراك" icon={<CreditCard size={17} strokeWidth={1.5} />}>
               <InfoRow t={t} icon={<CreditCard size={13} />} label="النوع" value="شهري" />
               <InfoRow t={t} icon={<Calendar size={13} />} label="تاريخ الانتهاء" value={endDate} />
-              <InfoRow t={t} icon={<Calendar size={13} />} label="الأيام المتبقية" value={`${user!.days_left} يوم`} />
-              <InfoRow t={t} icon={<Send size={13} />} label="التقديمات المرسلة" value={`${user!.applications_count} تقديم`} last />
+              <InfoRow t={t} icon={<Calendar size={13} />} label="الأيام المتبقية" value={`${user.days_left} يوم`} />
+              <InfoRow t={t} icon={<Send size={13} />} label="التقديمات المرسلة" value={`${user.applications_count} تقديم`} last />
             </Card>
 
-            {/* ─── الإيميل ─── */}
+            {/* الإيميل */}
             <Card t={t} title="البريد الإلكتروني" icon={<Mail size={17} strokeWidth={1.5} />}>
-              {user!.email_connected ? (
-                <InfoRow t={t} icon={<Mail size={13} />} label="الإيميل المربوط" value={user!.smtp_email} dir="ltr" last badge="مفعّل ✓" />
+              {user.email_connected ? (
+                <InfoRow t={t} icon={<Mail size={13} />} label="الإيميل المربوط" value={user.smtp_email} dir="ltr" last badge="مفعّل ✓" />
               ) : (
-                <div style={{ padding: "4px 0 8px" }}>
+                <div style={{ padding: "8px 20px 12px" }}>
                   <a href="/portal/email" style={{
                     display: "inline-flex", alignItems: "center", gap: 8,
                     background: dark ? "#fff" : "#09090b", color: dark ? "#0a0a0a" : "#fff",
@@ -401,7 +425,7 @@ export default function AccountPage() {
               )}
             </Card>
 
-            {/* ─── تسجيل الخروج وحذف الحساب ─── */}
+            {/* تسجيل الخروج / حذف */}
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button onClick={() => { clearToken(); router.replace("/portal/login"); }} style={{
                 flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -430,12 +454,8 @@ export default function AccountPage() {
                   <p style={{ color: t.text2, fontSize: 13, lineHeight: 1.7, margin: "0 0 16px" }}>
                     سيتم حذف جميع بياناتك بشكل دائم ولا يمكن التراجع. اكتب <strong style={{ color: t.text }}>حذف</strong> للتأكيد.
                   </p>
-                  <input
-                    value={deleteConfirm}
-                    onChange={e => setDeleteConfirm(e.target.value)}
-                    placeholder="اكتب: حذف"
-                    style={{ ...inputStyle, marginBottom: 14 }}
-                  />
+                  <input value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)}
+                    placeholder="اكتب: حذف" style={{ ...inputStyle, marginBottom: 14 }} />
                   <div style={{ display: "flex", gap: 10 }}>
                     <button onClick={() => { setShowDelete(false); setDeleteConfirm(""); }} style={{
                       flex: 1, padding: "11px", border: `1px solid ${t.border}`, background: t.surface,
@@ -454,27 +474,115 @@ export default function AccountPage() {
               </div>
             )}
           </div>
-        ) : (
-          /* ── SETTINGS TAB ── */
+
+        ) : tab === "billing" ? (
+          /* ══════════════ BILLING TAB ══════════════ */
           <div style={{ display: "flex", flexDirection: "column", gap: 14, animation: "fadeIn 0.2s ease" }}>
-            {msg && (
+
+            {/* نجاح */}
+            {refundOk && (
               <div style={{
-                display: "flex", alignItems: "center", gap: 8,
-                padding: "12px 16px", borderRadius: 12, fontSize: 13, fontWeight: 500,
-                background: msg.type === "ok" ? (dark ? "#0a1f0a" : "#f0fdf4") : (dark ? "#1a0a0a" : "#fef2f2"),
-                color: msg.type === "ok" ? (dark ? "#fff" : "#166534") : "#f87171",
-                border: `1px solid ${msg.type === "ok" ? (dark ? "#2a2a2a" : "#bbf7d0") : (dark ? "#7f1d1d" : "#fecaca")}`,
+                padding: "12px 16px", borderRadius: 12,
+                background: "rgba(16,185,129,.1)", border: "1px solid rgba(16,185,129,.3)",
+                color: "#10b981", fontSize: 13, fontWeight: 600,
               }}>
-                {msg.type === "ok" ? <CheckCircle size={15} /> : <XCircle size={15} />}
-                {msg.text}
+                ✓ {refundOk}
               </div>
             )}
 
+            {/* سياسة */}
+            <div style={{
+              padding: "14px 18px", borderRadius: 14,
+              background: t.surface, border: `1px solid ${t.border}`,
+              fontSize: 12, color: t.text2, lineHeight: 1.9,
+            }}>
+              <div style={{ fontWeight: 700, color: t.text, marginBottom: 6 }}>قبل طلب الاسترجاع:</div>
+              • سياسة الاسترجاع تطبّق على الطلبات المدفوعة فقط.<br />
+              • يراجع فريقنا الطلب يدوياً للتأكد من الأهلية، وقد يستغرق ذلك حتى 3 أيام عمل.<br />
+              • في حال الموافقة، يُعاد المبلغ لنفس وسيلة الدفع المستخدمة.
+            </div>
+
+            {loadingOrders ? (
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: 50 }}>
+                <Loader2 size={26} color={t.text3} style={{ animation: "spin 1s linear infinite" }} />
+              </div>
+            ) : orders.length === 0 ? (
+              <div style={{
+                padding: 40, borderRadius: 14, textAlign: "center",
+                background: t.surface, border: `1px solid ${t.border}`, color: t.text3, fontSize: 13,
+              }}>
+                لا يوجد فواتير سابقة
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {orders.map(o => {
+                  const refund = o.refund_status ? REFUND_BADGE[o.refund_status] : null;
+                  const canRefund = o.status === "paid" && (!o.refund_status || o.refund_status === "rejected");
+                  return (
+                    <div key={o.id} style={{
+                      padding: "16px 18px", borderRadius: 14,
+                      background: t.surface, border: `1px solid ${t.border}`,
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                            <span style={{ fontWeight: 700, color: t.text, fontSize: 14 }}>
+                              {o.store_products?.name || "اشتراك"}
+                            </span>
+                            <StatusBadge status={o.status} />
+                            {refund && (
+                              <span style={{
+                                fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999,
+                                background: refund.bg, color: refund.color,
+                              }}>استرجاع: {refund.text}</span>
+                            )}
+                          </div>
+                          <div style={{ display: "flex", gap: 14, fontSize: 12, color: t.text3, flexWrap: "wrap" }}>
+                            <span style={{ color: t.text, fontWeight: 700 }}>{o.amount} ر.س</span>
+                            {o.payment_gateway && <span>· {GATEWAY[o.payment_gateway] || o.payment_gateway}</span>}
+                            <span>· {fmtDate(o.paid_at || o.created_at)}</span>
+                          </div>
+                          {o.refund_reason && (
+                            <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: 8, background: t.bg, fontSize: 12, color: t.text2 }}>
+                              <strong style={{ color: t.text }}>سببك:</strong> {o.refund_reason}
+                            </div>
+                          )}
+                          {o.refund_admin_notes && (
+                            <div style={{ marginTop: 6, padding: "8px 10px", borderRadius: 8, background: t.bg, fontSize: 12, color: t.text2 }}>
+                              <strong style={{ color: t.text }}>رد الإدارة:</strong> {o.refund_admin_notes}
+                            </div>
+                          )}
+                        </div>
+                        {canRefund && (
+                          <button
+                            onClick={() => { setOpenOrder(o); setReason(""); setRefundErr(""); }}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 6,
+                              padding: "8px 12px", borderRadius: 10,
+                              background: t.iconBg, border: `1px solid ${t.border2}`,
+                              color: t.text, fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0,
+                            }}
+                          >
+                            <RotateCcw size={13} /> طلب استرجاع
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+        ) : (
+          /* ══════════════ SETTINGS TAB ══════════════ */
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, animation: "fadeIn 0.2s ease" }}>
+
             {/* Language */}
             <Card t={t} title="لغة التقديم" icon={<Languages size={17} strokeWidth={1.5} />} sub="اللغة التي ستُرسل بها طلبات التوظيف">
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: "4px 0 8px" }}>
                 {([["ar", "العربية", "رسائل بالعربي"], ["en", "English", "Messages in English"]] as const).map(([lang, label, sub]) => {
-                  const isActive = lang === "ar" ? user?.application_language !== "en" : user?.application_language === "en";
+                  const isActive = lang === "ar" ? user.application_language !== "en" : user.application_language === "en";
                   return (
                     <button key={lang} onClick={() => changeLanguage(lang)} disabled={savingLang} style={{
                       background: isActive ? (dark ? "#0a1f0a" : "#f0fdf4") : t.iconBg,
@@ -493,7 +601,7 @@ export default function AccountPage() {
 
             {/* Email Templates */}
             <Card t={t} title="قالب الإيميل" icon={<Mail size={17} strokeWidth={1.5} />} sub="شكل وأسلوب إيميل التقديم المُرسَل للشركات">
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "4px 0 8px" }}>
                 {([
                   { id: "classic", name: "الكلاسيكي", desc: "رسمي ومنظّم • مناسب للشركات الكبرى",
                     preview: (
@@ -530,7 +638,7 @@ export default function AccountPage() {
                     ),
                   },
                 ] as const).map((tpl) => {
-                  const isActive = (user?.template_type || "classic") === tpl.id;
+                  const isActive = (user.template_type || "classic") === tpl.id;
                   return (
                     <button key={tpl.id} onClick={() => changeTemplate(tpl.id)} disabled={savingTemplate} style={{
                       display: "flex", gap: 12, alignItems: "stretch",
@@ -550,10 +658,8 @@ export default function AccountPage() {
                         <p style={{ margin: 0, color: t.text3, fontSize: 12, lineHeight: 1.5 }}>{tpl.desc}</p>
                         {isActive && (
                           <span style={{
-                            display: "inline-block", marginTop: 4,
-                            padding: "2px 10px", borderRadius: 100,
-                            background: dark ? "#2e1065" : "#ede9fe",
-                            color: dark ? "#c4b5fd" : "#7c3aed",
+                            display: "inline-block", marginTop: 4, padding: "2px 10px", borderRadius: 100,
+                            background: dark ? "#2e1065" : "#ede9fe", color: dark ? "#c4b5fd" : "#7c3aed",
                             fontSize: 11, fontWeight: 600,
                           }}>مفعّل</span>
                         )}
@@ -566,6 +672,61 @@ export default function AccountPage() {
           </div>
         )}
       </div>
+
+      {/* ─── Refund Modal ─── */}
+      {openOrder && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 50, background: "rgba(0,0,0,.6)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+        }} onClick={() => setOpenOrder(null)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: "100%", maxWidth: 480, background: t.surface,
+            borderRadius: 18, border: `1px solid ${t.border}`, padding: 22, direction: "rtl",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ color: t.text, fontWeight: 800, fontSize: 16, margin: 0 }}>طلب استرجاع المبلغ</h3>
+              <button onClick={() => setOpenOrder(null)} style={{
+                width: 30, height: 30, borderRadius: 8, background: "transparent",
+                border: "none", cursor: "pointer", color: t.text3,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}><X size={18} /></button>
+            </div>
+            <div style={{ marginBottom: 14, padding: 12, borderRadius: 10, background: t.bg, fontSize: 12, color: t.text2 }}>
+              <div><strong style={{ color: t.text }}>الطلب:</strong> {openOrder.store_products?.name || "اشتراك"}</div>
+              <div><strong style={{ color: t.text }}>المبلغ:</strong> {openOrder.amount} ر.س</div>
+            </div>
+            <label style={{ display: "block", fontSize: 12, color: t.text2, fontWeight: 700, marginBottom: 8 }}>
+              سبب طلب الاسترجاع *
+            </label>
+            <textarea
+              value={reason} onChange={e => setReason(e.target.value)} rows={4}
+              placeholder="اشرح سبب رغبتك في الاسترجاع بشكل واضح..."
+              style={{
+                width: "100%", padding: 12, borderRadius: 10, boxSizing: "border-box",
+                background: t.bg, border: `1px solid ${t.border}`, color: t.text,
+                fontSize: 13, resize: "none", fontFamily: "inherit", outline: "none",
+              }}
+            />
+            {refundErr && <div style={{ color: "#ef4444", fontSize: 12, marginTop: 8 }}>{refundErr}</div>}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
+              <button onClick={() => setOpenOrder(null)} style={{
+                padding: "10px 14px", borderRadius: 10, background: "transparent",
+                border: `1px solid ${t.border}`, color: t.text2, fontSize: 13, fontWeight: 600, cursor: "pointer",
+              }}>إلغاء</button>
+              <button onClick={submitRefund} disabled={submitting || reason.trim().length < 10} style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", borderRadius: 10,
+                background: dark ? "#fff" : "#09090b", color: dark ? "#0a0a0a" : "#fff",
+                border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                opacity: submitting || reason.trim().length < 10 ? 0.5 : 1,
+              }}>
+                {submitting ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Send size={14} />}
+                إرسال الطلب
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
@@ -591,7 +752,7 @@ function Card({ t, title, icon, sub, children }: {
           {sub && <p style={{ margin: "1px 0 0", color: t.text3, fontSize: 11 }}>{sub}</p>}
         </div>
       </div>
-      <div style={{ padding: "4px 0 8px" }}>{children}</div>
+      <div>{children}</div>
     </div>
   );
 }
@@ -611,14 +772,33 @@ function InfoRow({ t, icon, label, value, dir, last, badge }: {
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         {badge && (
-          <span style={{
-            padding: "2px 8px", borderRadius: 100,
-            background: "#f0fdf4", color: "#166534",
-            fontSize: 11, fontWeight: 600,
-          }}>{badge}</span>
+          <span style={{ padding: "2px 8px", borderRadius: 100, background: "#f0fdf4", color: "#166534", fontSize: 11, fontWeight: 600 }}>
+            {badge}
+          </span>
         )}
         <span style={{ color: t.text, fontSize: 14, fontWeight: 500 }} dir={dir}>{value}</span>
       </div>
     </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const m: Record<string, { text: string; color: string; bg: string; icon: React.ElementType }> = {
+    paid:      { text: "مدفوع",     color: "#10b981", bg: "rgba(16,185,129,.12)", icon: CheckCircle2 },
+    pending:   { text: "قيد الدفع", color: "#f59e0b", bg: "rgba(245,158,11,.12)", icon: Clock },
+    cancelled: { text: "ملغي",      color: "#71717a", bg: "rgba(113,113,122,.15)", icon: XCircle },
+    failed:    { text: "فشل",       color: "#ef4444", bg: "rgba(239,68,68,.12)",   icon: AlertCircle },
+    refunded:  { text: "مسترجع",    color: "#3b82f6", bg: "rgba(59,130,246,.12)",  icon: RotateCcw },
+  };
+  const e = m[status] || m.pending;
+  const Icon = e.icon;
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 4,
+      fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999,
+      background: e.bg, color: e.color,
+    }}>
+      <Icon size={11} /> {e.text}
+    </span>
   );
 }
