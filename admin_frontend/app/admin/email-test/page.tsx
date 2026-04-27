@@ -1,17 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Send, Wifi, Eye, User, Briefcase, ChevronDown, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import Shell from "@/components/shell";
 
 interface UserRow { id: string; full_name: string; email: string; phone: string; lang: string; }
 interface JobRow  { id: string; title_ar: string; title_en: string; company: string; }
 
 type Status = { ok: boolean; msg: string } | null;
-
-const C = {
-  bg: "#0a0a0a", card: "#111", border: "#222", text: "#fff", muted: "#888",
-  purple: "#a78bfa", purpleDim: "rgba(167,139,250,0.12)",
-  success: "#fff", error: "#f87171",
-};
 
 export default function EmailTestPage() {
   const [users, setUsers]     = useState<UserRow[]>([]);
@@ -33,7 +28,6 @@ export default function EmailTestPage() {
       .then(d => { setUsers(d.users || []); setJobs(d.jobs || []); });
   }, []);
 
-  // auto-fill toEmail from selected user
   useEffect(() => {
     const u = users.find(x => x.id === userId);
     if (u?.email) setToEmail(u.email);
@@ -88,51 +82,51 @@ export default function EmailTestPage() {
     setConnLoading(false);
   };
 
-  const sel: React.CSSProperties = {
-    width: "100%", background: C.card, color: C.text, border: `1px solid ${C.border}`,
-    borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none",
-    appearance: "none", WebkitAppearance: "none",
-  };
+  const selectedUser = users.find(x => x.id === userId);
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, padding: "28px 20px", direction: "rtl" }}>
-      <div style={{ maxWidth: 900, margin: "0 auto" }}>
+    <Shell>
+      <div className="max-w-5xl">
 
         {/* Header */}
-        <div style={{ marginBottom: 28, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>
-            <h1 style={{ color: C.text, fontSize: 22, fontWeight: 800, margin: 0 }}>اختبار القالب والإرسال</h1>
-            <p style={{ color: C.muted, fontSize: 13, margin: "6px 0 0" }}>شاهد القالب قبل الإرسال وتحقق من الاتصال</p>
+            <h1 className="text-xl font-bold text-ink m-0">اختبار القالب والإرسال</h1>
+            <p className="text-sm text-muted mt-1 m-0">شاهد القالب قبل الإرسال وتحقق من الاتصال</p>
           </div>
           <button
             onClick={handleConnection}
             disabled={connLoading}
-            style={{ display: "flex", alignItems: "center", gap: 8, background: C.purpleDim, color: C.purple, border: `1px solid rgba(167,139,250,0.3)`, borderRadius: 10, padding: "10px 18px", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+            className="flex items-center gap-2 rounded-xl border border-line bg-panel2 px-4 py-2.5 text-sm font-semibold text-ink2 hover:text-ink transition-all disabled:opacity-50"
           >
-            {connLoading ? <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> : <Wifi size={15} />}
+            {connLoading ? <Loader2 size={15} className="animate-spin" /> : <Wifi size={15} />}
             اختبار الاتصال
           </button>
         </div>
 
         {connStatus && (
-          <div style={{ background: connStatus.ok ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)", border: `1px solid ${connStatus.ok ? C.success : C.error}40`, borderRadius: 10, padding: "12px 16px", marginBottom: 20, color: connStatus.ok ? C.success : C.error, fontSize: 13 }}>
+          <div className={`rounded-xl border px-4 py-3 mb-5 text-sm ${connStatus.ok ? "border-line2 bg-panel2 text-ink" : "border-danger-border bg-danger-bg text-danger"}`}>
             {connStatus.msg}
           </div>
         )}
 
-        <div className="email-test-grid" style={{ display: "grid", gridTemplateColumns: "minmax(280px,1fr) minmax(320px,2fr)", gap: 20, alignItems: "start" }}>
+        <div className="email-test-grid grid gap-5" style={{ gridTemplateColumns: "minmax(260px,1fr) minmax(300px,2fr)" }}>
 
           {/* Controls Panel */}
-          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20, display: "flex", flexDirection: "column", gap: 18 }}>
+          <div className="rounded-2xl border border-line bg-panel p-5 flex flex-col gap-5">
 
             {/* User selector */}
             <div>
-              <label style={{ color: C.muted, fontSize: 12, fontWeight: 600, display: "block", marginBottom: 8 }}>
-                <User size={12} style={{ display: "inline", marginLeft: 5, verticalAlign: "middle" }} />
+              <label className="flex items-center gap-1.5 text-xs text-muted mb-2 font-semibold">
+                <User size={12} />
                 اختر المستخدم
               </label>
-              <div style={{ position: "relative" }}>
-                <select value={userId} onChange={e => setUserId(e.target.value)} style={sel}>
+              <div className="relative">
+                <select
+                  value={userId}
+                  onChange={e => setUserId(e.target.value)}
+                  className="w-full rounded-xl border border-line bg-[var(--input-bg)] text-ink px-3 py-2.5 text-sm outline-none appearance-none"
+                >
                   <option value="">-- كل المستخدمين (نموذج) --</option>
                   {users.map(u => (
                     <option key={u.id} value={u.id}>
@@ -140,24 +134,28 @@ export default function EmailTestPage() {
                     </option>
                   ))}
                 </select>
-                <ChevronDown size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: C.muted, pointerEvents: "none" }} />
+                <ChevronDown size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
               </div>
-              {userId && (() => { const u = users.find(x => x.id === userId); return u ? (
-                <div style={{ marginTop: 8, background: "#0d0d0d", borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>
-                  <div style={{ color: C.text }}>{u.full_name}</div>
-                  <div style={{ color: C.muted }}>{u.email || "بدون إيميل"} • {u.phone || "—"}</div>
+              {selectedUser && (
+                <div className="mt-2 rounded-lg bg-panel2 border border-line px-3 py-2 text-xs">
+                  <div className="text-ink font-medium">{selectedUser.full_name}</div>
+                  <div className="text-muted">{selectedUser.email || "بدون إيميل"} • {selectedUser.phone || "—"}</div>
                 </div>
-              ) : null; })()}
+              )}
             </div>
 
             {/* Job selector */}
             <div>
-              <label style={{ color: C.muted, fontSize: 12, fontWeight: 600, display: "block", marginBottom: 8 }}>
-                <Briefcase size={12} style={{ display: "inline", marginLeft: 5, verticalAlign: "middle" }} />
+              <label className="flex items-center gap-1.5 text-xs text-muted mb-2 font-semibold">
+                <Briefcase size={12} />
                 اختر الوظيفة
               </label>
-              <div style={{ position: "relative" }}>
-                <select value={jobId} onChange={e => setJobId(e.target.value)} style={sel}>
+              <div className="relative">
+                <select
+                  value={jobId}
+                  onChange={e => setJobId(e.target.value)}
+                  className="w-full rounded-xl border border-line bg-[var(--input-bg)] text-ink px-3 py-2.5 text-sm outline-none appearance-none"
+                >
                   <option value="">-- وظيفة نموذجية --</option>
                   {jobs.map(j => (
                     <option key={j.id} value={j.id}>
@@ -165,21 +163,26 @@ export default function EmailTestPage() {
                     </option>
                   ))}
                 </select>
-                <ChevronDown size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: C.muted, pointerEvents: "none" }} />
+                <ChevronDown size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
               </div>
             </div>
 
             {/* Language */}
             <div>
-              <label style={{ color: C.muted, fontSize: 12, fontWeight: 600, display: "block", marginBottom: 8 }}>لغة الإيميل</label>
-              <div style={{ display: "flex", gap: 8 }}>
+              <label className="text-xs text-muted mb-2 font-semibold block">لغة الإيميل</label>
+              <div className="flex gap-2">
                 {(["ar","en"] as const).map(l => (
-                  <button key={l} onClick={() => setLang(l)} style={{
-                    flex: 1, padding: "9px 0", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
-                    background: lang === l ? C.purple : C.bg,
-                    color: lang === l ? "#0a0a0a" : C.muted,
-                    border: `1px solid ${lang === l ? C.purple : C.border}`,
-                  }}>{l === "ar" ? "🇸🇦 عربي" : "🇬🇧 English"}</button>
+                  <button
+                    key={l}
+                    onClick={() => setLang(l)}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+                      lang === l
+                        ? "bg-accent text-accent-fg border-accent"
+                        : "bg-panel2 text-muted border-line hover:text-ink"
+                    }`}
+                  >
+                    {l === "ar" ? "🇸🇦 عربي" : "🇬🇧 English"}
+                  </button>
                 ))}
               </div>
             </div>
@@ -188,32 +191,33 @@ export default function EmailTestPage() {
             <button
               onClick={handlePreview}
               disabled={loading}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#fff", color: "#0a0a0a", border: "none", borderRadius: 10, padding: "12px 0", fontSize: 14, fontWeight: 700, cursor: "pointer", width: "100%" }}
+              className="flex items-center justify-center gap-2 w-full rounded-xl bg-accent text-accent-fg py-3 text-sm font-bold disabled:opacity-50 transition-all"
             >
-              {loading ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> : <Eye size={16} />}
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <Eye size={16} />}
               معاينة القالب
             </button>
 
             {/* Send section */}
             {preview && (
-              <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 18, display: "flex", flexDirection: "column", gap: 10 }}>
-                <label style={{ color: C.muted, fontSize: 12, fontWeight: 600 }}>إرسال إلى (إيميل تجريبي)</label>
+              <div className="border-t border-line pt-4 flex flex-col gap-3">
+                <label className="text-xs text-muted font-semibold">إرسال إلى (إيميل تجريبي)</label>
                 <input
                   value={toEmail}
                   onChange={e => setToEmail(e.target.value)}
                   placeholder="example@email.com"
-                  style={{ ...sel, direction: "ltr", textAlign: "left" }}
+                  dir="ltr"
+                  className="w-full rounded-xl border border-line bg-[var(--input-bg)] text-ink px-3 py-2.5 text-sm outline-none text-right"
                 />
                 <button
                   onClick={handleSend}
                   disabled={sending || !toEmail}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#a78bfa22", color: C.purple, border: `1px solid rgba(167,139,250,0.4)`, borderRadius: 10, padding: "11px 0", fontSize: 13, fontWeight: 700, cursor: "pointer", width: "100%" }}
+                  className="flex items-center justify-center gap-2 w-full rounded-xl border border-line bg-panel2 text-ink2 hover:text-ink py-3 text-sm font-semibold disabled:opacity-40 transition-all"
                 >
-                  {sending ? <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> : <Send size={15} />}
+                  {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
                   إرسال تجريبي
                 </button>
                 {sendStatus && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: sendStatus.ok ? C.success : C.error }}>
+                  <div className={`flex items-center gap-2 text-xs rounded-xl border px-3 py-2 ${sendStatus.ok ? "border-line2 bg-panel2 text-ink" : "border-danger-border bg-danger-bg text-danger"}`}>
                     {sendStatus.ok ? <CheckCircle size={13} /> : <XCircle size={13} />}
                     {sendStatus.msg}
                   </div>
@@ -223,34 +227,35 @@ export default function EmailTestPage() {
           </div>
 
           {/* Preview Panel */}
-          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
+          <div className="rounded-2xl border border-line bg-panel overflow-hidden">
             {!preview && !loading && (
-              <div style={{ padding: 48, textAlign: "center", color: C.muted }}>
-                <Eye size={40} style={{ margin: "0 auto 14px", opacity: 0.3, display: "block" }} />
-                <p style={{ margin: 0, fontSize: 14 }}>اضغط "معاينة القالب" لترى الإيميل اللي يُرسَل للشركة</p>
+              <div className="flex flex-col items-center justify-center py-16 text-muted text-center px-6">
+                <Eye size={40} className="mb-4 opacity-30" />
+                <p className="text-sm m-0">اضغط "معاينة القالب" لترى الإيميل اللي يُرسَل للشركة</p>
               </div>
             )}
             {loading && (
-              <div style={{ padding: 48, textAlign: "center", color: C.muted }}>
-                <Loader2 size={32} style={{ margin: "0 auto 14px", display: "block", animation: "spin 1s linear infinite" }} />
-                <p style={{ margin: 0, fontSize: 13 }}>يولّد رسالة التغطية بالذكاء الاصطناعي…</p>
+              <div className="flex flex-col items-center justify-center py-16 text-muted text-center">
+                <Loader2 size={32} className="mb-4 animate-spin" />
+                <p className="text-sm m-0">يولّد رسالة التغطية بالذكاء الاصطناعي…</p>
               </div>
             )}
             {preview && !loading && (
               <>
-                <div style={{ padding: "14px 18px", background: "#0d0d0d", borderBottom: `1px solid ${C.border}`, display: "flex", flexDirection: "column", gap: 4 }}>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span style={{ color: C.muted, fontSize: 12, flexShrink: 0 }}>الموضوع:</span>
-                    <span style={{ color: C.text, fontSize: 13, fontWeight: 600 }}>{preview.subject}</span>
+                <div className="px-4 py-3 bg-panel2 border-b border-line flex flex-col gap-1">
+                  <div className="flex gap-2 items-center">
+                    <span className="text-muted text-xs flex-shrink-0">الموضوع:</span>
+                    <span className="text-ink text-sm font-semibold">{preview.subject}</span>
                   </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span style={{ color: C.muted, fontSize: 12, flexShrink: 0 }}>من:</span>
-                    <span style={{ color: C.muted, fontSize: 12 }}>{preview.from_name}</span>
+                  <div className="flex gap-2 items-center">
+                    <span className="text-muted text-xs flex-shrink-0">من:</span>
+                    <span className="text-muted text-xs">{preview.from_name}</span>
                   </div>
                 </div>
                 <iframe
                   srcDoc={preview.html}
-                  style={{ width: "100%", height: 440, border: "none", display: "block", background: "#fff" }}
+                  className="w-full border-none block bg-white"
+                  style={{ height: 440 }}
                   title="email-preview"
                   sandbox="allow-same-origin"
                 />
@@ -262,11 +267,10 @@ export default function EmailTestPage() {
       </div>
 
       <style>{`
-        @keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
         @media (max-width: 768px) {
           .email-test-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
-    </div>
+    </Shell>
   );
 }
