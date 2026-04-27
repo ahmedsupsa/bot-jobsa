@@ -8,7 +8,6 @@ import {
   ShoppingBag, Package, ClipboardList, Plus, Pencil, Trash2,
   CheckCircle2, XCircle, Clock, RefreshCw, X, Save, Zap,
   Building2, Wallet, Copy, CheckCheck, Tag, Percent, DollarSign,
-  Image as ImageIcon, Upload, Eye, EyeOff,
 } from "lucide-react";
 
 type Product = {
@@ -123,86 +122,7 @@ function fmt(d: string) {
 }
 
 export default function StoreAdminPage() {
-  const [tab, setTab] = useState<"products" | "orders" | "banks" | "discounts" | "settings">("products");
-
-  // Store settings (banner)
-  const [settings, setSettings] = useState<{ banner_enabled: boolean; banner_text: string | null; banner_image_url: string | null }>({
-    banner_enabled: false, banner_text: "", banner_image_url: "",
-  });
-  const [stLoading, setStLoading] = useState(false);
-  const [stSaving, setStSaving] = useState(false);
-  const [stMsg, setStMsg] = useState("");
-  const [stMsgType, setStMsgType] = useState<"ok" | "err">("ok");
-  const [bannerUploading, setBannerUploading] = useState(false);
-
-  const loadSettings = useCallback(async () => {
-    setStLoading(true);
-    try {
-      const r = await fetch(`${API_BASE}/api/admin/store/settings`, { credentials: "include" });
-      const j = await r.json();
-      if (j.ok && j.settings) {
-        setSettings({
-          banner_enabled: !!j.settings.banner_enabled,
-          banner_text: j.settings.banner_text || "",
-          banner_image_url: j.settings.banner_image_url || "",
-        });
-      }
-    } catch {}
-    setStLoading(false);
-  }, []);
-
-  const saveSettings = async () => {
-    setStSaving(true); setStMsg("");
-    try {
-      const hasContent = !!(settings.banner_image_url || (settings.banner_text && settings.banner_text.trim()));
-      const payload = { ...settings, banner_enabled: hasContent ? settings.banner_enabled : false };
-      const r = await fetch(`${API_BASE}/api/admin/store/settings`, {
-        method: "PUT", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || "فشل الحفظ");
-      setStMsg(payload.banner_enabled ? "تم الحفظ ✓ — البنر يظهر الآن في صفحة المتجر" : "تم الحفظ ✓"); setStMsgType("ok");
-    } catch (e) {
-      setStMsg(String(e).replace("Error: ", "")); setStMsgType("err");
-    }
-    setStSaving(false);
-  };
-
-  const uploadBanner = async (file: File) => {
-    setBannerUploading(true); setStMsg("");
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const r = await fetch(`${API_BASE}/api/admin/store/settings/banner`, {
-        method: "POST", credentials: "include", body: fd,
-      });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || "فشل الرفع");
-
-      // Persist immediately — auto-enable + save to DB so banner appears in store right away
-      const newSettings = { ...settings, banner_image_url: j.url, banner_enabled: true };
-      setSettings(newSettings);
-
-      const sr = await fetch(`${API_BASE}/api/admin/store/settings`, {
-        method: "PUT", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          banner_image_url: j.url,
-          banner_enabled: true,
-          banner_text: newSettings.banner_text || null,
-        }),
-      });
-      const sj = await sr.json();
-      if (!sj.ok) throw new Error(sj.error || "تم الرفع لكن فشل الحفظ");
-
-      setStMsg("تم الحفظ والتفعيل ✓ — البنر يظهر الآن في صفحة المتجر"); setStMsgType("ok");
-    } catch (e) {
-      setStMsg(String(e).replace("Error: ", "")); setStMsgType("err");
-    }
-    setBannerUploading(false);
-  };
+  const [tab, setTab] = useState<"products" | "orders" | "banks" | "discounts">("products");
 
   // Products state
   const [products, setProducts] = useState<Product[]>([]);
@@ -377,7 +297,6 @@ export default function StoreAdminPage() {
   }, [tab, loadOrders]);
   useEffect(() => { if (tab === "banks") loadBanks(); }, [tab, loadBanks]);
   useEffect(() => { if (tab === "discounts") loadDiscounts(); }, [tab, loadDiscounts]);
-  useEffect(() => { if (tab === "settings") loadSettings(); }, [tab, loadSettings]);
 
   const openAddProduct = () => {
     setEditProduct(null);
@@ -592,11 +511,10 @@ export default function StoreAdminPage() {
             { key: "orders",    label: "الطلبات",          icon: ClipboardList },
             { key: "banks",     label: "الحسابات البنكية", icon: Building2 },
             { key: "discounts", label: "أكواد الخصم",      icon: Tag },
-            { key: "settings",  label: "البنر",            icon: ImageIcon },
           ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
-              onClick={() => setTab(key as "products" | "orders" | "banks" | "discounts" | "settings")}
+              onClick={() => setTab(key as "products" | "orders" | "banks" | "discounts")}
               className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
                 tab === key ? "bg-panel2 text-ink border border-line2" : "text-muted hover:text-ink"
               }`}
@@ -1582,112 +1500,6 @@ export default function StoreAdminPage() {
           </motion.div>
         )}
 
-        {/* ─── SETTINGS (BANNER) TAB ─── */}
-        {tab === "settings" && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-            <div className="rounded-2xl border border-line bg-panel p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-base font-bold text-ink flex items-center gap-2">
-                    <ImageIcon size={16} />
-                    بنر أعلى المتجر
-                  </h2>
-                  <p className="text-xs text-muted2 mt-1">يظهر للزوار في أعلى صفحة المتجر — يمكنك إضافة صورة أو نص أو الاثنين معاً.</p>
-                </div>
-                <button
-                  onClick={async () => {
-                    const next = !settings.banner_enabled;
-                    setSettings(s => ({ ...s, banner_enabled: next }));
-                    try {
-                      await fetch(`${API_BASE}/api/admin/store/settings`, {
-                        method: "PUT", credentials: "include",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ banner_enabled: next }),
-                      });
-                      setStMsg(next ? "البنر يظهر الآن في المتجر ✓" : "تم إخفاء البنر"); setStMsgType("ok");
-                    } catch {
-                      setStMsg("فشل التحديث"); setStMsgType("err");
-                    }
-                  }}
-                  className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold border transition-all ${
-                    settings.banner_enabled ? "border-line2 bg-panel2 text-ink" : "border-line bg-panel text-ink"
-                  }`}
-                  type="button"
-                >
-                  {settings.banner_enabled ? <Eye size={14} /> : <EyeOff size={14} />}
-                  {settings.banner_enabled ? "ظاهر" : "مخفي — اضغط لتفعيله"}
-                </button>
-              </div>
-
-              {stMsg && (
-                <div className={`rounded-xl border px-4 py-3 text-sm ${stMsgType === "ok" ? "border-line2 bg-panel2 text-ink" : "border-danger-border bg-danger-bg text-danger"}`}>
-                  {stMsg}
-                </div>
-              )}
-
-              {stLoading ? (
-                <div className="flex items-center justify-center py-10 text-muted2">
-                  <RefreshCw size={16} className="animate-spin ml-2" /> جاري التحميل...
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-muted mb-1.5">نص البنر</label>
-                    <textarea
-                      value={settings.banner_text || ""}
-                      onChange={(e) => setSettings(s => ({ ...s, banner_text: e.target.value }))}
-                      rows={3}
-                      placeholder="اكتب النص الذي يظهر في البنر..."
-                      className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none resize-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-muted mb-1.5">صورة البنر</label>
-                    {settings.banner_image_url ? (
-                      <div className="space-y-2">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={settings.banner_image_url} alt="banner" className="w-full max-h-56 object-cover rounded-xl border border-line" />
-                        <div className="flex gap-2">
-                          <label className={`flex items-center gap-2 rounded-xl border border-line bg-panel2 px-3 py-2 text-xs font-semibold cursor-pointer hover:bg-panel transition-all ${bannerUploading ? "opacity-60 pointer-events-none" : ""}`}>
-                            <Upload size={13} />
-                            {bannerUploading ? "جاري الرفع..." : "تغيير الصورة"}
-                            <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadBanner(f); e.currentTarget.value = ""; }} />
-                          </label>
-                          <button
-                            onClick={() => setSettings(s => ({ ...s, banner_image_url: "" }))}
-                            className="flex items-center gap-2 rounded-xl border border-danger-border bg-danger-bg text-danger px-3 py-2 text-xs font-semibold hover:opacity-90 transition-all"
-                            type="button"
-                          >
-                            <Trash2 size={13} />
-                            حذف الصورة
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <label className={`flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line bg-panel2 py-8 text-sm text-muted cursor-pointer hover:border-line2 hover:text-ink transition-all ${bannerUploading ? "opacity-60 pointer-events-none" : ""}`}>
-                        <Upload size={16} />
-                        {bannerUploading ? "جاري الرفع..." : "اسحب صورة هنا أو اضغط للاختيار (حد أقصى 5MB)"}
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadBanner(f); e.currentTarget.value = ""; }} />
-                      </label>
-                    )}
-                  </div>
-
-                  <div className="flex justify-end pt-2">
-                    <button
-                      onClick={saveSettings}
-                      disabled={stSaving}
-                      className="flex items-center gap-2 rounded-xl bg-accent text-accent-fg px-5 py-2.5 text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60"
-                    >
-                      {stSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                      حفظ
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
       </div>
     </Shell>
   );
