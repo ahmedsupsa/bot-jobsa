@@ -225,9 +225,7 @@ export async function sendActivationEmail(
   durationDays: number, isNew: boolean, newEndDate?: Date
 ): Promise<boolean> {
   if (!RESEND_API_KEY || !RESEND_FROM_EMAIL || !to) {
-    console.warn("sendActivationEmail skipped — missing RESEND_API_KEY/FROM/to", {
-      hasKey: !!RESEND_API_KEY, hasFrom: !!RESEND_FROM_EMAIL, hasTo: !!to,
-    });
+    console.warn("sendActivationEmail skipped — email configuration incomplete");
     return false;
   }
   const subject = isNew ? "🎉 تم تفعيل اشتراكك في Jobbots" : "✅ تم تجديد اشتراكك في Jobbots";

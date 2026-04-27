@@ -311,7 +311,21 @@ export default function StorePage() {
         return;
       }
 
-      window.location.href = j.url;
+      const allowedHosts = [
+        "api.tamara.co", "checkout.tamara.co",
+        "api.moyasar.com", "checkout.moyasar.com",
+        "secure.moyasar.com",
+      ];
+      try {
+        const dest = new URL(j.url);
+        if (dest.protocol === "https:" && allowedHosts.some(h => dest.hostname === h || dest.hostname.endsWith("." + h))) {
+          window.location.href = j.url;
+        } else {
+          throw new Error("رابط الدفع غير صالح");
+        }
+      } catch {
+        throw new Error("رابط الدفع غير صالح");
+      }
     } catch (e) {
       setFormErr(String(e).replace("Error: ", ""));
       setSubmitting(null);
