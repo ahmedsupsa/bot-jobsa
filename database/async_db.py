@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-تشغيل دوال db المزامنة في خلفية (thread) حتى لا تُبطئ البوت.
-استخدم: user = await run_sync(get_user_by_telegram, telegram_id)
+تشغيل دوال db المزامنة في خلفية (thread) حتى لا تُبطئ العمليات.
 """
 import asyncio
 from database import db

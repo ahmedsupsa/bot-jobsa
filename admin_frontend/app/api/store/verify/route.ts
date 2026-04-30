@@ -97,21 +97,6 @@ async function autoCreateAccount(
       .insert(insertData)
       .select("id");
 
-    if (
-      userErr &&
-      (userErr.message?.includes("telegram_id") || userErr.message?.includes("null value"))
-    ) {
-      const fb = await supabase
-        .from("users")
-        .insert({
-          ...insertData,
-          telegram_id: -(Date.now() % 2147483647 + Math.floor(Math.random() * 99999)),
-        })
-        .select("id");
-      userRows = fb.data;
-      userErr = fb.error;
-    }
-
     if (userErr || !userRows?.[0]) {
       console.error("Auto account creation error:", userErr?.message);
       return null;

@@ -11,39 +11,47 @@ load_dotenv()
 
 # تخزين مؤقت للمستخدم (تقليل استدعاءات Supabase)
 # يُمسح تلقائياً بعد 90 ثانية أو عند استدعاء invalidate_user_cache أو عند إعادة تشغيل البوت
-_USER_CACHE: dict[int, tuple[dict, float]] = {}
+_USER_CACHE: dict[str, tuple[dict, float]] = {}
 _USER_CACHE_TTL = 90  # ثانية
 _EMAIL_CHANGE_LIMIT = 3
 
 
-def _user_cache_get(telegram_id: int) -> dict | None:
+def _user_cache_get(user_id: str) -> dict | None:
     now = time.time()
-    if telegram_id in _USER_CACHE:
-        user, exp = _USER_CACHE[telegram_id]
+    if user_id in _USER_CACHE:
+        user, exp = _USER_CACHE[user_id]
         if now < exp:
             return user
-        del _USER_CACHE[telegram_id]
+        del _USER_CACHE[user_id]
     return None
 
 
-def _user_cache_set(telegram_id: int, user: dict | None) -> None:
+def _user_cache_set(user_id: str, user: dict | None) -> None:
     if user is None:
-        _USER_CACHE.pop(telegram_id, None)
+        _USER_CACHE.pop(user_id, None)
         return
-    _USER_CACHE[telegram_id] = (user, time.time() + _USER_CACHE_TTL)
+    _USER_CACHE[user_id] = (user, time.time() + _USER_CACHE_TTL)
 
 
-def invalidate_user_cache(telegram_id: int) -> None:
-    _USER_CACHE.pop(telegram_id, None)
+def invalidate_user_cache(user_id: str) -> None:
+    _USER_CACHE.pop(user_id, None)
 
 
 def get_user_by_id(user_id: str) -> dict | None:
     """جلب مستخدم بالـ UUID (للوحة الأدمن)."""
+    cached = _user_cache_get(user_id)
+    if cached is not None:
+        return cached
+
     if _use_rest:
-        return _rest_select_one("users", id=user_id)
-    sb = get_supabase()
-    r = sb.table("users").select("*").eq("id", user_id).execute()
-    return r.data[0] if r.data else None
+        user = _rest_select_one("users", id=user_id)
+    else:
+        sb = get_supabase()
+        r = sb.table("users").select("*").eq("id", user_id).execute()
+        user = r.data[0] if r.data else None
+    
+    _user_cache_set(user_id, user)
+    return user
 
 # دعم مفاتيح sb_secret_ عبر REST (مكتبة supabase-py تقبل JWT فقط)
 try:
@@ -79,18 +87,6 @@ else:
         return _supabase
 
 
-def get_user_by_telegram(telegram_id: int) -> dict | None:
-    cached = _user_cache_get(telegram_id)
-    if cached is not None:
-        return cached
-    if _use_rest:
-        user = _rest_select_one("users", telegram_id=telegram_id)
-    else:
-        sb = get_supabase()
-        r = sb.table("users").select("*").eq("telegram_id", telegram_id).execute()
-        user = r.data[0] if r.data and len(r.data) > 0 else None
-    _user_cache_set(telegram_id, user)
-    return user
 
 
 def validate_activation_code(code: str) -> dict | None:
@@ -139,11 +135,10 @@ def use_activation_code(code_id: str, user_id: str) -> None:
     }).eq("id", code_id).execute()
 
 
-def create_user(telegram_id: int, code_id: str, subscription_days: int,
+def create_user(code_id: str, subscription_days: int,
                 full_name: str, phone: str, age: int | None, city: str) -> dict:
     ends_at = (datetime.utcnow() + timedelta(days=subscription_days)).isoformat()
     user = {
-        "telegram_id": telegram_id,
         "activation_code_id": code_id,
         "subscription_ends_at": ends_at,
         "full_name": full_name,
@@ -156,14 +151,12 @@ def create_user(telegram_id: int, code_id: str, subscription_days: int,
         if not rows:
             raise RuntimeError("فشل إنشاء المستخدم")
         use_activation_code(code_id, rows[0]["id"])
-        invalidate_user_cache(telegram_id)
         return rows[0]
     sb = get_supabase()
     r = sb.table("users").insert(user).execute()
     if not r.data or len(r.data) == 0:
         raise RuntimeError("فشل إنشاء المستخدم")
     use_activation_code(code_id, r.data[0]["id"])
-    invalidate_user_cache(telegram_id)
     return r.data[0]
 
 
@@ -364,9 +357,8 @@ def set_application_language(user_id: str, lang: str) -> None:
     }).eq("id", user_id).execute()
 
 
-def save_cv(user_id: str, file_id: str, file_name: str | None, storage_path: str | None = None) -> None:
+def save_cv(user_id: str, file_name: str | None, storage_path: str | None = None) -> None:
     row = {
-        "file_id": file_id,
         "file_name": file_name or "cv.pdf",
         "storage_path": storage_path,
     }
@@ -692,15 +684,12 @@ def upsert_announcement_delivery(announcement_id: str, user_id: str, send_count:
     sb.table("admin_announcement_deliveries").upsert(payload, on_conflict="announcement_id,user_id").execute()
 
 
-def is_admin(telegram_id: int) -> bool:
-    import config
-    if config.ADMIN_TELEGRAM_IDS and telegram_id in config.ADMIN_TELEGRAM_IDS:
-        return True
+def is_admin(user_id: str) -> bool:
     if _use_rest:
-        row = _rest_select_one("admin_users", telegram_id=telegram_id)
+        row = _rest_select_one("admin_users", user_id=user_id)
         return row is not None
     sb = get_supabase()
-    r = sb.table("admin_users").select("id").eq("telegram_id", telegram_id).execute()
+    r = sb.table("admin_users").select("id").eq("user_id", user_id).execute()
     return bool(r.data and len(r.data) > 0)
 
 
@@ -818,7 +807,6 @@ def delete_user_completely(user_id: str) -> bool:
     user = get_user_by_id(user_id)
     if not user:
         return False
-    telegram_id = user.get("telegram_id")
     # حذف ملف السيرة من Supabase Storage إن وُجد
     cv = get_cv(user_id)
     if cv and cv.get("storage_path"):
@@ -854,8 +842,7 @@ def delete_user_completely(user_id: str) -> bool:
         _rest_delete("users", id=user_id)
     else:
         get_supabase().table("users").delete().eq("id", user_id).execute()
-    if telegram_id is not None:
-        invalidate_user_cache(int(telegram_id))
+    invalidate_user_cache(user_id)
     return True
 
 

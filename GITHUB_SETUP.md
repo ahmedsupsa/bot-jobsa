@@ -12,7 +12,7 @@
 ### 1. إنشاء مستودع جديد على GitHub
 1. ادخل إلى [github.com](https://github.com) وسجّل الدخول.
 2. اضغط **New repository** (أو **+** → **New repository**).
-3. اختر اسم المستودع (مثلاً `bot-jobsa` أو `telegram-jobs-bot`).
+3. اختر اسم المستودع (مثلاً `bot-jobsa`).
 4. اختر **Private** أو **Public**.
 5. **لا** تختر "Add a README" ولا "Add .gitignore" (المشروع فيهما مسبقاً).
 6. اضغط **Create repository**.

@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS activation_codes (
 -- المستخدمون
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  telegram_id BIGINT UNIQUE NOT NULL,
   activation_code_id UUID REFERENCES activation_codes(id),
   subscription_ends_at TIMESTAMPTZ,
   full_name TEXT,
@@ -49,7 +48,6 @@ ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS sender_email_alias_created_at
 CREATE TABLE IF NOT EXISTS user_cvs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  file_id TEXT NOT NULL,   -- telegram file_id للمعاينة في البوت
   file_name TEXT,
   storage_path TEXT,      -- مسار الملف في Supabase Storage (bucket cvs)
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -90,7 +88,6 @@ ALTER TABLE applications ADD COLUMN IF NOT EXISTS job_id UUID REFERENCES admin_j
 CREATE UNIQUE INDEX IF NOT EXISTS idx_applications_user_job ON applications(user_id, job_id) WHERE job_id IS NOT NULL;
 
 -- فهارس
-CREATE INDEX IF NOT EXISTS idx_users_telegram ON users(telegram_id);
 CREATE INDEX IF NOT EXISTS idx_activation_codes_code ON activation_codes(code);
 CREATE INDEX IF NOT EXISTS idx_applications_user ON applications(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_job_preferences_user ON user_job_preferences(user_id);
@@ -138,14 +135,12 @@ CREATE TABLE IF NOT EXISTS admin_announcements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT,
   body_text TEXT NOT NULL,
-  image_file_id TEXT,       -- صورة اختيارية (file_id تليجرام)
   expires_at TIMESTAMPTZ,   -- انتهاء عرض الإعلان (NULL = بدون انتهاء)
   repeat_count INTEGER DEFAULT 1, -- عدد مرات إرسال الإعلان لكل مستخدم
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-ALTER TABLE admin_announcements ADD COLUMN IF NOT EXISTS image_file_id TEXT;
 ALTER TABLE admin_announcements ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
 ALTER TABLE admin_announcements ADD COLUMN IF NOT EXISTS repeat_count INTEGER DEFAULT 1;
 
@@ -164,7 +159,6 @@ CREATE TABLE IF NOT EXISTS admin_announcement_deliveries (
 -- أدمنين لوحة التحكم (رقم تليجرام أو اسم مستخدم)
 CREATE TABLE IF NOT EXISTS admin_users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  telegram_id BIGINT UNIQUE,
   username TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

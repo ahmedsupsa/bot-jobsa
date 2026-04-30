@@ -59,16 +59,6 @@ export async function POST(req: Request) {
     .insert(baseInsert)
     .select("*");
 
-  // Fallback: if telegram_id column still exists and is NOT NULL, insert with a unique placeholder
-  if (userErr && (userErr.message.includes("telegram_id") || userErr.message.includes("null value"))) {
-    const fallback = await supabase
-      .from("users")
-      .insert({ ...baseInsert, telegram_id: -(Date.now() % 2147483647 + Math.floor(Math.random() * 99999)) })
-      .select("*");
-    userRows = fallback.data;
-    userErr = fallback.error;
-  }
-
   if (userErr || !userRows?.[0]) {
     console.error("Register insert error:", userErr?.message);
     return NextResponse.json({ error: "فشل إنشاء الحساب، حاول لاحقاً", detail: userErr?.message }, { status: 500 });

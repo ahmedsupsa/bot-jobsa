@@ -129,15 +129,6 @@ export async function autoActivateOrder(
 
   let { data: userRows, error: userErr } = await supabase.from("users").insert(insertData).select("id");
 
-  if (userErr?.message?.includes("telegram_id") || userErr?.message?.includes("null value")) {
-    const fb = await supabase
-      .from("users")
-      .insert({ ...insertData, telegram_id: -(Date.now() % 2147483647 + Math.floor(Math.random() * 99999)) })
-      .select("id");
-    userRows = fb.data;
-    userErr = fb.error;
-  }
-
   if (userErr || !userRows?.[0]) {
     console.error("User creation error:", userErr?.message);
     return { code: codeEntry?.code || null, email, name, durationDays, isNew: false };
