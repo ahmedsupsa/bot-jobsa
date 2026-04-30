@@ -56,11 +56,55 @@ export default function SendEmailPage() {
           ))}
         </div>
 
-        {tab === "quick"    && <QuickSend />}
+        {tab === "quick"    && (
+          <>
+            <QuickSend />
+            <SentMessagesTimeline />
+          </>
+        )}
         {tab === "campaign" && <CampaignCreate onSent={() => setTab("history")} />}
         {tab === "history"  && <CampaignHistory />}
       </div>
     </Shell>
+  );
+}
+
+// ─── Timeline ──────────────────────────────────────────────────────────────
+function SentMessagesTimeline() {
+  const [messages, setMessages] = useState<any[]>([]);
+
+  const load = useCallback(async () => {
+    fetch("/api/admin/sent-private-messages")
+      .then(r => r.json())
+      .then(d => Array.isArray(d) && setMessages(d));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (messages.length === 0) return null;
+
+  return (
+    <div className="mt-8 max-w-2xl">
+      <h3 className="text-sm font-bold text-ink mb-4 flex items-center gap-2">
+        <Clock size={16} /> آخر الرسائل المفرَدة
+      </h3>
+      <div className="relative border-r border-line pr-6 space-y-8">
+        {messages.map((msg) => (
+          <div key={msg.id} className="relative">
+            <div className="absolute -right-[33px] top-0 h-4 w-4 rounded-full bg-panel border-2 border-accent" />
+            
+            <div className="bg-panel border border-line rounded-2xl p-4 shadow-sm">
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-xs font-bold text-accent truncate ltr">{msg.recipient_email}</span>
+                <span className="text-[10px] text-muted flex-shrink-0" dir="ltr">{new Date(msg.sent_at).toLocaleString("ar-SA")}</span>
+              </div>
+              <p className="text-sm font-bold text-ink mb-1 truncate">{msg.subject}</p>
+              <p className="text-xs text-muted leading-relaxed truncate">{msg.message}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

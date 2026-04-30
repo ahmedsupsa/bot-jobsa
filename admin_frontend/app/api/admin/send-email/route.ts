@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import { enforcePermission } from "@/lib/admin-auth";
+import { createClient } from "@supabase/supabase-js";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "";
 const RESEND_FROM_NAME = process.env.RESEND_FROM_NAME || "Jobbots";
+const SUPABASE_URL = process.env.SUPABASE_URL || "";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
+
+function freshClient() {
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+}
 
 export const dynamic = "force-dynamic";
 
@@ -83,5 +90,19 @@ export async function POST(req: Request) {
   if (!r.ok) {
     return NextResponse.json({ ok: false, error: data?.message || `خطأ ${r.status}` }, { status: 400 });
   }
+
+  // Log to DB
+  try {
+    const supabase = freshClient();
+    await supabase.from("sent_private_messages").insert({
+      recipient_email: cleanTo,
+      subject: personalizedSubject,
+      message: personalizedMessage,
+      status: "sent"
+    });
+  } catch (e) {
+    console.error("Failed to log private message:", e);
+  }
+
   return NextResponse.json({ ok: true, id: data.id });
 }

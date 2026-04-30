@@ -156,6 +156,16 @@ CREATE TABLE IF NOT EXISTS admin_announcement_deliveries (
   UNIQUE(announcement_id, user_id)
 );
 
+-- الرسائل المفرَدة
+CREATE TABLE IF NOT EXISTS sent_private_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  recipient_email TEXT NOT NULL,
+  subject TEXT,
+  message TEXT,
+  sent_at TIMESTAMPTZ DEFAULT NOW(),
+  status TEXT DEFAULT 'sent'
+);
+
 -- أدمنين لوحة التحكم (رقم تليجرام أو اسم مستخدم)
 CREATE TABLE IF NOT EXISTS admin_users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
