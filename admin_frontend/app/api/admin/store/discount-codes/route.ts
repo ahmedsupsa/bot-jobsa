@@ -61,7 +61,7 @@ export async function GET() {
   const supabase = freshClient();
   const { data, error } = await supabase
     .from("discount_codes")
-    .select("*, store_products(name)")
+    .select("*")
     .order("created_at", { ascending: false });
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   const enriched = await enrich(supabase, data || []);
