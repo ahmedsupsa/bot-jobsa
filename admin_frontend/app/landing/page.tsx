@@ -1,4 +1,3 @@
-import Shell from "@/components/shell";
 import { Zap, BrainCircuit, Mail, ArrowRight, ShieldCheck, Clock, MessageCircle, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 
@@ -9,7 +8,7 @@ export const metadata = {
 
 export default function LandingPage() {
   return (
-    <Shell>
+    <div className="min-h-screen bg-bg">
       <div className="max-w-4xl mx-auto py-12 px-4">
         {/* Hero Section */}
         <div className="text-center mb-20">
@@ -70,6 +69,6 @@ export default function LandingPage() {
           </div>
         </div>
       </div>
-    </Shell>
+    </div>
   );
 }
