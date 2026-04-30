@@ -240,6 +240,16 @@ function CampaignCreate({ onSent }: { onSent: () => void }) {
 
   const lineCount = recipientsRaw.split("\n").filter(l => l.trim()).length;
 
+  const downloadTemplate = () => {
+    const csvContent = "Name,Email\nAhmed,ahmed@example.com\nSara,sara@example.com";
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "recipients_template.csv");
+    link.click();
+  };
+
   if (step === "done" && result) {
     return (
       <div className="rounded-2xl border border-line bg-panel p-8 text-center max-w-md">
@@ -314,15 +324,21 @@ function CampaignCreate({ onSent }: { onSent: () => void }) {
         </div>
       )}
 
-      {step === "recipients" && (
+        {step === "recipients" && (
         <div className="rounded-2xl border border-line bg-panel p-6 space-y-4">
-          <div>
-            <h2 className="text-base font-bold text-ink mb-1">قائمة المستلمين</h2>
-            <p className="text-xs text-muted">
-              أدخل إيميل واحد في كل سطر. يمكن إضافة الاسم بالصيغة: <span dir="ltr" className="font-mono bg-panel2 border border-line rounded px-1">Ahmed &lt;ahmed@example.com&gt;</span>
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold text-ink mb-1">قائمة المستلمين</h2>
+              <p className="text-xs text-muted">
+                أدخل إيميل واحد في كل سطر. يمكن إضافة الاسم بالصيغة: <span dir="ltr" className="font-mono bg-panel2 border border-line rounded px-1">Ahmed &lt;ahmed@example.com&gt;</span>
+              </p>
+            </div>
+            <button onClick={downloadTemplate} className="text-xs font-bold text-accent bg-accent/10 px-3 py-1.5 rounded-lg hover:bg-accent/20 transition-all">
+              📥 تحميل قالب (CSV)
+            </button>
           </div>
           <textarea
+
             rows={14}
             dir="ltr"
             className={`${inputCls} resize-y font-mono text-xs leading-relaxed`}
