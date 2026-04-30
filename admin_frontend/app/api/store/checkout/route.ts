@@ -33,11 +33,8 @@ export async function POST(req: Request) {
 
     const phoneCheck = validatePhoneSA(phone);
     if (!phoneCheck.ok) {
-      // Allow if it's a 10-digit number starting with 05
       const digits = phone.replace(/[^\d]/g, "");
-      if (digits.length === 10 && digits.startsWith("05")) {
-        // proceed
-      } else {
+      if (!(digits.length === 10 && digits.startsWith("05"))) {
         return NextResponse.json(
           { ok: false, error: phoneCheck.error },
           { status: 400 }
@@ -66,9 +63,6 @@ export async function POST(req: Request) {
       if (aff) validRefCode = aff.code;
     }
 
-    // ─── Discount code (optional) ─── validate-only; usage is counted by
-    // a DB trigger when the order's status transitions to 'paid'. This
-    // ensures abandoned/failed checkouts NEVER consume a discount slot.
     let finalAmount = Number(product.price);
     if (discount_code && typeof discount_code === "string" && discount_code.trim()) {
       const dr = await validateDiscount(discount_code, product.id, Number(product.price), gateway as Gateway);
@@ -79,15 +73,8 @@ export async function POST(req: Request) {
       appliedDiscount = { id: dr.code.id, code: dr.code.code };
     }
 
-    // Kept as a no-op for diff stability — discount usage is sales-driven.
     const releaseOnFail = async () => { /* no-op */ };
 
-    // Status convention:
-    //  - bank_transfer  → "pending"          (admin must verify the receipt)
-    //  - tamara/streampay → "awaiting_payment" (user hasn't paid yet at the gateway;
-    //                       webhooks bump to "paid" or "failed" once they act)
-    // This keeps the "pending" lane reserved for orders that genuinely need
-    // admin attention.
     const initialStatus = gateway === "bank_transfer" ? "pending" : "awaiting_payment";
 
     const orderBase = {
@@ -112,7 +99,6 @@ export async function POST(req: Request) {
       user_phone: phone?.trim() || null,
     });
 
-    // Backwards-compat fallbacks for older DB schemas
     if (orderErr) {
       const msg = orderErr.message || "";
       const stripped: Record<string, unknown> = { ...orderBase, user_phone: phone?.trim() || null };
@@ -121,8 +107,6 @@ export async function POST(req: Request) {
       if (/discount_code(?!_id)/i.test(msg)) delete stripped.discount_code;
       if (/original_amount/i.test(msg)) delete stripped.original_amount;
       if (/payment_gateway/i.test(msg)) delete stripped.payment_gateway;
-      // Some older deployments have a CHECK constraint on status that doesn't
-      // include "awaiting_payment" — fall back to "pending" in that case.
       if (/status/i.test(msg) && stripped.status === "awaiting_payment") {
         stripped.status = "pending";
       }
@@ -131,8 +115,6 @@ export async function POST(req: Request) {
       orderErr = fb.error;
     }
 
-    // Hard-fail if order persistence failed — never proceed to payment
-    // without a persisted order, otherwise webhook reconciliation breaks.
     if (!order?.id) {
       await releaseOnFail();
       console.error("Order persistence failed:", orderErr);
@@ -147,20 +129,37 @@ export async function POST(req: Request) {
     // Normalize phone for external APIs
     const phoneNormalized = phone.trim().startsWith("05") ? "966" + phone.trim().substring(1) : (phone.trim().startsWith("5") ? "966" + phone.trim() : phone.trim());
 
-    // Normalize phone for external APIs
-    const phoneNormalized = phone.trim().startsWith("05") ? "966" + phone.trim().substring(1) : (phone.trim().startsWith("5") ? "966" + phone.trim() : phone.trim());
-
     // ─── Tamara ───────────────────────────────────────────────────────────
     if (gateway === "tamara") {
-      // ...
-      const session = await createCheckoutSession({
-        // ...
-        phone: phoneNormalized.trim(),
-        // ...
-      });
-      // ...
-    }
+      const orderRef = `JB-WEB-${String(orderId).replace(/-/g, "").slice(0, 10).toUpperCase()}`;
 
+      const session = await createCheckoutSession({
+        orderId,
+        orderReference: orderRef,
+        amount: finalAmount,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phoneNormalized.trim(),
+        productName: product.name,
+        productDescription: product.description || product.name,
+        successUrl: `${SITE}/store/success?order_id=${orderId}`,
+        failureUrl: `${SITE}/store/failure?order_id=${orderId}`,
+        cancelUrl: `${SITE}/store/failure?order_id=${orderId}&cancelled=1`,
+        notificationUrl: `${SITE}/api/store/tamara-webhook`,
+      });
+
+      const checkoutUrl: string = session?.checkout_url;
+      const tamaraOrderId: string = session?.order_id;
+      const checkoutId: string = session?.checkout_id;
+
+      if (order?.id) {
+        try {
+          await supabase
+            .from("store_orders")
+            .update({ tamara_order_id: tamaraOrderId || null, tamara_checkout_id: checkoutId || null })
+            .eq("id", order.id);
+        } catch {}
+      }
 
       if (!checkoutUrl) throw new Error("لم يتم الحصول على رابط الدفع من Tamara");
       return NextResponse.json({ ok: true, url: checkoutUrl });
@@ -183,9 +182,6 @@ export async function POST(req: Request) {
       );
       const consumerId = consumer?.id || consumer?.data?.id;
 
-      // If a discount code lowered the price, create an ad-hoc StreamPay
-      // product with the discounted amount (StreamPay product prices are
-      // fixed at product-creation time, so we can't override per-link).
       let streampayProductId = product.streampay_product_id as string;
       if (appliedDiscount && finalAmount < Number(product.price)) {
         const adhoc = await createStreamPayProduct({
@@ -230,7 +226,6 @@ export async function POST(req: Request) {
     // ─── Bank Transfer ────────────────────────────────────────────────────
     if (gateway === "bank_transfer") {
       const originalAmount = Number(product.price);
-      // Apply legacy 15% bank discount only if no explicit discount code was used
       let discountedAmount = finalAmount;
       if (!appliedDiscount && originalAmount > 40) {
         discountedAmount = Math.round(originalAmount * 0.85 * 100) / 100;
