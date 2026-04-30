@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import ExcelJS from "exceljs";
 import Shell from "@/components/shell";
 import {
   Send, Mail, User, FileText, MessageSquare, Reply, CheckCircle, XCircle,
@@ -240,13 +241,22 @@ function CampaignCreate({ onSent }: { onSent: () => void }) {
 
   const lineCount = recipientsRaw.split("\n").filter(l => l.trim()).length;
 
-  const downloadTemplate = () => {
-    const csvContent = "Name,Email\nAhmed,ahmed@example.com\nSara,sara@example.com";
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const downloadTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Recipients');
+    worksheet.columns = [
+        { header: 'الاسم', key: 'name', width: 20 },
+        { header: 'البريد', key: 'email', width: 30 }
+    ];
+    worksheet.addRow({ name: 'Ahmed', email: 'ahmed@example.com' });
+    worksheet.addRow({ name: 'Sara', email: 'sara@example.com' });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "recipients_template.csv");
+    link.href = url;
+    link.download = "recipients_template.xlsx";
     link.click();
   };
 
