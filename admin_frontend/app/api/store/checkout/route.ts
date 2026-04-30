@@ -281,11 +281,10 @@ export async function POST(req: Request) {
 
     await releaseOnFail();
     return NextResponse.json({ ok: false, error: "بوابة الدفع غير معروفة" }, { status: 400 });
-  } catch (err) {
+  } catch (err: any) {
     console.error("Checkout error:", err);
-    // No-op: discount usage is sales-driven now; nothing to release.
     return NextResponse.json(
-      { ok: false, error: "حدث خطأ أثناء إنشاء رابط الدفع، حاول مجدداً" },
+      { ok: false, error: err?.message || "حدث خطأ أثناء إنشاء رابط الدفع، حاول مجدداً" },
       { status: 500 }
     );
   }
