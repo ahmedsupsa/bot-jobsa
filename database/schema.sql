@@ -127,6 +127,9 @@ CREATE TABLE IF NOT EXISTS admin_jobs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- تعديل جدول الطلبات لإضافة كود التفعيل
+ALTER TABLE store_orders ADD COLUMN IF NOT EXISTS activation_code TEXT;
+
 ALTER TABLE admin_jobs ADD COLUMN IF NOT EXISTS application_email TEXT;
 ALTER TABLE admin_jobs ADD COLUMN IF NOT EXISTS specializations TEXT;
 

@@ -62,6 +62,7 @@ function pricePerMonth(p: Product): string {
 
 export default function StorePage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [discounts, setDiscounts] = useState<{code: string, description?: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Product | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
@@ -105,7 +106,7 @@ export default function StorePage() {
   useEffect(() => {
     fetch(`/api/store/products?t=${Date.now()}`, { cache: "no-store" })
       .then(r => r.json())
-      .then(j => { setProducts(j.products || []); setLoading(false); })
+      .then(j => { setProducts(j.products || []); setDiscounts(j.discounts || []); setLoading(false); })
       .catch(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -418,30 +419,50 @@ export default function StorePage() {
 
         {/* Search + sort toolbar */}
         {!loading && products.length > 0 && (
-          <div style={s.toolbar}>
-            <div style={s.searchWrap}>
-              <Search size={15} color="var(--text4)" style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)" }} />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="ابحث عن باقة..."
-                style={s.searchInput}
-              />
+          <div style={{ marginBottom: 22 }}>
+            <div style={s.toolbar}>
+              <div style={s.searchWrap}>
+                <Search size={15} color="var(--text4)" style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)" }} />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="ابحث عن باقة..."
+                  style={s.searchInput}
+                />
+              </div>
+              <div style={s.sortWrap}>
+                <ArrowUpDown size={14} color="var(--text4)" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                  style={s.sortSelect}
+                >
+                  <option value="default">ترتيب افتراضي</option>
+                  <option value="price_asc">السعر: من الأقل للأعلى</option>
+                  <option value="price_desc">السعر: من الأعلى للأقل</option>
+                  <option value="duration_asc">المدة: من الأقصر للأطول</option>
+                  <option value="duration_desc">المدة: من الأطول للأقصر</option>
+                </select>
+              </div>
             </div>
-            <div style={s.sortWrap}>
-              <ArrowUpDown size={14} color="var(--text4)" />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                style={s.sortSelect}
-              >
-                <option value="default">ترتيب افتراضي</option>
-                <option value="price_asc">السعر: من الأقل للأعلى</option>
-                <option value="price_desc">السعر: من الأعلى للأقل</option>
-                <option value="duration_asc">المدة: من الأقصر للأطول</option>
-                <option value="duration_desc">المدة: من الأطول للأقصر</option>
-              </select>
-            </div>
+
+            {/* Discount Codes Section */}
+            {discounts.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
+                {discounts.map(d => (
+                  <div key={d.code} style={{ background: "var(--surface2)", padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{d.code}</span>
+                    <button 
+                      onClick={() => copyText(d.code, d.code)}
+                      style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--accent)" }}
+                    >
+                      {copiedId === d.code ? <CheckCheck size={13} /> : <Copy size={13} />}
+                    </button>
+                    {d.description && <span style={{ fontSize: 11, color: "var(--text3)", borderRight: "1px solid var(--border)", paddingRight: 8 }}>{d.description}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

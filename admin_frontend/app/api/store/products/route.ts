@@ -63,8 +63,14 @@ export async function GET(req: Request) {
     .filter((p) => includeSecret ? true : (p as Record<string, unknown>).is_secret !== true)
     .map(({ is_active: _ia, created_at: _ca, ...rest }) => rest);
 
+  // Fetch active discount codes
+  const { data: discounts } = await supabase
+    .from("discount_codes")
+    .select("code, description")
+    .eq("is_active", true);
+
   return NextResponse.json(
-    { ok: true, products, count: products.length, ts: Date.now() },
+    { ok: true, products, discounts: discounts || [], count: products.length, ts: Date.now() },
     { headers: HEADERS }
   );
 }
