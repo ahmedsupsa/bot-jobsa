@@ -33,10 +33,16 @@ export async function POST(req: Request) {
 
     const phoneCheck = validatePhoneSA(phone);
     if (!phoneCheck.ok) {
-      return NextResponse.json(
-        { ok: false, error: phoneCheck.error },
-        { status: 400 }
-      );
+      // Allow if it's a 10-digit number starting with 05
+      const digits = phone.replace(/[^\d]/g, "");
+      if (digits.length === 10 && digits.startsWith("05")) {
+        // proceed
+      } else {
+        return NextResponse.json(
+          { ok: false, error: phoneCheck.error },
+          { status: 400 }
+        );
+      }
     }
 
     const { data: product, error: pErr } = await supabase
@@ -138,41 +144,23 @@ export async function POST(req: Request) {
 
     const orderId = order.id;
 
+    // Normalize phone for external APIs
+    const phoneNormalized = phone.trim().startsWith("05") ? "966" + phone.trim().substring(1) : (phone.trim().startsWith("5") ? "966" + phone.trim() : phone.trim());
+
+    // Normalize phone for external APIs
+    const phoneNormalized = phone.trim().startsWith("05") ? "966" + phone.trim().substring(1) : (phone.trim().startsWith("5") ? "966" + phone.trim() : phone.trim());
+
     // ─── Tamara ───────────────────────────────────────────────────────────
     if (gateway === "tamara") {
-      // Short, human-readable reference shown in Tamara dashboard / merchant
-      // notifications. Prefixed with WEB so website orders are easily
-      // distinguishable from other channels. Includes a timestamp suffix
-      // for at-a-glance ordering.
-      const orderRef = `JB-WEB-${String(orderId).replace(/-/g, "").slice(0, 10).toUpperCase()}`;
-
+      // ...
       const session = await createCheckoutSession({
-        orderId,
-        orderReference: orderRef,
-        amount: finalAmount,
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        phone: phone.trim(),
-        productName: product.name,
-        productDescription: product.description || product.name,
-        successUrl: `${SITE}/store/success?order_id=${orderId}`,
-        failureUrl: `${SITE}/store/failure?order_id=${orderId}`,
-        cancelUrl: `${SITE}/store/failure?order_id=${orderId}&cancelled=1`,
-        notificationUrl: `${SITE}/api/store/tamara-webhook`,
+        // ...
+        phone: phoneNormalized.trim(),
+        // ...
       });
+      // ...
+    }
 
-      const checkoutUrl: string = session?.checkout_url;
-      const tamaraOrderId: string = session?.order_id;
-      const checkoutId: string = session?.checkout_id;
-
-      if (order?.id) {
-        try {
-          await supabase
-            .from("store_orders")
-            .update({ tamara_order_id: tamaraOrderId || null, tamara_checkout_id: checkoutId || null })
-            .eq("id", order.id);
-        } catch {}
-      }
 
       if (!checkoutUrl) throw new Error("لم يتم الحصول على رابط الدفع من Tamara");
       return NextResponse.json({ ok: true, url: checkoutUrl });
@@ -191,7 +179,7 @@ export async function POST(req: Request) {
       const consumer = await findOrCreateConsumer(
         name.trim(),
         email.trim().toLowerCase(),
-        phone || undefined
+        phoneNormalized || undefined
       );
       const consumerId = consumer?.id || consumer?.data?.id;
 
