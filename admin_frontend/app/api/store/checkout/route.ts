@@ -129,8 +129,9 @@ export async function POST(req: Request) {
     // without a persisted order, otherwise webhook reconciliation breaks.
     if (!order?.id) {
       await releaseOnFail();
+      console.error("Order persistence failed:", orderErr);
       return NextResponse.json(
-        { ok: false, error: "فشل إنشاء الطلب، حاول مجدداً" },
+        { ok: false, error: orderErr?.message || "فشل إنشاء الطلب، حاول مجدداً" },
         { status: 500 }
       );
     }
