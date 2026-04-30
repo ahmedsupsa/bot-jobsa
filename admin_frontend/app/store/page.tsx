@@ -634,6 +634,28 @@ export default function StorePage() {
                   <Tag size={13} color="var(--text)" />
                   <span style={s.discountTitle}>كود خصم (اختياري)</span>
                 </div>
+                
+                {/* ── قسم الأكواد المتاحة الإبداعي ── */}
+                {discounts.length > 0 && (
+                  <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid var(--border)" }}>
+                    <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 6 }}>أكواد خصم متاحة حالياً:</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {discounts.map(d => (
+                        <div key={d.code} style={{ background: "var(--surface2)", padding: "4px 8px", borderRadius: 6, border: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)" }}>{d.code}</span>
+                          <button 
+                            onClick={() => { setDiscountInput(d.code); setDiscountState(s => ({ ...s, error: undefined })); }}
+                            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "var(--text3)" }}
+                          >
+                            <Copy size={11} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* ────────────────────────────────── */}
+
                 {discountState.applied ? (
                   <div style={s.discountApplied}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
