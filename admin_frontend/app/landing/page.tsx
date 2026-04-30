@@ -1,4 +1,4 @@
-import { Shell } from "@/components/shell";
+import Shell from "@/components/shell";
 import { Zap, BrainCircuit, Mail, ArrowRight, ShieldCheck, Clock } from "lucide-react";
 import Link from "next/link";
 
