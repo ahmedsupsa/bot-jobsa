@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import ExcelJS from "exceljs";
+import * as XLSX from "xlsx";
 import Shell from "@/components/shell";
 import {
   Send, Mail, User, FileText, MessageSquare, Reply, CheckCircle, XCircle,
@@ -260,6 +261,30 @@ function CampaignCreate({ onSent }: { onSent: () => void }) {
     link.click();
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const bstr = evt.target?.result as string;
+      const workbook = XLSX.read(bstr, { type: 'binary' });
+      const wsname = workbook.SheetNames[0];
+      const ws = workbook.Sheets[wsname];
+      const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+
+      // Assuming first row is header, data starts from second row
+      const formatted = data.slice(1).map(row => {
+        const name = row[0] || "";
+        const email = row[1] || "";
+        return name ? `${name} <${email}>` : email;
+      }).filter(Boolean).join("\n");
+
+      setRecipientsRaw(prev => prev + (prev ? "\n" : "") + formatted);
+    };
+    reader.readAsBinaryString(file);
+  };
+
   if (step === "done" && result) {
     return (
       <div className="rounded-2xl border border-line bg-panel p-8 text-center max-w-md">
@@ -340,12 +365,18 @@ function CampaignCreate({ onSent }: { onSent: () => void }) {
             <div>
               <h2 className="text-base font-bold text-ink mb-1">قائمة المستلمين</h2>
               <p className="text-xs text-muted">
-                أدخل إيميل واحد في كل سطر. يمكن إضافة الاسم بالصيغة: <span dir="ltr" className="font-mono bg-panel2 border border-line rounded px-1">Ahmed &lt;ahmed@example.com&gt;</span>
+                أدخل إيميل واحد في كل سطر.
               </p>
             </div>
-            <button onClick={downloadTemplate} className="text-xs font-bold text-accent bg-accent/10 px-3 py-1.5 rounded-lg hover:bg-accent/20 transition-all">
-              📥 تحميل قالب (CSV)
-            </button>
+            <div className="flex gap-2">
+              <button onClick={downloadTemplate} className="text-xs font-bold text-accent bg-accent/10 px-3 py-1.5 rounded-lg hover:bg-accent/20 transition-all">
+                📥 تحميل قالب (Excel)
+              </button>
+              <label className="text-xs font-bold text-accent bg-accent/10 px-3 py-1.5 rounded-lg hover:bg-accent/20 transition-all cursor-pointer">
+                📂 رفع ملف Excel
+                <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileUpload} />
+              </label>
+            </div>
           </div>
           <textarea
 
