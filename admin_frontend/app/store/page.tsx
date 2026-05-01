@@ -315,17 +315,18 @@ export default function StorePage() {
       const allowedHosts = [
         "api.tamara.co", "checkout.tamara.co",
         "api.moyasar.com", "checkout.moyasar.com",
-        "secure.moyasar.com",
+        "secure.moyasar.com", "payment.moyasar.com"
       ];
       try {
         const dest = new URL(j.url);
         if (dest.protocol === "https:" && allowedHosts.some(h => dest.hostname === h || dest.hostname.endsWith("." + h))) {
           window.location.href = j.url;
         } else {
-          throw new Error("رابط الدفع غير صالح");
+          console.error("Blocked URL host:", dest.hostname);
+          throw new Error("رابط الدفع غير صالح أو غير معتمد: " + dest.hostname);
         }
-      } catch {
-        throw new Error("رابط الدفع غير صالح");
+      } catch (e: any) {
+        throw new Error("رابط الدفع غير صالح: " + e.message);
       }
     } catch (e) {
       setFormErr(String(e).replace("Error: ", ""));
