@@ -16,48 +16,27 @@ export async function POST(req: Request) {
   try {
     const { product_id, name, email, phone, ref_code, discount_code, gateway = "tamara" } = await req.json();
 
-    // 1. Normalize phone FIRST
-    const cleanDigits = phone.trim().replace(/[^\d]/g, "");
-    let normalized = cleanDigits;
-    if (normalized.startsWith("05")) normalized = "966" + normalized.substring(1);
-    else if (normalized.startsWith("5")) normalized = "966" + normalized;
-    else if (normalized.startsWith("966")) normalized = normalized;
-    const phoneNormalized = "+" + normalized;
-
-    if (!product_id || !email?.trim() || !name?.trim() || !phoneNormalized) {
+    if (!product_id || !email?.trim() || !name?.trim() || !phone?.trim()) {
       return NextResponse.json(
         { ok: false, error: "الاسم والبريد الإلكتروني والجوال مطلوبة" },
         { status: 400 }
       );
     }
 
+    // 1. Normalize phone for validation and external APIs
+    const digits = phone.trim().replace(/[^\d]/g, "");
+    let normalized = digits;
+    if (digits.startsWith("05")) normalized = "966" + digits.substring(1);
+    else if (digits.startsWith("5")) normalized = "966" + digits;
+    else if (digits.startsWith("966")) normalized = digits;
+    const phoneNormalized = "+" + normalized;
+
+    // 2. Validation
     const emailCheck = validateEmail(email);
-    // ...
-    // ... use phoneNormalized in validation
+    if (!emailCheck.ok) return NextResponse.json({ ok: false, error: emailCheck.error }, { status: 400 });
+
     const phoneCheck = validatePhoneSA(phoneNormalized);
-    if (!phoneCheck.ok) {
-        return NextResponse.json({ ok: false, error: phoneCheck.error }, { status: 400 });
-    }
-
-
-    const emailCheck = validateEmail(email);
-    if (!emailCheck.ok) {
-      return NextResponse.json(
-        { ok: false, error: emailCheck.error },
-        { status: 400 }
-      );
-    }
-
-    const phoneCheck = validatePhoneSA(phone);
-    if (!phoneCheck.ok) {
-      const digits = phone.replace(/[^\d]/g, "");
-      if (!(digits.length === 10 && digits.startsWith("05"))) {
-        return NextResponse.json(
-          { ok: false, error: phoneCheck.error },
-          { status: 400 }
-        );
-      }
-    }
+    if (!phoneCheck.ok) return NextResponse.json({ ok: false, error: phoneCheck.error }, { status: 400 });
 
     const { data: product, error: pErr } = await supabase
       .from("store_products")
@@ -91,7 +70,6 @@ export async function POST(req: Request) {
     }
 
     const releaseOnFail = async () => { /* no-op */ };
-
     const initialStatus = gateway === "bank_transfer" ? "pending" : "awaiting_payment";
 
     const orderBase = {
@@ -113,12 +91,12 @@ export async function POST(req: Request) {
 
     let { data: order, error: orderErr } = await insertOrder({
       ...orderBase,
-      user_phone: phone?.trim() || null,
+      user_phone: phoneNormalized || null,
     });
 
     if (orderErr) {
       const msg = orderErr.message || "";
-      const stripped: Record<string, unknown> = { ...orderBase, user_phone: phone?.trim() || null };
+      const stripped: Record<string, unknown> = { ...orderBase, user_phone: phoneNormalized || null };
       if (/user_phone/i.test(msg)) delete stripped.user_phone;
       if (/discount_code_id/i.test(msg)) delete stripped.discount_code_id;
       if (/discount_code(?!_id)/i.test(msg)) delete stripped.discount_code;
@@ -142,14 +120,6 @@ export async function POST(req: Request) {
     }
 
     const orderId = order.id;
-
-    // Normalize phone for external APIs to E.164 (+966...)
-    const digits = phone.trim().replace(/[^\d]/g, "");
-    let normalized = digits;
-    if (digits.startsWith("05")) normalized = "966" + digits.substring(1);
-    else if (digits.startsWith("5")) normalized = "966" + digits;
-    else if (digits.startsWith("966")) normalized = digits;
-    const phoneNormalized = "+" + normalized;
 
     // ─── Tamara ───────────────────────────────────────────────────────────
     if (gateway === "tamara") {
