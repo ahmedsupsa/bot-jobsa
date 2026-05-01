@@ -16,12 +16,29 @@ export async function POST(req: Request) {
   try {
     const { product_id, name, email, phone, ref_code, discount_code, gateway = "tamara" } = await req.json();
 
-    if (!product_id || !email?.trim() || !name?.trim() || !phone?.trim()) {
+    // 1. Normalize phone FIRST
+    const cleanDigits = phone.trim().replace(/[^\d]/g, "");
+    let normalized = cleanDigits;
+    if (normalized.startsWith("05")) normalized = "966" + normalized.substring(1);
+    else if (normalized.startsWith("5")) normalized = "966" + normalized;
+    else if (normalized.startsWith("966")) normalized = normalized;
+    const phoneNormalized = "+" + normalized;
+
+    if (!product_id || !email?.trim() || !name?.trim() || !phoneNormalized) {
       return NextResponse.json(
         { ok: false, error: "الاسم والبريد الإلكتروني والجوال مطلوبة" },
         { status: 400 }
       );
     }
+
+    const emailCheck = validateEmail(email);
+    // ...
+    // ... use phoneNormalized in validation
+    const phoneCheck = validatePhoneSA(phoneNormalized);
+    if (!phoneCheck.ok) {
+        return NextResponse.json({ ok: false, error: phoneCheck.error }, { status: 400 });
+    }
+
 
     const emailCheck = validateEmail(email);
     if (!emailCheck.ok) {
