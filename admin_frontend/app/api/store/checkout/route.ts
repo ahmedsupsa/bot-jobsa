@@ -126,8 +126,13 @@ export async function POST(req: Request) {
 
     const orderId = order.id;
 
-    // Normalize phone for external APIs
-    const phoneNormalized = phone.trim().startsWith("05") ? "966" + phone.trim().substring(1) : (phone.trim().startsWith("5") ? "966" + phone.trim() : phone.trim());
+    // Normalize phone for external APIs to E.164 (+966...)
+    const digits = phone.trim().replace(/[^\d]/g, "");
+    let normalized = digits;
+    if (digits.startsWith("05")) normalized = "966" + digits.substring(1);
+    else if (digits.startsWith("5")) normalized = "966" + digits;
+    else if (digits.startsWith("966")) normalized = digits;
+    const phoneNormalized = "+" + normalized;
 
     // ─── Tamara ───────────────────────────────────────────────────────────
     if (gateway === "tamara") {
