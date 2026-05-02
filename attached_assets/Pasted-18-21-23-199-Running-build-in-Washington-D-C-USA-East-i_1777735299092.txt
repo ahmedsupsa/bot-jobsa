@@ -1,0 +1,36 @@
+18:21:23.199 Running build in Washington, D.C., USA (East) – iad1
+18:21:23.200 Build machine configuration: 2 cores, 8 GB
+18:21:23.324 Cloning github.com/ahmedsupsa/bot-jobsa (Branch: main, Commit: 58e5d25)
+18:21:24.078 Cloning completed: 754.000ms
+18:21:24.715 Restored build cache from previous deployment (8deTVoSRKSq8ytjTFob2xApH9qyn)
+18:21:24.930 Running "vercel build"
+18:21:25.674 Vercel CLI 51.6.1
+18:21:25.977 Running "install" command: `npm install`...
+18:21:28.655 npm error code ERESOLVE
+18:21:28.657 npm error ERESOLVE could not resolve
+18:21:28.657 npm error
+18:21:28.657 npm error While resolving: next-auth@4.24.14
+18:21:28.658 npm error Found: nodemailer@8.0.6
+18:21:28.658 npm error node_modules/nodemailer
+18:21:28.658 npm error   nodemailer@"^8.0.6" from the root project
+18:21:28.658 npm error
+18:21:28.658 npm error Could not resolve dependency:
+18:21:28.658 npm error peerOptional nodemailer@"^7.0.7" from next-auth@4.24.14
+18:21:28.659 npm error node_modules/next-auth
+18:21:28.659 npm error   next-auth@"^4.24.14" from the root project
+18:21:28.659 npm error
+18:21:28.659 npm error Conflicting peer dependency: nodemailer@7.0.13
+18:21:28.659 npm error node_modules/nodemailer
+18:21:28.659 npm error   peerOptional nodemailer@"^7.0.7" from next-auth@4.24.14
+18:21:28.659 npm error   node_modules/next-auth
+18:21:28.660 npm error     next-auth@"^4.24.14" from the root project
+18:21:28.660 npm error
+18:21:28.660 npm error Fix the upstream dependency conflict, or retry
+18:21:28.660 npm error this command with --force or --legacy-peer-deps
+18:21:28.660 npm error to accept an incorrect (and potentially broken) dependency resolution.
+18:21:28.660 npm error
+18:21:28.660 npm error
+18:21:28.661 npm error For a full report see:
+18:21:28.661 npm error /vercel/.npm/_logs/2026-05-02T15_21_26_176Z-eresolve-report.txt
+18:21:28.663 npm error A complete log of this run can be found in: /vercel/.npm/_logs/2026-05-02T15_21_26_176Z-debug-0.log
+18:21:28.704 Error: Command "npm install" exited with 1
