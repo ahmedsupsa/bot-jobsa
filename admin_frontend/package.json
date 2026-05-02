@@ -17,6 +17,7 @@
     "jose": "^6.2.2",
     "lucide-react": "^0.469.0",
     "next": "^14.2.25",
+    "next-auth": "^4.24.14",
     "nodemailer": "^8.0.6",
     "postgres": "^3.4.9",
     "react": "^18.3.1",
