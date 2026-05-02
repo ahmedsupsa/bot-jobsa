@@ -217,7 +217,7 @@ async def _ai_match_cv_job(
     try:
         async with httpx.AsyncClient(timeout=45) as client:
             r = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key={GEMINI_API_KEY}",
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
                 json={"contents": [{"parts": parts}]},
             )
             data = r.json()
@@ -305,7 +305,7 @@ async def _generate_cover_letter(
     try:
         async with httpx.AsyncClient(timeout=40) as client:
             r = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key={GEMINI_API_KEY}",
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
                 json={"contents": [{"parts": parts}]},
             )
             data = r.json()

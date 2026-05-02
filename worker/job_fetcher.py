@@ -124,7 +124,7 @@ async def _extract_job_with_gemini(text: str, link: str) -> dict | None:
     try:
         async with httpx.AsyncClient(timeout=20) as c:
             r = await c.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}",
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
                 json={"contents": [{"parts": [{"text": prompt}]}],
                       "generationConfig": {"temperature": 0.1}},
             )
