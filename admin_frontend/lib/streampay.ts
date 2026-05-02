@@ -1,17 +1,17 @@
 const BASE = "https://stream-app-service.streampay.sa";
 
-function getAuthHeader(): string {
+function getApiKeyHeader(): string {
   const key = process.env.STREAMPAY_API_KEY || "";
   const secret = process.env.STREAMPAY_API_SECRET || "";
-  const encoded = Buffer.from(`${key}:${secret}`).toString("base64");
-  return `Basic ${encoded}`;
+  // StreamPay expects: x-api-key = base64(key:secret)
+  return Buffer.from(`${key}:${secret}`).toString("base64");
 }
 
 async function sp(method: string, path: string, body?: unknown) {
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: {
-      Authorization: getAuthHeader(),
+      "x-api-key": getApiKeyHeader(),
       "Content-Type": "application/json",
       Accept: "application/json",
     },

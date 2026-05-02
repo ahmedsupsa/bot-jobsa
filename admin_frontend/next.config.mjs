@@ -8,6 +8,7 @@ const nextConfig = {
     "*.janeway.replit.dev",
     "*.picard.replit.dev",
     "*.kirk.replit.dev",
+    "*.pike.replit.dev",
   ],
   async headers() {
     return [
