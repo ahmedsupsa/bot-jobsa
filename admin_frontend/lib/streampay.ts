@@ -1,23 +1,34 @@
 const BASE = "https://stream-app-service.streampay.sa";
 
-function getHeader(): string {
+function getAuthHeader(): string {
   const key = process.env.STREAMPAY_API_KEY || "";
   const secret = process.env.STREAMPAY_API_SECRET || "";
   const encoded = Buffer.from(`${key}:${secret}`).toString("base64");
-  return encoded;
+  return `Basic ${encoded}`;
 }
 
 async function sp(method: string, path: string, body?: unknown) {
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: {
-      "x-api-key": getHeader(),
+      Authorization: getAuthHeader(),
       "Content-Type": "application/json",
+      Accept: "application/json",
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  const json = await res.json();
-  if (!res.ok) throw new Error(JSON.stringify(json));
+
+  let json: unknown;
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error(`StreamPay returned non-JSON (${res.status}): ${await res.text().catch(() => "")}`);
+  }
+
+  if (!res.ok) {
+    const msg = (json as any)?.message || (json as any)?.error || JSON.stringify(json);
+    throw new Error(`StreamPay ${res.status}: ${msg}`);
+  }
   return json;
 }
 
@@ -70,7 +81,7 @@ export async function createPaymentLink(opts: {
   failure_url: string;
   metadata?: Record<string, string>;
 }) {
-  return sp("POST", "/api/v2/payment_links", {
+  const res: any = await sp("POST", "/api/v2/payment_links", {
     name: opts.name,
     description: opts.description || opts.name,
     items: [{ product_id: opts.product_id, quantity: 1 }],
@@ -82,6 +93,19 @@ export async function createPaymentLink(opts: {
     failure_redirect_url: opts.failure_url,
     custom_metadata: opts.metadata || {},
   });
+
+  // Normalise URL from any known response shape
+  const raw = res?.data ?? res;
+  const url =
+    raw?.url ||
+    raw?.checkout_url ||
+    raw?.payment_url ||
+    raw?.short_url ||
+    raw?.link ||
+    null;
+  const id = raw?.id || res?.id || null;
+
+  return { ...res, _url: url, _id: id, url, id };
 }
 
 export async function createProduct(opts: {

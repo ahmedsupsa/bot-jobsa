@@ -201,8 +201,17 @@ export async function POST(req: Request) {
         },
       });
 
-      const paymentUrl = link?.url || link?.data?.url;
-      const linkId = link?.id || link?.data?.id;
+      // Extract URL and ID from any known response shape
+      const linkData = link?.data ?? link;
+      const paymentUrl =
+        link?.url || link?._url ||
+        linkData?.url || linkData?.checkout_url ||
+        linkData?.payment_url || linkData?.short_url || linkData?.link;
+      const linkId =
+        link?.id || link?._id || linkData?.id;
+
+      console.log("[StreamPay] createPaymentLink response keys:", Object.keys(link ?? {}));
+      console.log("[StreamPay] paymentUrl:", paymentUrl, "| linkId:", linkId);
 
       if (order?.id && linkId) {
         await supabase
@@ -211,7 +220,10 @@ export async function POST(req: Request) {
           .eq("id", order.id);
       }
 
-      if (!paymentUrl) throw new Error("لم يتم الحصول على رابط الدفع من StreamPay");
+      if (!paymentUrl) {
+        console.error("[StreamPay] Full response:", JSON.stringify(link));
+        throw new Error("لم يتم الحصول على رابط الدفع من StreamPay — تحقق من إعداد المنتج وصلاحيات API");
+      }
       return NextResponse.json({ ok: true, url: paymentUrl });
     }
 
