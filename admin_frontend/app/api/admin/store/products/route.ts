@@ -39,7 +39,8 @@ export async function POST(req: Request) {
       description: description || undefined,
       price: parseFloat(price),
     });
-    streampay_product_id = spProduct?.id || spProduct?.data?.id || null;
+    const spData = (spProduct?.data as Record<string, unknown>) ?? spProduct;
+    streampay_product_id = (spData?.id as string) || null;
   } catch (spErr) {
     console.error("StreamPay createProduct error:", spErr);
     streampay_error = String(spErr).slice(0, 200);

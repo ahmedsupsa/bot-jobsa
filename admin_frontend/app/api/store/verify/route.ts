@@ -184,18 +184,18 @@ export async function POST(req: Request) {
       if (payment_id) {
         try {
           const payment = await getPayment(payment_id);
+          const pd = (payment?.data as Record<string, unknown>) ?? payment;
           verified =
-            payment?.status === "paid" || payment?.status === "PAID" ||
-            payment?.data?.status === "paid";
+            pd?.status === "paid" || pd?.status === "PAID";
         } catch {}
       }
 
       if (!verified && invoice_id) {
         try {
           const invoice = await getInvoice(invoice_id);
+          const id2 = (invoice?.data as Record<string, unknown>) ?? invoice;
           verified =
-            invoice?.status === "paid" || invoice?.status === "PAID" ||
-            invoice?.data?.status === "paid";
+            id2?.status === "paid" || id2?.status === "PAID";
         } catch {}
       }
 

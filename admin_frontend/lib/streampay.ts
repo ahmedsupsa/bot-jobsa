@@ -7,7 +7,7 @@ function getApiKeyHeader(): string {
   return Buffer.from(`${key}:${secret}`).toString("base64");
 }
 
-async function sp(method: string, path: string, body?: unknown) {
+async function sp(method: string, path: string, body?: unknown): Promise<Record<string, unknown>> {
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: {
@@ -18,15 +18,15 @@ async function sp(method: string, path: string, body?: unknown) {
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  let json: unknown;
+  let json: Record<string, unknown>;
   try {
-    json = await res.json();
+    json = (await res.json()) as Record<string, unknown>;
   } catch {
     throw new Error(`StreamPay returned non-JSON (${res.status}): ${await res.text().catch(() => "")}`);
   }
 
   if (!res.ok) {
-    const msg = (json as any)?.message || (json as any)?.error || JSON.stringify(json);
+    const msg = (json?.message as string) || (json?.error as string) || JSON.stringify(json);
     throw new Error(`StreamPay ${res.status}: ${msg}`);
   }
   return json;
@@ -37,7 +37,7 @@ export async function findOrCreateConsumer(name: string, email: string, phone?: 
   // it only supports search_term. We search by email and then verify the match.
   try {
     const listRes = await sp("GET", `/api/v2/consumers?search_term=${encodeURIComponent(email)}&limit=50`);
-    const items: Record<string, unknown>[] = listRes?.data ?? [];
+    const items = (listRes?.data as Record<string, unknown>[]) ?? [];
     const match = items.find(
       (c) => c.email === email || c.external_id === email
     );
@@ -61,7 +61,7 @@ export async function findOrCreateConsumer(name: string, email: string, phone?: 
     // DUPLICATE_CONSUMER means the email/phone already exists — search again and return the existing record
     if (String(err).includes("DUPLICATE_CONSUMER")) {
       const retry = await sp("GET", `/api/v2/consumers?search_term=${encodeURIComponent(email)}&limit=50`);
-      const items: Record<string, unknown>[] = retry?.data ?? [];
+      const items = (retry?.data as Record<string, unknown>[]) ?? [];
       const match = items.find(
         (c) => c.email === email || c.external_id === email
       );
@@ -112,8 +112,8 @@ export async function createProduct(opts: {
   name: string;
   description?: string;
   price: number;
-}) {
-  return sp("POST", "/api/v2/products", {
+}): Promise<Record<string, unknown>> {
+  const res = await sp("POST", "/api/v2/products", {
     name: opts.name,
     description: opts.description?.slice(0, 500) || null,
     type: "ONE_OFF",
@@ -125,6 +125,7 @@ export async function createProduct(opts: {
       },
     ],
   });
+  return res as Record<string, unknown>;
 }
 
 export async function getPayment(payment_id: string) {

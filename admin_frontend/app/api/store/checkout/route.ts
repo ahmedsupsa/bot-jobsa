@@ -172,7 +172,8 @@ export async function POST(req: Request) {
         email.trim().toLowerCase(),
         phoneNormalized || undefined
       );
-      const consumerId = consumer?.id || consumer?.data?.id;
+      const consumerData = (consumer?.data as Record<string, unknown>) ?? consumer;
+      const consumerId = ((consumerData?.id as string) || "") as string;
 
       let streampayProductId = product.streampay_product_id as string;
       if (appliedDiscount && finalAmount < Number(product.price)) {
@@ -181,7 +182,8 @@ export async function POST(req: Request) {
           description: product.description || product.name,
           price: finalAmount,
         });
-        const adhocId = adhoc?.id || adhoc?.data?.id;
+        const adhocData = (adhoc?.data as Record<string, unknown>) ?? adhoc;
+        const adhocId = (adhocData?.id as string) || null;
         if (!adhocId) throw new Error("فشل إنشاء منتج الخصم في StreamPay");
         streampayProductId = adhocId;
       }
