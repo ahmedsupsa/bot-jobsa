@@ -47,9 +47,26 @@ function LoginForm() {
     finally { setLoading(false); }
   }
 
-  function handleGoogleLogin() {
+  async function handleGoogleLogin() {
     setGoogleLoading(true);
-    window.location.href = "/api/auth/signin/google?callbackUrl=/api/auth/google-complete";
+    try {
+      const res = await fetch("/api/auth/csrf");
+      const { csrfToken } = await res.json();
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = "/api/auth/signin/google";
+      const csrfInput = document.createElement("input");
+      csrfInput.type = "hidden"; csrfInput.name = "csrfToken"; csrfInput.value = csrfToken;
+      const callbackInput = document.createElement("input");
+      callbackInput.type = "hidden"; callbackInput.name = "callbackUrl"; callbackInput.value = "/api/auth/google-complete";
+      form.appendChild(csrfInput);
+      form.appendChild(callbackInput);
+      document.body.appendChild(form);
+      form.submit();
+    } catch {
+      setGoogleLoading(false);
+      setError("تعذّر فتح نافذة Google — حاول مجدداً");
+    }
   }
 
   return (
