@@ -27,7 +27,7 @@ export async function GET() {
   if ("error" in auth) return auth.error;
   const { data, error } = await supabase
     .from("admin_accounts")
-    .select("id,username,permissions,is_super,disabled,created_at")
+    .select("id,username,permissions,is_super,disabled,created_at,google_email")
     .order("created_at", { ascending: false });
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, admins: data || [] });

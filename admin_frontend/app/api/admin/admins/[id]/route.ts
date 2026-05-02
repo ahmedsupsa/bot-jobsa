@@ -38,6 +38,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (Array.isArray(body.permissions)) update.permissions = sanitizePerms(body.permissions);
   if (typeof body.is_super === "boolean") update.is_super = body.is_super;
   if (typeof body.disabled === "boolean") update.disabled = body.disabled;
+  if ("google_email" in body) {
+    const ge = typeof body.google_email === "string" ? body.google_email.trim().toLowerCase() : null;
+    update.google_email = ge || null;
+  }
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ ok: false, error: "لا يوجد تغييرات" }, { status: 400 });
@@ -47,7 +51,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     .from("admin_accounts")
     .update(update)
     .eq("id", params.id)
-    .select("id,username,permissions,is_super,disabled,created_at")
+    .select("id,username,permissions,is_super,disabled,created_at,google_email")
     .single();
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, admin: data });

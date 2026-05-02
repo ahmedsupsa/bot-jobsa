@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Shell from "@/components/shell";
-import { Loader2, Plus, Trash2, ShieldCheck, X, Save, Lock, User as UserIcon, KeyRound, Power } from "lucide-react";
+import { Loader2, Plus, Trash2, ShieldCheck, X, Save, Lock, User as UserIcon, KeyRound, Power, Mail } from "lucide-react";
 
 type Perm =
   | "users" | "codes" | "jobs" | "crm" | "notifications"
@@ -29,6 +29,7 @@ type Admin = {
   is_super: boolean;
   disabled: boolean;
   created_at: string;
+  google_email: string | null;
 };
 
 export default function AdminsPage() {
@@ -136,7 +137,14 @@ export default function AdminsPage() {
                         </div>
                         <div>
                           <div className="text-sm font-semibold text-ink" dir="ltr">{a.username}</div>
-                          <div className="text-[11px] text-muted2">{new Date(a.created_at).toLocaleDateString("ar-SA")}</div>
+                          {a.google_email ? (
+                            <div className="flex items-center gap-1 text-[11px] text-muted2 mt-0.5" dir="ltr">
+                              <Mail size={10} className="text-blue-400 shrink-0" />
+                              <span>{a.google_email}</span>
+                            </div>
+                          ) : (
+                            <div className="text-[11px] text-muted2">{new Date(a.created_at).toLocaleDateString("ar-SA")}</div>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -247,6 +255,7 @@ function CreateModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
 
 function EditModal({ admin, onClose, onSaved }: { admin: Admin; onClose: () => void; onSaved: () => void }) {
   const [password, setPassword] = useState("");
+  const [googleEmail, setGoogleEmail] = useState(admin.google_email || "");
   const [isSuper, setIsSuper] = useState(admin.is_super);
   const [perms, setPerms] = useState<Set<Perm>>(new Set(admin.permissions));
   const [saving, setSaving] = useState(false);
@@ -254,7 +263,7 @@ function EditModal({ admin, onClose, onSaved }: { admin: Admin; onClose: () => v
 
   async function save() {
     setErr(""); setSaving(true);
-    const body: any = { is_super: isSuper, permissions: Array.from(perms) };
+    const body: any = { is_super: isSuper, permissions: Array.from(perms), google_email: googleEmail.trim() || null };
     if (password) body.password = password;
     const r = await fetch(`/api/admin/admins/${admin.id}`, {
       method: "PATCH",
@@ -272,6 +281,17 @@ function EditModal({ admin, onClose, onSaved }: { admin: Admin; onClose: () => v
     <Modal title={`تعديل ${admin.username}`} onClose={onClose}>
       <Field label="كلمة مرور جديدة (اتركه فارغاً لإبقائها)" icon={<Lock size={14} />}>
         <input type="password" value={password} onChange={e => setPassword(e.target.value)} dir="ltr" placeholder="••••••••" className={inputCls} />
+      </Field>
+      <Field label="حساب Google للدخول (اختياري)" icon={<Mail size={14} />}>
+        <input
+          type="email"
+          value={googleEmail}
+          onChange={e => setGoogleEmail(e.target.value.toLowerCase())}
+          dir="ltr"
+          placeholder="example@gmail.com"
+          className={inputCls}
+        />
+        <div className="text-[11px] text-muted2 mt-1">إذا أضفت بريداً هنا، سيتمكن هذا الحساب من الدخول بزر Google بدون كلمة مرور.</div>
       </Field>
       <SuperToggle isSuper={isSuper} setIsSuper={setIsSuper} />
       {!isSuper && <PermsGrid perms={perms} setPerms={setPerms} />}
