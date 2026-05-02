@@ -1,0 +1,48 @@
+16:42:24.753 Running build in Washington, D.C., USA (East) – iad1
+16:42:24.754 Build machine configuration: 2 cores, 8 GB
+16:42:24.961 Cloning github.com/ahmedsupsa/bot-jobsa (Branch: main, Commit: 647c60d)
+16:42:26.122 Cloning completed: 1.160s
+16:42:26.322 Restored build cache from previous deployment (AutoVT84byQgWzSTso9Mncajnu6D)
+16:42:27.059 Running "vercel build"
+16:42:28.077 Vercel CLI 51.6.1
+16:42:28.393 Running "install" command: `npm install`...
+16:42:33.136 
+16:42:33.137 up to date, audited 242 packages in 5s
+16:42:33.137 
+16:42:33.137 32 packages are looking for funding
+16:42:33.138   run `npm fund` for details
+16:42:33.176 
+16:42:33.176 5 vulnerabilities (3 moderate, 2 high)
+16:42:33.176 
+16:42:33.177 To address all issues possible (including breaking changes), run:
+16:42:33.177   npm audit fix --force
+16:42:33.177 
+16:42:33.177 Some issues need review, and may require choosing
+16:42:33.178 a different dependency.
+16:42:33.178 
+16:42:33.178 Run `npm audit` for details.
+16:42:33.210 Detected Next.js version: 14.2.35
+16:42:33.210 Running "npm run build"
+16:42:33.315 
+16:42:33.316 > admin-frontend@1.0.0 build
+16:42:33.316 > next build
+16:42:33.316 
+16:42:33.957   ▲ Next.js 14.2.35
+16:42:33.958 
+16:42:33.982    Creating an optimized production build ...
+16:42:45.574  ✓ Compiled successfully
+16:42:45.575    Linting and checking validity of types ...
+16:42:58.165 Failed to compile.
+16:42:58.165 
+16:42:58.166 ./app/api/admin/store/products/route.ts:42:39
+16:42:58.166 Type error: Property 'id' does not exist on type '{}'.
+16:42:58.166 
+16:42:58.166 [0m [90m 40 |[39m       price[33m:[39m parseFloat(price)[33m,[39m[0m
+16:42:58.166 [0m [90m 41 |[39m     })[33m;[39m[0m
+16:42:58.167 [0m[31m[1m>[22m[39m[90m 42 |[39m     streampay_product_id [33m=[39m spProduct[33m?[39m[33m.[39mid [33m||[39m spProduct[33m?[39m[33m.[39mdata[33m?[39m[33m.[39mid [33m||[39m [36mnull[39m[33m;[39m[0m
+16:42:58.167 [0m [90m    |[39m                                       [31m[1m^[22m[39m[0m
+16:42:58.167 [0m [90m 43 |[39m   } [36mcatch[39m (spErr) {[0m
+16:42:58.167 [0m [90m 44 |[39m     console[33m.[39merror([32m"StreamPay createProduct error:"[39m[33m,[39m spErr)[33m;[39m[0m
+16:42:58.167 [0m [90m 45 |[39m     streampay_error [33m=[39m [33mString[39m(spErr)[33m.[39mslice([35m0[39m[33m,[39m [35m200[39m)[33m;[39m[0m
+16:42:58.199 Next.js build worker exited with code: 1 and signal: null
+16:42:58.230 Error: Command "npm run build" exited with 1
