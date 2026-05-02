@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, ArrowRight, Loader2, User } from "lucide-react";
 
@@ -14,7 +14,7 @@ function GoogleIcon() {
   );
 }
 
-export default function AdminLogin() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [username, setUsername] = useState("");
@@ -53,59 +53,66 @@ export default function AdminLogin() {
   }
 
   return (
+    <div style={s.formBox}>
+      <div style={s.formIcon}><Lock size={22} strokeWidth={1.5} color="#0a0a0a" /></div>
+      <h2 style={s.formTitle}>تسجيل الدخول</h2>
+      <p style={s.formSub}>أدخل بيانات الدخول الخاصة بك</p>
+
+      <button
+        style={s.googleBtn}
+        onClick={handleGoogleLogin}
+        disabled={googleLoading || loading}
+        type="button"
+      >
+        {googleLoading
+          ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
+          : <GoogleIcon />}
+        {googleLoading ? "جاري التوجيه…" : "الدخول بحساب Google"}
+      </button>
+
+      <div style={s.divider}>
+        <div style={s.dividerLine} />
+        <span style={s.dividerText}>أو بكلمة المرور</span>
+        <div style={s.dividerLine} />
+      </div>
+
+      <form onSubmit={handleSubmit}>
+        <label style={s.label}>اسم المستخدم <span style={{ color: "#666", fontWeight: 400 }}>(اختياري للمدير العام)</span></label>
+        <div style={s.inputWrap}>
+          <User size={16} strokeWidth={1.5} color="#555" style={s.inputIcon} />
+          <input
+            type="text" style={s.input} dir="ltr"
+            placeholder="username" value={username} autoComplete="username"
+            onChange={e => setUsername(e.target.value)}
+          />
+        </div>
+        <label style={{ ...s.label, marginTop: 14 }}>كلمة المرور</label>
+        <div style={s.inputWrap}>
+          <Lock size={16} strokeWidth={1.5} color="#555" style={s.inputIcon} />
+          <input
+            type="password" style={s.input} dir="ltr"
+            placeholder="••••••••" value={password} autoComplete="current-password"
+            onChange={e => setPassword(e.target.value)}
+          />
+        </div>
+        {error && <div style={s.error}>{error}</div>}
+        <button style={s.btn} type="submit" disabled={loading || googleLoading || !password}>
+          {loading ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> : null}
+          {loading ? "جاري التحقق…" : "دخول"}
+          {!loading && <ArrowRight size={16} strokeWidth={2} />}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+export default function AdminLogin() {
+  return (
     <div className="login-split">
       <div className="login-right">
-        <div style={s.formBox}>
-          <div style={s.formIcon}><Lock size={22} strokeWidth={1.5} color="#0a0a0a" /></div>
-          <h2 style={s.formTitle}>تسجيل الدخول</h2>
-          <p style={s.formSub}>أدخل بيانات الدخول الخاصة بك</p>
-
-          {/* Google Login Button */}
-          <button
-            style={s.googleBtn}
-            onClick={handleGoogleLogin}
-            disabled={googleLoading || loading}
-            type="button"
-          >
-            {googleLoading
-              ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
-              : <GoogleIcon />}
-            {googleLoading ? "جاري التوجيه…" : "الدخول بحساب Google"}
-          </button>
-
-          <div style={s.divider}>
-            <div style={s.dividerLine} />
-            <span style={s.dividerText}>أو بكلمة المرور</span>
-            <div style={s.dividerLine} />
-          </div>
-
-          <form onSubmit={handleSubmit}>
-            <label style={s.label}>اسم المستخدم <span style={{ color: "#666", fontWeight: 400 }}>(اختياري للمدير العام)</span></label>
-            <div style={s.inputWrap}>
-              <User size={16} strokeWidth={1.5} color="#555" style={s.inputIcon} />
-              <input
-                type="text" style={s.input} dir="ltr"
-                placeholder="username" value={username} autoComplete="username"
-                onChange={e => setUsername(e.target.value)}
-              />
-            </div>
-            <label style={{ ...s.label, marginTop: 14 }}>كلمة المرور</label>
-            <div style={s.inputWrap}>
-              <Lock size={16} strokeWidth={1.5} color="#555" style={s.inputIcon} />
-              <input
-                type="password" style={s.input} dir="ltr"
-                placeholder="••••••••" value={password} autoComplete="current-password"
-                onChange={e => setPassword(e.target.value)}
-              />
-            </div>
-            {error && <div style={s.error}>{error}</div>}
-            <button style={s.btn} type="submit" disabled={loading || googleLoading || !password}>
-              {loading ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> : null}
-              {loading ? "جاري التحقق…" : "دخول"}
-              {!loading && <ArrowRight size={16} strokeWidth={2} />}
-            </button>
-          </form>
-        </div>
+        <Suspense fallback={<div style={{ width: "100%", maxWidth: 400 }} />}>
+          <LoginForm />
+        </Suspense>
       </div>
     </div>
   );
@@ -127,9 +134,7 @@ const s: Record<string, React.CSSProperties> = {
     color: "#1a1a1a", transition: "background 0.2s, box-shadow 0.2s",
     boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
   },
-  divider: {
-    display: "flex", alignItems: "center", gap: 12, margin: "20px 0",
-  },
+  divider: { display: "flex", alignItems: "center", gap: 12, margin: "20px 0" },
   dividerLine: { flex: 1, height: 1, background: "var(--border)" },
   dividerText: { color: "var(--text3)", fontSize: 13, whiteSpace: "nowrap" as const },
   label: { display: "block", color: "var(--text2)", fontSize: 13, fontWeight: 500, marginBottom: 8 },

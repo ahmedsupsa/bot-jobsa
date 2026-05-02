@@ -1,0 +1,70 @@
+18:32:48.758 Running build in Washington, D.C., USA (East) – iad1
+18:32:48.759 Build machine configuration: 2 cores, 8 GB
+18:32:48.884 Cloning github.com/ahmedsupsa/bot-jobsa (Branch: main, Commit: 647b156)
+18:32:49.864 Cloning completed: 980.000ms
+18:32:50.030 Restored build cache from previous deployment (8deTVoSRKSq8ytjTFob2xApH9qyn)
+18:32:50.265 Running "vercel build"
+18:32:50.995 Vercel CLI 51.6.1
+18:32:51.472 Running "install" command: `npm install --legacy-peer-deps`...
+18:32:56.973 
+18:32:56.975 added 15 packages, and audited 257 packages in 5s
+18:32:56.975 
+18:32:56.975 36 packages are looking for funding
+18:32:56.976   run `npm fund` for details
+18:32:57.031 
+18:32:57.032 6 vulnerabilities (4 moderate, 2 high)
+18:32:57.032 
+18:32:57.033 To address all issues possible (including breaking changes), run:
+18:32:57.033   npm audit fix --force
+18:32:57.033 
+18:32:57.034 Some issues need review, and may require choosing
+18:32:57.034 a different dependency.
+18:32:57.034 
+18:32:57.034 Run `npm audit` for details.
+18:32:57.078 Detected Next.js version: 14.2.35
+18:32:57.079 Running "npm run build"
+18:32:57.194 
+18:32:57.195 > admin-frontend@1.0.0 build
+18:32:57.195 > next build
+18:32:57.195 
+18:32:57.951   ▲ Next.js 14.2.35
+18:32:57.952 
+18:32:57.984    Creating an optimized production build ...
+18:33:23.798  ✓ Compiled successfully
+18:33:23.800    Linting and checking validity of types ...
+18:33:37.537    Collecting page data ...
+18:33:39.946    Generating static pages (0/70) ...
+18:33:43.219    Generating static pages (17/70) 
+18:33:44.364    Generating static pages (34/70) 
+18:33:44.961  ⨯ useSearchParams() should be wrapped in a suspense boundary at page "/login". Read more: https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout
+18:33:44.961     at a (/vercel/path0/admin_frontend/.next/server/chunks/3979.js:1:12760)
+18:33:44.961     at s (/vercel/path0/admin_frontend/.next/server/chunks/3979.js:1:23652)
+18:33:44.961     at c (/vercel/path0/admin_frontend/.next/server/app/login/page.js:1:2555)
+18:33:44.962     at nj (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:46252)
+18:33:44.962     at nM (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:47572)
+18:33:44.963     at nL (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64547)
+18:33:44.963     at nI (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:47011)
+18:33:44.963     at nM (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:47718)
+18:33:44.963     at nM (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:61547)
+18:33:44.963     at nL (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64547)
+18:33:44.963     at nB (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:67539)
+18:33:44.964     at nD (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:66681)
+18:33:44.964     at nL (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64854)
+18:33:44.964     at nB (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:67539)
+18:33:44.964     at nD (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:66681)
+18:33:44.964     at nL (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64854)
+18:33:44.964     at nM (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:61157)
+18:33:44.964     at nL (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64547)
+18:33:44.965     at nI (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:47011)
+18:33:44.965     at nM (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:47718)
+18:33:44.965     at nL (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:64547)
+18:33:44.966     at nO (/vercel/path0/admin_frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:46707)
+18:33:44.966 
+18:33:44.966 Error occurred prerendering page "/login". Read more: https://nextjs.org/docs/messages/prerender-error
+18:33:44.966 
+18:33:46.171    Generating static pages (52/70) 
+18:33:46.928  ✓ Generating static pages (70/70)
+18:33:46.945 
+18:33:46.946 > Export encountered errors on following paths:
+18:33:46.946 	/login/page: /login
+18:33:47.003 Error: Command "npm run build" exited with 1
