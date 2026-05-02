@@ -22,7 +22,8 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async redirect({ baseUrl }) {
-      return baseUrl + "/api/auth/google-complete";
+      const base = baseUrl.replace(/\/$/, "");
+      return base + "/api/auth/google-complete";
     },
   },
   pages: {
