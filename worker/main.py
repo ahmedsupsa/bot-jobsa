@@ -703,22 +703,49 @@ async def _record_run(client: httpx.AsyncClient) -> None:
         logger.warning("تعذّر تسجيل وقت التشغيل: %s", e)
 
 
+JOB_FETCH_INTERVAL = int(os.getenv("JOB_FETCH_INTERVAL", str(6 * 3600)))  # 6 ساعات افتراضياً
+_last_job_fetch: float = 0.0
+
+
+async def _run_job_fetcher() -> None:
+    """يشغّل جالب الوظائف من تويتر."""
+    global _last_job_fetch
+    now = time.time()
+    if now - _last_job_fetch < JOB_FETCH_INTERVAL:
+        return
+    _last_job_fetch = now
+    try:
+        from job_fetcher import fetch_jobs_from_twitter
+        logger.info("🐦 بدء جلب الوظائف من تويتر...")
+        result = await fetch_jobs_from_twitter()
+        logger.info("🐦 اكتمل جلب الوظائف: %s", result)
+    except Exception as e:
+        logger.error("خطأ في جالب الوظائف: %s", e)
+
+
 async def main() -> None:
     # ─── الـ Worker الرئيسي هو Supabase Edge Function عبر pg_cron ───
     # هذا الـ worker موقوف — الإرسال يتم عبر Supabase Edge Function
     if os.getenv("DISABLE_PYTHON_WORKER", "true").lower() in ("true", "1", "yes"):
         logger.info("⏸️  Python worker موقوف — الـ Edge Function في Supabase هي المسؤولة عن الإرسال")
+        logger.info("🐦 جالب الوظائف من تويتر نشط — يعمل كل %d ساعة", JOB_FETCH_INTERVAL // 3600)
+        # نشغّل جالب الوظائف فوراً عند البدء
+        await _run_job_fetcher()
         while True:
-            await asyncio.sleep(3600)  # ينتظر بدون أي عمل
+            await asyncio.sleep(3600)
+            await _run_job_fetcher()
         return
 
     logger.info("🚀 Auto-Apply Worker بدأ (كل %d ثانية) — الإرسال عبر SMTP", CYCLE_INTERVAL)
+    await _run_job_fetcher()  # جلب أول عند البدء
     while True:
         start_ts = datetime.now(timezone.utc)
         try:
             await run_cycle()
         except Exception as e:
             logger.exception("خطأ غير متوقع في الدورة: %s", e)
+
+        await _run_job_fetcher()
 
         async with httpx.AsyncClient(timeout=10) as c:
             await _record_run(c)

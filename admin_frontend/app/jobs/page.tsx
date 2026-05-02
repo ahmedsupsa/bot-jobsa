@@ -3,7 +3,7 @@
 import Shell from "@/components/shell";
 import { API_BASE } from "@/lib/api";
 import { useEffect, useRef, useState } from "react";
-import { Plus, Trash2, Building2, Mail, BriefcaseBusiness, Sparkles, CheckCircle2, FileSpreadsheet, Download, Upload, Loader2 } from "lucide-react";
+import { Plus, Trash2, Building2, Mail, BriefcaseBusiness, Sparkles, CheckCircle2, FileSpreadsheet, Download, Upload, Loader2, Twitter } from "lucide-react";
 
 type Job = {
   id: string;
@@ -74,6 +74,32 @@ export default function JobsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ inserted: number; total: number } | null>(null);
+
+  const [fetching, setFetching] = useState(false);
+  const [fetchResult, setFetchResult] = useState<{ inserted: number; total: number; skipped: number } | null>(null);
+
+  const fetchFromTwitter = async () => {
+    setFetching(true);
+    setMsg("");
+    setFetchResult(null);
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/jobs/fetch`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "فشل الجلب");
+      setFetchResult({ inserted: j.inserted, total: j.total, skipped: j.skipped });
+      setMsg(j.inserted > 0 ? `تم جلب ${j.inserted} وظيفة جديدة من تويتر ✓` : "لا توجد وظائف جديدة — كل شيء محدّث");
+      setMsgType("ok");
+      await load();
+    } catch (e: any) {
+      setMsg(e?.message || String(e));
+      setMsgType("err");
+    } finally {
+      setFetching(false);
+    }
+  };
 
   const downloadTemplate = () => {
     window.location.href = `${API_BASE}/api/admin/jobs/template`;
@@ -166,8 +192,29 @@ export default function JobsPage() {
               ? <><Loader2 size={13} className="animate-spin" /> جاري الاستيراد...</>
               : <><Upload size={13} /> رفع ملف Excel</>}
           </button>
+          <button
+            onClick={fetchFromTwitter}
+            disabled={fetching}
+            className="flex items-center gap-1.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3.5 py-2 text-xs text-sky-400 font-semibold hover:bg-sky-500/20 transition-colors disabled:opacity-60"
+          >
+            {fetching
+              ? <><Loader2 size={13} className="animate-spin" /> جاري الجلب من تويتر...</>
+              : <><Twitter size={13} /> جلب من تويتر</>}
+          </button>
         </div>
       </div>
+
+      {fetchResult && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+          <Twitter size={16} className="text-sky-500 mt-0.5 shrink-0" />
+          <div>
+            <div className="font-semibold">جلب تويتر اكتمل</div>
+            <div className="text-xs mt-0.5 opacity-80">
+              {fetchResult.inserted} وظيفة جديدة · {fetchResult.skipped} مكررة تم تخطيها · فحص {fetchResult.total} تغريدة من 7 حسابات
+            </div>
+          </div>
+        </div>
+      )}
 
       {importResult && (
         <div className="mb-4 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
