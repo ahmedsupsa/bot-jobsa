@@ -76,9 +76,12 @@ export default function JobsPage() {
   const [importResult, setImportResult] = useState<{ inserted: number; total: number } | null>(null);
 
   const [fetching, setFetching] = useState(false);
-  const [fetchResult, setFetchResult] = useState<{ inserted: number; total: number; skipped: number } | null>(null);
+  const [fetchResult, setFetchResult] = useState<{ inserted: number; total: number; skipped: number; message?: string } | null>(null);
+  const [pasteText, setPasteText] = useState("");
+  const [showPaste, setShowPaste] = useState(false);
 
-  const fetchFromTwitter = async () => {
+  const fetchFromText = async () => {
+    if (!pasteText.trim()) return;
     setFetching(true);
     setMsg("");
     setFetchResult(null);
@@ -86,12 +89,15 @@ export default function JobsPage() {
       const r = await fetch(`${API_BASE}/api/admin/jobs/fetch`, {
         method: "POST",
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: pasteText }),
       });
       const j = await r.json();
-      if (!j.ok) throw new Error(j.error || "فشل الجلب");
-      setFetchResult({ inserted: j.inserted, total: j.total, skipped: j.skipped });
-      setMsg(j.inserted > 0 ? `تم جلب ${j.inserted} وظيفة جديدة من تويتر ✓` : "لا توجد وظائف جديدة — كل شيء محدّث");
-      setMsgType("ok");
+      if (!j.ok) throw new Error(j.error || "فشل الاستخراج");
+      setFetchResult({ inserted: j.inserted, total: j.total, skipped: j.skipped, message: j.message });
+      setMsg(j.inserted > 0 ? `تم استخراج ${j.inserted} وظيفة جديدة ✓` : (j.message || "لم يجد الذكاء الاصطناعي وظائف في النص"));
+      setMsgType(j.inserted > 0 ? "ok" : "err");
+      if (j.inserted > 0) { setPasteText(""); setShowPaste(false); }
       await load();
     } catch (e: any) {
       setMsg(e?.message || String(e));
@@ -193,24 +199,58 @@ export default function JobsPage() {
               : <><Upload size={13} /> رفع ملف Excel</>}
           </button>
           <button
-            onClick={fetchFromTwitter}
-            disabled={fetching}
-            className="flex items-center gap-1.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3.5 py-2 text-xs text-sky-400 font-semibold hover:bg-sky-500/20 transition-colors disabled:opacity-60"
+            onClick={() => setShowPaste(s => !s)}
+            className="flex items-center gap-1.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3.5 py-2 text-xs text-sky-400 font-semibold hover:bg-sky-500/20 transition-colors"
           >
-            {fetching
-              ? <><Loader2 size={13} className="animate-spin" /> جاري الجلب من تويتر...</>
-              : <><Twitter size={13} /> جلب من تويتر</>}
+            <Sparkles size={13} />
+            استخراج بالذكاء الاصطناعي
           </button>
         </div>
       </div>
 
+      {showPaste && (
+        <div className="mb-4 rounded-2xl border border-sky-500/30 bg-sky-500/5 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Sparkles size={15} className="text-sky-400" />
+            <span className="text-sm font-semibold text-ink">استخراج وظائف بالذكاء الاصطناعي</span>
+          </div>
+          <p className="text-xs text-muted">
+            انسخ التغريدات من أي حساب وظائف في تويتر والصقها هنا — الذكاء الاصطناعي يستخرج كل الوظائف تلقائياً
+          </p>
+          <textarea
+            value={pasteText}
+            onChange={e => setPasteText(e.target.value)}
+            rows={6}
+            placeholder={"الصق التغريدات هنا...\n\nمثال:\nمطلوب محاسب للعمل في شركة الأمل بالرياض\nالمتطلبات: بكالوريوس محاسبة\nالتواصل: careers@alamal.com\n\nتبحث شركة النور عن مهندس برمجيات..."}
+            className="w-full rounded-xl border border-line/70 bg-panel px-3 py-2.5 text-sm text-ink placeholder:text-muted2 focus:border-sky-500/50 focus:outline-none resize-none"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={fetchFromText}
+              disabled={fetching || !pasteText.trim()}
+              className="flex items-center gap-1.5 rounded-xl border border-sky-500/30 bg-sky-500/15 px-4 py-2 text-sm text-sky-400 font-semibold hover:bg-sky-500/25 transition-colors disabled:opacity-50"
+            >
+              {fetching
+                ? <><Loader2 size={14} className="animate-spin" /> يستخرج الوظائف...</>
+                : <><Sparkles size={14} /> استخرج الوظائف</>}
+            </button>
+            <button
+              onClick={() => { setShowPaste(false); setPasteText(""); }}
+              className="rounded-xl border border-line/70 px-4 py-2 text-sm text-muted hover:text-ink transition-colors"
+            >
+              إلغاء
+            </button>
+          </div>
+        </div>
+      )}
+
       {fetchResult && (
         <div className="mb-4 flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-          <Twitter size={16} className="text-sky-500 mt-0.5 shrink-0" />
+          <Sparkles size={16} className="text-sky-500 mt-0.5 shrink-0" />
           <div>
-            <div className="font-semibold">جلب تويتر اكتمل</div>
+            <div className="font-semibold">اكتمل الاستخراج</div>
             <div className="text-xs mt-0.5 opacity-80">
-              {fetchResult.inserted} وظيفة جديدة · {fetchResult.skipped} مكررة تم تخطيها · فحص {fetchResult.total} تغريدة من 7 حسابات
+              {fetchResult.inserted} وظيفة جديدة أُضيفت · {fetchResult.skipped} مكررة تم تخطيها · {fetchResult.total} وظيفة تعرّف عليها الذكاء الاصطناعي
             </div>
           </div>
         </div>
