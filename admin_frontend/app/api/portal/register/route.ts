@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { makeToken } from "@/lib/auth";
 import { randomUUID } from "crypto";
+import { tg } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -71,5 +72,6 @@ export async function POST(req: Request) {
     .eq("id", code_id);
 
   const token = await makeToken(String(user.id));
+  tg.newUser(full_name, phone, city).catch(() => {});
   return NextResponse.json({ status: "ok", token, user_id: String(user.id) });
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { enforcePermission } from "@/lib/admin-auth";
 import { makeToken } from "@/lib/auth";
+import { tg } from "@/lib/telegram";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "";
@@ -314,6 +315,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       if (result.email) {
         await sendActivationEmail(result.email, result.name, result.code, result.durationDays, result.isNew, result.newEndDate);
       }
+      tg.orderActivated(id, result.email || "—").catch(() => {});
       return NextResponse.json({ ok: true, activated: true, email_sent: !!result.email, is_new: result.isNew });
     } catch (activationErr) {
       console.error("Auto-activation error:", activationErr);

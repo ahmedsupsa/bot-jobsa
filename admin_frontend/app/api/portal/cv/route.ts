@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { extractToken, verifyToken } from "@/lib/auth";
+import { tg } from "@/lib/telegram";
 
 export async function GET(req: Request) {
   const token = extractToken(req);

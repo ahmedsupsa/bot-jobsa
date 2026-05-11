@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { enforcePermission } from "@/lib/admin-auth";
+import { tg } from "@/lib/telegram";
 
 export async function GET(req: Request) {
   const _denied_ = enforcePermission("store"); if (_denied_) return _denied_;
@@ -31,5 +32,6 @@ export async function POST(req: Request) {
     .select()
     .single();
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  tg.newOrder(user_name || "عميل", user_email || "", amount ? parseFloat(amount) : 0, "admin").catch(() => {});
   return NextResponse.json({ ok: true, order: data });
 }

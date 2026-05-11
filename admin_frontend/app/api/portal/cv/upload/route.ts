@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { extractToken, verifyToken } from "@/lib/auth";
+import { tg } from "@/lib/telegram";
 
 export const runtime = "nodejs";
 
@@ -72,5 +73,6 @@ export async function POST(req: Request) {
     }
   }
 
+  tg.cvUploaded(uid, uid, file.name).catch(() => {});
   return NextResponse.json({ status: "ok", file_name: file.name });
 }

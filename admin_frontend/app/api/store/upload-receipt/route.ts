@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { tg } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +76,7 @@ export async function POST(req: Request) {
       .update({ receipt_url: receiptUrl })
       .eq("id", order_id);
 
+    tg.bankReceipt(order_id, receiptUrl || "").catch(() => {});
     return NextResponse.json({ ok: true, receipt_url: receiptUrl });
   } catch (err) {
     console.error("upload-receipt error:", err);

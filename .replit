@@ -84,6 +84,8 @@ SUPABASE_SERVICE_ROLE_KEY = "sb_secret_eBb_KECcJTqIWfZtZ9vP_g_P_Wk_KJv"
 GOOGLE_CLIENT_ID = "1026097706203-iet4vb46l8lkcm3g400gbctg867rmr33.apps.googleusercontent.com"
 GOOGLE_CLIENT_SECRET = "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"
 RESEND_API_KEY = "re_FCqWuriA_J67Urkbm9FXneJw5Aja4qXdH"
+TELEGRAM_BOT_TOKEN = "8432645076:AAHhcjJtkvHmVHgOLcLdzWPL216YFSm_Edo"
+TELEGRAM_CHAT_ID = "7024525347"
 
 [postMerge]
 path = "scripts/post-merge.sh"

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { enforcePermission } from "@/lib/admin-auth";
+import { tg } from "@/lib/telegram";
 
 function generateCodes(count: number): string[] {
   const seen = new Set<string>();
@@ -47,6 +48,7 @@ export async function POST(req: Request) {
       created_at: new Date().toISOString(),
     });
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    tg.codesGenerated(1, days).catch(() => {});
     return NextResponse.json({ ok: true, codes: [code], count: 1 });
   }
 
@@ -55,5 +57,6 @@ export async function POST(req: Request) {
   const { error } = await supabase.from("activation_codes").insert(rows);
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
 
+  tg.codesGenerated(codes.length, days).catch(() => {});
   return NextResponse.json({ ok: true, codes, count: codes.length });
 }

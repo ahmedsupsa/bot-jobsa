@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { enforcePermission } from "@/lib/admin-auth";
+import { tg } from "@/lib/telegram";
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
@@ -67,6 +68,7 @@ export async function POST(req: Request) {
     console.error("jobs INSERT error:", error.message);
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
+  tg.jobAdded(titleAr, (body.company || "").trim(), email).catch(() => {});
   return NextResponse.json({ ok: true, id: data?.id, specializations });
 }
 
@@ -83,5 +85,6 @@ export async function DELETE(req: Request) {
       : error.message;
     return NextResponse.json({ ok: false, error: friendly }, { status: 500 });
   }
+  tg.jobDeleted(id).catch(() => {});
   return NextResponse.json({ ok: true });
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { extractToken, verifyToken } from "@/lib/auth";
+import { tg } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -75,5 +76,6 @@ export async function POST(req: Request) {
     .select(SELECT_COLS)
     .single();
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  tg.supportMessage(uid, uid, content).catch(() => {});
   return NextResponse.json({ ok: true, message: data });
 }

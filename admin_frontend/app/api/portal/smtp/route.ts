@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createCipheriv, randomBytes } from "crypto";
 import { extractToken, verifyToken } from "@/lib/auth";
+import { tg } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +126,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "فشل الحفظ: " + error.message }, { status: 500 });
     }
 
+    tg.smtpConnected(uid, smtp_email.trim().toLowerCase()).catch(() => {});
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     return NextResponse.json({ error: "خطأ غير متوقع: " + (err?.message || String(err)) }, { status: 500 });

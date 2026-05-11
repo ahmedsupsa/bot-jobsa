@@ -7,6 +7,7 @@ import {
   verifyPassword,
   type Permission,
 } from "@/lib/admin-auth";
+import { tg } from "@/lib/telegram";
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 const SUPER_ADMIN_USERNAME = (process.env.ADMIN_USERNAME || "admin").trim().toLowerCase();
@@ -47,6 +48,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "بيانات الدخول غير صحيحة" }, { status: 401 });
   }
 
+  const displayName = username || SUPER_ADMIN_USERNAME;
+  tg.adminLogin(displayName).catch(() => {});
   const response = NextResponse.json({ ok: true });
   response.cookies.set(SESSION_COOKIE_NAME, cookieValue, {
     httpOnly: true,

@@ -5,6 +5,7 @@ import { findOrCreateConsumer, createPaymentLink, createProduct as createStreamP
 import { validateDiscount, type Gateway } from "@/lib/discount";
 import { validateEmail } from "@/lib/email-validation";
 import { validatePhoneSA } from "@/lib/phone-validation";
+import { tg } from "@/lib/telegram";
 
 const rawSite = process.env.NEXT_PUBLIC_SITE_URL || process.env.ADMIN_DASHBOARD_URL || "https://www.jobbots.org";
 const SITE = rawSite
@@ -154,6 +155,7 @@ export async function POST(req: Request) {
       }
 
       if (!checkoutUrl) throw new Error("لم يتم الحصول على رابط الدفع من Tamara");
+      tg.newOrder(name.trim(), email.trim(), finalAmount, "tamara").catch(() => {});
       return NextResponse.json({ ok: true, url: checkoutUrl });
     }
 
@@ -226,6 +228,7 @@ export async function POST(req: Request) {
         console.error("[StreamPay] Full response:", JSON.stringify(link));
         throw new Error("لم يتم الحصول على رابط الدفع من StreamPay — تحقق من إعداد المنتج وصلاحيات API");
       }
+      tg.newOrder(name.trim(), email.trim(), finalAmount, "streampay").catch(() => {});
       return NextResponse.json({ ok: true, url: paymentUrl });
     }
 
@@ -256,6 +259,7 @@ export async function POST(req: Request) {
         .eq("is_active", true)
         .order("display_order", { ascending: true });
 
+      tg.newOrder(name.trim(), email.trim(), discountedAmount, "bank_transfer").catch(() => {});
       return NextResponse.json({
         ok: true,
         gateway: "bank_transfer",

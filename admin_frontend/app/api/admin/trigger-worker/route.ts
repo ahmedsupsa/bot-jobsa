@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
+import { tg } from "@/lib/telegram";
 
 export async function POST() {
   if (!requireAdminSession()) return unauthorizedResponse();
@@ -15,6 +16,7 @@ export async function POST() {
   }
 
   try {
+    tg.workerTriggered("admin").catch(() => {});
     const r = await fetch(workerUrl, {
       method: "POST",
       headers: {

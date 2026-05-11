@@ -4,6 +4,7 @@ import { getTamaraOrder, captureOrder } from "@/lib/tamara";
 import { getPayment, getInvoice } from "@/lib/streampay";
 import { makeToken } from "@/lib/auth";
 import { autoActivateOrder, sendActivationEmail } from "@/lib/order-activation";
+import { tg } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -299,6 +300,16 @@ export async function POST(req: Request) {
       } catch (e) {
         console.error("Affiliate commission error:", e);
       }
+    }
+
+    const notifyName = order.user_name || "عميل";
+    const notifyEmail = order.user_email || "";
+    const notifyAmount = Number(order.amount || 0);
+    const notifyGateway = tamaraOrderId ? "tamara" : "streampay";
+    if (accountResult?.account_created) {
+      tg.payment(notifyName, notifyEmail, notifyAmount, notifyGateway, durationDays).catch(() => {});
+    } else {
+      tg.renewal(notifyName, notifyEmail, notifyAmount, durationDays).catch(() => {});
     }
 
     return NextResponse.json({
