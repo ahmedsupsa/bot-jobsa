@@ -77,13 +77,13 @@ export async function POST(req: Request) {
     .single();
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
 
-  // جلب اسم المستخدم للإشعار
-  supabase.from("users").select("full_name").eq("id", uid).maybeSingle().then(({ data: u }) => {
-    const userName = u?.full_name || uid;
-    tg.supportMessage(uid, userName, content).catch(() => {});
-  }).catch(() => {
-    tg.supportMessage(uid, uid, content).catch(() => {});
-  });
+  // جلب اسم المستخدم للإشعار (non-blocking)
+  (async () => {
+    try {
+      const { data: u } = await supabase.from("users").select("full_name").eq("id", uid).maybeSingle();
+      await tg.supportMessage(uid, u?.full_name || uid, content);
+    } catch {}
+  })();
 
   return NextResponse.json({ ok: true, message: data });
 }

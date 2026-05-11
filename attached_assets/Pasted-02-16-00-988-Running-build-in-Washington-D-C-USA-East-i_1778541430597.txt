@@ -1,0 +1,48 @@
+02:16:00.988 Running build in Washington, D.C., USA (East) – iad1
+02:16:00.989 Build machine configuration: 2 cores, 8 GB
+02:16:01.117 Cloning github.com/ahmedsupsa/bot-jobsa (Branch: main, Commit: 9863604)
+02:16:01.751 Cloning completed: 634.000ms
+02:16:02.256 Restored build cache from previous deployment (6kaaTPEmijS9fHveuk5dXv1FotfZ)
+02:16:02.467 Running "vercel build"
+02:16:03.434 Vercel CLI 53.3.2
+02:16:03.812 Running "install" command: `npm install --legacy-peer-deps`...
+02:16:09.207 
+02:16:09.207 up to date, audited 257 packages in 5s
+02:16:09.208 
+02:16:09.208 36 packages are looking for funding
+02:16:09.208   run `npm fund` for details
+02:16:09.279 
+02:16:09.279 3 vulnerabilities (1 moderate, 2 high)
+02:16:09.280 
+02:16:09.280 To address all issues possible (including breaking changes), run:
+02:16:09.280   npm audit fix --force
+02:16:09.280 
+02:16:09.280 Some issues need review, and may require choosing
+02:16:09.280 a different dependency.
+02:16:09.280 
+02:16:09.280 Run `npm audit` for details.
+02:16:09.316 Detected Next.js version: 14.2.35
+02:16:09.317 Running "npm run build"
+02:16:09.426 
+02:16:09.426 > admin-frontend@1.0.0 build
+02:16:09.426 > next build
+02:16:09.426 
+02:16:10.115   ▲ Next.js 14.2.35
+02:16:10.116 
+02:16:10.144    Creating an optimized production build ...
+02:16:36.194  ✓ Compiled successfully
+02:16:36.195    Linting and checking validity of types ...
+02:16:49.765 Failed to compile.
+02:16:49.765 
+02:16:49.765 ./app/api/portal/support/route.ts:84:6
+02:16:49.765 Type error: Property 'catch' does not exist on type 'PromiseLike<void>'.
+02:16:49.765 
+02:16:49.766   82 |     const userName = u?.full_name || uid;
+02:16:49.766   83 |     tg.supportMessage(uid, userName, content).catch(() => {});
+02:16:49.766 > 84 |   }).catch(() => {
+02:16:49.766      |      ^
+02:16:49.766   85 |     tg.supportMessage(uid, uid, content).catch(() => {});
+02:16:49.766   86 |   });
+02:16:49.767   87 |
+02:16:49.806 Next.js build worker exited with code: 1 and signal: null
+02:16:49.838 Error: Command "npm run build" exited with 1
