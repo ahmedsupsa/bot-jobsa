@@ -47,7 +47,7 @@ export const viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
-      <head>
+      <head suppressHydrationWarning>
         {/* يُطبَّق الثيم فوراً قبل رسم الصفحة — يمنع الوميض */}
         <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':'light');}catch(e){}})();` }} />
         {/* Google Tag Manager */}
