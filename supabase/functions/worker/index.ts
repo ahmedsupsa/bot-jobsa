@@ -52,9 +52,16 @@ async function sbInsert(table: string, data: Record<string, unknown>) {
 async function decryptAES(encrypted: string, keyHex: string): Promise<string> {
   const parts = encrypted.split(":");
   if (parts.length !== 2) throw new Error("تنسيق التشفير غير صحيح");
-  const keyBytes = new Uint8Array(keyHex.match(/.{2}/g)!.map((b) => parseInt(b, 16)));
-  const iv       = Uint8Array.from(atob(parts[0]), (c) => c.charCodeAt(0));
-  const data     = Uint8Array.from(atob(parts[1]), (c) => c.charCodeAt(0));
+  const keyBytes  = new Uint8Array(keyHex.match(/.{2}/g)!.map((b) => parseInt(b, 16)));
+  const iv        = Uint8Array.from(atob(parts[0]), (c) => c.charCodeAt(0));
+  const rawData   = Uint8Array.from(atob(parts[1]), (c) => c.charCodeAt(0));
+
+  // Node.js يخزّن: [tag(16 بايت) + ciphertext]
+  // Web Crypto يتوقع: [ciphertext + tag(16 بايت)] — نعكس الترتيب
+  const tag        = rawData.slice(0, 16);
+  const ciphertext = rawData.slice(16);
+  const data       = new Uint8Array([...ciphertext, ...tag]);
+
   const cryptoKey = await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["decrypt"]);
   const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, cryptoKey, data);
   return new TextDecoder().decode(plain);
