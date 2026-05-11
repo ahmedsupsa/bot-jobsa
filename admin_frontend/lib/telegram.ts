@@ -49,6 +49,19 @@ export const tg = {
       `🕐 ${now()}`
     ),
 
+  // ── فشل الدفع ─────────────────────────────────────────────────────
+  paymentFailed: (name: string, email: string, phone: string, amount: number, gateway: string, orderId: string) =>
+    sendTelegram(
+      `❌ <b>فشل الدفع</b>\n` +
+      `العميل: ${name || "—"}\n` +
+      `البريد: ${email || "—"}\n` +
+      `الجوال: ${phone || "—"}\n` +
+      `المبلغ: ${amount} ر.س\n` +
+      `البوابة: ${gateway}\n` +
+      `رقم الطلب: ${orderId}\n` +
+      `🕐 ${now()}`
+    ),
+
   // ── تجديد اشتراك ──────────────────────────────────────────────────
   renewal: (name: string, email: string, amount: number, days: number) =>
     sendTelegram(
@@ -114,6 +127,45 @@ export const tg = {
       `🕐 ${now()}`
     ),
 
+  // ── نتائج Worker التفصيلية ────────────────────────────────────────
+  workerResult: (
+    applied: number,
+    users: number,
+    durationSec: number,
+    details: Array<{ user: string; job: string; status: string; reason?: string }>
+  ) => {
+    const successLines = details
+      .filter(d => d.status === "sent")
+      .map(d => `  ✅ ${d.user} → ${d.job}`);
+    const errorLines = details
+      .filter(d => d.status === "error")
+      .map(d => `  ⚠️ ${d.user} → ${d.job}: ${d.reason?.slice(0, 80) || "خطأ"}`);
+
+    let msg =
+      `🤖 <b>Worker اكتمل</b>\n` +
+      `التقديمات الناجحة: ${applied}\n` +
+      `المستفيدون: ${users} مستخدم\n` +
+      `المدة: ${durationSec} ثانية\n`;
+
+    if (successLines.length) {
+      msg += `\n<b>قُدِّم بنجاح:</b>\n` + successLines.slice(0, 15).join("\n");
+      if (successLines.length > 15) msg += `\n  ... و${successLines.length - 15} أخرى`;
+    }
+    if (errorLines.length) {
+      msg += `\n\n<b>أخطاء:</b>\n` + errorLines.slice(0, 5).join("\n");
+    }
+    msg += `\n🕐 ${now()}`;
+    return sendTelegram(msg);
+  },
+
+  // ── خطأ في Worker ─────────────────────────────────────────────────
+  workerError: (error: string) =>
+    sendTelegram(
+      `🚨 <b>Worker — خطأ فادح</b>\n` +
+      `الخطأ: ${error.slice(0, 300)}\n` +
+      `🕐 ${now()}`
+    ),
+
   // ── وظيفة أضافها الأدمن ───────────────────────────────────────────
   jobAdded: (title: string, company: string, email: string) =>
     sendTelegram(
@@ -162,9 +214,9 @@ export const tg = {
   // ── رسالة دعم من مستخدم ───────────────────────────────────────────
   supportMessage: (userId: string, name: string, msg: string) =>
     sendTelegram(
-      `💬 <b>رسالة دعم</b>\n` +
+      `💬 <b>رسالة دعم جديدة</b>\n` +
       `المستخدم: ${name || userId}\n` +
-      `الرسالة: ${msg.slice(0, 200)}\n` +
+      `الرسالة:\n${msg.slice(0, 300)}\n` +
       `🕐 ${now()}`
     ),
 

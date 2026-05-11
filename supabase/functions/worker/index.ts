@@ -9,6 +9,8 @@ const SUPABASE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const GEMINI_KEY    = Deno.env.get("GEMINI_API_KEY") ?? "";
 const WORKER_SECRET = Deno.env.get("WORKER_SECRET") ?? "";
 const ENC_KEY_HEX   = Deno.env.get("SMTP_ENCRYPTION_KEY") ?? "";
+const TG_BOT        = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
+const TG_CHAT       = Deno.env.get("TELEGRAM_CHAT_ID") ?? "";
 
 const SB = {
   apikey: SUPABASE_KEY,
@@ -361,6 +363,54 @@ async function runCycle() {
   return { applied, users: activeUsers, errors, details };
 }
 
+// ─── Telegram Notification ────────────────────────────────────────────────────
+
+async function tgSend(text: string) {
+  if (!TG_BOT || !TG_CHAT) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${TG_BOT}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: TG_CHAT, text, parse_mode: "HTML" }),
+    });
+  } catch { /* silent */ }
+}
+
+function nowAr(): string {
+  return new Date().toLocaleString("ar-SA", {
+    timeZone: "Asia/Riyadh", day: "2-digit", month: "2-digit",
+    hour: "2-digit", minute: "2-digit",
+  });
+}
+
+async function tgWorkerResult(
+  applied: number, users: number, durationSec: number,
+  details: Array<{ user: string; job: string; status: string; reason?: string }>
+) {
+  const successLines = details
+    .filter(d => d.status === "sent")
+    .map(d => `  ✅ ${d.user} ← ${d.job}`);
+  const errorLines = details
+    .filter(d => d.status === "error")
+    .map(d => `  ⚠️ ${d.user} → ${d.job}: ${(d.reason ?? "خطأ").slice(0, 80)}`);
+
+  if (applied === 0 && errorLines.length === 0) return; // لا شيء يستحق الإشعار
+
+  let msg =
+    `🤖 <b>Worker اكتمل</b>\n` +
+    `التقديمات: ${applied} | المستفيدون: ${users} | المدة: ${durationSec}ث\n`;
+
+  if (successLines.length) {
+    msg += `\n<b>قُدِّم بنجاح:</b>\n` + successLines.slice(0, 15).join("\n");
+    if (successLines.length > 15) msg += `\n  ... و${successLines.length - 15} أخرى`;
+  }
+  if (errorLines.length) {
+    msg += `\n\n<b>أخطاء في الإرسال:</b>\n` + errorLines.slice(0, 8).join("\n");
+  }
+  msg += `\n🕐 ${nowAr()}`;
+  await tgSend(msg);
+}
+
 async function logRun(data: {
   applied_count: number; active_users: number;
   errors: string[]; duration_ms: number; status: string;
@@ -390,6 +440,7 @@ Deno.serve(async (req: Request) => {
     const status = result.errors.length === 0 ? "success" : result.applied > 0 ? "partial" : "error";
     await logRun({ applied_count: result.applied, active_users: result.users, errors: result.errors, duration_ms, status });
     console.log("[worker] انتهت الدورة:", JSON.stringify({ applied: result.applied, users: result.users, errors: result.errors.length }));
+    await tgWorkerResult(result.applied, result.users, Math.round(duration_ms / 1000), result.details);
     return new Response(JSON.stringify({ ok: true, ...result, duration_ms }), {
       headers: { "Content-Type": "application/json" },
     });
@@ -397,6 +448,7 @@ Deno.serve(async (req: Request) => {
     const duration_ms = Date.now() - t0;
     await logRun({ applied_count: 0, active_users: 0, errors: [String(e)], duration_ms, status: "error" });
     console.error("[worker] خطأ:", e);
+    await tgSend(`🚨 <b>Worker — خطأ فادح</b>\nالخطأ: ${String(e).slice(0, 300)}\n🕐 ${nowAr()}`);
     return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500 });
   }
 });

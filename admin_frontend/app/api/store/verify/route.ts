@@ -179,6 +179,10 @@ export async function POST(req: Request) {
       // ── StreamPay verification ────────────────────────────────────────
       if (redirectStatus !== "paid" && !payment_id && !invoice_id) {
         await supabase.from("store_orders").update({ status: "failed" }).eq("id", order_id);
+        tg.paymentFailed(
+          order.user_name || "—", order.user_email || "—", order.user_phone || "—",
+          Number(order.amount), "StreamPay", String(order_id)
+        ).catch(() => {});
         return NextResponse.json({ ok: false, error: "الدفع لم يكتمل" });
       }
 
@@ -235,6 +239,11 @@ export async function POST(req: Request) {
 
     if (!verified) {
       await supabase.from("store_orders").update({ status: "failed" }).eq("id", order_id);
+      const gateway = tamaraOrderId ? "Tamara" : "StreamPay";
+      tg.paymentFailed(
+        order.user_name || "—", order.user_email || "—", order.user_phone || "—",
+        Number(order.amount), gateway, String(order_id)
+      ).catch(() => {});
       return NextResponse.json({ ok: false, error: "الدفع لم يكتمل أو لم يُؤكَّد" });
     }
 
