@@ -2,31 +2,20 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { enforcePermission } from "@/lib/admin-auth";
 import ExcelJS from "exceljs";
+import { geminiText } from "@/lib/gemini";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
-
 async function generateSpecializations(titleAr: string, descAr: string): Promise<string> {
-  if (!GEMINI_KEY || !titleAr) return titleAr || "";
+  if (!titleAr) return "";
   try {
     const prompt = `استخرج قائمة من 5-10 تخصصات ومسميات وظيفية مناسبة لهذه الوظيفة:
 العنوان: ${titleAr}
 الوصف: ${(descAr || "").slice(0, 500)}
 أرجع فقط الكلمات مفصولة بفاصلة، بدون شرح. مثال: تصميم جرافيك، تصميم بصري، فوتوشوب`;
-
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-      }
-    );
-    const data = await r.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    return text.trim() || titleAr;
+    const text = await geminiText(prompt);
+    return text || titleAr;
   } catch {
     return titleAr;
   }

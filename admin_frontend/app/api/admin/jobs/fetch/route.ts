@@ -3,7 +3,8 @@ import { enforcePermission } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
+import { geminiText } from "@/lib/gemini";
+
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_KEY = process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
@@ -14,7 +15,7 @@ function extractEmails(text: string): string[] {
 }
 
 async function extractJobsWithGemini(text: string): Promise<Record<string, string>[]> {
-  if (!GEMINI_KEY) return [];
+  if (!process.env.GEMINI_API_KEY) return [];
 
   const prompt = `أنت نظام استخراج وظائف محترف. النص التالي يحتوي على تغريدات من حسابات وظائف سعودية.
 
@@ -35,20 +36,7 @@ async function extractJobsWithGemini(text: string): Promise<Record<string, strin
 ${text.slice(0, 4000)}`;
 
   try {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.1 },
-        }),
-        signal: AbortSignal.timeout(30000),
-      }
-    );
-    const data = await r.json();
-    const raw: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const raw = await geminiText(prompt, { temperature: 0.1 });
     const match = raw.match(/\[[\s\S]*\]/);
     if (!match) return [];
     const jobs = JSON.parse(match[0]);

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { extractToken, verifyToken } from "@/lib/auth";
+import { geminiMultimodal } from "@/lib/gemini";
 
 export const runtime = "nodejs";
-const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
 export async function POST(req: Request) {
   const token = extractToken(req);
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   if (!payload) return NextResponse.json({ error: "غير مخوّل" }, { status: 401 });
   const uid = payload.user_id;
 
-  if (!GEMINI_KEY) return NextResponse.json({ error: "مفتاح Gemini غير مُعدّ" }, { status: 500 });
+  if (!process.env.GEMINI_API_KEY) return NextResponse.json({ error: "مفتاح Gemini غير مُعدّ" }, { status: 500 });
 
   // 1. Get user's CV
   const { data: cvRows } = await supabase
@@ -65,32 +65,14 @@ export async function POST(req: Request) {
 - المسميات يجب أن تكون واقعية ومناسبة للسوق السعودي
 - أرجع JSON فقط بدون أي نص إضافي`;
 
-  const body = {
-    contents: [
-      {
-        parts: [
-          { text: prompt },
-          { inline_data: { mime_type: mimeType, data: base64 } },
-        ],
-      },
-    ],
-    generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
-  };
-
-  const gemRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_KEY}`,
-    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
-  );
-
-  if (!gemRes.ok) {
-    const errText = await gemRes.text();
-    console.error("Gemini error:", errText);
-    return NextResponse.json({ error: `فشل تحليل السيرة: ${gemRes.status} — ${errText.slice(0, 200)}` }, { status: 500 });
+  let rawText = "";
+  try {
+    rawText = await geminiMultimodal(prompt, base64, mimeType, { temperature: 0.3, maxOutputTokens: 2048 });
+    console.log("Gemini raw:", rawText.slice(0, 300));
+  } catch (e: any) {
+    console.error("Gemini error:", e.message);
+    return NextResponse.json({ error: `فشل تحليل السيرة: ${e.message}` }, { status: 500 });
   }
-
-  const gemData = await gemRes.json();
-  const rawText = gemData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-  console.log("Gemini raw:", rawText.slice(0, 300));
 
   // Robust JSON extraction
   const jsonMatch = rawText.match(/\{[\s\S]*\}/);
