@@ -6,7 +6,7 @@ import {
   CheckCircle2, XCircle, AlertCircle, RefreshCw, Clock,
   Database, Bot, Mail, Cpu, Users, Briefcase, Send,
   ShoppingCart, MessageCircle, Bell, Key, Zap, Activity,
-  TrendingUp, AlertTriangle,
+  TrendingUp, AlertTriangle, Sparkles, BrainCircuit,
 } from "lucide-react";
 
 interface ServiceStatus { ok: boolean; latencyMs?: number; botName?: string; error?: string }
@@ -35,16 +35,26 @@ interface StatusData {
     last_duration_ms: number;
     last_errors: string[];
     history: Array<{
-      ran_at: string;
-      status: string;
-      applied_count: number;
-      active_users: number;
-      duration_ms: number;
-      errors: string[];
+      ran_at: string; status: string; applied_count: number;
+      active_users: number; duration_ms: number; errors: string[];
     }>;
   };
 }
 
+interface ModelResult {
+  id: string; label: string; priority: number;
+  ok: boolean; latencyMs?: number; status?: number; error?: string; quota?: boolean;
+}
+interface AiStatusData {
+  ok: boolean; key_set: boolean;
+  active_model: string | null; active_model_label: string | null; active_latency_ms: number | null;
+  models: ModelResult[];
+  features: Array<{ key: string; label: string; route: string }>;
+  features_ok: boolean;
+  checked_at: string;
+}
+
+/* ── Badges ───────────────────────────────────────────────────── */
 function StatusBadge({ ok, label, error }: { ok: boolean; label?: string; error?: string }) {
   if (ok) return (
     <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
@@ -74,6 +84,7 @@ function WorkerBadge({ status }: { status: string | null }) {
   );
 }
 
+/* ── Helpers ──────────────────────────────────────────────────── */
 function formatAgo(minutes: number | null): string {
   if (minutes === null) return "—";
   if (minutes < 1) return "منذ أقل من دقيقة";
@@ -92,6 +103,7 @@ function formatTime(iso: string | null): string {
   });
 }
 
+/* ── Cards ────────────────────────────────────────────────────── */
 function StatCard({ icon: Icon, label, value, sub, color = "blue", alert = false }: {
   icon: any; label: string; value: string | number; sub?: string; color?: string; alert?: boolean;
 }) {
@@ -135,32 +147,179 @@ function ServiceCard({ icon: Icon, label, status, extra }: { icon: any; label: s
   );
 }
 
+/* ── Gemini AI Panel ──────────────────────────────────────────── */
+function ModelRow({ m, isActive }: { m: ModelResult; isActive: boolean }) {
+  let badge: React.ReactNode;
+  if (m.ok) {
+    badge = (
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
+        <CheckCircle2 size={10} /> يعمل {m.latencyMs ? `(${m.latencyMs}ms)` : ""}
+      </span>
+    );
+  } else if (m.quota) {
+    badge = (
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
+        <AlertCircle size={10} /> تجاوز الحصة (429)
+      </span>
+    );
+  } else if (m.status === 404) {
+    badge = (
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-700 dark:text-gray-400 px-2 py-0.5 rounded-full">
+        <XCircle size={10} /> غير متاح
+      </span>
+    );
+  } else {
+    badge = (
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full" title={m.error}>
+        <XCircle size={10} /> خطأ
+      </span>
+    );
+  }
+
+  return (
+    <div className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isActive ? "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800" : "bg-gray-50 dark:bg-gray-700/40"}`}>
+      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${m.ok ? "bg-emerald-500" : m.quota ? "bg-amber-400" : "bg-gray-300 dark:bg-gray-600"}`} />
+      <div className="flex-1 min-w-0">
+        <span className="text-xs font-medium text-gray-800 dark:text-gray-100">{m.label}</span>
+        {isActive && <span className="mr-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">← نشط</span>}
+      </div>
+      {badge}
+    </div>
+  );
+}
+
+function AiPanel({ ai, loading }: { ai: AiStatusData | null; loading: boolean }) {
+  if (loading && !ai) {
+    return (
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 flex items-center justify-center gap-2 text-gray-400 text-sm">
+        <RefreshCw size={14} className="animate-spin" /> جاري فحص الذكاء الاصطناعي...
+      </div>
+    );
+  }
+  if (!ai) return null;
+
+  const FEATURES_AR: Record<string, string> = {
+    cv_parse:    "تحليل السيرة الذاتية",
+    cover_letter:"رسالة التغطية (Worker)",
+    job_spec:    "تخصصات الوظائف",
+    job_bulk:    "رفع وظائف Excel",
+    job_fetch:   "استيراد وظائف تلقائي",
+  };
+
+  return (
+    <div className={`rounded-xl border p-4 ${ai.ok ? "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" : "border-red-200 dark:border-red-800 bg-red-50/40 dark:bg-red-900/10"}`}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className={`p-2.5 rounded-xl ${ai.ok ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400" : "bg-red-100 dark:bg-red-900/30 text-red-500"}`}>
+            <BrainCircuit size={18} />
+          </div>
+          <div>
+            <div className="font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+              Gemini AI
+              {!ai.key_set && (
+                <span className="text-xs font-normal text-red-500 bg-red-50 dark:bg-red-900/30 px-1.5 py-0.5 rounded">
+                  المفتاح غير مضبوط
+                </span>
+              )}
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {ai.ok
+                ? `النموذج النشط: ${ai.active_model_label} • ${ai.active_latency_ms}ms`
+                : ai.key_set ? "جميع النماذج معطّلة حالياً" : "GEMINI_API_KEY غير موجود"}
+            </div>
+          </div>
+        </div>
+        <StatusBadge ok={ai.ok} label={ai.ok ? "يعمل" : "معطّل"} />
+      </div>
+
+      {/* Alert if all broken */}
+      {!ai.ok && ai.key_set && (
+        <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2.5 text-xs text-red-700 dark:text-red-400 flex items-start gap-2">
+          <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+          <span>
+            الذكاء الاصطناعي <strong>لا يعمل</strong> — المزايا التالية ستفشل:
+            رسائل التغطية، تحليل السيرة الذاتية، تخصصات الوظائف.
+            تحقق من رصيد Gemini أو تجاوز الحصة (429).
+          </span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Models */}
+        <div>
+          <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1.5">
+            <Sparkles size={11} /> النماذج المتاحة (fallback chain)
+          </div>
+          <div className="space-y-1.5">
+            {ai.models.map(m => (
+              <ModelRow key={m.id} m={m} isActive={m.id === ai.active_model} />
+            ))}
+          </div>
+        </div>
+
+        {/* Features */}
+        <div>
+          <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1.5">
+            <Zap size={11} /> المزايا التي تعتمد على الذكاء الاصطناعي
+          </div>
+          <div className="space-y-1.5">
+            {ai.features.map(f => (
+              <div key={f.key} className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700/40 text-xs">
+                <span className="text-gray-700 dark:text-gray-200">{FEATURES_AR[f.key] || f.label}</span>
+                <StatusBadge ok={ai.features_ok} label={ai.features_ok ? "جاهزة" : "معطّلة"} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 text-xs text-gray-400 dark:text-gray-500 text-left" dir="ltr">
+        Last checked: {ai.checked_at ? new Date(ai.checked_at).toLocaleTimeString("ar-SA") : "—"}
+      </div>
+    </div>
+  );
+}
+
+/* ── Main Page ────────────────────────────────────────────────── */
 export default function StatusPage() {
   const [data, setData] = useState<StatusData | null>(null);
+  const [ai, setAi] = useState<AiStatusData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [aiLoading, setAiLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const loadMain = useCallback(async () => {
     try {
       const r = await fetch("/api/admin/system-status", { credentials: "include", cache: "no-store" });
-      if (r.ok) {
-        const d = await r.json();
-        setData(d);
-        setLastRefresh(new Date());
-      }
+      if (r.ok) { setData(await r.json()); setLastRefresh(new Date()); }
     } catch {}
-    setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  const loadAi = useCallback(async () => {
+    setAiLoading(true);
+    try {
+      const r = await fetch("/api/admin/ai-status", { credentials: "include", cache: "no-store" });
+      if (r.ok) setAi(await r.json());
+    } catch {}
+    setAiLoading(false);
+  }, []);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    await Promise.all([loadMain(), loadAi()]);
+    setLoading(false);
+  }, [loadMain, loadAi]);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
 
   useEffect(() => {
     if (!autoRefresh) return;
-    const t = setInterval(() => load(), 30000);
-    return () => clearInterval(t);
-  }, [autoRefresh, load]);
+    const t = setInterval(() => { loadMain(); }, 30000);
+    const t2 = setInterval(() => { loadAi(); }, 60000);
+    return () => { clearInterval(t); clearInterval(t2); };
+  }, [autoRefresh, loadMain, loadAi]);
 
   const workerHealthy = data?.worker.last_minutes_ago !== null && (data?.worker.last_minutes_ago ?? 999) < 90;
   const workerOverdue = data?.worker.last_minutes_ago !== null && (data?.worker.last_minutes_ago ?? 0) >= 90;
@@ -187,7 +346,7 @@ export default function StatusPage() {
               {autoRefresh ? "تجديد تلقائي: شغّال" : "تجديد تلقائي: إيقاف"}
             </button>
             <button
-              onClick={load}
+              onClick={loadAll}
               disabled={loading}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors disabled:opacity-50"
             >
@@ -203,197 +362,208 @@ export default function StatusPage() {
           </div>
         )}
 
-        {data && (
+        {(data || ai) && (
           <div className="space-y-6">
 
             {/* Services */}
+            {data && (
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                  <Zap size={14} /> الخدمات الخارجية
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <ServiceCard icon={Database} label="Supabase" status={data.services.supabase} />
+                  <ServiceCard icon={Bot} label="بوت التيليجرام" status={data.services.telegram} />
+                  <ServiceCard icon={Mail} label="Resend (إيميلات)" status={data.services.resend} />
+                  <ServiceCard icon={Cpu} label="Gemini AI" status={data.services.gemini} />
+                </div>
+              </div>
+            )}
+
+            {/* ── Gemini AI Deep Status ── */}
             <div>
               <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                <Zap size={14} /> الخدمات الخارجية
+                <BrainCircuit size={14} /> الذكاء الاصطناعي — تفاصيل كاملة
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <ServiceCard icon={Database} label="Supabase" status={data.services.supabase} />
-                <ServiceCard icon={Bot} label="بوت التيليجرام" status={data.services.telegram} />
-                <ServiceCard icon={Mail} label="Resend (إيميلات)" status={data.services.resend} />
-                <ServiceCard icon={Cpu} label="Gemini AI" status={data.services.gemini} />
-              </div>
+              <AiPanel ai={ai} loading={aiLoading} />
             </div>
 
             {/* Worker Status */}
-            <div>
-              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                <Bot size={14} /> Worker التقديم التلقائي
-              </h2>
-              <div className={`rounded-xl border p-4 ${workerOverdue ? "border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"}`}>
-                <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${workerHealthy ? "bg-emerald-100 dark:bg-emerald-900/30" : workerOverdue ? "bg-red-100 dark:bg-red-900/30" : "bg-gray-100 dark:bg-gray-700"}`}>
-                      <Bot size={18} className={workerHealthy ? "text-emerald-600" : workerOverdue ? "text-red-500" : "text-gray-400"} />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-gray-800 dark:text-gray-100">
-                        آخر تشغيل: {formatAgo(data.worker.last_minutes_ago)}
+            {data && (
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                  <Bot size={14} /> Worker التقديم التلقائي
+                </h2>
+                <div className={`rounded-xl border p-4 ${workerOverdue ? "border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"}`}>
+                  <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${workerHealthy ? "bg-emerald-100 dark:bg-emerald-900/30" : workerOverdue ? "bg-red-100 dark:bg-red-900/30" : "bg-gray-100 dark:bg-gray-700"}`}>
+                        <Bot size={18} className={workerHealthy ? "text-emerald-600" : workerOverdue ? "text-red-500" : "text-gray-400"} />
                       </div>
-                      <div className="text-xs text-gray-500">{formatTime(data.worker.last_ran_at)}</div>
+                      <div>
+                        <div className="font-semibold text-gray-800 dark:text-gray-100">
+                          آخر تشغيل: {formatAgo(data.worker.last_minutes_ago)}
+                        </div>
+                        <div className="text-xs text-gray-500">{formatTime(data.worker.last_ran_at)}</div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <WorkerBadge status={data.worker.last_status} />
-                    {workerOverdue && (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
-                        <AlertTriangle size={11} /> متأخر
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
-                    <div className="text-lg font-bold text-gray-900 dark:text-white">{data.worker.last_applied}</div>
-                    <div className="text-xs text-gray-500">تقديمات آخر دورة</div>
-                  </div>
-                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
-                    <div className="text-lg font-bold text-gray-900 dark:text-white">{data.worker.last_users}</div>
-                    <div className="text-xs text-gray-500">مستخدمون مستفيدون</div>
-                  </div>
-                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
-                    <div className="text-lg font-bold text-gray-900 dark:text-white">{Math.round((data.worker.last_duration_ms || 0) / 1000)}ث</div>
-                    <div className="text-xs text-gray-500">مدة الدورة</div>
-                  </div>
-                </div>
-
-                {data.worker.last_errors.length > 0 && (
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-3">
-                    <div className="text-xs font-semibold text-red-700 dark:text-red-400 mb-1.5 flex items-center gap-1">
-                      <AlertTriangle size={12} /> أخطاء آخر دورة ({data.worker.last_errors.length})
-                    </div>
-                    <div className="space-y-1">
-                      {data.worker.last_errors.slice(0, 5).map((e, i) => (
-                        <div key={i} className="text-xs text-red-600 dark:text-red-400 font-mono bg-red-100/50 dark:bg-red-900/20 px-2 py-1 rounded break-all">{e}</div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Worker history */}
-                <div>
-                  <div className="text-xs font-medium text-gray-500 mb-2">آخر 5 دورات</div>
-                  <div className="space-y-1.5">
-                    {data.worker.history.map((h, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs">
-                        <span className="text-gray-400 w-32 shrink-0">{formatTime(h.ran_at)}</span>
-                        <WorkerBadge status={h.status} />
-                        <span className="text-gray-600 dark:text-gray-300">
-                          {h.applied_count} تقديم • {h.active_users} مستخدم
+                    <div className="flex items-center gap-2">
+                      <WorkerBadge status={data.worker.last_status} />
+                      {workerOverdue && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
+                          <AlertTriangle size={11} /> متأخر
                         </span>
-                        {h.errors.length > 0 && (
-                          <span className="text-red-500">• {h.errors.length} خطأ</span>
-                        )}
-                        <span className="text-gray-400 mr-auto">{Math.round((h.duration_ms || 0) / 1000)}ث</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
+                      <div className="text-lg font-bold text-gray-900 dark:text-white">{data.worker.last_applied}</div>
+                      <div className="text-xs text-gray-500">تقديمات آخر دورة</div>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
+                      <div className="text-lg font-bold text-gray-900 dark:text-white">{data.worker.last_users}</div>
+                      <div className="text-xs text-gray-500">مستخدمون مستفيدون</div>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
+                      <div className="text-lg font-bold text-gray-900 dark:text-white">{Math.round((data.worker.last_duration_ms || 0) / 1000)}ث</div>
+                      <div className="text-xs text-gray-500">مدة الدورة</div>
+                    </div>
+                  </div>
+
+                  {data.worker.last_errors.length > 0 && (
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-3">
+                      <div className="text-xs font-semibold text-red-700 dark:text-red-400 mb-1.5 flex items-center gap-1">
+                        <AlertTriangle size={12} /> أخطاء آخر دورة ({data.worker.last_errors.length})
                       </div>
-                    ))}
-                    {data.worker.history.length === 0 && (
-                      <div className="text-xs text-gray-400">لا يوجد سجل تشغيل بعد</div>
-                    )}
+                      <div className="space-y-1">
+                        {data.worker.last_errors.slice(0, 5).map((e, i) => (
+                          <div key={i} className="text-xs text-red-600 dark:text-red-400 font-mono bg-red-100/50 dark:bg-red-900/20 px-2 py-1 rounded break-all">{e}</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="text-xs font-medium text-gray-500 mb-2">آخر 5 دورات</div>
+                    <div className="space-y-1.5">
+                      {data.worker.history.map((h, i) => (
+                        <div key={i} className="flex items-center gap-2 text-xs">
+                          <span className="text-gray-400 w-32 shrink-0">{formatTime(h.ran_at)}</span>
+                          <WorkerBadge status={h.status} />
+                          <span className="text-gray-600 dark:text-gray-300">
+                            {h.applied_count} تقديم • {h.active_users} مستخدم
+                          </span>
+                          {h.errors.length > 0 && <span className="text-red-500">• {h.errors.length} خطأ</span>}
+                          <span className="text-gray-400 mr-auto">{Math.round((h.duration_ms || 0) / 1000)}ث</span>
+                        </div>
+                      ))}
+                      {data.worker.history.length === 0 && (
+                        <div className="text-xs text-gray-400">لا يوجد سجل تشغيل بعد</div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Stats Grid */}
-            <div>
-              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                <TrendingUp size={14} /> إحصائيات عامة
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                <StatCard icon={Users} label="إجمالي المستخدمين" value={data.users.total} color="blue" />
-                <StatCard icon={Users} label="مستخدمون نشطون" value={data.users.active} color="emerald" />
-                <StatCard icon={Users} label="لديهم CV" value={data.users.with_cv} color="purple" />
-                <StatCard icon={Mail} label="ربطوا SMTP" value={data.users.with_smtp}
-                  color={data.users.with_smtp === 0 ? "red" : "emerald"}
-                  alert={data.users.with_smtp === 0} />
-                <StatCard icon={Briefcase} label="وظائف نشطة" value={data.jobs.active} sub={`من ${data.jobs.total} إجمالي`} color="blue" />
-                <StatCard icon={Key} label="أكواد متاحة" value={data.codes.available} sub={`${data.codes.used} مُستخدم`} color={data.codes.available < 5 ? "red" : "gray"} alert={data.codes.available < 5} />
+            {data && (
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                  <TrendingUp size={14} /> إحصائيات عامة
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  <StatCard icon={Users} label="إجمالي المستخدمين" value={data.users.total} color="blue" />
+                  <StatCard icon={Users} label="مستخدمون نشطون" value={data.users.active} color="emerald" />
+                  <StatCard icon={Users} label="لديهم CV" value={data.users.with_cv} color="purple" />
+                  <StatCard icon={Mail} label="ربطوا SMTP" value={data.users.with_smtp}
+                    color={data.users.with_smtp === 0 ? "red" : "emerald"}
+                    alert={data.users.with_smtp === 0} />
+                  <StatCard icon={Briefcase} label="وظائف نشطة" value={data.jobs.active} sub={`من ${data.jobs.total} إجمالي`} color="blue" />
+                  <StatCard icon={Key} label="أكواد متاحة" value={data.codes.available} sub={`${data.codes.used} مُستخدم`} color={data.codes.available < 5 ? "red" : "gray"} alert={data.codes.available < 5} />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Applications */}
-            <div>
-              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                <Send size={14} /> التقديمات
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <StatCard icon={Send} label="اليوم" value={data.applications.today} color="emerald" />
-                <StatCard icon={Send} label="هذا الأسبوع" value={data.applications.week} color="blue" />
-                <StatCard icon={Send} label="الإجمالي" value={data.applications.total} color="purple" />
-                <StatCard icon={Clock} label="آخر تقديم" value={formatAgo(data.applications.last_minutes_ago)} color="gray" />
+            {data && (
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                  <Send size={14} /> التقديمات
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <StatCard icon={Send} label="اليوم" value={data.applications.today} color="emerald" />
+                  <StatCard icon={Send} label="هذا الأسبوع" value={data.applications.week} color="blue" />
+                  <StatCard icon={Send} label="الإجمالي" value={data.applications.total} color="purple" />
+                  <StatCard icon={Clock} label="آخر تقديم" value={formatAgo(data.applications.last_minutes_ago)} color="gray" />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Orders + Support + Push */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-              {/* Orders */}
-              <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-                <div className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
-                  <ShoppingCart size={14} /> الطلبات
-                </div>
-                <div className="space-y-2">
-                  {[
-                    { label: "مدفوعة", value: data.orders.paid, color: "text-emerald-600 dark:text-emerald-400" },
-                    { label: "بانتظار التأكيد", value: data.orders.pending, color: data.orders.pending > 0 ? "text-amber-600 dark:text-amber-400 font-bold" : "text-gray-600 dark:text-gray-300" },
-                    { label: "فاشلة", value: data.orders.failed, color: "text-red-500 dark:text-red-400" },
-                    { label: "الإجمالي", value: data.orders.total, color: "text-gray-700 dark:text-gray-200" },
-                  ].map(row => (
-                    <div key={row.label} className="flex justify-between items-center text-sm">
-                      <span className="text-gray-500 dark:text-gray-400">{row.label}</span>
-                      <span className={row.color}>{row.value}</span>
-                    </div>
-                  ))}
-                </div>
-                {data.orders.pending > 0 && (
-                  <div className="mt-3 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-2 py-1.5 flex items-center gap-1">
-                    <AlertTriangle size={11} /> {data.orders.pending} طلب بانتظار تأكيد يدوي
+            {data && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+                  <div className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
+                    <ShoppingCart size={14} /> الطلبات
                   </div>
-                )}
-              </div>
-
-              {/* Support */}
-              <div className={`rounded-xl border p-4 ${data.support.unread > 0 ? "border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-900/10" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"}`}>
-                <div className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
-                  <MessageCircle size={14} /> الدعم الفني
-                </div>
-                <div className="text-4xl font-bold mb-1" style={{ color: data.support.unread > 0 ? "#f97316" : undefined }}>
-                  {data.support.unread}
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">رسائل غير مقروءة</div>
-                {data.support.unread > 0 && (
-                  <a href="/support-admin" className="mt-3 text-xs text-orange-600 dark:text-orange-400 underline block">
-                    فتح الدعم الفني ←
-                  </a>
-                )}
-              </div>
-
-              {/* Push + Users breakdown */}
-              <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-                <div className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
-                  <Bell size={14} /> تفاصيل المستخدمين
-                </div>
-                <div className="space-y-2">
-                  {[
-                    { label: "لديهم تفضيلات وظيفية", value: data.users.with_prefs },
-                    { label: "ربطوا SMTP (جاهزون)", value: data.users.with_smtp },
-                    { label: "رفعوا CV", value: data.users.with_cv },
-                    { label: "مشتركو Push", value: data.push.subscriptions },
-                  ].map(row => (
-                    <div key={row.label} className="flex justify-between items-center text-sm">
-                      <span className="text-gray-500 dark:text-gray-400">{row.label}</span>
-                      <span className="font-medium text-gray-700 dark:text-gray-200">{row.value}</span>
+                  <div className="space-y-2">
+                    {[
+                      { label: "مدفوعة", value: data.orders.paid, color: "text-emerald-600 dark:text-emerald-400" },
+                      { label: "بانتظار التأكيد", value: data.orders.pending, color: data.orders.pending > 0 ? "text-amber-600 dark:text-amber-400 font-bold" : "text-gray-600 dark:text-gray-300" },
+                      { label: "فاشلة", value: data.orders.failed, color: "text-red-500 dark:text-red-400" },
+                      { label: "الإجمالي", value: data.orders.total, color: "text-gray-700 dark:text-gray-200" },
+                    ].map(row => (
+                      <div key={row.label} className="flex justify-between items-center text-sm">
+                        <span className="text-gray-500 dark:text-gray-400">{row.label}</span>
+                        <span className={row.color}>{row.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {data.orders.pending > 0 && (
+                    <div className="mt-3 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-2 py-1.5 flex items-center gap-1">
+                      <AlertTriangle size={11} /> {data.orders.pending} طلب بانتظار تأكيد يدوي
                     </div>
-                  ))}
+                  )}
+                </div>
+
+                <div className={`rounded-xl border p-4 ${data.support.unread > 0 ? "border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-900/10" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"}`}>
+                  <div className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
+                    <MessageCircle size={14} /> الدعم الفني
+                  </div>
+                  <div className="text-4xl font-bold mb-1" style={{ color: data.support.unread > 0 ? "#f97316" : undefined }}>
+                    {data.support.unread}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">رسائل غير مقروءة</div>
+                  {data.support.unread > 0 && (
+                    <a href="/support-admin" className="mt-3 text-xs text-orange-600 dark:text-orange-400 underline block">
+                      فتح الدعم الفني ←
+                    </a>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+                  <div className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
+                    <Bell size={14} /> تفاصيل المستخدمين
+                  </div>
+                  <div className="space-y-2">
+                    {[
+                      { label: "لديهم تفضيلات وظيفية", value: data.users.with_prefs },
+                      { label: "ربطوا SMTP (جاهزون)", value: data.users.with_smtp },
+                      { label: "رفعوا CV", value: data.users.with_cv },
+                      { label: "مشتركو Push", value: data.push.subscriptions },
+                    ].map(row => (
+                      <div key={row.label} className="flex justify-between items-center text-sm">
+                        <span className="text-gray-500 dark:text-gray-400">{row.label}</span>
+                        <span className="font-medium text-gray-700 dark:text-gray-200">{row.value}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
           </div>
         )}
