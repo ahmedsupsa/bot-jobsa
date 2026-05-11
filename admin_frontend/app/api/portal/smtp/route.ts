@@ -21,7 +21,9 @@ async function getUserId(req: Request): Promise<string | null> {
 function encryptAES(text: string, keyHex: string): string {
   const key = Buffer.from(keyHex, "hex");
   const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  // اختيار الخوارزمية بناءً على طول المفتاح: 16 بايت = AES-128، 32 بايت = AES-256
+  const algo = key.length === 16 ? "aes-128-gcm" : "aes-256-gcm";
+  const cipher = createCipheriv(algo, key, iv);
   const encrypted = Buffer.concat([cipher.update(text, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
   const data = Buffer.concat([tag, encrypted]);

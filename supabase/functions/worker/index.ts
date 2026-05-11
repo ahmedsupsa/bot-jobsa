@@ -219,16 +219,27 @@ async function runCycle() {
 
   const [usersRaw, fieldsRaw] = await Promise.all([sbGet("users"), sbGet("job_fields")]);
 
-  const users = [...usersRaw].sort(() => Math.random() - 0.5);
   const today = new Date().toISOString().split("T")[0];
 
-  for (const user of users) {
-    if (!isActiveSubscription(user)) continue;
+  // جمع عدد تقديمات اليوم لكل مستخدم ثم ترتيبهم تصاعدياً (الأقل تقديماً أولاً) لضمان العدالة
+  const usersWithCount: Array<{ user: Record<string, unknown>; countToday: number }> = [];
+  for (const u of usersRaw) {
+    if (!isActiveSubscription(u)) continue;
+    const uid = String(u.id);
+    const countToday = await sbCount("applications", { user_id: `eq.${uid}`, applied_at: `gte.${today}` });
+    usersWithCount.push({ user: u, countToday });
+  }
+  // ترتيب: الأقل تقديماً اليوم أولاً، ثم عشوائي داخل نفس العدد
+  usersWithCount.sort((a, b) => a.countToday - b.countToday || (Math.random() - 0.5));
+
+  // حد 3 تقديمات لكل مستخدم في كل دورة لضمان وصول كل المستخدمين
+  const MAX_PER_CYCLE = 3;
+
+  for (const { user, countToday } of usersWithCount) {
+    if (countToday >= 10) continue;
     activeUsers++;
 
     const uid = String(user.id);
-    const countToday = await sbCount("applications", { user_id: `eq.${uid}`, applied_at: `gte.${today}` });
-    if (countToday >= 10) continue;
 
     const [settingsRows, cvRows, prefsRows] = await Promise.all([
       sbGet("user_settings",        { user_id: `eq.${uid}` }),
@@ -281,7 +292,8 @@ async function runCycle() {
     const name      = String(user.full_name ?? "المتقدم");
     const phone     = String(user.phone ?? "");
     const lang      = String(settings.application_language ?? "ar");
-    const remaining = 10 - countToday;
+    // حد اليوم (10) مع حد الدورة الواحدة (MAX_PER_CYCLE) لضمان العدالة بين المستخدمين
+    const remaining = Math.min(MAX_PER_CYCLE, 10 - countToday);
     let sent = 0;
 
     for (const job of jobs) {

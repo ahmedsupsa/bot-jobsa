@@ -30,7 +30,7 @@ export async function GET(req: Request) {
   const settings = settingsRows?.[0] || {};
 
   const { count: prefs_count } = await supabase
-    .from("user_preferences")
+    .from("user_job_preferences")
     .select("*", { count: "exact", head: true })
     .eq("user_id", uid);
 
