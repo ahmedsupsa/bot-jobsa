@@ -3,12 +3,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PortalShell } from "@/components/portal-shell";
 import { useTheme } from "@/contexts/theme-context";
-import { portalFetch, clearToken } from "@/lib/portal-auth";
+import { portalFetch, clearToken, getToken } from "@/lib/portal-auth";
 import {
   User, Phone, MapPin, Calendar, Mail, CreditCard, Send,
   Languages, CheckCircle, XCircle, Loader2, Pencil, Save, X,
   LogOut, Trash2, FileDown, Receipt,
 } from "lucide-react";
+import { TEMPLATE_META, TEMPLATE_IDS, getTemplatePreview, getTemplateIcon } from "./template-previews";
 
 interface UserData {
   full_name: string; phone: string; age: number | null; city: string;
@@ -25,7 +26,6 @@ const CITIES = [
   "الأحساء", "الطائف", "تبوك", "بريدة", "خميس مشيط", "حائل", "الجبيل", "نجران",
   "أبها", "ينبع", "الخرج", "القطيف", "عرعر", "سكاكا", "جازان", "الباحة",
 ];
-
 
 export default function AccountPage() {
   const router = useRouter();
@@ -65,20 +65,9 @@ export default function AccountPage() {
 
   const GATEWAY_AR: Record<string, string> = { tamara: "تمارا", streampay: "StreamPay", bank_transfer: "تحويل بنكي" };
 
-  function buildPortalInvoiceUrl(o: PortalOrder, u: UserData) {
-    const year = o.paid_at ? new Date(o.paid_at).getFullYear() : new Date().getFullYear();
-    const invNum = `JBT-${year}-${o.id.slice(0, 8).toUpperCase()}`;
-    const gw = GATEWAY_AR[o.payment_gateway || ""] || o.payment_gateway || "";
-    const params = new URLSearchParams({
-      client:  u.full_name || "",
-      email:   u.email || "",
-      inv:     invNum,
-      date:    o.paid_at ? o.paid_at.split("T")[0] : new Date().toISOString().split("T")[0],
-      plan:    o.store_products?.name || "—",
-      amount:  String(o.amount ?? ""),
-      gateway: gw,
-    });
-    return `/invoice.html?${params.toString()}`;
+  function buildInvoiceUrl(orderId: string): string {
+    const token = getToken() || "";
+    return `/api/portal/invoice/${orderId}?token=${encodeURIComponent(token)}`;
   }
 
   async function loadInvoices() {
@@ -102,6 +91,8 @@ export default function AccountPage() {
     iconBg:  dark ? "#1a1a1a" : "#f4f4f5",
     input:   dark ? "#141414" : "#fff",
     divider: dark ? "#1a1a1a" : "#f0f0f0",
+    accent:  dark ? "#fff"    : "#09090b",
+    accentFg: dark ? "#0a0a0a" : "#fff",
   };
 
   async function load() {
@@ -191,10 +182,10 @@ export default function AccountPage() {
     borderRadius: 10, color: t.text, fontSize: 14, outline: "none", fontFamily: "inherit",
   };
 
-  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: "profile",  label: "حسابي",    icon: <User size={15} key="u" /> },
-    { key: "settings", label: "الإعدادات", icon: <CreditCard size={15} key="s" /> },
-    { key: "invoices", label: "فواتيري",   icon: <Receipt size={15} key="i" /> },
+  const tabDefs: { key: Tab; label: string }[] = [
+    { key: "profile",  label: "حسابي" },
+    { key: "settings", label: "الإعدادات" },
+    { key: "invoices", label: "فواتيري" },
   ];
 
   return (
@@ -210,8 +201,7 @@ export default function AccountPage() {
           }}>
             <div style={{
               width: 68, height: 68, borderRadius: 18,
-              background: dark ? "#fff" : "#09090b",
-              color: dark ? "#0a0a0a" : "#fff",
+              background: t.accent, color: t.accentFg,
               fontSize: 28, fontWeight: 800,
               display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
             }}>
@@ -251,23 +241,24 @@ export default function AccountPage() {
           background: t.surface, border: `1px solid ${t.border}`,
           borderRadius: 14, padding: 4, marginBottom: 20,
         }}>
-          {tabs.map(({ key, label, icon }) => (
+          {tabDefs.map(({ key, label }) => (
             <button key={key} onClick={() => {
               setTab(key); setMsg(null); setEditing(false);
               if (key === "invoices" && !invoicesLoaded) loadInvoices();
             }} style={{
               flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               padding: "11px 0", borderRadius: 11, border: "none", cursor: "pointer",
-              background: tab === key ? (dark ? "#fff" : "#09090b") : "transparent",
-              color: tab === key ? (dark ? "#0a0a0a" : "#fff") : t.text3,
+              background: tab === key ? t.accent : "transparent",
+              color: tab === key ? t.accentFg : t.text3,
               fontSize: 13, fontWeight: tab === key ? 700 : 400, transition: "all 0.18s",
             }}>
-              {icon} {label}
+              {key === "profile" ? <User size={15} /> : key === "settings" ? <CreditCard size={15} /> : <Receipt size={15} />}
+              {label}
             </button>
           ))}
         </div>
 
-        {/* ─── Global alert (profile/settings tabs) ─── */}
+        {/* ─── Global alert ─── */}
         {msg && !editing && (
           <div style={{
             display: "flex", alignItems: "center", gap: 8,
@@ -322,7 +313,7 @@ export default function AccountPage() {
                     <button onClick={handleSave} disabled={saving} style={{
                       display: "flex", alignItems: "center", gap: 5, padding: "7px 14px",
                       borderRadius: 9, border: "none",
-                      background: dark ? "#fff" : "#09090b", color: dark ? "#0a0a0a" : "#fff",
+                      background: t.accent, color: t.accentFg,
                       fontSize: 13, fontWeight: 700, cursor: saving ? "wait" : "pointer",
                     }}>
                       {saving ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> : <Save size={13} />}
@@ -394,7 +385,7 @@ export default function AccountPage() {
                 <div style={{ padding: "8px 20px 12px" }}>
                   <a href="/portal/email" style={{
                     display: "inline-flex", alignItems: "center", gap: 8,
-                    background: dark ? "#fff" : "#09090b", color: dark ? "#0a0a0a" : "#fff",
+                    background: t.accent, color: t.accentFg,
                     border: "none", borderRadius: 10, padding: "10px 18px",
                     fontSize: 13, fontWeight: 700, textDecoration: "none",
                   }}>
@@ -462,55 +453,97 @@ export default function AccountPage() {
                 <div style={{ width: 32, height: 32, borderRadius: 10, background: t.iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Receipt size={16} strokeWidth={1.5} color={t.text2} />
                 </div>
-                <span style={{ color: t.text, fontSize: 15, fontWeight: 700 }}>فواتير الاشتراكات</span>
+                <div>
+                  <p style={{ margin: 0, color: t.text, fontSize: 15, fontWeight: 700 }}>فواتير الاشتراكات</p>
+                  <p style={{ margin: "1px 0 0", color: t.text3, fontSize: 11 }}>فواتير رسمية بالبيانات الكاملة</p>
+                </div>
               </div>
               {invoicesLoading ? (
                 <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
                   <Loader2 size={24} color={t.text3} style={{ animation: "spin 1s linear infinite" }} />
                 </div>
               ) : invoices.length === 0 ? (
-                <div style={{ padding: "40px 20px", textAlign: "center", color: t.text3, fontSize: 14 }}>
-                  لا توجد فواتير مدفوعة حتى الآن
+                <div style={{ padding: "48px 20px", textAlign: "center" }}>
+                  <div style={{
+                    width: 52, height: 52, borderRadius: 16, background: t.iconBg,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    margin: "0 auto 14px",
+                  }}>
+                    <Receipt size={22} color={t.text3} strokeWidth={1.5} />
+                  </div>
+                  <p style={{ color: t.text, fontSize: 14, fontWeight: 700, margin: "0 0 6px" }}>لا توجد فواتير بعد</p>
+                  <p style={{ color: t.text3, fontSize: 13, margin: 0 }}>ستظهر فواتير اشتراكاتك المدفوعة هنا</p>
                 </div>
               ) : (
                 <div style={{ padding: "8px 0" }}>
                   {invoices.map((o, i) => {
-                    const invoiceUrl = buildPortalInvoiceUrl(o, user!);
-                    const productName = o.store_products?.name || "—";
+                    const productName = o.store_products?.name || "اشتراك Jobbots";
                     const dateStr = o.paid_at ? new Date(o.paid_at).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" }) : "—";
                     const year = o.paid_at ? new Date(o.paid_at).getFullYear() : new Date().getFullYear();
                     const invNum = `JBT-${year}-${o.id.slice(0, 8).toUpperCase()}`;
+                    const gwLabel = GATEWAY_AR[o.payment_gateway || ""] || o.payment_gateway || "—";
                     const isLast = i === invoices.length - 1;
+                    const invoiceUrl = buildInvoiceUrl(o.id);
                     return (
                       <div key={o.id} style={{
-                        display: "flex", alignItems: "center", justifyContent: "space-between",
-                        padding: "14px 20px", flexWrap: "wrap", gap: 10,
+                        padding: "16px 20px",
                         borderBottom: isLast ? "none" : `1px solid ${t.divider}`,
                       }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                          <div style={{
-                            width: 38, height: 38, borderRadius: 10, background: t.iconBg,
-                            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                          }}>
-                            <FileDown size={16} color={t.text3} />
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                          {/* Left info */}
+                          <div style={{ display: "flex", alignItems: "flex-start", gap: 14, flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              width: 44, height: 44, borderRadius: 12, background: t.iconBg,
+                              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                            }}>
+                              <Receipt size={18} color={t.text3} strokeWidth={1.5} />
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <p style={{ margin: 0, color: t.text, fontSize: 14, fontWeight: 800 }}>{productName}</p>
+                              <p style={{ margin: "3px 0 0", color: t.text3, fontSize: 12 }}>{invNum}</p>
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+                                <span style={{
+                                  display: "inline-flex", alignItems: "center", gap: 4,
+                                  padding: "3px 10px", borderRadius: 100,
+                                  background: t.iconBg, color: t.text2, fontSize: 11, fontWeight: 600,
+                                }}>
+                                  <Calendar size={10} /> {dateStr}
+                                </span>
+                                <span style={{
+                                  display: "inline-flex", alignItems: "center", gap: 4,
+                                  padding: "3px 10px", borderRadius: 100,
+                                  background: t.iconBg, color: t.text2, fontSize: 11, fontWeight: 600,
+                                }}>
+                                  {gwLabel}
+                                </span>
+                                <span style={{
+                                  display: "inline-flex", alignItems: "center", gap: 4,
+                                  padding: "3px 10px", borderRadius: 100,
+                                  background: dark ? "#0a1f0a" : "#f0fdf4",
+                                  color: dark ? "#4ade80" : "#16a34a",
+                                  fontSize: 11, fontWeight: 700,
+                                }}>
+                                  ✓ مدفوعة
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <p style={{ margin: 0, color: t.text, fontSize: 14, fontWeight: 700 }}>{productName}</p>
-                            <p style={{ margin: "2px 0 0", color: t.text3, fontSize: 12 }}>
-                              {invNum} · {dateStr}
-                            </p>
+
+                          {/* Right: amount + button */}
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
+                            <span style={{ color: t.text, fontSize: 18, fontWeight: 900, whiteSpace: "nowrap" }}>
+                              {o.amount} ر.س
+                            </span>
+                            <a href={invoiceUrl} target="_blank" rel="noopener noreferrer" style={{
+                              display: "inline-flex", alignItems: "center", gap: 6,
+                              padding: "9px 16px", borderRadius: 10,
+                              background: t.accent, color: t.accentFg,
+                              fontSize: 13, fontWeight: 700, textDecoration: "none",
+                              whiteSpace: "nowrap",
+                            }}>
+                              <FileDown size={13} /> عرض الفاتورة
+                            </a>
                           </div>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                          <span style={{ color: t.text, fontSize: 15, fontWeight: 800 }}>{o.amount} ر.س</span>
-                          <a href={invoiceUrl} target="_blank" rel="noopener noreferrer" style={{
-                            display: "inline-flex", alignItems: "center", gap: 6,
-                            padding: "8px 14px", borderRadius: 9,
-                            background: dark ? "#fff" : "#09090b", color: dark ? "#0a0a0a" : "#fff",
-                            fontSize: 13, fontWeight: 700, textDecoration: "none",
-                          }}>
-                            <FileDown size={13} /> تحميل
-                          </a>
                         </div>
                       </div>
                     );
@@ -522,99 +555,151 @@ export default function AccountPage() {
 
         ) : (
           /* ══════════════ SETTINGS TAB ══════════════ */
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, animation: "fadeIn 0.2s ease" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeIn 0.2s ease" }}>
 
-            {/* Language */}
-            <Card t={t} title="لغة التقديم" icon={<Languages size={17} strokeWidth={1.5} />} sub="اللغة التي ستُرسل بها طلبات التوظيف">
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: "4px 0 8px" }}>
-                {([["ar", "العربية", "رسائل بالعربي"], ["en", "English", "Messages in English"]] as const).map(([lang, label, sub]) => {
-                  const isActive = lang === "ar" ? user.application_language !== "en" : user.application_language === "en";
-                  return (
-                    <button key={lang} onClick={() => changeLanguage(lang)} disabled={savingLang} style={{
-                      background: isActive ? (dark ? "#0a1f0a" : "#f0fdf4") : t.iconBg,
-                      border: `1px solid ${isActive ? (dark ? "#2a2a2a" : "#bbf7d0") : t.border2}`,
-                      borderRadius: 12, padding: "12px 14px", cursor: savingLang ? "wait" : "pointer", textAlign: "right",
-                    }}>
-                      <p style={{ margin: 0, color: isActive ? (dark ? "#fff" : "#166534") : t.text, fontSize: 14, fontWeight: 700 }}>
-                        {label} {isActive && <CheckCircle size={12} style={{ verticalAlign: "middle" }} />}
-                      </p>
-                      <p style={{ margin: "3px 0 0", color: t.text3, fontSize: 11 }}>{sub}</p>
-                    </button>
-                  );
-                })}
+            {/* ─── Language ─── */}
+            <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 18, overflow: "hidden" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 20px", borderBottom: `1px solid ${t.border}` }}>
+                <div style={{ width: 32, height: 32, borderRadius: 10, background: t.iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Languages size={16} strokeWidth={1.5} color={t.text2} />
+                </div>
+                <div>
+                  <p style={{ margin: 0, color: t.text, fontSize: 14, fontWeight: 700 }}>لغة التقديم</p>
+                  <p style={{ margin: "1px 0 0", color: t.text3, fontSize: 11 }}>اللغة التي تُكتب بها رسائل التوظيف</p>
+                </div>
+                {savingLang && <Loader2 size={14} color={t.text3} style={{ animation: "spin 1s linear infinite", marginRight: "auto" }} />}
               </div>
-            </Card>
 
-            {/* Email Templates */}
-            <Card t={t} title="قالب الإيميل" icon={<Mail size={17} strokeWidth={1.5} />} sub="شكل وأسلوب إيميل التقديم المُرسَل للشركات">
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "4px 0 8px" }}>
-                {([
-                  { id: "classic", name: "الكلاسيكي", desc: "رسمي ومنظّم • مناسب للشركات الكبرى",
-                    preview: (
-                      <div style={{ background: "#fff", borderRadius: 8, padding: "8px 10px", fontSize: 9, color: "#333", direction: "rtl", lineHeight: 1.7 }}>
-                        <div style={{ fontWeight: 700, borderBottom: "1px solid #eee", paddingBottom: 4, marginBottom: 4, color: "#111" }}>طلب توظيف — مهندس برمجيات</div>
-                        <div style={{ color: "#555" }}>السادة المحترمون،</div>
-                        <div style={{ color: "#555" }}>أتقدم بكل احترام للتقديم على هذه الوظيفة استناداً لخبرتي في...</div>
-                        <div style={{ marginTop: 4, borderTop: "1px solid #eee", paddingTop: 4, color: "#888", fontSize: 8 }}>الاسم · الجوال</div>
-                      </div>
-                    ),
-                  },
-                  { id: "modern", name: "الحديث", desc: "عصري وودّي • مناسب للشركات الناشئة",
-                    preview: (
-                      <div style={{ background: dark ? "#0f0f0f" : "#1f1b2e", borderRadius: 8, padding: "8px 10px", fontSize: 9, color: "#eee", direction: "rtl", lineHeight: 1.7 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
-                          <div style={{ width: 16, height: 16, borderRadius: 4, background: "#a78bfa", flexShrink: 0 }} />
-                          <div style={{ fontWeight: 700, color: "#fff", fontSize: 10 }}>مهندس برمجيات</div>
-                        </div>
-                        <div style={{ color: "#ccc" }}>مرحباً! أنا مهتم بهذه الفرصة وأرى تطابقاً واضحاً مع خلفيتي في...</div>
-                        <div style={{ marginTop: 4, color: "#a78bfa", fontSize: 8 }}>عرض السيرة الذاتية ←</div>
-                      </div>
-                    ),
-                  },
-                  { id: "brief", name: "المختصر", desc: "موجز ومباشر • يوفّر وقت المُوظِّف",
-                    preview: (
-                      <div style={{ background: "#f8f8f8", borderRadius: 8, padding: "8px 10px", fontSize: 9, color: "#333", direction: "rtl", lineHeight: 1.7 }}>
-                        <div style={{ fontWeight: 700, marginBottom: 4, color: "#111" }}>التقديم على: مهندس برمجيات</div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                          <div style={{ display: "flex", gap: 4 }}><span style={{ color: "#888" }}>•</span><span style={{ color: "#555" }}>5 سنوات خبرة في React</span></div>
-                          <div style={{ display: "flex", gap: 4 }}><span style={{ color: "#888" }}>•</span><span style={{ color: "#555" }}>خبرة سابقة في نفس المجال</span></div>
-                          <div style={{ display: "flex", gap: 4 }}><span style={{ color: "#888" }}>•</span><span style={{ color: "#555" }}>متاح للبدء فوراً</span></div>
-                        </div>
-                      </div>
-                    ),
-                  },
-                ] as const).map((tpl) => {
-                  const isActive = (user.template_type || "classic") === tpl.id;
-                  return (
-                    <button key={tpl.id} onClick={() => changeTemplate(tpl.id)} disabled={savingTemplate} style={{
-                      display: "flex", gap: 12, alignItems: "stretch",
-                      background: isActive ? (dark ? "#0d0d1a" : "#faf5ff") : t.iconBg,
-                      border: `1.5px solid ${isActive ? (dark ? "#4c1d95" : "#c4b5fd") : t.border2}`,
-                      borderRadius: 14, padding: "12px 14px", cursor: savingTemplate ? "wait" : "pointer",
-                      textAlign: "right", transition: "all 0.15s",
-                    }}>
-                      <div style={{ width: 120, flexShrink: 0, borderRadius: 8, overflow: "hidden", border: `1px solid ${dark ? "#2a2a2a" : "#e4e4e7"}` }}>
-                        {tpl.preview}
-                      </div>
-                      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <p style={{ margin: 0, color: isActive ? (dark ? "#c4b5fd" : "#7c3aed") : t.text, fontSize: 14, fontWeight: 700 }}>{tpl.name}</p>
-                          {isActive && <CheckCircle size={13} color={dark ? "#a78bfa" : "#7c3aed"} />}
-                        </div>
-                        <p style={{ margin: 0, color: t.text3, fontSize: 12, lineHeight: 1.5 }}>{tpl.desc}</p>
+              <div style={{ padding: "16px 20px 20px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  {([
+                    { lang: "ar" as const, label: "العربية", emoji: "🇸🇦", sub: "مناسب للشركات السعودية والخليجية" },
+                    { lang: "en" as const, label: "English", emoji: "🌍", sub: "Suitable for international companies" },
+                  ]).map(({ lang, label, emoji, sub }) => {
+                    const isActive = lang === "ar" ? user.application_language !== "en" : user.application_language === "en";
+                    return (
+                      <button key={lang} onClick={() => changeLanguage(lang)} disabled={savingLang} style={{
+                        position: "relative", padding: "16px 18px",
+                        borderRadius: 14, cursor: savingLang ? "wait" : "pointer",
+                        border: `2px solid ${isActive ? (dark ? "#fff" : "#09090b") : t.border2}`,
+                        background: isActive ? (dark ? "#fff" : "#09090b") : t.iconBg,
+                        textAlign: "right", transition: "all 0.18s",
+                        display: "flex", flexDirection: "column", gap: 4,
+                      }}>
                         {isActive && (
-                          <span style={{
-                            display: "inline-block", marginTop: 4, padding: "2px 10px", borderRadius: 100,
-                            background: dark ? "#2e1065" : "#ede9fe", color: dark ? "#c4b5fd" : "#7c3aed",
-                            fontSize: 11, fontWeight: 600,
-                          }}>مفعّل</span>
+                          <div style={{
+                            position: "absolute", top: 10, left: 10,
+                            width: 20, height: 20, borderRadius: 100,
+                            background: isActive ? (dark ? "#0a0a0a" : "#fff") : "transparent",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}>
+                            <CheckCircle size={14} color={dark ? "#fff" : "#09090b"} />
+                          </div>
                         )}
+                        <span style={{ fontSize: 24 }}>{emoji}</span>
+                        <p style={{
+                          margin: 0,
+                          color: isActive ? (dark ? "#0a0a0a" : "#fff") : t.text,
+                          fontSize: 15, fontWeight: 800,
+                        }}>{label}</p>
+                        <p style={{
+                          margin: 0,
+                          color: isActive ? (dark ? "#52525b" : "#a1a1aa") : t.text3,
+                          fontSize: 10, lineHeight: 1.5,
+                        }}>{sub}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* ─── Email Templates ─── */}
+            <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 18, overflow: "hidden" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 20px", borderBottom: `1px solid ${t.border}` }}>
+                <div style={{ width: 32, height: 32, borderRadius: 10, background: t.iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Mail size={16} strokeWidth={1.5} color={t.text2} />
+                </div>
+                <div>
+                  <p style={{ margin: 0, color: t.text, fontSize: 14, fontWeight: 700 }}>قالب رسالة التقديم</p>
+                  <p style={{ margin: "1px 0 0", color: t.text3, fontSize: 11 }}>أسلوب الإيميل المُرسَل للشركات</p>
+                </div>
+                {savingTemplate && <Loader2 size={14} color={t.text3} style={{ animation: "spin 1s linear infinite", marginRight: "auto" }} />}
+              </div>
+
+              <div style={{ padding: "16px 20px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {TEMPLATE_IDS.map((tplId) => {
+                  const isActive = (user.template_type || "classic") === tplId;
+                  const meta = TEMPLATE_META[tplId];
+                  return (
+                    <button key={tplId} onClick={() => changeTemplate(tplId)} disabled={savingTemplate} style={{
+                      display: "grid",
+                      gridTemplateColumns: "130px 1fr",
+                      gap: 0,
+                      borderRadius: 14,
+                      border: `2px solid ${isActive ? (dark ? "#fff" : "#09090b") : t.border2}`,
+                      background: isActive ? (dark ? "#fff" : "#09090b") : t.iconBg,
+                      cursor: savingTemplate ? "wait" : "pointer",
+                      textAlign: "right",
+                      transition: "all 0.18s",
+                      overflow: "hidden",
+                    }}>
+                      {/* Preview thumbnail */}
+                      <div style={{
+                        height: 110, overflow: "hidden",
+                        borderLeft: `2px solid ${isActive ? (dark ? "#e4e4e7" : "#1f1f1f") : t.border2}`,
+                        flexShrink: 0,
+                      }}>
+                        {getTemplatePreview(tplId)}
+                      </div>
+
+                      {/* Info */}
+                      <div style={{
+                        padding: "16px 18px",
+                        display: "flex", flexDirection: "column", justifyContent: "center", gap: 6,
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                          <span style={{
+                            color: isActive ? (dark ? "#0a0a0a" : "#fff") : t.text,
+                            fontSize: 16, fontWeight: 800,
+                          }}>
+                            {meta.name}
+                          </span>
+                          <span style={{
+                            padding: "2px 10px", borderRadius: 100,
+                            background: isActive
+                              ? (dark ? "#0a0a0a" : "#fff")
+                              : (dark ? "#2a2a2a" : "#f0f0f0"),
+                            color: isActive
+                              ? (dark ? "#fff" : "#09090b")
+                              : t.text3,
+                            fontSize: 10, fontWeight: 700,
+                          }}>
+                            {isActive ? "✓ مفعّل" : meta.tag}
+                          </span>
+                        </div>
+                        <p style={{
+                          margin: 0,
+                          color: isActive ? (dark ? "#52525b" : "#a1a1aa") : t.text3,
+                          fontSize: 12, lineHeight: 1.6,
+                        }}>
+                          {meta.desc}
+                        </p>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                          <span style={{
+                            color: isActive ? (dark ? "#52525b" : "#a1a1aa") : t.text3,
+                            display: "flex", alignItems: "center",
+                          }}>
+                            {getTemplateIcon(tplId)}
+                          </span>
+                        </div>
                       </div>
                     </button>
                   );
                 })}
               </div>
-            </Card>
+            </div>
+
           </div>
         )}
       </div>
@@ -673,4 +758,3 @@ function InfoRow({ t, icon, label, value, dir, last, badge }: {
     </div>
   );
 }
-
