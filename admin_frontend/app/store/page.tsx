@@ -551,7 +551,7 @@ export default function StorePage() {
 
       <footer style={s.footer}>
         <div style={s.footerInner}>
-          <span style={{ color: "var(--text3)", fontSize: 12.5 }}>© 2025 Jobbots</span>
+          <span style={{ color: "var(--text3)", fontSize: 12.5 }}>© 2026 Jobbots</span>
           <div style={{ display: "flex", gap: 22 }}>
             <Link href="/privacy" style={s.footerLink}>الخصوصية</Link>
             <Link href="/terms" style={s.footerLink}>الشروط</Link>

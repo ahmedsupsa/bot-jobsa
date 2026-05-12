@@ -271,7 +271,7 @@ export default function LandingPage() {
             <span style={{ color: "var(--text4)" }}>·</span>
             <Link href="/portal/login" style={s.footerLink}>دخول المشترك</Link>
           </div>
-          <div style={s.footerCopy}>© 2025 Jobbots. جميع الحقوق محفوظة.</div>
+          <div style={s.footerCopy}>© 2026 Jobbots. جميع الحقوق محفوظة.</div>
         </div>
       </footer>
 
