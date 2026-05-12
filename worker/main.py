@@ -101,6 +101,31 @@ def _strip_emojis(text: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
+_NEUTRAL_ENDINGS_AR = {
+    "شركة", "جهة", "وظيفة", "خبرة", "صناعة", "هندسة", "تجربة", "مجموعة",
+    "ممارسة", "خدمة", "برمجة", "إدارة", "رعاية", "رياضة", "تجارة", "علاقة",
+    "مهارة", "سلامة", "قيادة", "محاسبة", "مالية", "تقنية", "سياحة", "صحة",
+    "جودة", "موارد", "بيئة", "سياسة", "طاقة", "زراعة", "حوكمة", "ريادة",
+    "مقابلة", "وساطة", "رقابة", "متابعة", "مراجعة", "مراقبة",
+}
+
+
+def _is_feminine_job(job: dict) -> bool:
+    """يكشف الوظائف المخصصة للإناث بناءً على المسمى الوظيفي."""
+    title_ar = (job.get("title_ar") or "").strip()
+    desc     = (job.get("description_ar") or "").lower()
+    spec     = (job.get("specializations") or "").lower()
+
+    explicit = ("نسائية", "للإناث", "للنساء")
+    if any(k in title_ar or k in desc or k in spec for k in explicit):
+        return True
+
+    for word in re.split(r"[\s,،/\-()]+", title_ar):
+        if len(word) > 3 and word.endswith("ة") and word not in _NEUTRAL_ENDINGS_AR:
+            return True
+    return False
+
+
 def _job_matches_user(job: dict, field_names: list[str]) -> bool:
     if not field_names:
         return False
@@ -597,6 +622,11 @@ async def run_cycle() -> None:
                 desc = (job.get("description_ar") or job.get("description_en") or "")[:1500]
                 logger.info("   🔎 وظيفة [%s] → %s", job_title, "✓ تطابق مبدئي" if matched else "✗ لا تطابق")
                 if not matched:
+                    continue
+
+                user_gender = (user.get("gender") or "male")
+                if user_gender == "male" and _is_feminine_job(job):
+                    logger.info("   ⏭️  وظيفة نسائية — المستخدم ذكر: [%s]", job_title)
                     continue
 
                 to_email = (job.get("application_email") or "").strip()

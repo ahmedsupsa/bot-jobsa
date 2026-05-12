@@ -41,6 +41,7 @@ export async function GET(req: Request) {
     phone: user.phone || "",
     age: user.age || null,
     city: user.city || "",
+    gender: user.gender || "male",
     subscription_active,
     subscription_ends_at: ends_at,
     days_left,
@@ -64,13 +65,15 @@ export async function PATCH(req: Request) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 }); }
 
-  const allowed = ["full_name", "phone", "city", "age"] as const;
+  const allowed = ["full_name", "phone", "city", "age", "gender"] as const;
   const updates: Record<string, unknown> = {};
 
   for (const key of allowed) {
     if (key in body) {
       const val = body[key];
-      if (key === "age") {
+      if (key === "gender") {
+        if (val === "male" || val === "female") updates[key] = val;
+      } else if (key === "age") {
         const n = val ? parseInt(String(val), 10) : null;
         updates[key] = n && n > 0 && n < 100 ? n : null;
       } else if (key === "full_name") {

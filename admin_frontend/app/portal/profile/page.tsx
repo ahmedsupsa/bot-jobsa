@@ -12,7 +12,7 @@ import {
 import { TEMPLATE_META, TEMPLATE_IDS, getTemplatePreview, getTemplateIcon } from "./template-previews";
 
 interface UserData {
-  full_name: string; phone: string; age: number | null; city: string;
+  full_name: string; phone: string; age: number | null; city: string; gender: string;
   subscription_active: boolean; days_left: number; subscription_ends_at: string;
   applications_count: number; email: string; sender_email_alias: string;
   application_language: string; template_type: string;
@@ -41,6 +41,7 @@ export default function AccountPage() {
   const [editPhone, setEditPhone] = useState("");
   const [editCity, setEditCity] = useState("");
   const [editAge, setEditAge] = useState("");
+  const [editGender, setEditGender] = useState("male");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
 
@@ -117,6 +118,7 @@ export default function AccountPage() {
     setEditPhone(user.phone);
     setEditCity(user.city);
     setEditAge(user.age ? String(user.age) : "");
+    setEditGender(user.gender || "male");
     setMsg(null); setEditing(true);
   }
   function cancelEdit() { setEditing(false); setMsg(null); }
@@ -127,7 +129,7 @@ export default function AccountPage() {
     try {
       const res = await portalFetch("/me", {
         method: "PATCH",
-        body: JSON.stringify({ full_name: editName.trim(), phone: editPhone.trim(), city: editCity.trim(), age: editAge ? parseInt(editAge) : null }),
+        body: JSON.stringify({ full_name: editName.trim(), phone: editPhone.trim(), city: editCity.trim(), age: editAge ? parseInt(editAge) : null, gender: editGender }),
       });
       const d = await res.json();
       if (res.ok) { setMsg({ text: "تم حفظ البيانات بنجاح ✓", type: "ok" }); await load(); setEditing(false); }
@@ -328,7 +330,8 @@ export default function AccountPage() {
                   <InfoRow t={t} icon={<User size={13} />} label="الاسم الكامل" value={user.full_name} />
                   <InfoRow t={t} icon={<Phone size={13} />} label="رقم الجوال" value={user.phone || "—"} dir="ltr" />
                   <InfoRow t={t} icon={<Calendar size={13} />} label="العمر" value={user.age ? `${user.age} سنة` : "—"} />
-                  <InfoRow t={t} icon={<MapPin size={13} />} label="المدينة" value={user.city || "—"} last />
+                  <InfoRow t={t} icon={<MapPin size={13} />} label="المدينة" value={user.city || "—"} />
+                  <InfoRow t={t} icon={<User size={13} />} label="الجنس" value={user.gender === "female" ? "أنثى" : "ذكر"} last />
                 </div>
               ) : (
                 <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: 14 }}>
@@ -349,6 +352,21 @@ export default function AccountPage() {
                   <div>
                     <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 6 }}>رقم الجوال</label>
                     <input value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="05xxxxxxxx" dir="ltr" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 6 }}>الجنس</label>
+                    <div style={{ display: "flex", gap: 10 }}>
+                      {(["male", "female"] as const).map(g => (
+                        <button key={g} type="button" onClick={() => setEditGender(g)} style={{
+                          flex: 1, padding: "10px", borderRadius: 10, border: `2px solid ${editGender === g ? t.accent : t.border2}`,
+                          background: editGender === g ? t.accent : "transparent",
+                          color: editGender === g ? t.accentFg : t.text2,
+                          fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all 0.15s",
+                        }}>
+                          {g === "male" ? "ذكر" : "أنثى"}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div>

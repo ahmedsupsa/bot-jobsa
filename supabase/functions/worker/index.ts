@@ -86,6 +86,32 @@ function isActiveSubscription(user: Record<string, unknown>): boolean {
   try { return new Date(ends) > new Date(); } catch { return false; }
 }
 
+// ─── كشف الوظائف المؤنثة ────────────────────────────────────────────────────
+
+const NEUTRAL_ENDINGS_AR = new Set([
+  "شركة", "جهة", "وظيفة", "خبرة", "صناعة", "هندسة", "تجربة", "مجموعة",
+  "ممارسة", "خدمة", "برمجة", "إدارة", "رعاية", "رياضة", "تجارة", "علاقة",
+  "مهارة", "سلامة", "قيادة", "محاسبة", "مالية", "تقنية", "سياحة", "صحة",
+  "جودة", "موارد", "ممارسة", "بيئة", "سياسة", "طاقة", "زراعة", "هندسة",
+  "حوكمة", "ريادة", "مقابلة", "وساطة", "رقابة", "متابعة", "مراجعة", "مراقبة",
+]);
+
+function isFeminineJob(job: Record<string, unknown>): boolean {
+  const titleAr = String(job.title_ar ?? "").trim();
+  const desc    = String(job.description_ar ?? "").toLowerCase();
+  const spec    = String(job.specializations ?? "").toLowerCase();
+
+  if (titleAr.includes("نسائية") || desc.includes("نسائية") ||
+      titleAr.includes("للإناث") || desc.includes("للإناث") ||
+      spec.includes("نسائية")) return true;
+
+  const words = titleAr.split(/[\s,،\/\-()]+/).filter(Boolean);
+  for (const w of words) {
+    if (w.length > 3 && w.endsWith("ة") && !NEUTRAL_ENDINGS_AR.has(w)) return true;
+  }
+  return false;
+}
+
 function jobMatchesUser(job: Record<string, unknown>, fieldNames: string[]): boolean {
   if (!fieldNames.length) return false;
   const blob = [job.specializations, job.title_ar, job.title_en, job.description_ar, job.description_en]
@@ -328,6 +354,12 @@ async function runCycle() {
       }
       if (!jobMatchesUser(job, fieldNames)) {
         details.push({ user: name, job: String(job.title_ar ?? job.title_en ?? ""), status: "skipped", reason: "لا يطابق التفضيلات" });
+        continue;
+      }
+
+      const userGender = String(user.gender ?? "male");
+      if (userGender === "male" && isFeminineJob(job)) {
+        details.push({ user: name, job: String(job.title_ar ?? job.title_en ?? ""), status: "skipped", reason: "وظيفة نسائية — المستخدم ذكر" });
         continue;
       }
 
