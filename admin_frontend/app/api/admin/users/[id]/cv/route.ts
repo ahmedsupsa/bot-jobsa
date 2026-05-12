@@ -64,7 +64,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const { data: existing } = await supabase.from("user_cvs").select("id").eq("user_id", uid).limit(1);
 
   if (existing?.[0]) {
-    await supabase.from("user_cvs").update({ file_name: file.name, file_id: "admin_upload", storage_path: storagePath, updated_at: now }).eq("user_id", uid);
+    // مسح الملخص المحفوظ عند رفع سيرة ذاتية جديدة — سيُعاد التحليل في الدورة القادمة
+    await supabase.from("user_cvs").update({
+      file_name: file.name, file_id: "admin_upload", storage_path: storagePath, updated_at: now,
+      cv_parsed_text: null, cv_parsed_at: null,
+    }).eq("user_id", uid);
   } else {
     await supabase.from("user_cvs").insert({ user_id: uid, file_name: file.name, file_id: "admin_upload", storage_path: storagePath, created_at: now, updated_at: now });
   }

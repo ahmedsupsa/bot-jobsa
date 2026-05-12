@@ -48,6 +48,14 @@ async function sbInsert(table: string, data: Record<string, unknown>) {
   });
 }
 
+async function sbPatch(table: string, filter: Record<string, string>, data: Record<string, unknown>) {
+  const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
+  for (const [k, v] of Object.entries(filter)) url.searchParams.set(k, v);
+  await fetch(url.toString(), {
+    method: "PATCH", headers: SB, body: JSON.stringify(data),
+  });
+}
+
 // ─── AES-256-GCM فك التشفير (Web Crypto) ─────────────────────────────────────
 
 async function decryptAES(encrypted: string, keyHex: string): Promise<string> {
@@ -156,6 +164,66 @@ async function downloadCv(storagePath: string): Promise<Uint8Array | null> {
   return new Uint8Array(await r.arrayBuffer());
 }
 
+// ─── تحليل السيرة الذاتية وتخزينها (مرة واحدة فقط) ─────────────────────────
+
+async function parseCvWithAI(cvBytes: Uint8Array, cvMime: string): Promise<string | null> {
+  if (!GEMINI_KEY || !cvBytes.length) return null;
+  const prompt =
+    "استخرج من هذه السيرة الذاتية المعلومات التالية بشكل منظّم ومختصر بالعربية:\n" +
+    "المؤهل العلمي والتخصص:\n" +
+    "سنوات الخبرة الإجمالية:\n" +
+    "الوظائف السابقة (مسمى + جهة + مدة):\n" +
+    "المهارات التقنية والبرامج:\n" +
+    "الشهادات والرخص المهنية:\n" +
+    "اللغات:\n" +
+    "اكتب فقط المعلومات الموجودة فعلاً. لا تضف تخمينات. إذا لم تجد معلومة اكتب (غير محدد).";
+  const parts = [
+    { inline_data: { mime_type: cvMime, data: toBase64(cvBytes) } },
+    { text: prompt },
+  ];
+  try {
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts }] }) }
+    );
+    if (!r.ok) return null;
+    const data = await r.json();
+    const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
+    return text || null;
+  } catch { return null; }
+}
+
+async function getOrParseCv(cv: Record<string, unknown>): Promise<{ parsedText: string | null; cvBytes: Uint8Array | null }> {
+  const cvId        = String(cv.id ?? "");
+  const storagePath = String(cv.storage_path ?? "").trim();
+  const cvName      = String(cv.file_name ?? "cv.pdf");
+  const cvMime      = cvName.toLowerCase().endsWith(".pdf") ? "application/pdf"
+    : cvName.toLowerCase().endsWith(".docx") ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    : "application/octet-stream";
+
+  // إذا يوجد نص محفوظ بالفعل — استخدمه مباشرة بدون تنزيل PDF
+  const existingText = String(cv.cv_parsed_text ?? "").trim();
+  if (existingText) {
+    return { parsedText: existingText, cvBytes: null };
+  }
+
+  // تنزيل الـ PDF وتحليله
+  const cvBytes = storagePath ? await downloadCv(storagePath) : null;
+  if (!cvBytes) return { parsedText: null, cvBytes: null };
+
+  const parsedText = await parseCvWithAI(cvBytes, cvMime);
+  if (parsedText && cvId) {
+    // حفظ الملخص في قاعدة البيانات لاستخدامه مستقبلاً
+    await sbPatch("user_cvs", { id: `eq.${cvId}` }, {
+      cv_parsed_text: parsedText,
+      cv_parsed_at: new Date().toISOString(),
+    });
+    console.log(`[worker] 💾 حُفظ ملخص السيرة الذاتية للـ cv_id=${cvId}`);
+  }
+
+  return { parsedText, cvBytes };
+}
+
 // ─── Gemini Cover Letter ──────────────────────────────────────────────────────
 
 function toBase64(bytes: Uint8Array): string {
@@ -166,7 +234,7 @@ function toBase64(bytes: Uint8Array): string {
 
 async function generateCoverLetter(
   jobTitle: string, name: string, company: string, desc: string, lang: string,
-  cvBytes?: Uint8Array | null, cvMime = "application/pdf",
+  cvParsedText?: string | null,
 ): Promise<string> {
   const fallback = lang === "ar"
     ? `أتقدم بكل اهتمام لشغل وظيفة ${jobTitle}${company ? " في " + company : ""}. أنا مهتم بهذه الفرصة وأثق في قدرتي على إضافة قيمة حقيقية لفريقكم.`
@@ -174,25 +242,24 @@ async function generateCoverLetter(
   if (!GEMINI_KEY) return fallback;
 
   const noHallucinate = lang === "ar"
-    ? "تحذير صارم: لا تذكر أي أرقام أو سنوات خبرة أو برامج أو مهارات تقنية محددة لم تظهر بوضوح في السيرة الذاتية المرفقة. إذا لم تجد خبرة مباشرة بالوظيفة، اذكر المؤهل العلمي والاهتمام بالفرصة فقط دون اختراع معلومات."
-    : "Strict warning: Do not mention any specific years of experience, software, or technical skills not clearly visible in the attached CV. If no direct experience is found, mention the degree and enthusiasm only.";
+    ? "تحذير صارم: لا تذكر أي أرقام أو سنوات خبرة أو برامج أو مهارات تقنية محددة غير موجودة في ملخص السيرة الذاتية أدناه. إذا لم تجد خبرة مباشرة بالوظيفة، اذكر المؤهل العلمي والاهتمام بالفرصة فقط دون اختراع معلومات."
+    : "Strict warning: Do not mention any specific years of experience, software, or technical skills not present in the CV summary below. If no direct experience is found, mention the degree and enthusiasm only.";
 
-  const hasCv = !!cvBytes?.length;
+  const hasCv = !!(cvParsedText?.trim());
+
+  const cvBlock = hasCv
+    ? (lang === "ar" ? `\n\n--- ملخص السيرة الذاتية ---\n${cvParsedText}\n---` : `\n\n--- CV Summary ---\n${cvParsedText}\n---`)
+    : "";
 
   const prompt = hasCv
     ? (lang === "ar"
-        ? `اقرأ السيرة الذاتية المرفقة ثم اكتب رسالة تغطية رسمية بالعربية (3-4 جمل) للتقديم على وظيفة: ${jobTitle}${company ? " في شركة " + company : ""}${desc ? ". تفاصيل الوظيفة: " + desc.slice(0, 400) : ""}. اسم المتقدم: ${name}. الأسلوب: رسمي، ابدأ بالتعريف بالنفس والمؤهل ثم اذكر خبرات أو مهارات موجودة فعلاً في السيرة الذاتية تتناسب مع الوظيفة. بدون إيموجي، النص فقط بدون عنوان أو تحية. ${noHallucinate}`
-        : `Read the attached CV and write a formal cover letter in English (3-4 sentences) for the position: ${jobTitle}${company ? " at " + company : ""}${desc ? ". Job details: " + desc.slice(0, 400) : ""}. Applicant: ${name}. Style: professional — introduce yourself with your actual qualification, cite only experience or skills clearly present in the CV. No emoji, plain text only. ${noHallucinate}`)
+        ? `بناءً على ملخص السيرة الذاتية التالي، اكتب رسالة تغطية رسمية بالعربية (3-4 جمل) للتقديم على وظيفة: ${jobTitle}${company ? " في شركة " + company : ""}${desc ? ". تفاصيل الوظيفة: " + desc.slice(0, 400) : ""}. اسم المتقدم: ${name}. الأسلوب: رسمي، ابدأ بالتعريف بالنفس والمؤهل ثم اذكر خبرات أو مهارات موجودة فعلاً في الملخص تتناسب مع الوظيفة. بدون إيموجي، النص فقط بدون عنوان أو تحية. ${noHallucinate}${cvBlock}`
+        : `Based on the following CV summary, write a formal cover letter in English (3-4 sentences) for the position: ${jobTitle}${company ? " at " + company : ""}${desc ? ". Job details: " + desc.slice(0, 400) : ""}. Applicant: ${name}. Style: professional — introduce yourself with your actual qualification, cite only experience or skills clearly present in the summary. No emoji, plain text only. ${noHallucinate}${cvBlock}`)
     : (lang === "ar"
         ? `اكتب رسالة تغطية مختصرة (3-4 جمل) بالعربية للتقديم على وظيفة: ${jobTitle}${company ? " في شركة " + company : ""}${desc ? ". تفاصيل الوظيفة: " + desc.slice(0, 400) : ""}. الاسم: ${name}. اكتب بأسلوب رسمي يُبدي الاهتمام والاستعداد. بدون إيموجي. النص فقط.`
         : `Write a brief cover letter (3-4 sentences) in English for the position: ${jobTitle}${company ? " at " + company : ""}${desc ? ". Job details: " + desc.slice(0, 400) : ""}. Applicant: ${name}. Professional tone, express interest. No emoji, plain text only.`);
 
-  const parts: unknown[] = hasCv
-    ? [
-        { inline_data: { mime_type: cvMime, data: toBase64(cvBytes!) } },
-        { text: prompt },
-      ]
-    : [{ text: prompt }];
+  const parts: unknown[] = [{ text: prompt }];
 
   const MODELS = [
     "gemini-2.0-flash",
@@ -367,9 +434,8 @@ async function runCycle() {
       continue;
     }
 
-    const storagePath = String(cv.storage_path ?? "").trim();
-    const cvBytes = storagePath ? await downloadCv(storagePath) : null;
-    const cvName  = String(cv.file_name ?? "cv.pdf");
+    // تحليل السيرة الذاتية مرة واحدة وتخزينها — الدورات التالية تستخدم النص المحفوظ
+    const { parsedText: cvParsedText } = await getOrParseCv(cv);
 
     const prefIds    = new Set(prefsRows.map((p) => String(p.job_field_id)).filter(Boolean));
     const fieldNames = fieldsRaw
@@ -418,10 +484,7 @@ async function runCycle() {
       let errorReason: string | null = null;
 
       try {
-        const cvMime = cvName.toLowerCase().endsWith(".pdf") ? "application/pdf"
-          : cvName.toLowerCase().endsWith(".docx") ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          : "application/octet-stream";
-        let cover = await generateCoverLetter(jobTitle, name, company, desc, lang, cvBytes, cvMime);
+        let cover = await generateCoverLetter(jobTitle, name, company, desc, lang, cvParsedText);
         cover = stripEmojis(cover);
         const html    = buildEmailHtml(name, phone, jobTitle, company, cover, lang);
         const subject = lang === "ar"

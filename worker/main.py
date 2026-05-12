@@ -329,9 +329,79 @@ def _build_prompt(job_title: str, name: str, company: str, desc: str, lang: str,
             )
 
 
+async def _parse_cv_with_ai(cv_bytes: bytes, cv_mime: str) -> str | None:
+    """تحليل السيرة الذاتية واستخراج ملخص منظّم — يُستدعى مرة واحدة فقط."""
+    if not GEMINI_API_KEY or not cv_bytes:
+        return None
+    prompt = (
+        "استخرج من هذه السيرة الذاتية المعلومات التالية بشكل منظّم ومختصر بالعربية:\n"
+        "المؤهل العلمي والتخصص:\n"
+        "سنوات الخبرة الإجمالية:\n"
+        "الوظائف السابقة (مسمى + جهة + مدة):\n"
+        "المهارات التقنية والبرامج:\n"
+        "الشهادات والرخص المهنية:\n"
+        "اللغات:\n"
+        "اكتب فقط المعلومات الموجودة فعلاً. لا تضف تخمينات. إذا لم تجد معلومة اكتب (غير محدد)."
+    )
+    parts = [
+        {"inline_data": {"mime_type": cv_mime, "data": base64.b64encode(cv_bytes).decode("ascii")}},
+        {"text": prompt},
+    ]
+    try:
+        async with httpx.AsyncClient(timeout=40) as client:
+            r = await client.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
+                json={"contents": [{"parts": parts}]},
+            )
+            data = r.json()
+            text = (data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text") or "").strip()
+            return text or None
+    except Exception as e:
+        logger.warning("خطأ تحليل السيرة الذاتية: %s", e)
+        return None
+
+
+async def _get_or_parse_cv(
+    client: httpx.AsyncClient,
+    cv: dict,
+    cv_bytes: bytes | None = None,
+    cv_mime: str = "application/pdf",
+) -> str | None:
+    """إرجاع النص المحلَّل للسيرة الذاتية — يحلّله ويخزّنه إذا لم يكن محفوظاً مسبقاً.
+    إذا تم تمرير cv_bytes يستخدمها مباشرة بدون إعادة التنزيل."""
+    existing_text = (cv.get("cv_parsed_text") or "").strip()
+    if existing_text:
+        return existing_text
+
+    # استخدام الـ bytes الموجودة إذا توفّرت، وإلا تنزيلها
+    if not cv_bytes:
+        storage_path = (cv.get("storage_path") or "").strip()
+        if not storage_path:
+            return None
+        cv_bytes = await _download_cv(client, storage_path)
+        if not cv_bytes:
+            return None
+
+    parsed_text = await _parse_cv_with_ai(cv_bytes, cv_mime)
+    if parsed_text and cv.get("id"):
+        # حفظ الملخص لاستخدامه في الدورات القادمة
+        try:
+            patch_url = f"{SUPABASE_URL}/rest/v1/user_cvs?id=eq.{cv['id']}"
+            await client.patch(
+                patch_url,
+                headers=_SB_HEADERS,
+                json={"cv_parsed_text": parsed_text, "cv_parsed_at": datetime.now(timezone.utc).isoformat()},
+            )
+            logger.info("💾 حُفظ ملخص السيرة الذاتية cv_id=%s", cv["id"])
+        except Exception as e:
+            logger.warning("فشل حفظ الملخص: %s", e)
+
+    return parsed_text
+
+
 async def _generate_cover_letter(
     job_title: str, name: str, company: str, desc: str, lang: str,
-    cv_bytes: bytes | None = None, cv_mime: str = "application/pdf",
+    cv_parsed_text: str | None = None,
     template: str = "classic",
 ) -> str:
     fallback_ar = f"أتقدم بكل اهتمام لشغل وظيفة {job_title}{' في ' + company if company else ''}. أنا مهتم بهذه الفرصة وأثق في قدرتي على إضافة قيمة حقيقية لفريقكم."
@@ -339,15 +409,43 @@ async def _generate_cover_letter(
     if not GEMINI_API_KEY:
         return fallback_ar if lang == "ar" else fallback_en
 
-    prompt = _build_prompt(job_title, name, company, desc, lang, template)
+    no_hallucinate = (
+        "تحذير صارم: لا تذكر أي أرقام أو سنوات خبرة أو برامج أو مهارات تقنية محددة غير موجودة في ملخص السيرة الذاتية أدناه. "
+        "إذا لم تجد خبرة مباشرة بالوظيفة، اذكر المؤهل العلمي والاهتمام بالفرصة فقط دون اختراع معلومات."
+        if lang == "ar" else
+        "Strict warning: Do not mention any specific years of experience, software, or technical skills not present in the CV summary below. "
+        "If no direct experience is found, mention the degree and enthusiasm only."
+    )
+
+    has_cv = bool(cv_parsed_text and cv_parsed_text.strip())
+    cv_block = (
+        f"\n\n--- ملخص السيرة الذاتية ---\n{cv_parsed_text}\n---"
+        if has_cv and lang == "ar"
+        else f"\n\n--- CV Summary ---\n{cv_parsed_text}\n---"
+        if has_cv else ""
+    )
+
+    if has_cv:
+        if lang == "ar":
+            prompt = (
+                f"بناءً على ملخص السيرة الذاتية التالي، اكتب رسالة تغطية رسمية بالعربية (3-4 جمل) "
+                f"للتقديم على وظيفة: {job_title}{' في شركة ' + company if company else ''}"
+                f"{'. تفاصيل الوظيفة: ' + desc[:400] if desc else ''}. "
+                f"اسم المتقدم: {name}. الأسلوب: رسمي، ابدأ بالتعريف بالنفس والمؤهل ثم اذكر خبرات أو مهارات "
+                f"موجودة فعلاً في الملخص تتناسب مع الوظيفة. بدون إيموجي، النص فقط بدون عنوان أو تحية. {no_hallucinate}{cv_block}"
+            )
+        else:
+            prompt = (
+                f"Based on the following CV summary, write a formal cover letter in English (3-4 sentences) "
+                f"for the position: {job_title}{' at ' + company if company else ''}"
+                f"{'. Job details: ' + desc[:400] if desc else ''}. Applicant: {name}. "
+                f"Style: professional — introduce yourself with your actual qualification, cite only experience or skills clearly present in the summary. "
+                f"No emoji, plain text only. {no_hallucinate}{cv_block}"
+            )
+    else:
+        prompt = _build_prompt(job_title, name, company, desc, lang, template)
+
     parts: list[dict] = [{"text": prompt}]
-    if cv_bytes:
-        parts.append({
-            "inline_data": {
-                "mime_type": cv_mime,
-                "data": base64.b64encode(cv_bytes).decode("ascii"),
-            }
-        })
 
     try:
         async with httpx.AsyncClient(timeout=40) as client:
@@ -607,11 +705,20 @@ async def run_cycle() -> None:
                 logger.info("⏭️  %s — لا توجد سيرة ذاتية", name_log)
                 continue
 
+            # تنزيل الـ CV (مطلوب للإرفاق بالإيميل وـ AI matching)
             storage_path = (cv.get("storage_path") or "").strip()
-            cv_bytes = None
+            cv_name = cv.get("file_name") or "cv.pdf"
+            cv_mime = (
+                "application/pdf" if cv_name.lower().endswith(".pdf")
+                else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                if cv_name.lower().endswith(".docx") else "application/octet-stream"
+            )
+            cv_bytes: bytes | None = None
             if storage_path:
                 cv_bytes = await _download_cv(client, storage_path)
-            cv_name = cv.get("file_name") or "cv.pdf"
+
+            # تحليل السيرة الذاتية مرة واحدة وتخزين الملخص — الدورات التالية تستخدم النص المحفوظ بدون Gemini
+            cv_parsed_text = await _get_or_parse_cv(client, cv, cv_bytes, cv_mime)
 
             prefs_rows = await sb_get(client, "user_job_preferences", {"user_id": f"eq.{uid}"})
             pref_ids = {str(p["job_field_id"]) for p in prefs_rows if p.get("job_field_id")}
@@ -656,10 +763,6 @@ async def run_cycle() -> None:
                     logger.warning("   ⚠️  إيميل الوظيفة غير صالح: [%s] — تخطي", to_email)
                     continue
 
-                cv_mime = "application/pdf"
-                if cv_name and cv_name.lower().endswith(".docx"):
-                    cv_mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-
                 # ── مطابقة AI عميقة (السيرة × الوظيفة) ──
                 ai_score, ai_decision, ai_missing, ai_notes = await _ai_match_cv_job(
                     job_title=job_title,
@@ -683,7 +786,7 @@ async def run_cycle() -> None:
                 if wait > 0:
                     await asyncio.sleep(wait)
 
-                cover = await _generate_cover_letter(job_title, name, company, desc, lang, cv_bytes, cv_mime, template)
+                cover = await _generate_cover_letter(job_title, name, company, desc, lang, cv_parsed_text, template)
                 cover = _strip_emojis(cover)
                 html = _build_email_html(name, phone, job_title, company, cover, lang, template)
                 subject = f"التقديم على وظيفة: {_strip_emojis(job_title)}" if lang == "ar" else f"Application for: {_strip_emojis(job_title)}"
