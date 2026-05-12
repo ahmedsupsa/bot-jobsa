@@ -1,17 +1,17 @@
 const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
 
-// نماذج مرتبة من الأعلى حصة إلى الأقل — يجرب كل واحد عند فشل الآخر
+// نماذج مرتبة من الأفضل إلى الاحتياطي — جميعها stable حسب توثيق Google
 const TEXT_MODELS = [
-  "gemini-2.5-flash-preview-05-20",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
   "gemini-2.0-flash",
-  "gemini-1.5-flash",
-  "gemini-1.5-flash-8b",
+  "gemini-2.0-flash-lite",
 ];
 
 const MULTIMODAL_MODELS = [
-  "gemini-2.5-flash-preview-05-20",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
   "gemini-2.0-flash",
-  "gemini-1.5-flash",
 ];
 
 interface GeminiPart {
