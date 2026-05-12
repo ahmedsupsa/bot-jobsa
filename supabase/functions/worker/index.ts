@@ -127,19 +127,30 @@ async function generateCoverLetter(
     (desc ? `. تفاصيل الوظيفة: ${desc.slice(0, 400)}` : "") +
     `. الاسم: ${name}. بدون إيموجي. النص فقط.`;
 
-  try {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-      }
-    );
-    const data = await r.json();
-    return (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim() || fallback;
-  } catch {
-    return fallback;
+  const MODELS = [
+    "gemini-2.5-flash-preview-05-20",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
+  ];
+
+  for (const model of MODELS) {
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        }
+      );
+      if (r.status === 429 || r.status === 503 || r.status === 404) continue;
+      if (!r.ok) continue;
+      const data = await r.json();
+      const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
+      if (text) return text;
+    } catch { continue; }
   }
+  return fallback;
 }
 
 // ─── بناء HTML للإيميل ────────────────────────────────────────────────────────
