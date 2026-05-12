@@ -114,18 +114,37 @@ function isFeminineJob(job: Record<string, unknown>): boolean {
 
 function jobMatchesUser(job: Record<string, unknown>, fieldNames: string[]): boolean {
   if (!fieldNames.length) return false;
-  const blob = [job.specializations, job.title_ar, job.title_en, job.description_ar, job.description_en]
-    .map((v) => String(v ?? "")).join(" ").toLowerCase();
-  if (!blob.trim()) return false;
+
+  const spec    = String(job.specializations ?? "").toLowerCase().trim();
+  const titleAr = String(job.title_ar ?? "").toLowerCase();
+  const titleEn = String(job.title_en ?? "").toLowerCase();
+  const descAr  = String(job.description_ar ?? "").toLowerCase();
+  const descEn  = String(job.description_en ?? "").toLowerCase();
+
+  // 1. إذا كان حقل التخصصات معبأً — نطابق فقط معه ونرفض إذا لم يتطابق
+  if (spec) {
+    for (const name of fieldNames) {
+      const n = (name ?? "").trim().toLowerCase();
+      if (n && spec.includes(n)) return true;
+    }
+    return false; // الوظيفة لها تصنيف واضح لا يناسب المستخدم
+  }
+
+  // 2. لا يوجد تخصص — نطابق مع العنوان فقط (أكثر موثوقية من الوصف)
+  const titleBlob = `${titleAr} ${titleEn}`;
   for (const name of fieldNames) {
     const n = (name ?? "").trim().toLowerCase();
-    if (n && blob.includes(n)) return true;
+    if (n && titleBlob.includes(n)) return true;
   }
+
+  // 3. ملاذ أخير: الوصف مع معايير صارمة (كلمات 6+ أحرف، 3+ تطابقات)
+  const descBlob = `${descAr} ${descEn}`;
   const words = new Set<string>();
   for (const name of fieldNames)
     for (const w of (name ?? "").toLowerCase().split(/[\s\-/_,()]+/))
-      if (w.trim().length >= 4) words.add(w.trim());
-  return [...words].filter((w) => blob.includes(w)).length >= 2;
+      if (w.trim().length >= 6) words.add(w.trim());
+  if (words.size < 2) return false;
+  return [...words].filter((w) => descBlob.includes(w)).length >= 3;
 }
 
 // ─── CV Download ──────────────────────────────────────────────────────────────
@@ -152,7 +171,8 @@ async function generateCoverLetter(
     `للتقديم على وظيفة: ${jobTitle}` +
     (company ? ` في شركة ${company}` : "") +
     (desc ? `. تفاصيل الوظيفة: ${desc.slice(0, 400)}` : "") +
-    `. الاسم: ${name}. بدون إيموجي. النص فقط.`;
+    `. الاسم: ${name}. ` +
+    `تعليمات صارمة: لا تذكر أي أرقام أو سنوات خبرة أو برامج أو مهارات تقنية محددة لم تُذكر صراحةً في تفاصيل الوظيفة أعلاه. اكتب بأسلوب عام يُبدي الاهتمام والاستعداد للعمل فقط، دون اختراع معلومات. بدون إيموجي. النص فقط.`;
 
   const MODELS = [
     "gemini-2.5-flash",

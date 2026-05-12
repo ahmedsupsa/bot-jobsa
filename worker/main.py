@@ -129,26 +129,39 @@ def _is_feminine_job(job: dict) -> bool:
 def _job_matches_user(job: dict, field_names: list[str]) -> bool:
     if not field_names:
         return False
-    blob = " ".join([
-        str(job.get("specializations") or ""),
-        str(job.get("title_ar") or ""),
-        str(job.get("title_en") or ""),
-        str(job.get("description_ar") or ""),
-        str(job.get("description_en") or ""),
-    ]).lower()
-    if not blob.strip():
-        return False
+
+    spec     = (job.get("specializations") or "").lower().strip()
+    title_ar = (job.get("title_ar") or "").lower()
+    title_en = (job.get("title_en") or "").lower()
+    desc_ar  = (job.get("description_ar") or "").lower()
+    desc_en  = (job.get("description_en") or "").lower()
+
+    # 1. إذا كان حقل التخصصات معبأً — نطابق فقط معه ونرفض إذا لم يتطابق
+    if spec:
+        for name in field_names:
+            n = (name or "").strip().lower()
+            if n and n in spec:
+                return True
+        return False  # الوظيفة لها تصنيف واضح لا يناسب المستخدم
+
+    # 2. لا يوجد تخصص — نطابق مع العنوان فقط (أكثر موثوقية من الوصف)
+    title_blob = f"{title_ar} {title_en}"
     for name in field_names:
         n = (name or "").strip().lower()
-        if n and n in blob:
+        if n and n in title_blob:
             return True
+
+    # 3. ملاذ أخير: الوصف مع معايير صارمة (كلمات 6+ أحرف، 3+ تطابقات)
+    desc_blob = f"{desc_ar} {desc_en}"
     words: set[str] = set()
     for name in field_names:
         for w in re.split(r"[\s\-/_,()]+", (name or "").lower()):
-            if len(w.strip()) >= 4:
+            if len(w.strip()) >= 6:
                 words.add(w.strip())
-    hits = sum(1 for w in words if w in blob)
-    return hits >= 2
+    if len(words) < 2:
+        return False
+    hits = sum(1 for w in words if w in desc_blob)
+    return hits >= 3
 
 
 def _is_subscription_active(user: dict) -> bool:
@@ -260,50 +273,59 @@ def _build_prompt(job_title: str, name: str, company: str, desc: str, lang: str,
     co_str = f" في شركة {company}" if company else ""
     desc_str = f". تفاصيل الوظيفة: {desc[:400]}" if desc else ""
 
+    no_hallucinate_ar = (
+        "تحذير صارم: لا تذكر أي أرقام أو سنوات خبرة أو برامج أو مهارات تقنية محددة لم تظهر بوضوح في السيرة الذاتية المرفقة. "
+        "إذا لم تجد خبرة مباشرة بالوظيفة، اذكر المؤهل العلمي والاهتمام بالفرصة فقط دون اختراع معلومات."
+    )
+    no_hallucinate_en = (
+        "Strict warning: Do not mention any specific years of experience, software, or technical skills "
+        "that are not clearly visible in the attached CV. If no direct experience is found, mention the degree and enthusiasm only."
+    )
+
     if template == "brief":
         if is_ar:
             return (
-                f"اقرأ السيرة الذاتية واكتب رسالة تقديم موجزة جداً بالعربية (نقاط 2-3 فقط) "
+                f"اقرأ السيرة الذاتية واكتب رسالة تقديم موجزة جداً بالعربية (2-3 جمل فقط) "
                 f"للوظيفة: {job_title}{co_str}{desc_str}. اسم المتقدم: {name}. "
-                f"الأسلوب: مباشر، اذكر أبرز مهارة أو خبرة واحدة من السيرة الذاتية، ثم أبدِ اهتمامك. "
-                f"بدون تحية، بدون إيموجي، النص فقط في 2-3 جمل قصيرة."
+                f"الأسلوب: مباشر، اذكر أبرز مهارة أو تخصص واضح من السيرة الذاتية فقط، ثم أبدِ اهتمامك. "
+                f"بدون تحية، بدون إيموجي، النص فقط. {no_hallucinate_ar}"
             )
         else:
             return (
                 f"Read the CV and write a very brief cover note in English (2-3 sentences) "
                 f"for the position: {job_title}{co_str}{desc_str}. Applicant: {name}. "
-                f"Style: direct and punchy — highlight one key skill from the CV and express interest. "
-                f"No greeting, no emoji, plain text only."
+                f"Style: direct — highlight one key skill clearly visible in the CV and express interest. "
+                f"No greeting, no emoji, plain text only. {no_hallucinate_en}"
             )
     elif template == "modern":
         if is_ar:
             return (
                 f"اقرأ السيرة الذاتية واكتب رسالة تقديم عصرية وودّية بالعربية (3-4 جمل) "
                 f"للوظيفة: {job_title}{co_str}{desc_str}. اسم المتقدم: {name}. "
-                f"الأسلوب: متحمّس، شخصي، اذكر سبباً محدداً من السيرة الذاتية لماذا هذه الفرصة مثيرة. "
-                f"بدون تحية رسمية، بدون إيموجي، النص فقط."
+                f"الأسلوب: متحمّس، شخصي، اذكر سبباً محدداً من السيرة الذاتية يجعل هذه الفرصة مناسبة. "
+                f"بدون تحية رسمية، بدون إيموجي، النص فقط. {no_hallucinate_ar}"
             )
         else:
             return (
                 f"Read the CV and write a modern, friendly cover note in English (3-4 sentences) "
                 f"for the role: {job_title}{co_str}{desc_str}. Applicant: {name}. "
-                f"Style: enthusiastic, personal — mention a specific reason from the CV why this opportunity excites you. "
-                f"No formal salutation, no emoji, plain text only."
+                f"Style: enthusiastic, personal — mention a specific qualification from the CV that makes this role a fit. "
+                f"No formal salutation, no emoji, plain text only. {no_hallucinate_en}"
             )
     else:  # classic
         if is_ar:
             return (
                 f"اقرأ السيرة الذاتية المرفقة ثم اكتب رسالة تغطية رسمية ومنظّمة بالعربية (3-4 جمل) "
                 f"للتقديم على وظيفة: {job_title}{co_str}{desc_str}. اسم المتقدم: {name}. "
-                f"الأسلوب: رسمي، ابدأ بالتعريف بالنفس ثم اذكر خبرات من السيرة الذاتية تتناسب مع الوظيفة. "
-                f"بدون إيموجي، النص فقط بدون عنوان أو تحية."
+                f"الأسلوب: رسمي، ابدأ بالتعريف بالنفس والمؤهل ثم اذكر خبرات أو مهارات موجودة فعلاً في السيرة الذاتية تتناسب مع الوظيفة. "
+                f"بدون إيموجي، النص فقط بدون عنوان أو تحية. {no_hallucinate_ar}"
             )
         else:
             return (
                 f"Read the attached CV and write a formal, structured cover letter in English (3-4 sentences) "
                 f"for the position: {job_title}{co_str}{desc_str}. Applicant: {name}. "
-                f"Style: professional — introduce yourself, cite relevant experience from the CV. "
-                f"No emoji, plain text only, no heading or salutation."
+                f"Style: professional — introduce yourself with your actual qualification, cite only experience or skills clearly present in the CV. "
+                f"No emoji, plain text only, no heading or salutation. {no_hallucinate_en}"
             )
 
 
