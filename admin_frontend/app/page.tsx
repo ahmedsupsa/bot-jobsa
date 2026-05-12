@@ -1,10 +1,16 @@
-"use client";
 import Link from "next/link";
 import Image from "next/image";
+import type { Metadata } from "next";
 import {
   Bot, PenLine, BarChart3, ArrowLeft,
   CheckCircle2, Zap, Shield, Clock, TrendingUp
 } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Jobbots — بوت التقديم التلقائي على الوظائف في السعودية بالذكاء الاصطناعي",
+  description: "Jobbots يقدّم عنك على المئات من الوظائف تلقائياً في السعودية كل يوم بالذكاء الاصطناعي. وفّر وقتك، زد فرصك، واحصل على وظيفتك المثالية.",
+  alternates: { canonical: "https://jobbots.org" },
+};
 
 export default function LandingPage() {
   const features = [
@@ -264,6 +270,10 @@ export default function LandingPage() {
           </div>
           <div style={s.footerLinks}>
             <Link href="/store" style={s.footerLink}>المتجر</Link>
+            <span style={{ color: "var(--text4)" }}>·</span>
+            <Link href="/wazaif" style={s.footerLink}>الوظائف</Link>
+            <span style={{ color: "var(--text4)" }}>·</span>
+            <Link href="/daleel" style={s.footerLink}>الأدلة</Link>
             <span style={{ color: "var(--text4)" }}>·</span>
             <Link href="/privacy" style={s.footerLink}>سياسة الخصوصية</Link>
             <span style={{ color: "var(--text4)" }}>·</span>
