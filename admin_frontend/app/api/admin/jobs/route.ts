@@ -62,14 +62,31 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   const _denied_ = enforcePermission("jobs"); if (_denied_) return _denied_;
-  const { id } = await req.json().catch(() => ({}));
-  if (!id) return NextResponse.json({ ok: false, error: "معرّف الوظيفة مطلوب" }, { status: 400 });
+  const body = await req.json().catch(() => ({}));
 
+  // حذف الوظائف المنتهية (أكثر من 10 أيام)
+  if (body.mode === "expired") {
+    const cutoff = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+    const { error, count } = await supabase.from("admin_jobs").delete({ count: "exact" }).lt("created_at", cutoff);
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, deleted: count || 0 });
+  }
+
+  // حذف متعدد
+  if (Array.isArray(body.ids) && body.ids.length > 0) {
+    const { error, count } = await supabase.from("admin_jobs").delete({ count: "exact" }).in("id", body.ids);
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    for (const id of body.ids) tg.jobDeleted(id).catch(() => {});
+    return NextResponse.json({ ok: true, deleted: count || 0 });
+  }
+
+  // حذف مفرد
+  const { id } = body;
+  if (!id) return NextResponse.json({ ok: false, error: "معرّف الوظيفة مطلوب" }, { status: 400 });
   const { error } = await supabase.from("admin_jobs").delete().eq("id", id);
   if (error) {
-    console.error("jobs DELETE error:", error.message);
     const friendly = /foreign key|violates/i.test(error.message)
-      ? "لا يمكن حذف الوظيفة لارتباطها بسجلات تقديم. شغّل migration: admin_jobs_cascade.sql ثم أعد المحاولة."
+      ? "لا يمكن حذف الوظيفة لارتباطها بسجلات تقديم."
       : error.message;
     return NextResponse.json({ ok: false, error: friendly }, { status: 500 });
   }

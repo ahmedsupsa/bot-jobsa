@@ -612,7 +612,7 @@ async def run_cycle() -> None:
                     break
 
                 job_id = str(job["id"])
-                already_rows = await sb_get(client, "applications", {"user_id": f"eq.{uid}", "job_id": f"eq.{job_id}"})
+                already_rows = await sb_get(client, "applications", {"user_id": f"eq.{uid}", "job_id": f"eq.{job_id}", "status": "eq.sent"})
                 if already_rows:
                     continue
 

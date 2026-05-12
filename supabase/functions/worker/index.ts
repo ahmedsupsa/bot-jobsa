@@ -347,7 +347,7 @@ async function runCycle() {
       if (sent >= remaining) break;
 
       const jobId = String(job.id);
-      const already = await sbCount("applications", { user_id: `eq.${uid}`, job_id: `eq.${jobId}` });
+      const already = await sbCount("applications", { user_id: `eq.${uid}`, job_id: `eq.${jobId}`, status: "eq.sent" });
       if (already > 0) {
         details.push({ user: name, job: String(job.title_ar ?? job.title_en ?? ""), status: "skipped", reason: "قُدِّم سابقاً" });
         continue;
