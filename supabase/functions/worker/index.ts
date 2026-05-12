@@ -158,27 +158,47 @@ async function downloadCv(storagePath: string): Promise<Uint8Array | null> {
 
 // ─── Gemini Cover Letter ──────────────────────────────────────────────────────
 
+function toBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
 async function generateCoverLetter(
-  jobTitle: string, name: string, company: string, desc: string, lang: string
+  jobTitle: string, name: string, company: string, desc: string, lang: string,
+  cvBytes?: Uint8Array | null, cvMime = "application/pdf",
 ): Promise<string> {
   const fallback = lang === "ar"
     ? `أتقدم بكل اهتمام لشغل وظيفة ${jobTitle}${company ? " في " + company : ""}. أنا مهتم بهذه الفرصة وأثق في قدرتي على إضافة قيمة حقيقية لفريقكم.`
     : `I am writing to express my interest in the ${jobTitle} position${company ? " at " + company : ""}. I am confident in my ability to contribute effectively to your team.`;
   if (!GEMINI_KEY) return fallback;
 
-  const prompt =
-    `اكتب رسالة تغطية مختصرة (3-4 جمل) باللغة ${lang === "ar" ? "العربية" : "الإنجليزية"} ` +
-    `للتقديم على وظيفة: ${jobTitle}` +
-    (company ? ` في شركة ${company}` : "") +
-    (desc ? `. تفاصيل الوظيفة: ${desc.slice(0, 400)}` : "") +
-    `. الاسم: ${name}. ` +
-    `تعليمات صارمة: لا تذكر أي أرقام أو سنوات خبرة أو برامج أو مهارات تقنية محددة لم تُذكر صراحةً في تفاصيل الوظيفة أعلاه. اكتب بأسلوب عام يُبدي الاهتمام والاستعداد للعمل فقط، دون اختراع معلومات. بدون إيموجي. النص فقط.`;
+  const noHallucinate = lang === "ar"
+    ? "تحذير صارم: لا تذكر أي أرقام أو سنوات خبرة أو برامج أو مهارات تقنية محددة لم تظهر بوضوح في السيرة الذاتية المرفقة. إذا لم تجد خبرة مباشرة بالوظيفة، اذكر المؤهل العلمي والاهتمام بالفرصة فقط دون اختراع معلومات."
+    : "Strict warning: Do not mention any specific years of experience, software, or technical skills not clearly visible in the attached CV. If no direct experience is found, mention the degree and enthusiasm only.";
+
+  const hasCv = !!cvBytes?.length;
+
+  const prompt = hasCv
+    ? (lang === "ar"
+        ? `اقرأ السيرة الذاتية المرفقة ثم اكتب رسالة تغطية رسمية بالعربية (3-4 جمل) للتقديم على وظيفة: ${jobTitle}${company ? " في شركة " + company : ""}${desc ? ". تفاصيل الوظيفة: " + desc.slice(0, 400) : ""}. اسم المتقدم: ${name}. الأسلوب: رسمي، ابدأ بالتعريف بالنفس والمؤهل ثم اذكر خبرات أو مهارات موجودة فعلاً في السيرة الذاتية تتناسب مع الوظيفة. بدون إيموجي، النص فقط بدون عنوان أو تحية. ${noHallucinate}`
+        : `Read the attached CV and write a formal cover letter in English (3-4 sentences) for the position: ${jobTitle}${company ? " at " + company : ""}${desc ? ". Job details: " + desc.slice(0, 400) : ""}. Applicant: ${name}. Style: professional — introduce yourself with your actual qualification, cite only experience or skills clearly present in the CV. No emoji, plain text only. ${noHallucinate}`)
+    : (lang === "ar"
+        ? `اكتب رسالة تغطية مختصرة (3-4 جمل) بالعربية للتقديم على وظيفة: ${jobTitle}${company ? " في شركة " + company : ""}${desc ? ". تفاصيل الوظيفة: " + desc.slice(0, 400) : ""}. الاسم: ${name}. اكتب بأسلوب رسمي يُبدي الاهتمام والاستعداد. بدون إيموجي. النص فقط.`
+        : `Write a brief cover letter (3-4 sentences) in English for the position: ${jobTitle}${company ? " at " + company : ""}${desc ? ". Job details: " + desc.slice(0, 400) : ""}. Applicant: ${name}. Professional tone, express interest. No emoji, plain text only.`);
+
+  const parts: unknown[] = hasCv
+    ? [
+        { inline_data: { mime_type: cvMime, data: toBase64(cvBytes!) } },
+        { text: prompt },
+      ]
+    : [{ text: prompt }];
 
   const MODELS = [
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
   ];
 
   for (const model of MODELS) {
@@ -187,7 +207,7 @@ async function generateCoverLetter(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
         {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+          body: JSON.stringify({ contents: [{ parts }] }),
         }
       );
       if (r.status === 429 || r.status === 503 || r.status === 404) continue;
@@ -398,7 +418,10 @@ async function runCycle() {
       let errorReason: string | null = null;
 
       try {
-        let cover = await generateCoverLetter(jobTitle, name, company, desc, lang);
+        const cvMime = cvName.toLowerCase().endsWith(".pdf") ? "application/pdf"
+          : cvName.toLowerCase().endsWith(".docx") ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          : "application/octet-stream";
+        let cover = await generateCoverLetter(jobTitle, name, company, desc, lang, cvBytes, cvMime);
         cover = stripEmojis(cover);
         const html    = buildEmailHtml(name, phone, jobTitle, company, cover, lang);
         const subject = lang === "ar"
