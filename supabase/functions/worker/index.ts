@@ -476,7 +476,8 @@ async function runCycle() {
     }
 
     // تحليل السيرة الذاتية مرة واحدة وتخزينها — الدورات التالية تستخدم النص المحفوظ
-    const { parsedText: cvParsedText } = await getOrParseCv(cv);
+    const cvName = String(cv.file_name ?? "cv.pdf");
+    const { parsedText: cvParsedText, cvBytes } = await getOrParseCv(cv);
 
     const prefIds    = new Set(prefsRows.map((p) => String(p.job_field_id)).filter(Boolean));
     const fieldNames = fieldsRaw
