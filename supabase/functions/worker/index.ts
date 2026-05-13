@@ -354,6 +354,15 @@ async function sendSmtp(opts: {
   await transporter.sendMail(mailOptions);
 }
 
+// ─── بصمة بيانات الوظيفة (لكشف التغيير والسماح بإعادة التقديم) ─────────────
+
+async function jobFingerprint(title: string, email: string, desc: string): Promise<string> {
+  const text  = `${title}|${email}|${desc.slice(0, 500)}`;
+  const bytes = new TextEncoder().encode(text);
+  const hash  = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(hash)).slice(0, 8).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 // ─── تحليل مدى ملاءمة المستخدم للوظيفة (Gemini AI) ───────────────────────────
 
 interface JobFitResult {
@@ -549,15 +558,23 @@ async function runCycle() {
       const desc     = String(job.description_ar ?? job.description_en ?? "").slice(0, 1200);
       const toEmail  = String(job.application_email ?? "").trim();
 
-      // فحص التقديمات المكررة: أي تقديم على نفس الوظيفة خلال آخر 30 يوماً
-      const already = await sbCount("applications", {
-        user_id: `eq.${uid}`,
-        job_id:  `eq.${jobId}`,
+      // فحص التقديمات المكررة مع كشف التغيير: إذا تغيّرت بيانات الوظيفة يُسمح بالإعادة
+      const fingerprint = await jobFingerprint(jobTitle, toEmail, desc);
+      const recentApps  = await sbGet("applications", {
+        user_id:    `eq.${uid}`,
+        job_id:     `eq.${jobId}`,
         applied_at: `gte.${thirtyDaysAgo}`,
+        "order":    "applied_at.desc",
+        "limit":    "1",
       });
-      if (already > 0) {
-        details.push({ user: name, job: jobTitle, status: "skipped", reason: "قُدِّم مؤخراً (أقل من 30 يوم)" });
-        continue;
+      if (recentApps.length > 0) {
+        const lastFp = String(recentApps[0].job_fingerprint ?? "");
+        if (lastFp === fingerprint) {
+          details.push({ user: name, job: jobTitle, status: "skipped", reason: "قُدِّم مؤخراً (أقل من 30 يوم وبيانات الوظيفة لم تتغير)" });
+          continue;
+        }
+        // بيانات الوظيفة تغيّرت → السماح بإعادة التقديم
+        console.log(`[worker] 🔄 ${name} ← ${jobTitle}: بيانات الوظيفة تغيّرت — إعادة التقديم مسموحة`);
       }
 
       if (!jobMatchesUser(job, fieldNames)) {
@@ -604,8 +621,8 @@ async function runCycle() {
         });
 
         sent++; applied++;
-        details.push({ user: name, job: jobTitle, status: "sent" });
-        console.log(`[worker] ✅ ${name} → ${jobTitle} (${toEmail})`);
+        details.push({ user: name, job: jobTitle, status: "sent", reason: `score=${fit.score}/100 — ${fit.reasons.slice(0, 1).join("")}` });
+        console.log(`[worker] ✅ ${name} → ${jobTitle} (${toEmail}) | score=${fit.score}`);
 
         await new Promise((r) => setTimeout(r, 5000));
       } catch (e) {
@@ -620,7 +637,7 @@ async function runCycle() {
         user_id: uid, job_id: jobId, job_title: jobTitle,
         applied_at: sentAt, status, provider_used: "smtp",
         error_reason: errorReason, sent_at: status === "sent" ? sentAt : null,
-        match_score: fit.score,
+        match_score: fit.score, job_fingerprint: fingerprint,
       });
     }
   }

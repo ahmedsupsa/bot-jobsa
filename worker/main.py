@@ -535,6 +535,15 @@ async def _download_cv(client: httpx.AsyncClient, storage_path: str) -> bytes | 
     return None
 
 
+# ─── بصمة بيانات الوظيفة (لكشف التغيير والسماح بإعادة التقديم) ─────────────
+
+def _job_fingerprint(title: str, email: str, desc: str) -> str:
+    """SHA-256 مختصر (16 حرف) لكشف تغيير بيانات الوظيفة."""
+    import hashlib
+    text = f"{title}|{email}|{desc[:500]}"
+    return hashlib.sha256(text.encode()).hexdigest()[:16]
+
+
 # ─── تحليل مدى ملاءمة المستخدم للوظيفة (Gemini AI) ───────────────────────────
 
 async def _analyze_job_fit(
@@ -753,14 +762,25 @@ async def run_cycle() -> None:
                 desc = (job.get("description_ar") or job.get("description_en") or "")[:1500]
                 to_email = (job.get("application_email") or "").strip()
 
-                # فحص التقديمات المكررة: أي تقديم على نفس الوظيفة خلال آخر 30 يوماً
-                already_rows = await sb_get(
+                # فحص التقديمات المكررة مع كشف التغيير: إذا تغيّرت بيانات الوظيفة يُسمح بالإعادة
+                fingerprint = _job_fingerprint(job_title, to_email, desc)
+                recent_rows = await sb_get(
                     client, "applications",
-                    {"user_id": f"eq.{uid}", "job_id": f"eq.{job_id}", "applied_at": f"gte.{thirty_days_ago}"},
+                    {
+                        "user_id":    f"eq.{uid}",
+                        "job_id":     f"eq.{job_id}",
+                        "applied_at": f"gte.{thirty_days_ago}",
+                        "order":      "applied_at.desc",
+                        "limit":      "1",
+                    },
                 )
-                if already_rows:
-                    logger.info("   ⏭️  [%s] — قُدِّم مؤخراً (أقل من 30 يوم)", job_title)
-                    continue
+                if recent_rows:
+                    last_fp = (recent_rows[0].get("job_fingerprint") or "")
+                    if last_fp == fingerprint:
+                        logger.info("   ⏭️  [%s] — قُدِّم مؤخراً (أقل من 30 يوم وبيانات الوظيفة لم تتغير)", job_title)
+                        continue
+                    # بيانات الوظيفة تغيّرت → السماح بإعادة التقديم
+                    logger.info("   🔄 [%s] — بيانات الوظيفة تغيّرت — إعادة التقديم مسموحة", job_title)
 
                 matched = _job_matches_user(job, field_names)
                 logger.info("   🔎 وظيفة [%s] → %s", job_title, "✓ تطابق مبدئي" if matched else "✗ لا تطابق")
@@ -833,7 +853,7 @@ async def run_cycle() -> None:
                     )
                     _last_send[uid] = time.monotonic()
                     sent += 1
-                    logger.info("✅ تقديم: %s → %s (%s)", name, job_title, to_email)
+                    logger.info("✅ تقديم: %s → %s (%s) | score=%d", name, job_title, to_email, fit["score"])
                 except Exception as e:
                     status = "failed"
                     error_reason = str(e)[:500]
@@ -845,15 +865,16 @@ async def run_cycle() -> None:
                         f"{SUPABASE_URL}/rest/v1/applications",
                         headers={**_SB_HEADERS},
                         json={
-                            "user_id": uid,
-                            "job_title": job_title,
-                            "job_id": job_id,
-                            "applied_at": sent_at,
-                            "status": status,
-                            "provider_used": "smtp",
-                            "error_reason": error_reason,
-                            "sent_at": sent_at if status == "sent" else None,
-                            "match_score": fit["score"],
+                            "user_id":         uid,
+                            "job_title":       job_title,
+                            "job_id":          job_id,
+                            "applied_at":      sent_at,
+                            "status":          status,
+                            "provider_used":   "smtp",
+                            "error_reason":    error_reason,
+                            "sent_at":         sent_at if status == "sent" else None,
+                            "match_score":     fit["score"],
+                            "job_fingerprint": fingerprint,
                         },
                     )
                 except Exception as e:
