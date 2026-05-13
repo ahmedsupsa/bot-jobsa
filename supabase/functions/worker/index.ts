@@ -577,29 +577,31 @@ async function runCycle() {
         console.log(`[worker] 🔄 ${name} ← ${jobTitle}: بيانات الوظيفة تغيّرت — إعادة التقديم مسموحة`);
       }
 
-      if (!jobMatchesUser(job, fieldNames)) {
-        details.push({ user: name, job: jobTitle, status: "skipped", reason: "لا يطابق التفضيلات" });
-        continue;
-      }
-
-      const userGender = String(user.gender ?? "male");
-      if (userGender === "male" && isFeminineJob(job)) {
-        details.push({ user: name, job: jobTitle, status: "skipped", reason: "وظيفة نسائية — المستخدم ذكر" });
-        continue;
-      }
-
+      // الفلاتر الرخيصة قبل استدعاء AI
       if (!isValidEmail(toEmail)) {
         details.push({ user: name, job: jobTitle, status: "skipped", reason: `إيميل غير صالح: ${toEmail}` });
         continue;
       }
 
-      // ── تحليل AI لمدى ملاءمة الوظيفة ──
+      if (!jobMatchesUser(job, fieldNames)) {
+        details.push({ user: name, job: jobTitle, status: "skipped", reason: "لا يطابق التفضيلات" });
+        continue;
+      }
+
+      // ── تحليل AI لمدى ملاءمة الوظيفة (يعمل لكل وظيفة مطابقة للتفضيلات) ──
       const fit = await analyzeJobFit(jobTitle, company, desc, cvParsedText, fieldNames, certifications);
       console.log(`[worker] 🤖 ${name} ← ${jobTitle} | score=${fit.score} | ${fit.decision} | missing=${fit.missing.join(", ") || "لا يوجد"}`);
 
       if (fit.decision === "skip") {
         const reason = `AI رفض (${fit.score}/100): ${fit.reasons.slice(0, 2).join("؛ ")}${fit.missing.length ? " | ناقص: " + fit.missing.slice(0, 2).join("، ") : ""}`;
         details.push({ user: name, job: jobTitle, status: "skipped", reason });
+        continue;
+      }
+
+      // فلتر الجنس (حاجز صارم بعد AI)
+      const userGender = String(user.gender ?? "male");
+      if (userGender === "male" && isFeminineJob(job)) {
+        details.push({ user: name, job: jobTitle, status: "skipped", reason: `وظيفة نسائية — المستخدم ذكر (AI score=${fit.score})` });
         continue;
       }
 

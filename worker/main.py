@@ -615,15 +615,20 @@ async def _analyze_job_fit(
                 continue
             import json as _json
             parsed = _json.loads(m.group())
-            score   = max(0, min(100, int(parsed.get("score", 0))))
-            missing = [x for x in (parsed.get("missing") or []) if x][:4]
+            raw_score = parsed.get("score", 0)
+            score = max(0, min(100, int(raw_score) if isinstance(raw_score, (int, float, str)) else 0))
+            # فحص النوع الصريح لضمان القوائم
+            raw_missing = parsed.get("missing")
+            raw_reasons = parsed.get("reasons")
+            missing = [x for x in (raw_missing if isinstance(raw_missing, list) else []) if isinstance(x, str) and x.strip()][:4]
+            reasons = [x for x in (raw_reasons if isinstance(raw_reasons, list) else []) if isinstance(x, str)][:4]
             # حاجز صارم: أي متطلب إلزامي ناقص → تخطي حتمي بغض النظر عن الـ score
             decision = "apply" if (score >= 60 and len(missing) == 0) else "skip"
             return {
-                "score": score,
+                "score":    score,
                 "decision": decision,
-                "reasons": (parsed.get("reasons") or [])[:4],
-                "missing": missing,
+                "reasons":  reasons,
+                "missing":  missing,
             }
         except Exception:
             continue
@@ -782,21 +787,17 @@ async def run_cycle() -> None:
                     # بيانات الوظيفة تغيّرت → السماح بإعادة التقديم
                     logger.info("   🔄 [%s] — بيانات الوظيفة تغيّرت — إعادة التقديم مسموحة", job_title)
 
+                # الفلاتر الرخيصة قبل استدعاء AI
+                if not _is_valid_email(to_email):
+                    logger.warning("   ⚠️  إيميل الوظيفة غير صالح: [%s] — تخطي", to_email)
+                    continue
+
                 matched = _job_matches_user(job, field_names)
                 logger.info("   🔎 وظيفة [%s] → %s", job_title, "✓ تطابق مبدئي" if matched else "✗ لا تطابق")
                 if not matched:
                     continue
 
-                user_gender = (user.get("gender") or "male")
-                if user_gender == "male" and _is_feminine_job(job):
-                    logger.info("   ⏭️  وظيفة نسائية — المستخدم ذكر: [%s]", job_title)
-                    continue
-
-                if not _is_valid_email(to_email):
-                    logger.warning("   ⚠️  إيميل الوظيفة غير صالح: [%s] — تخطي", to_email)
-                    continue
-
-                # ── تحليل AI لمدى ملاءمة الوظيفة ──
+                # ── تحليل AI لمدى ملاءمة الوظيفة (يعمل لكل وظيفة مطابقة للتفضيلات) ──
                 fit = await _analyze_job_fit(
                     job_title=job_title,
                     company=company,
@@ -818,6 +819,12 @@ async def run_cycle() -> None:
                         fit["score"], reasons_str,
                         f" | ناقص: {missing_str}" if missing_str else "",
                     )
+                    continue
+
+                # فلتر الجنس (حاجز صارم بعد AI)
+                user_gender = (user.get("gender") or "male")
+                if user_gender == "male" and _is_feminine_job(job):
+                    logger.info("   ⏭️  وظيفة نسائية — المستخدم ذكر: [%s] (score=%d)", job_title, fit["score"])
                     continue
 
                 # الانتظار بين الإرسالات
