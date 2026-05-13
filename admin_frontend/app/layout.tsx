@@ -1,7 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { PWARegister } from "@/components/pwa-register";
-import { PWAInstallButton } from "@/components/pwa-install-button";
 import { ThemeProvider } from "@/contexts/theme-context";
 
 export const metadata: Metadata = {
@@ -51,7 +50,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           {children}
           <PWARegister />
-          <PWAInstallButton />
         </ThemeProvider>
       </body>
     </html>
