@@ -371,7 +371,8 @@ async function analyzeJobFit(
   fieldNames: string[],
   certifications: Array<{ type: string; name: string; issuer?: string }>,
 ): Promise<JobFitResult> {
-  const fallback: JobFitResult = { score: 70, decision: "apply", reasons: ["تحليل تلقائي — لم يتوفر Gemini"], missing: [] };
+  // الـ fallback يرفض التقديم بشكل افتراضي — لا نقدّم بدون تحليل AI حقيقي
+  const fallback: JobFitResult = { score: 0, decision: "skip", reasons: ["تعذّر الاتصال بـ Gemini — تم التخطي احترازياً"], missing: [] };
   if (!GEMINI_KEY) return fallback;
 
   const certText = certifications.length
@@ -394,9 +395,9 @@ async function analyzeJobFit(
     `أعد JSON فقط (بدون markdown) بهذا الشكل بالضبط:\n` +
     `{"score":75,"decision":"apply","reasons":["سبب1","سبب2"],"missing":["نقص1"]}\n` +
     `- score: رقم من 0 إلى 100 يعبر عن نسبة الملاءمة\n` +
-    `- decision: "apply" إذا score >= 60، و"skip" إذا أقل\n` +
+    `- decision: "apply" إذا score >= 60 ولا توجد متطلبات إلزامية ناقصة، و"skip" في غير ذلك\n` +
     `- reasons: 2-3 أسباب موجزة للقرار بالعربية\n` +
-    `- missing: متطلبات الوظيفة غير الموجودة في ملف المرشح (فارغة إذا لا يوجد)\n` +
+    `- missing: فقط الشروط الإلزامية (رخص مهنية، شهادات معتمدة، مؤهل محدد) المطلوبة صراحةً في الوظيفة والغائبة عن ملف المرشح. لا تضع "مفضلات" أو خبرة عامة — فقط الحواجز الحتمية. فارغة إذا لا يوجد شرط إلزامي ناقص.\n` +
     `أعد JSON فقط، بلا نص إضافي.`;
 
   const MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash"];
@@ -418,12 +419,15 @@ async function analyzeJobFit(
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) continue;
       const parsed = JSON.parse(jsonMatch[0]) as Partial<JobFitResult>;
-      const score = Math.max(0, Math.min(100, Number(parsed.score ?? 70)));
+      const score   = Math.max(0, Math.min(100, Number(parsed.score ?? 0)));
+      const missing = Array.isArray(parsed.missing) ? parsed.missing.filter(Boolean).slice(0, 4) : [];
+      // حاجز صارم: أي متطلب إلزامي ناقص → تخطي حتمي بغض النظر عن الـ score
+      const decision: "apply" | "skip" = (score >= 60 && missing.length === 0) ? "apply" : "skip";
       return {
         score,
-        decision: score >= 60 ? "apply" : "skip",
+        decision,
         reasons: Array.isArray(parsed.reasons) ? parsed.reasons.slice(0, 4) : [],
-        missing: Array.isArray(parsed.missing) ? parsed.missing.slice(0, 4) : [],
+        missing,
       };
     } catch { continue; }
   }

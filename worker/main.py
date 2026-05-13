@@ -549,7 +549,8 @@ async def _analyze_job_fit(
     يحلل مدى ملاءمة المستخدم للوظيفة عبر Gemini.
     يعيد: {"score": int, "decision": "apply"|"skip", "reasons": list, "missing": list}
     """
-    fallback = {"score": 70, "decision": "apply", "reasons": ["تحليل تلقائي — لم يتوفر Gemini"], "missing": []}
+    # الـ fallback يرفض التقديم افتراضياً — لا نقدّم بدون تحليل AI حقيقي
+    fallback = {"score": 0, "decision": "skip", "reasons": ["تعذّر الاتصال بـ Gemini — تم التخطي احترازياً"], "missing": []}
     if not GEMINI_API_KEY:
         return fallback
 
@@ -574,9 +575,9 @@ async def _analyze_job_fit(
         'أعد JSON فقط (بدون markdown) بهذا الشكل بالضبط:\n'
         '{"score":75,"decision":"apply","reasons":["سبب1","سبب2"],"missing":["نقص1"]}\n'
         '- score: رقم من 0 إلى 100 يعبر عن نسبة الملاءمة\n'
-        '- decision: "apply" إذا score >= 60، و"skip" إذا أقل\n'
+        '- decision: "apply" إذا score >= 60 ولا توجد متطلبات إلزامية ناقصة، و"skip" في غير ذلك\n'
         '- reasons: 2-3 أسباب موجزة للقرار بالعربية\n'
-        '- missing: متطلبات الوظيفة غير الموجودة في ملف المرشح (فارغة إذا لا يوجد)\n'
+        '- missing: فقط الشروط الإلزامية (رخص مهنية، شهادات معتمدة، مؤهل محدد) المطلوبة صراحةً في الوظيفة والغائبة عن ملف المرشح. لا تضع "مفضلات" أو خبرة عامة — فقط الحواجز الحتمية. فارغة إذا لا يوجد شرط إلزامي ناقص.\n'
         'أعد JSON فقط، بلا نص إضافي.'
     )
 
@@ -605,12 +606,15 @@ async def _analyze_job_fit(
                 continue
             import json as _json
             parsed = _json.loads(m.group())
-            score = max(0, min(100, int(parsed.get("score", 70))))
+            score   = max(0, min(100, int(parsed.get("score", 0))))
+            missing = [x for x in (parsed.get("missing") or []) if x][:4]
+            # حاجز صارم: أي متطلب إلزامي ناقص → تخطي حتمي بغض النظر عن الـ score
+            decision = "apply" if (score >= 60 and len(missing) == 0) else "skip"
             return {
                 "score": score,
-                "decision": "apply" if score >= 60 else "skip",
+                "decision": decision,
                 "reasons": (parsed.get("reasons") or [])[:4],
-                "missing": (parsed.get("missing") or [])[:4],
+                "missing": missing,
             }
         except Exception:
             continue
