@@ -40,6 +40,12 @@ export async function POST(req: Request) {
   if (!ALLOWED_TYPES.includes(type)) return NextResponse.json({ error: "نوع غير صالح" }, { status: 400 });
   if (!name) return NextResponse.json({ error: "اسم الشهادة مطلوب" }, { status: 400 });
 
+  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+  if (body.issued_at && !ISO_DATE.test(String(body.issued_at)))
+    return NextResponse.json({ error: "تاريخ الإصدار غير صالح (YYYY-MM-DD)" }, { status: 400 });
+  if (body.expires_at && !ISO_DATE.test(String(body.expires_at)))
+    return NextResponse.json({ error: "تاريخ الانتهاء غير صالح (YYYY-MM-DD)" }, { status: 400 });
+
   const record = {
     user_id:    payload.user_id,
     type,
@@ -83,8 +89,20 @@ export async function PUT(req: Request) {
     updates.name = name;
   }
   if (body.issuer !== undefined)     updates.issuer     = String(body.issuer ?? "").trim() || null;
-  if (body.issued_at !== undefined)  updates.issued_at  = body.issued_at ? String(body.issued_at) : null;
-  if (body.expires_at !== undefined) updates.expires_at = body.expires_at ? String(body.expires_at) : null;
+  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+  if (body.issued_at !== undefined) {
+    if (body.issued_at && !ISO_DATE.test(String(body.issued_at)))
+      return NextResponse.json({ error: "تاريخ الإصدار غير صالح (YYYY-MM-DD)" }, { status: 400 });
+    updates.issued_at = body.issued_at ? String(body.issued_at) : null;
+  }
+  if (body.expires_at !== undefined) {
+    if (body.expires_at && !ISO_DATE.test(String(body.expires_at)))
+      return NextResponse.json({ error: "تاريخ الانتهاء غير صالح (YYYY-MM-DD)" }, { status: 400 });
+    updates.expires_at = body.expires_at ? String(body.expires_at) : null;
+  }
+
+  if (!Object.keys(updates).length)
+    return NextResponse.json({ error: "لا توجد حقول للتحديث" }, { status: 400 });
 
   const { error } = await supabase
     .from("user_certifications")
