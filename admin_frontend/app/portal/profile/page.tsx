@@ -7,7 +7,8 @@ import { portalFetch, clearToken, getToken } from "@/lib/portal-auth";
 import {
   User, Phone, MapPin, Calendar, Mail, CreditCard, Send,
   Languages, CheckCircle, XCircle, Loader2, Pencil, Save, X,
-  LogOut, Trash2, FileDown, Receipt,
+  LogOut, Trash2, FileDown, Receipt, Award, Plus, GraduationCap,
+  ShieldCheck, BookOpen, ClipboardList, BadgeCheck,
 } from "lucide-react";
 import { TEMPLATE_META, TEMPLATE_IDS, getTemplatePreview, getTemplateIcon } from "./template-previews";
 
@@ -20,6 +21,19 @@ interface UserData {
 }
 
 type Tab = "profile" | "settings" | "invoices";
+
+type CertType = "license" | "certificate" | "course" | "qiyas" | "other";
+interface Certification {
+  id: string; type: CertType; name: string; issuer: string | null;
+  issued_at: string | null; expires_at: string | null;
+}
+const CERT_TYPES: { value: CertType; label: string; icon: React.ReactNode }[] = [
+  { value: "license",     label: "رخصة مهنية",          icon: <ShieldCheck size={13} /> },
+  { value: "certificate", label: "شهادة احترافية",       icon: <BadgeCheck size={13} /> },
+  { value: "course",      label: "دورة تدريبية",         icon: <BookOpen size={13} /> },
+  { value: "qiyas",       label: "اختبار قياس",          icon: <ClipboardList size={13} /> },
+  { value: "other",       label: "اعتماد آخر",           icon: <GraduationCap size={13} /> },
+];
 
 const CITIES = [
   "الرياض", "جدة", "مكة المكرمة", "المدينة المنورة", "الدمام", "الخبر", "الظهران",
@@ -53,6 +67,15 @@ export default function AccountPage() {
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
+
+  // certifications state
+  const [certs, setCerts] = useState<Certification[]>([]);
+  const [certsLoading, setCertsLoading] = useState(false);
+  const [showCertModal, setShowCertModal] = useState(false);
+  const [editingCert, setEditingCert] = useState<Certification | null>(null);
+  const [certForm, setCertForm] = useState({ type: "certificate" as CertType, name: "", issuer: "", issued_at: "", expires_at: "" });
+  const [certSaving, setCertSaving] = useState(false);
+  const [certMsg, setCertMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
 
   // invoices state
   type PortalOrder = {
@@ -110,7 +133,50 @@ export default function AccountPage() {
     finally { setLoading(false); }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadCerts(); }, []);
+
+  async function loadCerts() {
+    setCertsLoading(true);
+    try {
+      const res = await portalFetch("/certifications");
+      const d = await res.json();
+      if (d.ok) setCerts(d.certifications || []);
+    } catch { /* silent */ }
+    finally { setCertsLoading(false); }
+  }
+
+  function openAddCert() {
+    setEditingCert(null);
+    setCertForm({ type: "certificate", name: "", issuer: "", issued_at: "", expires_at: "" });
+    setCertMsg(null);
+    setShowCertModal(true);
+  }
+
+  function openEditCert(c: Certification) {
+    setEditingCert(c);
+    setCertForm({ type: c.type, name: c.name, issuer: c.issuer || "", issued_at: c.issued_at || "", expires_at: c.expires_at || "" });
+    setCertMsg(null);
+    setShowCertModal(true);
+  }
+
+  async function saveCert() {
+    if (!certForm.name.trim()) { setCertMsg({ text: "اسم الشهادة مطلوب", type: "err" }); return; }
+    setCertSaving(true); setCertMsg(null);
+    try {
+      const body = { ...certForm, name: certForm.name.trim(), issuer: certForm.issuer.trim() || null, issued_at: certForm.issued_at || null, expires_at: certForm.expires_at || null };
+      const res = await portalFetch("/certifications", { method: editingCert ? "PUT" : "POST", body: JSON.stringify(editingCert ? { ...body, id: editingCert.id } : body) });
+      const d = await res.json();
+      if (res.ok && d.ok) { setShowCertModal(false); await loadCerts(); }
+      else setCertMsg({ text: d.error || "فشل الحفظ", type: "err" });
+    } catch { setCertMsg({ text: "خطأ في الاتصال", type: "err" }); }
+    finally { setCertSaving(false); }
+  }
+
+  async function deleteCert(id: string) {
+    if (!confirm("هل تريد حذف هذا السجل؟")) return;
+    const res = await portalFetch(`/certifications?id=${id}`, { method: "DELETE" });
+    if (res.ok) await loadCerts();
+  }
 
   function startEdit() {
     if (!user) return;
@@ -413,6 +479,88 @@ export default function AccountPage() {
               )}
             </Card>
 
+            {/* الشهادات والرخص */}
+            <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 18, overflow: "hidden" }}>
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "16px 20px", borderBottom: certs.length > 0 ? `1px solid ${t.border}` : "none",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 10, background: t.iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Award size={16} strokeWidth={1.5} color={t.text2} />
+                  </div>
+                  <span style={{ color: t.text, fontSize: 15, fontWeight: 700 }}>الشهادات والرخص</span>
+                  {certs.length > 0 && (
+                    <span style={{ background: t.iconBg, color: t.text3, fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 100 }}>
+                      {certs.length}
+                    </span>
+                  )}
+                </div>
+                <button onClick={openAddCert} style={{
+                  display: "flex", alignItems: "center", gap: 6, padding: "7px 14px",
+                  borderRadius: 9, border: `1px solid ${t.border2}`, background: "transparent",
+                  color: t.text2, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}>
+                  <Plus size={13} /> إضافة
+                </button>
+              </div>
+
+              {certsLoading ? (
+                <div style={{ display: "flex", justifyContent: "center", padding: 24 }}>
+                  <Loader2 size={20} color={t.text3} style={{ animation: "spin 1s linear infinite" }} />
+                </div>
+              ) : certs.length === 0 ? (
+                <div style={{ padding: "20px", textAlign: "center" }}>
+                  <p style={{ color: t.text3, fontSize: 13, margin: 0 }}>لا توجد شهادات أو رخص مضافة بعد</p>
+                </div>
+              ) : (
+                <div>
+                  {certs.map((c, i) => {
+                    const typeMeta = CERT_TYPES.find(ct => ct.value === c.type);
+                    return (
+                      <div key={c.id} style={{
+                        display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 20px",
+                        borderBottom: i < certs.length - 1 ? `1px solid ${t.divider}` : "none",
+                      }}>
+                        <div style={{
+                          width: 36, height: 36, borderRadius: 10, background: t.iconBg, flexShrink: 0,
+                          display: "flex", alignItems: "center", justifyContent: "center", color: t.text3,
+                        }}>
+                          {typeMeta?.icon}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ margin: 0, color: t.text, fontSize: 14, fontWeight: 700, lineHeight: 1.4 }}>{c.name}</p>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                            <span style={{ color: t.text3, fontSize: 12 }}>{typeMeta?.label}</span>
+                            {c.issuer && <span style={{ color: t.text3, fontSize: 12 }}>· {c.issuer}</span>}
+                            {c.expires_at && (
+                              <span style={{ color: t.text3, fontSize: 12 }}>
+                                · تنتهي {new Date(c.expires_at).toLocaleDateString("ar-SA", { year: "numeric", month: "short" })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                          <button onClick={() => openEditCert(c)} style={{
+                            background: "transparent", border: `1px solid ${t.border2}`, borderRadius: 8,
+                            padding: "5px 8px", cursor: "pointer", color: t.text3, display: "flex", alignItems: "center",
+                          }}>
+                            <Pencil size={12} />
+                          </button>
+                          <button onClick={() => deleteCert(c.id)} style={{
+                            background: "transparent", border: "1px solid #fecaca", borderRadius: 8,
+                            padding: "5px 8px", cursor: "pointer", color: "#f87171", display: "flex", alignItems: "center",
+                          }}>
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {/* تسجيل الخروج / حذف */}
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button onClick={() => { clearToken(); router.replace("/portal/login"); }} style={{
@@ -456,6 +604,106 @@ export default function AccountPage() {
                       opacity: deleteConfirm !== "حذف" ? 0.5 : 1,
                     }}>
                       {deleting ? "جاري الحذف…" : "تأكيد الحذف"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Certification Modal */}
+            {showCertModal && (
+              <div style={{
+                position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 999,
+                display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+              }} onClick={e => { if (e.target === e.currentTarget) setShowCertModal(false); }}>
+                <div style={{ background: t.surface, borderRadius: 20, padding: 28, maxWidth: 440, width: "100%", maxHeight: "90vh", overflowY: "auto" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                    <h3 style={{ color: t.text, margin: 0, fontSize: 16, fontWeight: 800 }}>
+                      {editingCert ? "تعديل الشهادة" : "إضافة شهادة / رخصة"}
+                    </h3>
+                    <button onClick={() => setShowCertModal(false)} style={{ background: "transparent", border: "none", cursor: "pointer", color: t.text3 }}>
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {certMsg && (
+                    <div style={{
+                      padding: "10px 14px", borderRadius: 10, fontSize: 13, marginBottom: 14,
+                      background: certMsg.type === "ok" ? (dark ? "#0a1f0a" : "#f0fdf4") : (dark ? "#1f0d0d" : "#fff5f5"),
+                      color: certMsg.type === "ok" ? "#22c55e" : "#f87171",
+                      border: `1px solid ${certMsg.type === "ok" ? (dark ? "#1a4a1a" : "#bbf7d0") : (dark ? "#4a1a1a" : "#fecaca")}`,
+                    }}>{certMsg.text}</div>
+                  )}
+
+                  {/* النوع */}
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 8 }}>النوع</label>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      {CERT_TYPES.map(ct => (
+                        <button key={ct.value} type="button" onClick={() => setCertForm(f => ({ ...f, type: ct.value }))} style={{
+                          display: "flex", alignItems: "center", gap: 8, padding: "10px 12px",
+                          borderRadius: 10, border: `2px solid ${certForm.type === ct.value ? t.accent : t.border2}`,
+                          background: certForm.type === ct.value ? t.accent : "transparent",
+                          color: certForm.type === ct.value ? t.accentFg : t.text2,
+                          fontSize: 12.5, fontWeight: 600, cursor: "pointer", transition: "all 0.15s",
+                          textAlign: "right",
+                        }}>
+                          {ct.icon} {ct.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* الاسم */}
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 6 }}>
+                      الاسم <span style={{ color: "#f87171" }}>*</span>
+                    </label>
+                    <input
+                      value={certForm.name}
+                      onChange={e => setCertForm(f => ({ ...f, name: e.target.value }))}
+                      placeholder="مثال: رخصة مزاولة المهنة - هيئة المهندسين"
+                      style={{ width: "100%", boxSizing: "border-box", padding: "11px 14px", background: t.input, border: `1px solid ${t.border2}`, borderRadius: 10, color: t.text, fontSize: 14, outline: "none", fontFamily: "inherit" }}
+                    />
+                  </div>
+
+                  {/* الجهة المانحة */}
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 6 }}>الجهة المانحة</label>
+                    <input
+                      value={certForm.issuer}
+                      onChange={e => setCertForm(f => ({ ...f, issuer: e.target.value }))}
+                      placeholder="مثال: هيئة المهندسين السعوديين"
+                      style={{ width: "100%", boxSizing: "border-box", padding: "11px 14px", background: t.input, border: `1px solid ${t.border2}`, borderRadius: 10, color: t.text, fontSize: 14, outline: "none", fontFamily: "inherit" }}
+                    />
+                  </div>
+
+                  {/* التواريخ */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 6 }}>تاريخ الإصدار</label>
+                      <input type="date" value={certForm.issued_at} onChange={e => setCertForm(f => ({ ...f, issued_at: e.target.value }))}
+                        style={{ width: "100%", boxSizing: "border-box", padding: "11px 14px", background: t.input, border: `1px solid ${t.border2}`, borderRadius: 10, color: certForm.issued_at ? t.text : t.text3, fontSize: 13, outline: "none", fontFamily: "inherit" }} />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 6 }}>تاريخ الانتهاء</label>
+                      <input type="date" value={certForm.expires_at} onChange={e => setCertForm(f => ({ ...f, expires_at: e.target.value }))}
+                        style={{ width: "100%", boxSizing: "border-box", padding: "11px 14px", background: t.input, border: `1px solid ${t.border2}`, borderRadius: 10, color: certForm.expires_at ? t.text : t.text3, fontSize: 13, outline: "none", fontFamily: "inherit" }} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button onClick={() => setShowCertModal(false)} style={{
+                      flex: 1, padding: "11px", border: `1px solid ${t.border}`, background: t.surface,
+                      borderRadius: 10, color: t.text2, fontSize: 13, cursor: "pointer",
+                    }}>إلغاء</button>
+                    <button onClick={saveCert} disabled={certSaving} style={{
+                      flex: 2, padding: "11px", border: "none", background: t.accent, color: t.accentFg,
+                      borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: certSaving ? "wait" : "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    }}>
+                      {certSaving ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Save size={14} />}
+                      {certSaving ? "جاري الحفظ…" : "حفظ"}
                     </button>
                   </div>
                 </div>
