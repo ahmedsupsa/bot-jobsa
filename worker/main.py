@@ -35,9 +35,6 @@ SUPABASE_KEY       = os.getenv("SUPABASE_KEY", "")
 GEMINI_API_KEY     = os.getenv("GEMINI_API_KEY", "")
 SMTP_ENCRYPTION_KEY = os.getenv("SMTP_ENCRYPTION_KEY", "")
 CYCLE_INTERVAL     = int(os.getenv("AUTO_APPLY_INTERVAL", "1800"))
-RESEND_API_KEY     = os.getenv("RESEND_API_KEY", "")
-RESEND_FROM_EMAIL  = os.getenv("RESEND_FROM_EMAIL", "")
-RESEND_FROM_NAME   = os.getenv("RESEND_FROM_NAME", "Jobbots")
 
 _EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
 
@@ -178,95 +175,6 @@ def _is_subscription_active(user: dict) -> bool:
         return end_dt > datetime.now(timezone.utc)
     except Exception:
         return False
-
-
-# ─── مطابقة AI للسيرة الذاتية مع الوظيفة ───
-
-_AI_MATCH_PROMPT = """\
-أنت متخصص موارد بشرية خبير ومحرك مطابقة وظيفية دقيق.
-
-مهمتك: تحليل السيرة الذاتية المرفقة ومقارنتها بتفاصيل الوظيفة التالية بفهم عميق، لا بمطابقة كلمات مفتاحية فقط.
-
-الوظيفة: {job_title}
-الشركة: {company}
-تفاصيل الوظيفة ومتطلباتها:
-{job_desc}
-
-خطوات التحليل:
-1. استخرج من السيرة الذاتية: المؤهل والتخصص والبلد، سنوات الخبرة، المهارات، الشهادات والرخص المهنية، العضويات (هيئة المهندسين السعودية، هيئة المحاسبين SOCPA، SCFHS، رخصة التعليم، غيرها)، اللغات.
-2. استخرج من الوظيفة: المؤهل المطلوب، الشهادات والرخص الإلزامية، الخبرة المطلوبة، الشروط الصارمة.
-3. تحقق بشكل صارم:
-   - هل الشهادات أو الرخص صالحة ومعترف بها في السعودية؟
-   - إذا كانت الوظيفة تشترط رخصة سعودية محددة والمتقدم لا يملكها → "مرفوض" فوراً.
-   - اذا كانت الرخصة موجودة لكن غير معترف بها في السعودية → اكتبها كـ "غير مقبولة".
-4. المطابقة: لا تعتمد على الكلمات فقط — افهم السياق (مثال: المحاسبة ≠ المالية إلا مع تداخل واضح، الهندسة ≠ تقنية المعلومات).
-
-أجب بهذا الشكل الحرفي فقط بدون أي نص إضافي:
-SCORE: [رقم من 0 إلى 100]
-DECISION: [Strong Match / متوسط / ضعيف / مرفوض]
-MISSING: [الشروط الناقصة أو "لا يوجد"]
-NOTES: [سبب القرار في جملة واحدة]
-"""
-
-
-def _parse_ai_match(text: str) -> tuple[int, str, str, str]:
-    """تحليل رد Gemini وإرجاع (score, decision, missing, notes)."""
-    score = 0
-    decision = "ضعيف"
-    missing = ""
-    notes = ""
-    for line in (text or "").splitlines():
-        line = line.strip()
-        if line.startswith("SCORE:"):
-            try:
-                score = int(re.search(r"\d+", line.split(":", 1)[1]).group())
-                score = max(0, min(100, score))
-            except Exception:
-                pass
-        elif line.startswith("DECISION:"):
-            decision = line.split(":", 1)[1].strip()
-        elif line.startswith("MISSING:"):
-            missing = line.split(":", 1)[1].strip()
-        elif line.startswith("NOTES:"):
-            notes = line.split(":", 1)[1].strip()
-    return score, decision, missing, notes
-
-
-async def _ai_match_cv_job(
-    job_title: str,
-    company: str,
-    job_desc: str,
-    cv_bytes: bytes | None,
-    cv_mime: str = "application/pdf",
-) -> tuple[int, str, str, str]:
-    """
-    يرسل السيرة الذاتية + وصف الوظيفة لـ Gemini ويعيد (score, decision, missing, notes).
-    decision: "Strong Match" / "متوسط" / "ضعيف" / "مرفوض"
-    """
-    if not GEMINI_API_KEY or not cv_bytes:
-        return 50, "متوسط", "", "لا يوجد API Key أو سيرة ذاتية"
-
-    prompt = _AI_MATCH_PROMPT.format(
-        job_title=job_title,
-        company=company or "غير محدد",
-        job_desc=(job_desc or "")[:1500],
-    )
-    parts: list[dict] = [
-        {"inline_data": {"mime_type": cv_mime, "data": base64.b64encode(cv_bytes).decode("ascii")}},
-        {"text": prompt},
-    ]
-    try:
-        async with httpx.AsyncClient(timeout=45) as client:
-            r = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
-                json={"contents": [{"parts": parts}]},
-            )
-            data = r.json()
-            text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-            return _parse_ai_match(text)
-    except Exception as e:
-        logger.warning("⚠️  AI Match error: %s", e)
-        return 50, "متوسط", "", f"خطأ في الـ AI: {e}"
 
 
 # ─── توليد رسالة التغطية ───
@@ -627,42 +535,86 @@ async def _download_cv(client: httpx.AsyncClient, storage_path: str) -> bytes | 
     return None
 
 
-# ─── Resend (فولباك للمستخدمين بدون SMTP) ─────────────────────────────────────
+# ─── تحليل مدى ملاءمة المستخدم للوظيفة (Gemini AI) ───────────────────────────
 
-async def _send_via_resend(
-    user_email: str,
-    from_name: str,
-    to_email: str,
-    subject: str,
-    html: str,
-    cv_bytes: bytes | None = None,
-    cv_name: str | None = None,
-) -> None:
-    """إرسال عبر Resend من إيميل المنصة مع Reply-To للمتقدم."""
-    if not RESEND_API_KEY or not RESEND_FROM_EMAIL:
-        raise RuntimeError("RESEND_API_KEY أو RESEND_FROM_EMAIL غير معرّفَين")
+async def _analyze_job_fit(
+    job_title: str,
+    company: str,
+    job_desc: str,
+    cv_parsed_text: str | None,
+    field_names: list[str],
+    certifications: list[dict],
+) -> dict:
+    """
+    يحلل مدى ملاءمة المستخدم للوظيفة عبر Gemini.
+    يعيد: {"score": int, "decision": "apply"|"skip", "reasons": list, "missing": list}
+    """
+    fallback = {"score": 70, "decision": "apply", "reasons": ["تحليل تلقائي — لم يتوفر Gemini"], "missing": []}
+    if not GEMINI_API_KEY:
+        return fallback
 
-    payload: dict = {
-        "from": f"{RESEND_FROM_NAME} <{RESEND_FROM_EMAIL}>",
-        "reply_to": user_email,
-        "to": [to_email],
-        "subject": subject,
-        "html": html,
-    }
-    if cv_bytes and cv_name:
-        payload["attachments"] = [{
-            "filename": cv_name,
-            "content": base64.b64encode(cv_bytes).decode("ascii"),
-        }]
+    cert_text = "\n".join(
+        f"- {c.get('type', '')}: {c.get('name', '')}" + (f" ({c['issuer']})" if c.get("issuer") else "")
+        for c in certifications
+    ) or "لا توجد شهادات أو رخص مسجّلة"
 
-    async with httpx.AsyncClient(timeout=30) as c:
-        r = await c.post(
-            "https://api.resend.com/emails",
-            headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
-            json=payload,
-        )
-    if not r.is_success:
-        raise RuntimeError(f"Resend error {r.status_code}: {r.text[:200]}")
+    prefs_text = "، ".join(field_names) if field_names else "غير محدد"
+
+    prompt = (
+        "أنت محلل توظيف محترف. قيّم مدى ملاءمة هذا المرشح لهذه الوظيفة.\n\n"
+        f"=== الوظيفة ===\n"
+        f"المسمى: {job_title}\n"
+        f"الشركة: {company or 'غير محدد'}\n"
+        f"الوصف: {job_desc[:800] or 'غير متاح'}\n\n"
+        f"=== ملف المرشح ===\n"
+        f"التفضيلات المهنية: {prefs_text}\n"
+        f"الشهادات والرخص:\n{cert_text}\n"
+        f"ملخص السيرة الذاتية:\n{(cv_parsed_text or 'غير متاح')[:1000]}\n\n"
+        "=== المطلوب ===\n"
+        'أعد JSON فقط (بدون markdown) بهذا الشكل بالضبط:\n'
+        '{"score":75,"decision":"apply","reasons":["سبب1","سبب2"],"missing":["نقص1"]}\n'
+        '- score: رقم من 0 إلى 100 يعبر عن نسبة الملاءمة\n'
+        '- decision: "apply" إذا score >= 60، و"skip" إذا أقل\n'
+        '- reasons: 2-3 أسباب موجزة للقرار بالعربية\n'
+        '- missing: متطلبات الوظيفة غير الموجودة في ملف المرشح (فارغة إذا لا يوجد)\n'
+        'أعد JSON فقط، بلا نص إضافي.'
+    )
+
+    models = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash"]
+    for model in models:
+        try:
+            async with httpx.AsyncClient(timeout=30) as c:
+                r = await c.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}",
+                    headers={"Content-Type": "application/json"},
+                    json={"contents": [{"parts": [{"text": prompt}]}]},
+                )
+            if r.status_code in (429, 503, 404):
+                continue
+            if not r.is_success:
+                continue
+            text = (r.json().get("candidates", [{}])[0]
+                         .get("content", {})
+                         .get("parts", [{}])[0]
+                         .get("text", "")).strip()
+            if not text:
+                continue
+            import re as _re
+            m = _re.search(r'\{[\s\S]*\}', text)
+            if not m:
+                continue
+            import json as _json
+            parsed = _json.loads(m.group())
+            score = max(0, min(100, int(parsed.get("score", 70))))
+            return {
+                "score": score,
+                "decision": "apply" if score >= 60 else "skip",
+                "reasons": (parsed.get("reasons") or [])[:4],
+                "missing": (parsed.get("missing") or [])[:4],
+            }
+        except Exception:
+            continue
+    return fallback
 
 
 # ─── الدورة الرئيسية ───
@@ -718,30 +670,28 @@ async def run_cycle() -> None:
             settings_rows = await sb_get(client, "user_settings", {"user_id": f"eq.{uid}"})
             settings = settings_rows[0] if settings_rows else {}
 
-            # تحديد وسيلة الإرسال: SMTP الشخصي أو Resend (فولباك)
+            # SMTP فقط — لا Resend
             smtp_email    = (settings.get("smtp_email") or "").strip()
             smtp_host     = settings.get("smtp_host") or "smtp.gmail.com"
             smtp_port     = int(settings.get("smtp_port") or 465)
             smtp_secure   = settings.get("smtp_secure") if settings.get("smtp_secure") is not None else True
             encrypted_pw  = (settings.get("smtp_app_password_encrypted") or "").strip()
             has_smtp      = bool(settings.get("email_connected") and smtp_email and encrypted_pw)
-            has_resend    = bool(smtp_email and RESEND_API_KEY and RESEND_FROM_EMAIL)
 
             if not smtp_email:
                 logger.info("⏭️  %s — لم يُضف إيميله بعد", name_log)
                 continue
 
-            if not has_smtp and not has_resend:
-                logger.info("⏭️  %s — لا توجد وسيلة إرسال", name_log)
+            if not has_smtp:
+                logger.info("⏭️  %s — لم يربط Gmail App Password بعد", name_log)
                 continue
 
             app_password = ""
-            if has_smtp:
-                try:
-                    app_password = _decrypt_aes(encrypted_pw, SMTP_ENCRYPTION_KEY)
-                except Exception as e:
-                    logger.warning("⏭️  %s — فشل فك تشفير كلمة المرور: %s", name_log, e)
-                    continue
+            try:
+                app_password = _decrypt_aes(encrypted_pw, SMTP_ENCRYPTION_KEY)
+            except Exception as e:
+                logger.warning("⏭️  %s — فشل فك تشفير كلمة المرور: %s", name_log, e)
+                continue
 
             cv_rows = await sb_get(client, "user_cvs", {"user_id": f"eq.{uid}"})
             cv = cv_rows[0] if cv_rows else None
@@ -771,12 +721,21 @@ async def run_cycle() -> None:
                 for f in fields_raw if str(f["id"]) in pref_ids
             ]
 
+            cert_rows = await sb_get(client, "user_certifications", {"user_id": f"eq.{uid}"})
+            certifications = [
+                {"type": c.get("type", ""), "name": c.get("name", ""), "issuer": c.get("issuer")}
+                for c in cert_rows
+            ]
+
             name = user.get("full_name") or "المتقدم"
             phone = user.get("phone") or ""
             lang = settings.get("application_language") or "ar"
             template = settings.get("template_type") or "classic"
             remaining = 10 - count_today
             sent = 0
+
+            # حساب تاريخ 30 يوماً مضت لفحص التقديمات المكررة
+            thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
 
             logger.info("👤 %s | تفضيلات: %s | متبقي: %d", name, field_names or "لا يوجد", remaining)
 
@@ -785,14 +744,21 @@ async def run_cycle() -> None:
                     break
 
                 job_id = str(job["id"])
-                already_rows = await sb_get(client, "applications", {"user_id": f"eq.{uid}", "job_id": f"eq.{job_id}", "status": "eq.sent"})
-                if already_rows:
-                    continue
-
-                matched = _job_matches_user(job, field_names)
                 job_title = job.get("title_ar") or job.get("title_en") or "وظيفة"
                 company = job.get("company") or ""
                 desc = (job.get("description_ar") or job.get("description_en") or "")[:1500]
+                to_email = (job.get("application_email") or "").strip()
+
+                # فحص التقديمات المكررة: أي تقديم على نفس الوظيفة خلال آخر 30 يوماً
+                already_rows = await sb_get(
+                    client, "applications",
+                    {"user_id": f"eq.{uid}", "job_id": f"eq.{job_id}", "applied_at": f"gte.{thirty_days_ago}"},
+                )
+                if already_rows:
+                    logger.info("   ⏭️  [%s] — قُدِّم مؤخراً (أقل من 30 يوم)", job_title)
+                    continue
+
+                matched = _job_matches_user(job, field_names)
                 logger.info("   🔎 وظيفة [%s] → %s", job_title, "✓ تطابق مبدئي" if matched else "✗ لا تطابق")
                 if not matched:
                     continue
@@ -802,25 +768,32 @@ async def run_cycle() -> None:
                     logger.info("   ⏭️  وظيفة نسائية — المستخدم ذكر: [%s]", job_title)
                     continue
 
-                to_email = (job.get("application_email") or "").strip()
                 if not _is_valid_email(to_email):
                     logger.warning("   ⚠️  إيميل الوظيفة غير صالح: [%s] — تخطي", to_email)
                     continue
 
-                # ── مطابقة AI عميقة (السيرة × الوظيفة) ──
-                ai_score, ai_decision, ai_missing, ai_notes = await _ai_match_cv_job(
+                # ── تحليل AI لمدى ملاءمة الوظيفة ──
+                fit = await _analyze_job_fit(
                     job_title=job_title,
                     company=company,
                     job_desc=desc,
-                    cv_bytes=cv_bytes,
-                    cv_mime=cv_mime,
+                    cv_parsed_text=cv_parsed_text,
+                    field_names=field_names,
+                    certifications=certifications,
                 )
                 logger.info(
-                    "   🤖 AI Match [%s] → قرار: %s | نقاط: %d | ناقص: %s | ملاحظة: %s",
-                    job_title, ai_decision, ai_score, ai_missing or "لا يوجد", ai_notes or "—",
+                    "   🤖 AI Fit [%s] → قرار: %s | score=%d | ناقص: %s",
+                    job_title, fit["decision"], fit["score"],
+                    "، ".join(fit["missing"]) if fit["missing"] else "لا يوجد",
                 )
-                if ai_decision in ("مرفوض", "ضعيف") or ai_score < 50:
-                    logger.info("   ⛔ تخطي — قرار AI: %s (%d/100)", ai_decision, ai_score)
+                if fit["decision"] == "skip":
+                    reasons_str = "؛ ".join(fit["reasons"][:2])
+                    missing_str = "، ".join(fit["missing"][:2])
+                    logger.info(
+                        "   ⛔ تخطي — AI رفض (%d/100): %s%s",
+                        fit["score"], reasons_str,
+                        f" | ناقص: {missing_str}" if missing_str else "",
+                    )
                     continue
 
                 # الانتظار بين الإرسالات
@@ -840,33 +813,20 @@ async def run_cycle() -> None:
                 error_reason = None
 
                 try:
-                    if has_smtp:
-                        await _send_smtp(
-                            smtp_host=smtp_host,
-                            smtp_port=smtp_port,
-                            smtp_secure=smtp_secure,
-                            smtp_email=smtp_email,
-                            app_password=app_password,
-                            to_email=to_email,
-                            subject=subject,
-                            html=html,
-                            reply_to=smtp_email,
-                            cv_bytes=cv_bytes,
-                            cv_name=cv_name,
-                            from_name=name,
-                        )
-                    else:
-                        # Resend فولباك — يرسل من إيميل المنصة مع Reply-To للمتقدم
-                        await _send_via_resend(
-                            user_email=smtp_email,
-                            from_name=name,
-                            to_email=to_email,
-                            subject=subject,
-                            html=html,
-                            cv_bytes=cv_bytes,
-                            cv_name=cv_name,
-                        )
-                        logger.info("   📧 إرسال عبر Resend (لا SMTP) → %s", smtp_email)
+                    await _send_smtp(
+                        smtp_host=smtp_host,
+                        smtp_port=smtp_port,
+                        smtp_secure=smtp_secure,
+                        smtp_email=smtp_email,
+                        app_password=app_password,
+                        to_email=to_email,
+                        subject=subject,
+                        html=html,
+                        reply_to=smtp_email,
+                        cv_bytes=cv_bytes,
+                        cv_name=cv_name,
+                        from_name=name,
+                    )
                     _last_send[uid] = time.monotonic()
                     sent += 1
                     logger.info("✅ تقديم: %s → %s (%s)", name, job_title, to_email)
@@ -889,9 +849,7 @@ async def run_cycle() -> None:
                             "provider_used": "smtp",
                             "error_reason": error_reason,
                             "sent_at": sent_at if status == "sent" else None,
-                            "ai_match_score": ai_score,
-                            "ai_decision": ai_decision,
-                            "ai_notes": ai_notes or None,
+                            "match_score": fit["score"],
                         },
                     )
                 except Exception as e:

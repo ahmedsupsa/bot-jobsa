@@ -12,9 +12,6 @@ const WORKER_SECRET   = Deno.env.get("WORKER_SECRET") ?? "";
 const ENC_KEY_HEX     = Deno.env.get("SMTP_ENCRYPTION_KEY") ?? "";
 const TG_BOT          = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 const TG_CHAT         = Deno.env.get("TELEGRAM_CHAT_ID") ?? "";
-const RESEND_API_KEY  = Deno.env.get("RESEND_API_KEY") ?? "";
-const RESEND_FROM     = Deno.env.get("RESEND_FROM_EMAIL") ?? "";
-const RESEND_NAME     = Deno.env.get("RESEND_FROM_NAME") ?? "Jobbots";
 
 const SB = {
   apikey: SUPABASE_KEY,
@@ -357,39 +354,80 @@ async function sendSmtp(opts: {
   await transporter.sendMail(mailOptions);
 }
 
-// ─── Resend (فولباك للمستخدمين بدون SMTP) ────────────────────────────────────
+// ─── تحليل مدى ملاءمة المستخدم للوظيفة (Gemini AI) ───────────────────────────
 
-async function sendViaResend(opts: {
-  fromName: string; userEmail: string;
-  to: string; subject: string; html: string;
-  cvBytes?: Uint8Array | null; cvName?: string;
-}): Promise<void> {
-  if (!RESEND_API_KEY || !RESEND_FROM) throw new Error("Resend غير مكوّن في Supabase Secrets");
+interface JobFitResult {
+  score: number;       // 0-100
+  decision: "apply" | "skip";
+  reasons: string[];   // أسباب القبول أو الرفض
+  missing: string[];   // متطلبات ناقصة في الملف
+}
 
-  const body: Record<string, unknown> = {
-    from: `${RESEND_NAME} <${RESEND_FROM}>`,
-    reply_to: opts.userEmail,
-    to: [opts.to],
-    subject: opts.subject,
-    html: opts.html,
-  };
+async function analyzeJobFit(
+  jobTitle: string,
+  company: string,
+  jobDesc: string,
+  cvParsedText: string | null,
+  fieldNames: string[],
+  certifications: Array<{ type: string; name: string; issuer?: string }>,
+): Promise<JobFitResult> {
+  const fallback: JobFitResult = { score: 70, decision: "apply", reasons: ["تحليل تلقائي — لم يتوفر Gemini"], missing: [] };
+  if (!GEMINI_KEY) return fallback;
 
-  if (opts.cvBytes && opts.cvName) {
-    body.attachments = [{
-      filename: opts.cvName,
-      content: toBase64(opts.cvBytes),
-    }];
+  const certText = certifications.length
+    ? certifications.map((c) => `- ${c.type}: ${c.name}${c.issuer ? " (" + c.issuer + ")" : ""}`).join("\n")
+    : "لا توجد شهادات أو رخص مسجّلة";
+
+  const prefsText = fieldNames.length ? fieldNames.join("، ") : "غير محدد";
+
+  const prompt =
+    `أنت محلل توظيف محترف. قيّم مدى ملاءمة هذا المرشح لهذه الوظيفة.\n\n` +
+    `=== الوظيفة ===\n` +
+    `المسمى: ${jobTitle}\n` +
+    `الشركة: ${company || "غير محدد"}\n` +
+    `الوصف: ${jobDesc.slice(0, 800) || "غير متاح"}\n\n` +
+    `=== ملف المرشح ===\n` +
+    `التفضيلات المهنية: ${prefsText}\n` +
+    `الشهادات والرخص:\n${certText}\n` +
+    `ملخص السيرة الذاتية:\n${(cvParsedText ?? "غير متاح").slice(0, 1000)}\n\n` +
+    `=== المطلوب ===\n` +
+    `أعد JSON فقط (بدون markdown) بهذا الشكل بالضبط:\n` +
+    `{"score":75,"decision":"apply","reasons":["سبب1","سبب2"],"missing":["نقص1"]}\n` +
+    `- score: رقم من 0 إلى 100 يعبر عن نسبة الملاءمة\n` +
+    `- decision: "apply" إذا score >= 60، و"skip" إذا أقل\n` +
+    `- reasons: 2-3 أسباب موجزة للقرار بالعربية\n` +
+    `- missing: متطلبات الوظيفة غير الموجودة في ملف المرشح (فارغة إذا لا يوجد)\n` +
+    `أعد JSON فقط، بلا نص إضافي.`;
+
+  const MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash"];
+  for (const model of MODELS) {
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        }
+      );
+      if (r.status === 429 || r.status === 503 || r.status === 404) continue;
+      if (!r.ok) continue;
+      const data = await r.json();
+      const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
+      if (!text) continue;
+      // استخراج JSON من الرد (قد يكون محاطاً بـ markdown)
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) continue;
+      const parsed = JSON.parse(jsonMatch[0]) as Partial<JobFitResult>;
+      const score = Math.max(0, Math.min(100, Number(parsed.score ?? 70)));
+      return {
+        score,
+        decision: score >= 60 ? "apply" : "skip",
+        reasons: Array.isArray(parsed.reasons) ? parsed.reasons.slice(0, 4) : [],
+        missing: Array.isArray(parsed.missing) ? parsed.missing.slice(0, 4) : [],
+      };
+    } catch { continue; }
   }
-
-  const r = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) {
-    const err = await r.text();
-    throw new Error(`Resend error ${r.status}: ${err.slice(0, 200)}`);
-  }
+  return fallback;
 }
 
 // ─── Main Cycle ───────────────────────────────────────────────────────────────
@@ -433,40 +471,38 @@ async function runCycle() {
 
     const uid = String(user.id);
 
-    const [settingsRows, cvRows, prefsRows] = await Promise.all([
+    const [settingsRows, cvRows, prefsRows, certRows] = await Promise.all([
       sbGet("user_settings",        { user_id: `eq.${uid}` }),
       sbGet("user_cvs",             { user_id: `eq.${uid}` }),
       sbGet("user_job_preferences", { user_id: `eq.${uid}` }),
+      sbGet("user_certifications",  { user_id: `eq.${uid}` }),
     ]);
 
     const settings = settingsRows[0] ?? {};
 
-    // تحديد وسيلة الإرسال: SMTP الشخصي أو Resend (فولباك)
+    // SMTP فقط — لا Resend
     const smtpEmail   = String(settings.smtp_email ?? "").trim();
     const smtpHost    = String(settings.smtp_host  ?? "smtp.gmail.com");
     const smtpPort    = Number(settings.smtp_port  ?? 465);
     const smtpSecure  = settings.smtp_secure !== false;
     const encryptedPw = String(settings.smtp_app_password_encrypted ?? "").trim();
     const hasSmtp     = !!(settings.email_connected && smtpEmail && encryptedPw);
-    const hasResend   = !!(smtpEmail && RESEND_API_KEY && RESEND_FROM);
 
-    if (!hasSmtp && !hasResend) {
-      details.push({ user: String(user.full_name ?? uid), job: "—", status: "skipped", reason: "لا توجد وسيلة إرسال (لا SMTP ولا إيميل)" });
-      continue;
-    }
     if (!smtpEmail) {
       details.push({ user: String(user.full_name ?? uid), job: "—", status: "skipped", reason: "لم يُضف إيميله بعد" });
       continue;
     }
+    if (!hasSmtp) {
+      details.push({ user: String(user.full_name ?? uid), job: "—", status: "skipped", reason: "لم يربط Gmail App Password بعد" });
+      continue;
+    }
 
     let appPassword = "";
-    if (hasSmtp) {
-      try {
-        appPassword = await decryptAES(encryptedPw, ENC_KEY_HEX);
-      } catch (e) {
-        errors.push(`${String(user.full_name ?? uid)}: فشل فك التشفير — ${String(e)}`);
-        continue;
-      }
+    try {
+      appPassword = await decryptAES(encryptedPw, ENC_KEY_HEX);
+    } catch (e) {
+      errors.push(`${String(user.full_name ?? uid)}: فشل فك التشفير — ${String(e)}`);
+      continue;
     }
 
     const cv = cvRows[0];
@@ -484,6 +520,12 @@ async function runCycle() {
       .filter((f) => prefIds.has(String(f.id)))
       .map((f) => String(f.name_ar ?? f.name_en ?? ""));
 
+    const certifications = certRows.map((c) => ({
+      type:   String(c.type   ?? ""),
+      name:   String(c.name   ?? ""),
+      issuer: String(c.issuer ?? "") || undefined,
+    }));
+
     const name      = String(user.full_name ?? "المتقدم");
     const phone     = String(user.phone ?? "");
     const lang      = String(settings.application_language ?? "ar");
@@ -491,33 +533,52 @@ async function runCycle() {
     const remaining = Math.min(MAX_PER_CYCLE, 10 - countToday);
     let sent = 0;
 
+    // حساب تاريخ 30 يوماً مضت لفحص التقديمات المكررة
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
     for (const job of jobs) {
       if (sent >= remaining) break;
 
-      const jobId = String(job.id);
-      const already = await sbCount("applications", { user_id: `eq.${uid}`, job_id: `eq.${jobId}`, status: "eq.sent" });
+      const jobId    = String(job.id);
+      const jobTitle = String(job.title_ar ?? job.title_en ?? "وظيفة");
+      const company  = String(job.company ?? "");
+      const desc     = String(job.description_ar ?? job.description_en ?? "").slice(0, 1200);
+      const toEmail  = String(job.application_email ?? "").trim();
+
+      // فحص التقديمات المكررة: أي تقديم على نفس الوظيفة خلال آخر 30 يوماً
+      const already = await sbCount("applications", {
+        user_id: `eq.${uid}`,
+        job_id:  `eq.${jobId}`,
+        applied_at: `gte.${thirtyDaysAgo}`,
+      });
       if (already > 0) {
-        details.push({ user: name, job: String(job.title_ar ?? job.title_en ?? ""), status: "skipped", reason: "قُدِّم سابقاً" });
+        details.push({ user: name, job: jobTitle, status: "skipped", reason: "قُدِّم مؤخراً (أقل من 30 يوم)" });
         continue;
       }
+
       if (!jobMatchesUser(job, fieldNames)) {
-        details.push({ user: name, job: String(job.title_ar ?? job.title_en ?? ""), status: "skipped", reason: "لا يطابق التفضيلات" });
+        details.push({ user: name, job: jobTitle, status: "skipped", reason: "لا يطابق التفضيلات" });
         continue;
       }
 
       const userGender = String(user.gender ?? "male");
       if (userGender === "male" && isFeminineJob(job)) {
-        details.push({ user: name, job: String(job.title_ar ?? job.title_en ?? ""), status: "skipped", reason: "وظيفة نسائية — المستخدم ذكر" });
+        details.push({ user: name, job: jobTitle, status: "skipped", reason: "وظيفة نسائية — المستخدم ذكر" });
         continue;
       }
 
-      const toEmail  = String(job.application_email ?? "").trim();
-      const jobTitle = String(job.title_ar ?? job.title_en ?? "وظيفة");
-      const company  = String(job.company ?? "");
-      const desc     = String(job.description_ar ?? job.description_en ?? "").slice(0, 1200);
-
       if (!isValidEmail(toEmail)) {
         details.push({ user: name, job: jobTitle, status: "skipped", reason: `إيميل غير صالح: ${toEmail}` });
+        continue;
+      }
+
+      // ── تحليل AI لمدى ملاءمة الوظيفة ──
+      const fit = await analyzeJobFit(jobTitle, company, desc, cvParsedText, fieldNames, certifications);
+      console.log(`[worker] 🤖 ${name} ← ${jobTitle} | score=${fit.score} | ${fit.decision} | missing=${fit.missing.join(", ") || "لا يوجد"}`);
+
+      if (fit.decision === "skip") {
+        const reason = `AI رفض (${fit.score}/100): ${fit.reasons.slice(0, 2).join("؛ ")}${fit.missing.length ? " | ناقص: " + fit.missing.slice(0, 2).join("، ") : ""}`;
+        details.push({ user: name, job: jobTitle, status: "skipped", reason });
         continue;
       }
 
@@ -533,18 +594,10 @@ async function runCycle() {
           ? `التقديم على وظيفة: ${stripEmojis(jobTitle)}`
           : `Application for: ${stripEmojis(jobTitle)}`;
 
-        if (hasSmtp) {
-          await sendSmtp({
-            smtpHost, smtpPort, smtpSecure, smtpEmail, appPassword,
-            to: toEmail, subject, html, fromName: name, cvBytes, cvName,
-          });
-        } else {
-          // Resend فولباك — يرسل من إيميل المنصة مع Reply-To للمتقدم
-          await sendViaResend({
-            fromName: name, userEmail: smtpEmail,
-            to: toEmail, subject, html, cvBytes, cvName,
-          });
-        }
+        await sendSmtp({
+          smtpHost, smtpPort, smtpSecure, smtpEmail, appPassword,
+          to: toEmail, subject, html, fromName: name, cvBytes, cvName,
+        });
 
         sent++; applied++;
         details.push({ user: name, job: jobTitle, status: "sent" });
@@ -563,6 +616,7 @@ async function runCycle() {
         user_id: uid, job_id: jobId, job_title: jobTitle,
         applied_at: sentAt, status, provider_used: "smtp",
         error_reason: errorReason, sent_at: status === "sent" ? sentAt : null,
+        match_score: fit.score,
       });
     }
   }
