@@ -5,13 +5,16 @@
 import nodemailer from "npm:nodemailer@6";
 import { Buffer } from "node:buffer";
 
-const SUPABASE_URL  = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
-const SUPABASE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const GEMINI_KEY    = Deno.env.get("GEMINI_API_KEY") ?? "";
-const WORKER_SECRET = Deno.env.get("WORKER_SECRET") ?? "";
-const ENC_KEY_HEX   = Deno.env.get("SMTP_ENCRYPTION_KEY") ?? "";
-const TG_BOT        = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
-const TG_CHAT       = Deno.env.get("TELEGRAM_CHAT_ID") ?? "";
+const SUPABASE_URL    = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
+const SUPABASE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const GEMINI_KEY      = Deno.env.get("GEMINI_API_KEY") ?? "";
+const WORKER_SECRET   = Deno.env.get("WORKER_SECRET") ?? "";
+const ENC_KEY_HEX     = Deno.env.get("SMTP_ENCRYPTION_KEY") ?? "";
+const TG_BOT          = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
+const TG_CHAT         = Deno.env.get("TELEGRAM_CHAT_ID") ?? "";
+const RESEND_API_KEY  = Deno.env.get("RESEND_API_KEY") ?? "";
+const RESEND_FROM     = Deno.env.get("RESEND_FROM_EMAIL") ?? "";
+const RESEND_NAME     = Deno.env.get("RESEND_FROM_NAME") ?? "Jobbots";
 
 const SB = {
   apikey: SUPABASE_KEY,
@@ -354,6 +357,41 @@ async function sendSmtp(opts: {
   await transporter.sendMail(mailOptions);
 }
 
+// ─── Resend (فولباك للمستخدمين بدون SMTP) ────────────────────────────────────
+
+async function sendViaResend(opts: {
+  fromName: string; userEmail: string;
+  to: string; subject: string; html: string;
+  cvBytes?: Uint8Array | null; cvName?: string;
+}): Promise<void> {
+  if (!RESEND_API_KEY || !RESEND_FROM) throw new Error("Resend غير مكوّن في Supabase Secrets");
+
+  const body: Record<string, unknown> = {
+    from: `${RESEND_NAME} <${RESEND_FROM}>`,
+    reply_to: opts.userEmail,
+    to: [opts.to],
+    subject: opts.subject,
+    html: opts.html,
+  };
+
+  if (opts.cvBytes && opts.cvName) {
+    body.attachments = [{
+      filename: opts.cvName,
+      content: toBase64(opts.cvBytes),
+    }];
+  }
+
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const err = await r.text();
+    throw new Error(`Resend error ${r.status}: ${err.slice(0, 200)}`);
+  }
+}
+
 // ─── Main Cycle ───────────────────────────────────────────────────────────────
 
 type Detail = { user: string; job: string; status: "sent" | "skipped" | "error"; reason?: string };
@@ -403,29 +441,32 @@ async function runCycle() {
 
     const settings = settingsRows[0] ?? {};
 
-    // التحقق من ربط SMTP
-    if (!settings.email_connected) {
-      details.push({ user: String(user.full_name ?? uid), job: "—", status: "skipped", reason: "لم يربط إيميله بعد" });
-      continue;
-    }
-
+    // تحديد وسيلة الإرسال: SMTP الشخصي أو Resend (فولباك)
     const smtpEmail   = String(settings.smtp_email ?? "").trim();
     const smtpHost    = String(settings.smtp_host  ?? "smtp.gmail.com");
     const smtpPort    = Number(settings.smtp_port  ?? 465);
     const smtpSecure  = settings.smtp_secure !== false;
     const encryptedPw = String(settings.smtp_app_password_encrypted ?? "").trim();
+    const hasSmtp     = !!(settings.email_connected && smtpEmail && encryptedPw);
+    const hasResend   = !!(smtpEmail && RESEND_API_KEY && RESEND_FROM);
 
-    if (!smtpEmail || !encryptedPw) {
-      details.push({ user: String(user.full_name ?? uid), job: "—", status: "skipped", reason: "إعدادات SMTP ناقصة" });
+    if (!hasSmtp && !hasResend) {
+      details.push({ user: String(user.full_name ?? uid), job: "—", status: "skipped", reason: "لا توجد وسيلة إرسال (لا SMTP ولا إيميل)" });
+      continue;
+    }
+    if (!smtpEmail) {
+      details.push({ user: String(user.full_name ?? uid), job: "—", status: "skipped", reason: "لم يُضف إيميله بعد" });
       continue;
     }
 
-    let appPassword: string;
-    try {
-      appPassword = await decryptAES(encryptedPw, ENC_KEY_HEX);
-    } catch (e) {
-      errors.push(`${String(user.full_name ?? uid)}: فشل فك التشفير — ${String(e)}`);
-      continue;
+    let appPassword = "";
+    if (hasSmtp) {
+      try {
+        appPassword = await decryptAES(encryptedPw, ENC_KEY_HEX);
+      } catch (e) {
+        errors.push(`${String(user.full_name ?? uid)}: فشل فك التشفير — ${String(e)}`);
+        continue;
+      }
     }
 
     const cv = cvRows[0];
@@ -491,10 +532,18 @@ async function runCycle() {
           ? `التقديم على وظيفة: ${stripEmojis(jobTitle)}`
           : `Application for: ${stripEmojis(jobTitle)}`;
 
-        await sendSmtp({
-          smtpHost, smtpPort, smtpSecure, smtpEmail, appPassword,
-          to: toEmail, subject, html, fromName: name, cvBytes, cvName,
-        });
+        if (hasSmtp) {
+          await sendSmtp({
+            smtpHost, smtpPort, smtpSecure, smtpEmail, appPassword,
+            to: toEmail, subject, html, fromName: name, cvBytes, cvName,
+          });
+        } else {
+          // Resend فولباك — يرسل من إيميل المنصة مع Reply-To للمتقدم
+          await sendViaResend({
+            fromName: name, userEmail: smtpEmail,
+            to: toEmail, subject, html, cvBytes, cvName,
+          });
+        }
 
         sent++; applied++;
         details.push({ user: name, job: jobTitle, status: "sent" });

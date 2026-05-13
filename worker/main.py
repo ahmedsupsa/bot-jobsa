@@ -30,11 +30,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+SUPABASE_URL       = os.getenv("SUPABASE_URL", "").rstrip("/")
+SUPABASE_KEY       = os.getenv("SUPABASE_KEY", "")
+GEMINI_API_KEY     = os.getenv("GEMINI_API_KEY", "")
 SMTP_ENCRYPTION_KEY = os.getenv("SMTP_ENCRYPTION_KEY", "")
-CYCLE_INTERVAL = int(os.getenv("AUTO_APPLY_INTERVAL", "1800"))
+CYCLE_INTERVAL     = int(os.getenv("AUTO_APPLY_INTERVAL", "1800"))
+RESEND_API_KEY     = os.getenv("RESEND_API_KEY", "")
+RESEND_FROM_EMAIL  = os.getenv("RESEND_FROM_EMAIL", "")
+RESEND_FROM_NAME   = os.getenv("RESEND_FROM_NAME", "Jobbots")
 
 _EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
 
@@ -624,6 +627,44 @@ async def _download_cv(client: httpx.AsyncClient, storage_path: str) -> bytes | 
     return None
 
 
+# ─── Resend (فولباك للمستخدمين بدون SMTP) ─────────────────────────────────────
+
+async def _send_via_resend(
+    user_email: str,
+    from_name: str,
+    to_email: str,
+    subject: str,
+    html: str,
+    cv_bytes: bytes | None = None,
+    cv_name: str | None = None,
+) -> None:
+    """إرسال عبر Resend من إيميل المنصة مع Reply-To للمتقدم."""
+    if not RESEND_API_KEY or not RESEND_FROM_EMAIL:
+        raise RuntimeError("RESEND_API_KEY أو RESEND_FROM_EMAIL غير معرّفَين")
+
+    payload: dict = {
+        "from": f"{RESEND_FROM_NAME} <{RESEND_FROM_EMAIL}>",
+        "reply_to": user_email,
+        "to": [to_email],
+        "subject": subject,
+        "html": html,
+    }
+    if cv_bytes and cv_name:
+        payload["attachments"] = [{
+            "filename": cv_name,
+            "content": base64.b64encode(cv_bytes).decode("ascii"),
+        }]
+
+    async with httpx.AsyncClient(timeout=30) as c:
+        r = await c.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+            json=payload,
+        )
+    if not r.is_success:
+        raise RuntimeError(f"Resend error {r.status_code}: {r.text[:200]}")
+
+
 # ─── الدورة الرئيسية ───
 
 async def run_cycle() -> None:
@@ -677,27 +718,30 @@ async def run_cycle() -> None:
             settings_rows = await sb_get(client, "user_settings", {"user_id": f"eq.{uid}"})
             settings = settings_rows[0] if settings_rows else {}
 
-            # التحقق من ربط الإيميل
-            email_connected = settings.get("email_connected") or False
-            if not email_connected:
-                logger.info("⏭️  %s — لم يربط إيميله بعد", name_log)
+            # تحديد وسيلة الإرسال: SMTP الشخصي أو Resend (فولباك)
+            smtp_email    = (settings.get("smtp_email") or "").strip()
+            smtp_host     = settings.get("smtp_host") or "smtp.gmail.com"
+            smtp_port     = int(settings.get("smtp_port") or 465)
+            smtp_secure   = settings.get("smtp_secure") if settings.get("smtp_secure") is not None else True
+            encrypted_pw  = (settings.get("smtp_app_password_encrypted") or "").strip()
+            has_smtp      = bool(settings.get("email_connected") and smtp_email and encrypted_pw)
+            has_resend    = bool(smtp_email and RESEND_API_KEY and RESEND_FROM_EMAIL)
+
+            if not smtp_email:
+                logger.info("⏭️  %s — لم يُضف إيميله بعد", name_log)
                 continue
 
-            smtp_email = (settings.get("smtp_email") or "").strip()
-            smtp_host = settings.get("smtp_host") or "smtp.gmail.com"
-            smtp_port = int(settings.get("smtp_port") or 465)
-            smtp_secure = settings.get("smtp_secure") if settings.get("smtp_secure") is not None else True
-            encrypted_pw = (settings.get("smtp_app_password_encrypted") or "").strip()
-
-            if not smtp_email or not encrypted_pw:
-                logger.info("⏭️  %s — إعدادات SMTP ناقصة", name_log)
+            if not has_smtp and not has_resend:
+                logger.info("⏭️  %s — لا توجد وسيلة إرسال", name_log)
                 continue
 
-            try:
-                app_password = _decrypt_aes(encrypted_pw, SMTP_ENCRYPTION_KEY)
-            except Exception as e:
-                logger.warning("⏭️  %s — فشل فك تشفير كلمة المرور: %s", name_log, e)
-                continue
+            app_password = ""
+            if has_smtp:
+                try:
+                    app_password = _decrypt_aes(encrypted_pw, SMTP_ENCRYPTION_KEY)
+                except Exception as e:
+                    logger.warning("⏭️  %s — فشل فك تشفير كلمة المرور: %s", name_log, e)
+                    continue
 
             cv_rows = await sb_get(client, "user_cvs", {"user_id": f"eq.{uid}"})
             cv = cv_rows[0] if cv_rows else None
@@ -796,20 +840,33 @@ async def run_cycle() -> None:
                 error_reason = None
 
                 try:
-                    await _send_smtp(
-                        smtp_host=smtp_host,
-                        smtp_port=smtp_port,
-                        smtp_secure=smtp_secure,
-                        smtp_email=smtp_email,
-                        app_password=app_password,
-                        to_email=to_email,
-                        subject=subject,
-                        html=html,
-                        reply_to=smtp_email,
-                        cv_bytes=cv_bytes,
-                        cv_name=cv_name,
-                        from_name=name,
-                    )
+                    if has_smtp:
+                        await _send_smtp(
+                            smtp_host=smtp_host,
+                            smtp_port=smtp_port,
+                            smtp_secure=smtp_secure,
+                            smtp_email=smtp_email,
+                            app_password=app_password,
+                            to_email=to_email,
+                            subject=subject,
+                            html=html,
+                            reply_to=smtp_email,
+                            cv_bytes=cv_bytes,
+                            cv_name=cv_name,
+                            from_name=name,
+                        )
+                    else:
+                        # Resend فولباك — يرسل من إيميل المنصة مع Reply-To للمتقدم
+                        await _send_via_resend(
+                            user_email=smtp_email,
+                            from_name=name,
+                            to_email=to_email,
+                            subject=subject,
+                            html=html,
+                            cv_bytes=cv_bytes,
+                            cv_name=cv_name,
+                        )
+                        logger.info("   📧 إرسال عبر Resend (لا SMTP) → %s", smtp_email)
                     _last_send[uid] = time.monotonic()
                     sent += 1
                     logger.info("✅ تقديم: %s → %s (%s)", name, job_title, to_email)
