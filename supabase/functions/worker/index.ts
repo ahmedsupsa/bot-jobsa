@@ -561,19 +561,34 @@ async function runCycle() {
       const desc     = String(job.description_ar ?? job.description_en ?? "").slice(0, 1200);
       const toEmail  = String(job.application_email ?? "").trim();
 
-      // فحص التقديمات المكررة مع كشف التغيير: إذا تغيّرت بيانات الوظيفة يُسمح بالإعادة
+      // فحص التقديمات المكررة — طبقتان: job_id أولاً ثم عنوان الوظيفة احتياطياً
       const fingerprint = await jobFingerprint(jobTitle, toEmail, desc);
-      const recentApps  = await sbGet("applications", {
+
+      // الطبقة الأولى: فحص بـ job_id
+      const recentById = await sbGet("applications", {
         user_id:    `eq.${uid}`,
         job_id:     `eq.${jobId}`,
         applied_at: `gte.${thirtyDaysAgo}`,
         "order":    "applied_at.desc",
         "limit":    "1",
       });
+
+      // الطبقة الثانية: فحص بعنوان الوظيفة (شبكة أمان إذا فشل Insert في دورة سابقة)
+      const recentByTitle = recentById.length === 0
+        ? await sbGet("applications", {
+            user_id:    `eq.${uid}`,
+            job_title:  `eq.${jobTitle}`,
+            applied_at: `gte.${thirtyDaysAgo}`,
+            "order":    "applied_at.desc",
+            "limit":    "1",
+          })
+        : [];
+
+      const recentApps = recentById.length > 0 ? recentById : recentByTitle;
+
       if (recentApps.length > 0) {
         const lastFp = String(recentApps[0].job_fingerprint ?? "").trim();
-        // سياسة محافظة: إذا كان الـ fingerprint القديم فارغاً (سجلات قبل الـ rollout)
-        // نعامله كمكرر لمنع إعادة التقديم غير المقصودة
+        // سياسة محافظة: fingerprint فارغ (سجلات قديمة) = مكرر
         if (!lastFp || lastFp === fingerprint) {
           const reason = !lastFp
             ? "قُدِّم مؤخراً (أقل من 30 يوم — تطبيق محافظ)"
