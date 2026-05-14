@@ -780,11 +780,16 @@ async def run_cycle() -> None:
                     },
                 )
                 if recent_rows:
-                    last_fp = (recent_rows[0].get("job_fingerprint") or "")
-                    if last_fp == fingerprint:
-                        logger.info("   ⏭️  [%s] — قُدِّم مؤخراً (أقل من 30 يوم وبيانات الوظيفة لم تتغير)", job_title)
+                    last_fp = (recent_rows[0].get("job_fingerprint") or "").strip()
+                    # سياسة محافظة: fingerprint فارغ (سجلات قبل الـ rollout) = نعامله كمكرر
+                    if not last_fp or last_fp == fingerprint:
+                        reason = (
+                            "قُدِّم مؤخراً (أقل من 30 يوم — تطبيق محافظ)" if not last_fp
+                            else "قُدِّم مؤخراً (أقل من 30 يوم وبيانات الوظيفة لم تتغير)"
+                        )
+                        logger.info("   ⏭️  [%s] — %s", job_title, reason)
                         continue
-                    # بيانات الوظيفة تغيّرت → السماح بإعادة التقديم
+                    # بيانات الوظيفة تغيّرت بشكل مثبت → السماح بإعادة التقديم
                     logger.info("   🔄 [%s] — بيانات الوظيفة تغيّرت — إعادة التقديم مسموحة", job_title)
 
                 # الفلاتر الرخيصة قبل استدعاء AI

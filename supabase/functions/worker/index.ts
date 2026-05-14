@@ -568,12 +568,17 @@ async function runCycle() {
         "limit":    "1",
       });
       if (recentApps.length > 0) {
-        const lastFp = String(recentApps[0].job_fingerprint ?? "");
-        if (lastFp === fingerprint) {
-          details.push({ user: name, job: jobTitle, status: "skipped", reason: "قُدِّم مؤخراً (أقل من 30 يوم وبيانات الوظيفة لم تتغير)" });
+        const lastFp = String(recentApps[0].job_fingerprint ?? "").trim();
+        // سياسة محافظة: إذا كان الـ fingerprint القديم فارغاً (سجلات قبل الـ rollout)
+        // نعامله كمكرر لمنع إعادة التقديم غير المقصودة
+        if (!lastFp || lastFp === fingerprint) {
+          const reason = !lastFp
+            ? "قُدِّم مؤخراً (أقل من 30 يوم — تطبيق محافظ)"
+            : "قُدِّم مؤخراً (أقل من 30 يوم وبيانات الوظيفة لم تتغير)";
+          details.push({ user: name, job: jobTitle, status: "skipped", reason });
           continue;
         }
-        // بيانات الوظيفة تغيّرت → السماح بإعادة التقديم
+        // بيانات الوظيفة تغيّرت بشكل مثبت → السماح بإعادة التقديم
         console.log(`[worker] 🔄 ${name} ← ${jobTitle}: بيانات الوظيفة تغيّرت — إعادة التقديم مسموحة`);
       }
 
