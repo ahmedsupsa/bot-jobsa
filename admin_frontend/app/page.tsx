@@ -7,8 +7,8 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Jobbots — بوت التقديم التلقائي على الوظائف في السعودية بالذكاء الاصطناعي",
-  description: "Jobbots يقدّم عنك على المئات من الوظائف تلقائياً في السعودية كل يوم بالذكاء الاصطناعي. وفّر وقتك، زد فرصك، واحصل على وظيفتك المثالية.",
+  title: "Jobbots — خل البوت يقدم عنك على الوظائف بالذكاء الاصطناعي",
+  description: "تعبت من التقديم اليدوي؟ Jobbots يقدّم عنك تلقائياً على الوظائف في السعودية كل 30 دقيقة. وفّر وقتك وزد فرصك.",
   alternates: { canonical: "https://jobbots.org" },
 };
 
@@ -16,46 +16,47 @@ export default function LandingPage() {
   const features = [
     {
       icon: <Bot size={22} strokeWidth={1.5} />,
-      title: "تقديم تلقائي",
-      desc: "يقدّم عنك على الوظائف المناسبة كل 30 دقيقة بشكل تلقائي كامل دون أي تدخل منك",
+      title: "يقدّم عنك وانت نايم",
+      desc: "كل 30 دقيقة البوت يدور على الوظائف المناسبة ويقدّم عنك تلقائياً — ما تحتاج تسوي شي",
     },
     {
       icon: <PenLine size={22} strokeWidth={1.5} />,
-      title: "رسائل بالذكاء الاصطناعي",
-      desc: "يكتب رسالة تغطية احترافية ومخصصة لكل وظيفة باستخدام Gemini AI",
+      title: "رسالة مخصصة لكل وظيفة",
+      desc: "ما يرسل نفس الرسالة للكل — الذكاء الاصطناعي يكتب رسالة تغطية تناسب كل وظيفة بشكل منفصل",
     },
     {
       icon: <BarChart3 size={22} strokeWidth={1.5} />,
-      title: "تتبع التقديمات",
-      desc: "تابع كل الوظائف اللي انقدّم عليها في لوحة تحكم واضحة وسهلة",
+      title: "شوف وين وصلت",
+      desc: "لوحة تحكم تعرض كل الوظائف اللي قدّم عليها البوت باسمك — تاريخها والحالة بالتفصيل",
     },
     {
       icon: <Shield size={22} strokeWidth={1.5} />,
-      title: "خصوصية تامة",
-      desc: "بياناتك وسيرتك الذاتية محفوظة بأمان تام ولا تُشارك مع أي طرف ثالث",
+      title: "بياناتك عندك",
+      desc: "CV وبياناتك الشخصية محفوظة بأمان ومشفّرة — ما تطلع لأي جهة ثانية أبد",
     },
     {
       icon: <TrendingUp size={22} strokeWidth={1.5} />,
-      title: "زيادة فرص التوظيف",
-      desc: "كلما زاد عدد التقديمات، زادت فرصك في الحصول على المقابلة ووظيفتك المثالية",
+      title: "زد فرصك أكثر",
+      desc: "اللي يقدّم على وظائف أكثر يحصل على مقابلات أكثر — خل البوت يشتغل عنك بدل ما تجلس تقدّم يدوي",
     },
     {
       icon: <Clock size={22} strokeWidth={1.5} />,
-      title: "توفير الوقت",
-      desc: "بدل ما تقضي ساعات تقدّم يدوياً، Jobbots يتكفل بكل شيء عنك تلقائياً",
+      title: "وقتك لأهم الأشياء",
+      desc: "بدل ما تقضي ساعات وأنت تبحث وتقدّم، ركّز على تحضير مقابلاتك وJobbots يتكفل بالباقي",
     },
   ];
 
   const steps = [
-    { num: "01", title: "احصل على كود التفعيل", desc: "تواصل معنا واشترك للحصول على كود تفعيل الدخول إلى المنصة" },
-    { num: "02", title: "ارفع سيرتك الذاتية", desc: "ارفع ملف CV وحدد مجالات الوظائف والمناطق التي تفضّلها" },
-    { num: "03", title: "استرخِ وانتظر النتائج", desc: "Jobbots يقدّم عنك تلقائياً ويُرسل لك تقارير بالوظائف التي قدّم عليها" },
+    { num: "01", title: "اشترك واحصل على كود التفعيل", desc: "تواصل معنا واختار الباقة المناسبة — تحصل على كود تفعيل فوري تدخل فيه المنصة" },
+    { num: "02", title: "ارفع CV وحدد تفضيلاتك", desc: "ارفع سيرتك الذاتية وقول للبوت وش مجالك وأنهي مناطق تبي تشتغل فيها" },
+    { num: "03", title: "استنّى والوظيفة جاية لك", desc: "البوت يقدّم عنك كل 30 دقيقة — وانت تجلس وتنتظر المقابلات تجيك" },
   ];
 
   const faqs = [
-    { q: "كيف يعمل Jobbots؟", a: "Jobbots يقرأ سيرتك الذاتية وتفضيلاتك، ثم يبحث عن الوظائف المناسبة ويقدّم عنك تلقائياً كل 30 دقيقة باستخدام الذكاء الاصطناعي." },
-    { q: "هل بياناتي آمنة؟", a: "نعم، بياناتك مشفّرة ومحفوظة على خوادم آمنة ولا تُشارك مع أي جهة خارجية." },
-    { q: "ما هي الوظائف التي يقدّم عليها؟", a: "يقدّم على الوظائف في المجالات التي تحددها أنت، في المناطق التي تفضّلها داخل المملكة العربية السعودية." },
+    { q: "كيف يشتغل Jobbots؟", a: "البوت يقرأ سيرتك الذاتية وتفضيلاتك، يدور على الوظائف المناسبة، ويكتب رسالة مخصصة ويرسلها بالإيميل مباشرة لكل شركة — وهذا يصير كل 30 دقيقة تلقائياً." },
+    { q: "بياناتي آمنة؟", a: "إي والله، بياناتك مشفّرة ومحفوظة على خوادم آمنة. ما تطلع لأي جهة خارجية أبداً." },
+    { q: "على أنهي وظائف يقدّم؟", a: "يقدّم على الوظائف في المجالات اللي تحددها أنت بالضبط، في المناطق اللي تفضّلها داخل المملكة." },
+    { q: "إيش أحتاج أجهّز؟", a: "بس تحتاج كود التفعيل، ترفع CV، وتربط إيميلك. بعدها البوت يشتغل لوحده." },
   ];
 
   const jsonLdOrganization = {
@@ -126,20 +127,20 @@ export default function LandingPage() {
           <span>مدعوم بالذكاء الاصطناعي</span>
         </div>
         <h1 style={s.heroTitle}>
-          قدّم على الوظائف<br />
-          <span style={s.heroAccent}>تلقائياً وبذكاء</span>
+          تعبت من التقديم؟<br />
+          <span style={s.heroAccent}>خل البوت يشتغل عنك</span>
         </h1>
         <p style={s.heroSub} className="hero-sub">
-          Jobbots يقدّم عنك على المئات من الوظائف يومياً بالذكاء الاصطناعي.{" "}
-          وفّر وقتك وزد فرصك — بدون جهد وبنتائج حقيقية
+          Jobbots يقدّم عنك على الوظائف تلقائياً كل 30 دقيقة بالذكاء الاصطناعي —{" "}
+          وانت مرتاح وبدون ما تحرك إصبع
         </p>
         <div style={s.heroCtas}>
           <Link href="/portal/login" style={s.ctaPrimary}>
-            ابدأ الآن مجاناً
+            ابدأ الحين
             <ArrowLeft size={17} strokeWidth={2} />
           </Link>
           <Link href="/portal/login" style={s.ctaSecondary}>
-            لديك كود تفعيل؟ ادخل هنا
+            عندك كود تفعيل؟ دخّله هنا
           </Link>
         </div>
         <div style={s.heroStats} className="hero-stats">
@@ -159,10 +160,10 @@ export default function LandingPage() {
       {/* ── FEATURES ── */}
       <section style={s.section}>
         <div style={s.sectionInner}>
-          <div style={s.sectionTag}>مميزات المنصة</div>
-          <h2 style={s.sectionTitle}>كل ما تحتاجه للحصول على وظيفتك</h2>
+          <div style={s.sectionTag}>ليش Jobbots؟</div>
+          <h2 style={s.sectionTitle}>كل اللي تحتاجه عشان توصل للوظيفة</h2>
           <p style={s.sectionDesc}>
-            منصة Jobbots مصممة لتوفير وقتك وزيادة فرصك في سوق العمل السعودي
+            مصمّم خصيصاً لسوق العمل السعودي — يشتغل عنك وانت مرتاح
           </p>
           <div style={s.featureGrid} className="features-grid">
             {features.map((f, i) => (
@@ -180,10 +181,10 @@ export default function LandingPage() {
       <section style={s.companiesSection}>
         <div style={s.sectionInner}>
           <div style={{ textAlign: "center", marginBottom: 44 }}>
-            <div style={{ ...s.sectionTag, marginBottom: 14 }}>شركاء التقديم</div>
-            <h2 style={s.sectionTitle}>البوت يقدّم لك على شركات جديدة</h2>
+            <div style={{ ...s.sectionTag, marginBottom: 14 }}>شركات يقدّم عليها البوت</div>
+            <h2 style={s.sectionTitle}>يقدّم عنك على كبرى الشركات</h2>
             <p style={s.sectionDesc}>
-              يقدم Jobbots عنك على كبرى الشركات والجهات في المملكة بشكل مستمر
+              البوت يراقب الوظائف الجديدة باستمرار ويقدّم عنك على الشركات اللي تناسبك
             </p>
           </div>
 
@@ -211,10 +212,10 @@ export default function LandingPage() {
       {/* ── HOW IT WORKS ── */}
       <section style={{ ...s.section, background: "var(--surface)" }}>
         <div style={s.sectionInner}>
-          <div style={s.sectionTag}>طريقة العمل</div>
-          <h2 style={s.sectionTitle}>ابدأ التقديم التلقائي في 3 خطوات</h2>
+          <div style={s.sectionTag}>كيف تبدأ؟</div>
+          <h2 style={s.sectionTitle}>3 خطوات وبس — وبعدها البوت يشتغل</h2>
           <p style={s.sectionDesc}>
-            إعداد بسيط وسريع، وبعدها Jobbots يتكفل بكل شيء
+            ما تحتاج خبرة ولا وقت — الإعداد يخلص في دقائق
           </p>
           <div style={s.stepsGrid} className="steps-grid">
             {steps.map((st, i) => (
@@ -231,8 +232,8 @@ export default function LandingPage() {
       {/* ── FAQ ── */}
       <section style={s.section}>
         <div style={{ ...s.sectionInner, maxWidth: 760 }}>
-          <div style={s.sectionTag}>الأسئلة الشائعة</div>
-          <h2 style={s.sectionTitle}>أسئلة يسألها المستخدمون</h2>
+          <div style={s.sectionTag}>أسئلة شائعة</div>
+          <h2 style={s.sectionTitle}>عندك سؤال؟ الجواب هنا</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {faqs.map((faq, i) => (
               <div key={i} style={s.faqCard}>
@@ -248,12 +249,12 @@ export default function LandingPage() {
       <section style={s.ctaBanner}>
         <div style={s.ctaBannerInner}>
           <CheckCircle2 size={40} strokeWidth={1} color="var(--text)" style={{ marginBottom: 20 }} />
-          <h2 style={s.ctaBannerTitle}>جاهز تبدأ رحلة البحث عن وظيفة؟</h2>
+          <h2 style={s.ctaBannerTitle}>لا تجلس تقدّم يدوي وانت تقدر تنام</h2>
           <p style={s.ctaBannerSub}>
-            سجّل دخولك الآن وخلّ Jobbots يشتغل عنك ويقدّم على الوظائف بدلاً منك
+            اشترك الحين وخلّ Jobbots يشتغل عنك — البوت ما يتعب ولا يمل
           </p>
           <Link href="/portal/login" style={s.ctaBannerBtn}>
-            ابدأ الآن
+            ابدأ الحين
             <ArrowLeft size={17} strokeWidth={2} />
           </Link>
         </div>
