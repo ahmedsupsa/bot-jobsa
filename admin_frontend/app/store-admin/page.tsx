@@ -139,6 +139,7 @@ export default function StoreAdminPage() {
   const [oLoading, setOLoading] = useState(false);
   const [oFilter, setOFilter] = useState("all");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [remindingId, setRemindingId] = useState<string | null>(null);
   const [showAddOrder, setShowAddOrder] = useState(false);
   const [oForm, setOForm] = useState({ user_name: "", user_email: "", product_id: "", amount: "", notes: "" });
   const [oSaving, setOSaving] = useState(false);
@@ -462,6 +463,22 @@ export default function StoreAdminPage() {
       alert("فشل: " + (e?.message || e));
     }
     setUpdatingId(null);
+  };
+
+  const sendReminder = async (id: string, email: string) => {
+    if (!confirm(`إرسال تذكير إلى ${email}؟`)) return;
+    setRemindingId(id);
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/store/orders/${id}/remind`, {
+        method: "POST", credentials: "include",
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error);
+      alert(`✅ تم إرسال التذكير إلى ${j.sent_to}`);
+    } catch (e: any) {
+      alert("فشل إرسال التذكير: " + (e?.message || e));
+    }
+    setRemindingId(null);
   };
 
   const addOrder = async () => {
@@ -922,6 +939,16 @@ export default function StoreAdminPage() {
                         )}
                         {o.status === "pending" && (
                           <>
+                            {o.payment_gateway === "bank_transfer" && o.user_email && (
+                              <button
+                                disabled={remindingId === o.id}
+                                onClick={() => sendReminder(o.id, o.user_email!)}
+                                className="rounded-lg border border-yellow-500/30 px-2.5 py-1.5 text-xs text-yellow-400 hover:bg-yellow-500/10 disabled:opacity-50 transition-all"
+                                title="إرسال تذكير بالإيصال"
+                              >
+                                {remindingId === o.id ? "جاري الإرسال..." : "📧 تذكير"}
+                              </button>
+                            )}
                             <button
                               disabled={updatingId === o.id}
                               onClick={() => updateOrderStatus(o.id, "paid")}
