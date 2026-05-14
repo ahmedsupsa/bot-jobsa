@@ -43,9 +43,13 @@ async function sbCount(table: string, params: Record<string, string> = {}): Prom
 }
 
 async function sbInsert(table: string, data: Record<string, unknown>) {
-  await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
     method: "POST", headers: SB, body: JSON.stringify(data),
   });
+  if (!r.ok) {
+    const err = await r.text().catch(() => "");
+    console.error(`[worker] sbInsert(${table}) فشل ${r.status}: ${err.slice(0, 200)}`);
+  }
 }
 
 async function sbPatch(table: string, filter: Record<string, string>, data: Record<string, unknown>) {
