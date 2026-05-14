@@ -7,11 +7,25 @@ export async function POST(req: Request) {
   const email = (body.email || "").trim().toLowerCase();
   if (!email) return NextResponse.json({ error: "أدخل البريد الإلكتروني" }, { status: 400 });
 
-  const { data: settingsRows } = await supabase
+  // ابحث في email أولاً، ثم smtp_email كبديل
+  let settingsRows: { user_id: string }[] | null = null;
+
+  const { data: byEmail } = await supabase
     .from("user_settings")
     .select("user_id")
     .ilike("email", email)
     .limit(1);
+
+  if (byEmail && byEmail.length > 0) {
+    settingsRows = byEmail;
+  } else {
+    const { data: bySmtp } = await supabase
+      .from("user_settings")
+      .select("user_id")
+      .ilike("smtp_email", email)
+      .limit(1);
+    settingsRows = bySmtp;
+  }
 
   if (!settingsRows || settingsRows.length === 0)
     return NextResponse.json({ error: "لا يوجد حساب بهذا البريد الإلكتروني" }, { status: 404 });
