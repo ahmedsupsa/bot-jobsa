@@ -3,7 +3,6 @@
 // الإرسال عبر SMTP الشخصي لكل مستخدم
 
 import nodemailer from "npm:nodemailer@6";
-import { Buffer } from "node:buffer";
 
 const SUPABASE_URL    = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SUPABASE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -351,7 +350,7 @@ async function sendSmtp(opts: {
   if (opts.cvBytes && opts.cvName) {
     mailOptions.attachments = [{
       filename: opts.cvName,
-      content: Buffer.from(opts.cvBytes),
+      content: opts.cvBytes,
     }];
   }
 
