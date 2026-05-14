@@ -40,7 +40,7 @@ export default function BioPage() {
 
         {/* دليل اجتماعي */}
         <div className="pt-6 border-t border-line mt-6">
-          <p className="text-[11px] text-muted font-medium">أكثر من 500+ مستخدم يقدّمون على وظائفهم يومياً معنا</p>
+          <p className="text-[11px] text-muted font-medium">تقديم تلقائي ذكي — كل 30 دقيقة بلا جهد منك</p>
         </div>
       </div>
     </div>

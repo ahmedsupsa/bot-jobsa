@@ -144,8 +144,8 @@ export default function LandingPage() {
         </div>
         <div style={s.heroStats} className="hero-stats">
           {[
-            { val: "+500", label: "وظيفة يومياً" },
-            { val: "AI", label: "رسائل ذكية" },
+            { val: "تلقائي", label: "تقديم بلا جهد" },
+            { val: "AI", label: "رسائل مخصصة لكل وظيفة" },
             { val: "30 د", label: "كل دورة تلقائية" },
           ].map((st, i) => (
             <div key={i} style={s.heroStat}>
