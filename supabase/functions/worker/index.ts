@@ -111,30 +111,80 @@ function isActiveSubscription(user: Record<string, unknown>): boolean {
   try { return new Date(ends) > new Date(); } catch { return false; }
 }
 
-// ─── كشف الوظائف المؤنثة ────────────────────────────────────────────────────
+// ─── Gender Validation — كشف جنس الوظيفة ─────────────────────────────────────
 
+// كلمات صريحة تدل على وظائف نسائية (أي منها يكفي)
+const FEMALE_EXPLICIT = [
+  "للسيدات", "للنساء", "للإناث", "نسائي", "نسائية", "قسم نسائي",
+  "موظفات", "موظفة", "مشرفة", "كاشيرة", "سكرتيرة", "مساعدة",
+  "استقبال نسائي", "مبيعات نسائي", "خدمة نسائي", "فرع نسائي",
+  "للمرأة", "بنات", "سيدات", "امرأة", "انثى", "أنثى",
+];
+
+// كلمات صريحة تدل على وظائف رجالية
+const MALE_EXPLICIT = [
+  "للرجال", "رجال فقط", "موظفين رجال", "ذكور", "للذكور",
+  "سائق", "حارس أمن", "عمال", "فني رجال", "ميكانيكي",
+  "حارس", "بواب", "نجار", "سباك", "كهربائي", "لحام",
+  "رجل أمن", "أمن رجالي",
+];
+
+// نهايات تاء مربوطة محايدة (ليست مؤشر تأنيث)
 const NEUTRAL_ENDINGS_AR = new Set([
   "شركة", "جهة", "وظيفة", "خبرة", "صناعة", "هندسة", "تجربة", "مجموعة",
   "ممارسة", "خدمة", "برمجة", "إدارة", "رعاية", "رياضة", "تجارة", "علاقة",
   "مهارة", "سلامة", "قيادة", "محاسبة", "مالية", "تقنية", "سياحة", "صحة",
-  "جودة", "موارد", "ممارسة", "بيئة", "سياسة", "طاقة", "زراعة", "هندسة",
-  "حوكمة", "ريادة", "مقابلة", "وساطة", "رقابة", "متابعة", "مراجعة", "مراقبة",
+  "جودة", "موارد", "بيئة", "سياسة", "طاقة", "زراعة", "حوكمة", "ريادة",
+  "مقابلة", "وساطة", "رقابة", "متابعة", "مراجعة", "مراقبة", "ممارسة",
+  "متجر", "منشأة", "مؤسسة", "هيئة", "وزارة", "جامعة", "مدرسة",
 ]);
 
-function isFeminineJob(job: Record<string, unknown>): boolean {
-  const titleAr = String(job.title_ar ?? "").trim();
-  const desc    = String(job.description_ar ?? "").toLowerCase();
+type GenderCheckResult = {
+  jobGender: "female" | "male" | "neutral";
+  confidence: "explicit" | "implicit" | "none";
+  reason: string;
+};
+
+function detectJobGender(job: Record<string, unknown>): GenderCheckResult {
+  const titleAr = String(job.title_ar ?? "").toLowerCase().trim();
+  const titleEn = String(job.title_en ?? "").toLowerCase().trim();
+  const desc    = (String(job.description_ar ?? "") + " " + String(job.description_en ?? "")).toLowerCase();
   const spec    = String(job.specializations ?? "").toLowerCase();
+  const allText = `${titleAr} ${titleEn} ${desc} ${spec}`;
 
-  if (titleAr.includes("نسائية") || desc.includes("نسائية") ||
-      titleAr.includes("للإناث") || desc.includes("للإناث") ||
-      spec.includes("نسائية")) return true;
-
-  const words = titleAr.split(/[\s,،\/\-()]+/).filter(Boolean);
-  for (const w of words) {
-    if (w.length > 3 && w.endsWith("ة") && !NEUTRAL_ENDINGS_AR.has(w)) return true;
+  // ── 1. فحص صريح: كلمات دالة مباشرة على الأنثى ──
+  for (const kw of FEMALE_EXPLICIT) {
+    if (allText.includes(kw.toLowerCase())) {
+      return {
+        jobGender: "female", confidence: "explicit",
+        reason: `الوظيفة مخصصة للنساء (كلمة دالة: "${kw}")`,
+      };
+    }
   }
-  return false;
+
+  // ── 2. فحص صريح: كلمات دالة مباشرة على الذكر ──
+  for (const kw of MALE_EXPLICIT) {
+    if (allText.includes(kw.toLowerCase())) {
+      return {
+        jobGender: "male", confidence: "explicit",
+        reason: `الوظيفة مخصصة للرجال (كلمة دالة: "${kw}")`,
+      };
+    }
+  }
+
+  // ── 3. فحص ضمني: عنوان الوظيفة يحتوي كلمة مؤنثة بتاء مربوطة ──
+  const titleWords = titleAr.split(/[\s,،\/\-()]+/).filter(Boolean);
+  for (const w of titleWords) {
+    if (w.length > 3 && w.endsWith("ة") && !NEUTRAL_ENDINGS_AR.has(w)) {
+      return {
+        jobGender: "female", confidence: "implicit",
+        reason: `عنوان الوظيفة يشير للتأنيث (كلمة: "${w}")`,
+      };
+    }
+  }
+
+  // ── 4. محايد ──
+  return { jobGender: "neutral", confidence: "none", reason: "الوظيفة محايدة أو غير محدد الجنس" };
 }
 
 function jobMatchesUser(job: Record<string, unknown>, fieldNames: string[]): boolean {
@@ -656,7 +706,8 @@ async function runCycle() {
         console.log(`[worker] 🔄 ${name} ← ${jobTitle}: بيانات الوظيفة تغيّرت — إعادة التقديم مسموحة`);
       }
 
-      // الفلاتر الرخيصة قبل استدعاء AI
+      // ── الفلاتر الرخيصة قبل استدعاء AI ─────────────────────────────────────
+
       if (!isValidEmail(toEmail)) {
         details.push({ user: name, job: jobTitle, status: "skipped", reason: `إيميل غير صالح: ${toEmail}` });
         continue;
@@ -667,38 +718,53 @@ async function runCycle() {
         continue;
       }
 
-      // ── تحليل AI لمدى ملاءمة الوظيفة (يعمل لكل وظيفة مطابقة للتفضيلات) ──
+      // ── Gender Validation Check (قبل AI لتوفير التكاليف) ─────────────────────
+      const userGender  = String(user.gender ?? "male");
+      const genderCheck = detectJobGender(job);
+
+      if (genderCheck.jobGender !== "neutral") {
+        const conflict =
+          (genderCheck.jobGender === "female" && userGender === "male") ||
+          (genderCheck.jobGender === "male"   && userGender === "female");
+
+        if (conflict) {
+          const genderReason =
+            genderCheck.jobGender === "female"
+              ? `لم يتم التقديم لأن الوظيفة مخصصة للنساء بينما حساب المستخدم ذكر — ${genderCheck.reason}`
+              : `لم يتم التقديم لأن الوظيفة مخصصة للرجال بينما حساب المستخدم أنثى — ${genderCheck.reason}`;
+
+          const missingSkill = genderCheck.jobGender === "female"
+            ? "شرط الجنس: أنثى" : "شرط الجنس: ذكر";
+
+          console.log(`[worker] 🚫 Gender Block: ${name} ← ${jobTitle} | ${genderReason}`);
+          details.push({ user: name, job: jobTitle, status: "skipped", reason: genderReason });
+          await sbUpsert("applications", {
+            user_id: uid, job_id: jobId, job_title: jobTitle,
+            applied_at: new Date().toISOString(), status: "skipped",
+            skip_reason: genderReason,
+            decision_reasons: [genderCheck.reason, `جنس المستخدم: ${userGender === "male" ? "ذكر" : "أنثى"}`],
+            missing_skills: [missingSkill],
+            matched_skills: [],
+            match_score: 0, job_fingerprint: fingerprint,
+            provider_used: null,
+          });
+          continue;
+        }
+      }
+
+      // ── تحليل AI لمدى ملاءمة الوظيفة ────────────────────────────────────────
       const fit = await analyzeJobFit(jobTitle, company, desc, cvParsedText, fieldNames, certifications);
-      console.log(`[worker] 🤖 ${name} ← ${jobTitle} | score=${fit.score} | ${fit.decision} | missing=${fit.missing.join(", ") || "لا يوجد"}`);
+      console.log(`[worker] 🤖 ${name} ← ${jobTitle} | score=${fit.score} | ${fit.decision} | gender=${genderCheck.jobGender}(${genderCheck.confidence}) | missing=${fit.missing.join(", ") || "لا يوجد"}`);
 
       if (fit.decision === "skip") {
         const reason = `AI رفض (${fit.score}/100): ${fit.reasons.slice(0, 2).join("؛ ")}${fit.missing.length ? " | ناقص: " + fit.missing.slice(0, 2).join("، ") : ""}`;
         details.push({ user: name, job: jobTitle, status: "skipped", reason });
-        // حفظ قرار الرفض في قاعدة البيانات مع تفاصيل Decision Engine الكاملة
         await sbUpsert("applications", {
           user_id: uid, job_id: jobId, job_title: jobTitle,
           applied_at: new Date().toISOString(), status: "skipped",
           skip_reason: reason,
           decision_reasons: fit.reasons,
           missing_skills: fit.missing,
-          matched_skills: fit.matched,
-          match_score: fit.score, job_fingerprint: fingerprint,
-          provider_used: null,
-        });
-        continue;
-      }
-
-      // فلتر الجنس (حاجز صارم بعد AI)
-      const userGender = String(user.gender ?? "male");
-      if (userGender === "male" && isFeminineJob(job)) {
-        const genderReason = `وظيفة نسائية — المستخدم ذكر (AI score=${fit.score})`;
-        details.push({ user: name, job: jobTitle, status: "skipped", reason: genderReason });
-        await sbUpsert("applications", {
-          user_id: uid, job_id: jobId, job_title: jobTitle,
-          applied_at: new Date().toISOString(), status: "skipped",
-          skip_reason: genderReason,
-          decision_reasons: [`وظيفة مخصصة للإناث — المستخدم ذكر`],
-          missing_skills: [`شرط الجنس: أنثى`],
           matched_skills: fit.matched,
           match_score: fit.score, job_fingerprint: fingerprint,
           provider_used: null,
