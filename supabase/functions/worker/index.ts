@@ -244,23 +244,57 @@ async function generateCoverLetter(
     : `I am writing to express my interest in the ${jobTitle} position${company ? " at " + company : ""}. I am confident in my ability to contribute effectively to your team.`;
   if (!GEMINI_KEY) return fallback;
 
-  const noHallucinate = lang === "ar"
-    ? "تحذير صارم: لا تذكر أي أرقام أو سنوات خبرة أو برامج أو مهارات تقنية محددة غير موجودة في ملخص السيرة الذاتية أدناه. إذا لم تجد خبرة مباشرة بالوظيفة، اذكر المؤهل العلمي والاهتمام بالفرصة فقط دون اختراع معلومات."
-    : "Strict warning: Do not mention any specific years of experience, software, or technical skills not present in the CV summary below. If no direct experience is found, mention the degree and enthusiasm only.";
-
   const hasCv = !!(cvParsedText?.trim());
+  const cvSection = hasCv
+    ? `\nالسيرة الذاتية:\n${cvParsedText}\n`
+    : "\nالسيرة الذاتية:\nغير متاحة — اذكر المؤهل والاهتمام بالفرصة فقط.\n";
 
-  const cvBlock = hasCv
-    ? (lang === "ar" ? `\n\n--- ملخص السيرة الذاتية ---\n${cvParsedText}\n---` : `\n\n--- CV Summary ---\n${cvParsedText}\n---`)
-    : "";
+  const prompt = `أنت مساعد توظيف احترافي متخصص في كتابة رسائل التقديم الوظيفي الواقعية اعتمادًا على السيرة الذاتية فقط.
 
-  const prompt = hasCv
-    ? (lang === "ar"
-        ? `بناءً على ملخص السيرة الذاتية التالي، اكتب رسالة تغطية رسمية بالعربية (3-4 جمل) للتقديم على وظيفة: ${jobTitle}${company ? " في شركة " + company : ""}${desc ? ". تفاصيل الوظيفة: " + desc.slice(0, 400) : ""}. اسم المتقدم: ${name}. الأسلوب: رسمي، ابدأ بالتعريف بالنفس والمؤهل ثم اذكر خبرات أو مهارات موجودة فعلاً في الملخص تتناسب مع الوظيفة. بدون إيموجي، النص فقط بدون عنوان أو تحية. ${noHallucinate}${cvBlock}`
-        : `Based on the following CV summary, write a formal cover letter in English (3-4 sentences) for the position: ${jobTitle}${company ? " at " + company : ""}${desc ? ". Job details: " + desc.slice(0, 400) : ""}. Applicant: ${name}. Style: professional — introduce yourself with your actual qualification, cite only experience or skills clearly present in the summary. No emoji, plain text only. ${noHallucinate}${cvBlock}`)
-    : (lang === "ar"
-        ? `اكتب رسالة تغطية مختصرة (3-4 جمل) بالعربية للتقديم على وظيفة: ${jobTitle}${company ? " في شركة " + company : ""}${desc ? ". تفاصيل الوظيفة: " + desc.slice(0, 400) : ""}. الاسم: ${name}. اكتب بأسلوب رسمي يُبدي الاهتمام والاستعداد. بدون إيموجي. النص فقط.`
-        : `Write a brief cover letter (3-4 sentences) in English for the position: ${jobTitle}${company ? " at " + company : ""}${desc ? ". Job details: " + desc.slice(0, 400) : ""}. Applicant: ${name}. Professional tone, express interest. No emoji, plain text only.`);
+مهمتك:
+قراءة السيرة الذاتية كاملة بدقة شديدة ثم كتابة رسالة تغطية ${lang === "ar" ? "عربية" : "إنجليزية"} رسمية قصيرة واحترافية للتقديم على الوظيفة المطلوبة بدون أي اختلاق أو مبالغة.
+
+السيرة الذاتية هي المصدر الوحيد للحقيقة، وأي معلومة غير موجودة فيها تعتبر ممنوعة تمامًا.
+
+التعليمات الأساسية:
+* اكتب رسالة احترافية من 3 إلى 5 جمل فقط.
+* ابدأ بالتعريف باسم المتقدم وتخصصه أو مؤهله الحالي.
+* اربط بين السيرة الذاتية ومتطلبات الوظيفة بشكل واقعي فقط.
+* استخدم لغة رسمية واضحة وبشرية.
+* لا تستخدم إيموجي.
+* لا تستخدم أسلوب تسويقي مبالغ فيه.
+* لا تضف معلومات من عندك.
+* لا تكرر وصف الوظيفة بشكل أعمى.
+* لا تكتب مقدمة طويلة أو فلسفة.
+* لا تضف توقيع أو معلومات تواصل.
+* لا تستخدم كلمات توحي بخبرة قوية إذا السيرة الذاتية لا تدعم ذلك.
+
+قيود صارمة جدًا — ممنوع تمامًا اختلاق أو افتراض أي:
+خبرة عملية، سنوات خبرة، وظيفة سابقة، مهارة تقنية، لغة، شهادة، دورة، مشروع، تدريب، تطوع، مسؤوليات وظيفية، إنجازات، برامج أو أنظمة، أدوات تقنية، شهادات احترافية، عضويات، اعتمادات، دعم حكومي (هدف، تمهير، صندوق الموارد البشرية، إعانة باحثين عن عمل، أي برنامج حكومي أو أهلي).
+
+إذا لم يتم ذكر الشيء نصيًا داخل السيرة الذاتية: ممنوع ذكره أو التلميح له أو استنتاجه.
+
+إذا كانت السيرة الذاتية لا تحتوي على خبرة مباشرة:
+* اذكر المؤهل أو التخصص فقط.
+* اذكر الاهتمام بالتعلم والتطوير والاستعداد للعمل.
+* كن صادقًا ومهنيًا بدون تجميل وهمي.
+
+قاعدة إلزامية: عند الشك تجاهل المعلومة. الواقعية أهم من الإقناع.
+
+اسم المتقدم:
+${name}
+
+المسمى الوظيفي:
+${jobTitle}
+
+الشركة:
+${company || "غير محددة"}
+
+وصف الوظيفة:
+${desc.slice(0, 600) || "غير متاح"}
+${cvSection}
+المطلوب:
+إخراج رسالة تغطية رسمية قصيرة فقط بدون أي شرح إضافي.`;
 
   const parts: unknown[] = [{ text: prompt }];
 

@@ -358,41 +358,49 @@ async def _generate_cover_letter(
     if not GEMINI_API_KEY:
         return fallback_ar if lang == "ar" else fallback_en
 
-    no_hallucinate = (
-        "تحذير صارم: لا تذكر أي أرقام أو سنوات خبرة أو برامج أو مهارات تقنية محددة غير موجودة في ملخص السيرة الذاتية أدناه. "
-        "إذا لم تجد خبرة مباشرة بالوظيفة، اذكر المؤهل العلمي والاهتمام بالفرصة فقط دون اختراع معلومات."
-        if lang == "ar" else
-        "Strict warning: Do not mention any specific years of experience, software, or technical skills not present in the CV summary below. "
-        "If no direct experience is found, mention the degree and enthusiasm only."
-    )
-
     has_cv = bool(cv_parsed_text and cv_parsed_text.strip())
-    cv_block = (
-        f"\n\n--- ملخص السيرة الذاتية ---\n{cv_parsed_text}\n---"
-        if has_cv and lang == "ar"
-        else f"\n\n--- CV Summary ---\n{cv_parsed_text}\n---"
-        if has_cv else ""
+    cv_section = (
+        f"\nالسيرة الذاتية:\n{cv_parsed_text}\n"
+        if has_cv else
+        "\nالسيرة الذاتية:\nغير متاحة — اذكر المؤهل والاهتمام بالفرصة فقط.\n"
     )
+    lang_word = "عربية" if lang == "ar" else "إنجليزية"
 
-    if has_cv:
-        if lang == "ar":
-            prompt = (
-                f"بناءً على ملخص السيرة الذاتية التالي، اكتب رسالة تغطية رسمية بالعربية (3-4 جمل) "
-                f"للتقديم على وظيفة: {job_title}{' في شركة ' + company if company else ''}"
-                f"{'. تفاصيل الوظيفة: ' + desc[:400] if desc else ''}. "
-                f"اسم المتقدم: {name}. الأسلوب: رسمي، ابدأ بالتعريف بالنفس والمؤهل ثم اذكر خبرات أو مهارات "
-                f"موجودة فعلاً في الملخص تتناسب مع الوظيفة. بدون إيموجي، النص فقط بدون عنوان أو تحية. {no_hallucinate}{cv_block}"
-            )
-        else:
-            prompt = (
-                f"Based on the following CV summary, write a formal cover letter in English (3-4 sentences) "
-                f"for the position: {job_title}{' at ' + company if company else ''}"
-                f"{'. Job details: ' + desc[:400] if desc else ''}. Applicant: {name}. "
-                f"Style: professional — introduce yourself with your actual qualification, cite only experience or skills clearly present in the summary. "
-                f"No emoji, plain text only. {no_hallucinate}{cv_block}"
-            )
-    else:
-        prompt = _build_prompt(job_title, name, company, desc, lang, template)
+    prompt = (
+        f"أنت مساعد توظيف احترافي متخصص في كتابة رسائل التقديم الوظيفي الواقعية اعتمادًا على السيرة الذاتية فقط.\n\n"
+        f"مهمتك:\n"
+        f"قراءة السيرة الذاتية كاملة بدقة شديدة ثم كتابة رسالة تغطية {lang_word} رسمية قصيرة واحترافية للتقديم على الوظيفة المطلوبة بدون أي اختلاق أو مبالغة.\n\n"
+        f"السيرة الذاتية هي المصدر الوحيد للحقيقة، وأي معلومة غير موجودة فيها تعتبر ممنوعة تمامًا.\n\n"
+        f"التعليمات الأساسية:\n"
+        f"* اكتب رسالة احترافية من 3 إلى 5 جمل فقط.\n"
+        f"* ابدأ بالتعريف باسم المتقدم وتخصصه أو مؤهله الحالي.\n"
+        f"* اربط بين السيرة الذاتية ومتطلبات الوظيفة بشكل واقعي فقط.\n"
+        f"* استخدم لغة رسمية واضحة وبشرية.\n"
+        f"* لا تستخدم إيموجي.\n"
+        f"* لا تستخدم أسلوب تسويقي مبالغ فيه.\n"
+        f"* لا تضف معلومات من عندك.\n"
+        f"* لا تكرر وصف الوظيفة بشكل أعمى.\n"
+        f"* لا تكتب مقدمة طويلة أو فلسفة.\n"
+        f"* لا تضف توقيع أو معلومات تواصل.\n"
+        f"* لا تستخدم كلمات توحي بخبرة قوية إذا السيرة الذاتية لا تدعم ذلك.\n\n"
+        f"قيود صارمة جدًا — ممنوع تمامًا اختلاق أو افتراض أي:\n"
+        f"خبرة عملية، سنوات خبرة، وظيفة سابقة، مهارة تقنية، لغة، شهادة، دورة، مشروع، تدريب، تطوع، "
+        f"مسؤوليات وظيفية، إنجازات، برامج أو أنظمة، أدوات تقنية، شهادات احترافية، عضويات، اعتمادات، "
+        f"دعم حكومي (هدف، تمهير، صندوق الموارد البشرية، إعانة باحثين عن عمل، أي برنامج حكومي أو أهلي).\n\n"
+        f"إذا لم يتم ذكر الشيء نصيًا داخل السيرة الذاتية: ممنوع ذكره أو التلميح له أو استنتاجه.\n\n"
+        f"إذا كانت السيرة الذاتية لا تحتوي على خبرة مباشرة:\n"
+        f"* اذكر المؤهل أو التخصص فقط.\n"
+        f"* اذكر الاهتمام بالتعلم والتطوير والاستعداد للعمل.\n"
+        f"* كن صادقًا ومهنيًا بدون تجميل وهمي.\n\n"
+        f"قاعدة إلزامية: عند الشك تجاهل المعلومة. الواقعية أهم من الإقناع.\n\n"
+        f"اسم المتقدم:\n{name}\n\n"
+        f"المسمى الوظيفي:\n{job_title}\n\n"
+        f"الشركة:\n{company or 'غير محددة'}\n\n"
+        f"وصف الوظيفة:\n{desc[:600] or 'غير متاح'}\n"
+        f"{cv_section}\n"
+        f"المطلوب:\n"
+        f"إخراج رسالة تغطية رسمية قصيرة فقط بدون أي شرح إضافي."
+    )
 
     parts: list[dict] = [{"text": prompt}]
 
