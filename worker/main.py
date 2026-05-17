@@ -18,9 +18,19 @@ from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+import hashlib
+import io
+import json
+
 import httpx
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from dotenv import load_dotenv
+
+try:
+    import pdfplumber
+    _PDFPLUMBER_OK = True
+except ImportError:
+    _PDFPLUMBER_OK = False
 
 load_dotenv()
 
@@ -240,27 +250,43 @@ def _build_prompt(job_title: str, name: str, company: str, desc: str, lang: str,
             )
 
 
-async def _parse_cv_with_ai(cv_bytes: bytes, cv_mime: str) -> str | None:
-    """تحليل السيرة الذاتية واستخراج ملخص منظّم — يُستدعى مرة واحدة فقط."""
-    if not GEMINI_API_KEY or not cv_bytes:
+async def _parse_cv_with_ai(cv_text_local: str, cv_bytes: bytes | None, cv_mime: str) -> str | None:
+    """
+    تحليل السيرة الذاتية واستخراج ملخص منظّم — يُستدعى مرة واحدة فقط.
+    يستخدم النص المستخرج محلياً إذا توفّر (أسرع وأوفر)، وإلا يرسل الملف لـ Gemini.
+    """
+    if not GEMINI_API_KEY:
         return None
-    prompt = (
+
+    prompt_prefix = (
         "استخرج من هذه السيرة الذاتية المعلومات التالية بشكل منظّم ومختصر بالعربية:\n"
         "المؤهل العلمي والتخصص:\n"
-        "سنوات الخبرة الإجمالية:\n"
+        "سنوات الخبرة الإجمالية (رقم محدد أو 'حديث تخرج' أو 'غير محدد'):\n"
+        "المستوى الوظيفي (fresh/junior/mid/senior/manager):\n"
         "الوظائف السابقة (مسمى + جهة + مدة):\n"
         "المهارات التقنية والبرامج:\n"
         "الشهادات والرخص المهنية:\n"
         "اللغات:\n"
-        "اكتب فقط المعلومات الموجودة فعلاً. لا تضف تخمينات. إذا لم تجد معلومة اكتب (غير محدد)."
+        "اكتب فقط المعلومات الموجودة فعلاً. لا تضف تخمينات. "
+        "إذا لم تجد معلومة اكتب (غير محدد). "
+        "سنوات الخبرة مهمة جداً — إذا كان حديث تخرج اكتب 'سنوات الخبرة: 0 (حديث تخرج)'."
     )
-    parts = [
-        {"inline_data": {"mime_type": cv_mime, "data": base64.b64encode(cv_bytes).decode("ascii")}},
-        {"text": prompt},
-    ]
+
+    # إذا استخرجنا نصاً محلياً → نرسله نصاً (أسرع وأرخص)
+    if cv_text_local and len(cv_text_local.strip()) >= 100:
+        prompt = prompt_prefix + f"\n\n--- نص السيرة الذاتية ---\n{cv_text_local[:3000]}"
+        parts: list[dict] = [{"text": prompt}]
+    elif cv_bytes:
+        parts = [
+            {"inline_data": {"mime_type": cv_mime, "data": base64.b64encode(cv_bytes).decode("ascii")}},
+            {"text": prompt_prefix},
+        ]
+    else:
+        return None
+
     try:
-        async with httpx.AsyncClient(timeout=40) as client:
-            r = await client.post(
+        async with httpx.AsyncClient(timeout=40) as c:
+            r = await c.post(
                 f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
                 json={"contents": [{"parts": parts}]},
             )
@@ -278,13 +304,18 @@ async def _get_or_parse_cv(
     cv_bytes: bytes | None = None,
     cv_mime: str = "application/pdf",
 ) -> str | None:
-    """إرجاع النص المحلَّل للسيرة الذاتية — يحلّله ويخزّنه إذا لم يكن محفوظاً مسبقاً.
-    إذا تم تمرير cv_bytes يستخدمها مباشرة بدون إعادة التنزيل."""
+    """
+    إرجاع النص المحلَّل للسيرة الذاتية.
+    الترتيب:
+      1. النص المحفوظ مسبقاً في قاعدة البيانات  (أسرع)
+      2. استخراج محلي بـ pdfplumber + تحليل Gemini
+      3. إرسال الملف مباشرة لـ Gemini (fallback)
+    """
     existing_text = (cv.get("cv_parsed_text") or "").strip()
     if existing_text:
         return existing_text
 
-    # استخدام الـ bytes الموجودة إذا توفّرت، وإلا تنزيلها
+    # تأكد من وجود الـ bytes
     if not cv_bytes:
         storage_path = (cv.get("storage_path") or "").strip()
         if not storage_path:
@@ -293,13 +324,18 @@ async def _get_or_parse_cv(
         if not cv_bytes:
             return None
 
-    parsed_text = await _parse_cv_with_ai(cv_bytes, cv_mime)
+    # استخراج النص محلياً أولاً (PDF فقط)
+    local_text = ""
+    if cv_mime == "application/pdf":
+        local_text = _extract_pdf_text_local(cv_bytes)
+        if local_text:
+            logger.info("📄 pdfplumber: استُخرج %d حرف من السيرة الذاتية محلياً", len(local_text))
+
+    parsed_text = await _parse_cv_with_ai(local_text, cv_bytes, cv_mime)
     if parsed_text and cv.get("id"):
-        # حفظ الملخص لاستخدامه في الدورات القادمة
         try:
-            patch_url = f"{SUPABASE_URL}/rest/v1/user_cvs?id=eq.{cv['id']}"
             await client.patch(
-                patch_url,
+                f"{SUPABASE_URL}/rest/v1/user_cvs?id=eq.{cv['id']}",
                 headers=_SB_HEADERS,
                 json={"cv_parsed_text": parsed_text, "cv_parsed_at": datetime.now(timezone.utc).isoformat()},
             )
@@ -539,9 +575,139 @@ async def _download_cv(client: httpx.AsyncClient, storage_path: str) -> bytes | 
 
 def _job_fingerprint(title: str, email: str, desc: str) -> str:
     """SHA-256 مختصر (16 حرف) لكشف تغيير بيانات الوظيفة."""
-    import hashlib
     text = f"{title}|{email}|{desc[:500]}"
     return hashlib.sha256(text.encode()).hexdigest()[:16]
+
+
+# ─── استخراج نص PDF محلياً (بدون API) ────────────────────────────────────────
+
+def _extract_pdf_text_local(cv_bytes: bytes) -> str:
+    """استخراج النص من ملف PDF محلياً باستخدام pdfplumber — أسرع وأوفر من Gemini."""
+    if not _PDFPLUMBER_OK or not cv_bytes:
+        return ""
+    try:
+        with pdfplumber.open(io.BytesIO(cv_bytes)) as pdf:
+            pages: list[str] = []
+            for page in pdf.pages[:12]:
+                text = page.extract_text() or ""
+                if text.strip():
+                    pages.append(text.strip())
+            return "\n\n".join(pages)
+    except Exception as e:
+        logger.warning("pdfplumber: %s", e)
+        return ""
+
+
+# ─── استخراج سنوات الخبرة من نص السيرة الذاتية ────────────────────────────
+
+_FRESH_KW = (
+    "حديث تخرج", "حديثة التخرج", "fresh graduate", "just graduated",
+    "خريج حديث", "خريجة حديثة", "no experience", "لا خبرة", "بدون خبرة",
+    "لا توجد خبرة", "مستجد",
+)
+
+def _extract_cv_years(cv_text: str) -> int | None:
+    """
+    يستخرج سنوات الخبرة الفعلية من نص السيرة الذاتية.
+    يعيد: عدد صحيح، أو None إذا لم يتمكن من التحديد.
+    """
+    if not cv_text:
+        return None
+    lower = cv_text.lower()
+
+    # حديث تخرج / بدون خبرة → 0
+    for kw in _FRESH_KW:
+        if kw.lower() in lower:
+            return 0
+
+    # أنماط الاستخراج — العربية والإنجليزية
+    patterns = [
+        r'سنوات?\s*الخبرة[^\d]*(\d+)',
+        r'(\d+)\s*سنوات?\s*(?:من\s*)?(?:الخبرة|خبرة)',
+        r'years?\s*of\s*experience[^\d]*(\d+)',
+        r'(\d+)\s*\+?\s*years?\s*(?:of\s*)?experience',
+        r'experience[:\s]+(\d+)\s*years?',
+        r'(\d+)\s*years?\s*experience',
+        r'خبرة\s*:?\s*(\d+)\s*سنوات?',
+    ]
+    candidates: list[int] = []
+    for p in patterns:
+        for m in re.finditer(p, lower):
+            y = int(m.group(1))
+            if 0 <= y <= 40:
+                candidates.append(y)
+
+    return min(candidates) if candidates else None
+
+
+# ─── استخراج سنوات الخبرة المطلوبة من وصف الوظيفة ────────────────────────
+
+def _extract_required_years(job_desc: str, job_title: str = "") -> int | None:
+    """يستخرج الحد الأدنى لسنوات الخبرة المطلوبة من وصف الوظيفة."""
+    text = (job_title + " " + job_desc).lower()
+    patterns = [
+        r'(\d+)\s*\+\s*years?',
+        r'(\d+)\s*\+?\s*(?:سنوات?|years?)\s*(?:of\s*)?(?:experience|خبرة)',
+        r'(?:experience|خبرة)\s*(?:of\s*|لا تقل عن\s*)?(\d+)\s*\+?\s*(?:سنوات?|years?)',
+        r'خبرة\s+لا\s+تقل\s+عن\s+(\d+)',
+        r'minimum\s+(\d+)\s+years?',
+        r'at\s+least\s+(\d+)\s+years?',
+        r'(\d+)\s*-\s*\d+\s*years?\s*(?:of\s*)?experience',
+        r'خبرة\s*:?\s*(\d+)',
+    ]
+    candidates: list[int] = []
+    for p in patterns:
+        for m in re.finditer(p, text):
+            y = int(m.group(1))
+            if 1 <= y <= 30:
+                candidates.append(y)
+    return min(candidates) if candidates else None
+
+
+# ─── نظام القواعد الصارمة (قبل AI) ──────────────────────────────────────────
+
+_SENIOR_KW = (
+    "senior", "sr.", "lead", "principal", "director", "head of",
+    "manager", "رئيس", "قائد", "مدير", "أول", "خبير", "متقدم",
+    "lead engineer", "team lead",
+)
+
+def _hard_rules_check(
+    cv_text: str,
+    job_desc: str,
+    job_title: str,
+) -> tuple[bool, str]:
+    """
+    فحص صارم قبل إرسال الوظيفة للـ AI.
+    يعيد (should_skip: bool, reason: str)
+    أي قاعدة مكسورة = رفض حتمي بغض النظر عن رأي الـ AI.
+    """
+    cv_years   = _extract_cv_years(cv_text) if cv_text else None
+    req_years  = _extract_required_years(job_desc, job_title)
+
+    # قاعدة 1: خبرة السيرة الذاتية أقل من المطلوب
+    if cv_years is not None and req_years is not None:
+        if cv_years < req_years:
+            return True, (
+                f"الوظيفة تتطلب {req_years}+ سنة خبرة — "
+                f"سيرتك الذاتية تُظهر {cv_years} سنة"
+            )
+
+    # قاعدة 2: حديث تخرج / صفر خبرة يتقدم لوظيفة Senior/Lead/Manager
+    if cv_years is not None and cv_years <= 1:
+        title_lower = job_title.lower()
+        desc_lower  = job_desc[:300].lower()
+        for kw in _SENIOR_KW:
+            if kw in title_lower or kw in desc_lower:
+                return True, (
+                    f"الوظيفة تتطلب مستوى '{kw}' ولا يناسب حديثي التخرج"
+                )
+
+    # قاعدة 3: سيرة ذاتية فارغة من النص
+    if cv_text and len(cv_text.strip()) < 100:
+        return True, "السيرة الذاتية فارغة أو غير قابلة للقراءة"
+
+    return False, ""
 
 
 # ─── تحليل مدى ملاءمة المستخدم للوظيفة (Gemini AI) ───────────────────────────
@@ -571,22 +737,29 @@ async def _analyze_job_fit(
     prefs_text = "، ".join(field_names) if field_names else "غير محدد"
 
     prompt = (
-        "أنت محلل توظيف محترف. قيّم مدى ملاءمة هذا المرشح لهذه الوظيفة.\n\n"
+        "أنت محلل توظيف متخصص وصارم جداً. مهمتك حماية سمعة المتقدمين — لا تسمح بالتقديم إلا إذا كان المرشح مناسباً فعلاً.\n\n"
+        "⚠️ قواعد صارمة لا تُكسر:\n"
+        "- إذا طالبت الوظيفة بخبرة سنتين+ والمرشح حديث تخرج أو عنده أقل → قرار حتمي: skip\n"
+        "- إذا كانت الوظيفة Senior/Lead/Manager والمرشح junior أو حديث تخرج → skip\n"
+        "- لا تحوّل 'تدريب صيفي' أو 'مشاريع جامعية' إلى خبرة عمل حقيقية\n\n"
         f"=== الوظيفة ===\n"
         f"المسمى: {job_title}\n"
         f"الشركة: {company or 'غير محدد'}\n"
-        f"الوصف: {job_desc[:800] or 'غير متاح'}\n\n"
+        f"الوصف: {job_desc[:900] or 'غير متاح'}\n\n"
         f"=== ملف المرشح ===\n"
         f"التفضيلات المهنية: {prefs_text}\n"
         f"الشهادات والرخص:\n{cert_text}\n"
-        f"ملخص السيرة الذاتية:\n{(cv_parsed_text or 'غير متاح')[:1000]}\n\n"
+        f"ملخص السيرة الذاتية:\n{(cv_parsed_text or 'غير متاح')[:1200]}\n\n"
         "=== المطلوب ===\n"
         'أعد JSON فقط (بدون markdown) بهذا الشكل بالضبط:\n'
-        '{"score":75,"decision":"apply","reasons":["سبب1","سبب2"],"missing":["نقص1"]}\n'
-        '- score: رقم من 0 إلى 100 يعبر عن نسبة الملاءمة\n'
-        '- decision: "apply" إذا score >= 60 ولا توجد متطلبات إلزامية ناقصة، و"skip" في غير ذلك\n'
-        '- reasons: 2-3 أسباب موجزة للقرار بالعربية\n'
-        '- missing: فقط الشروط الإلزامية (رخص مهنية، شهادات معتمدة، مؤهل محدد) المطلوبة صراحةً في الوظيفة والغائبة عن ملف المرشح. لا تضع "مفضلات" أو خبرة عامة — فقط الحواجز الحتمية. فارغة إذا لا يوجد شرط إلزامي ناقص.\n'
+        '{"score":75,"decision":"apply","reasons":["سبب1"],"missing":["نقص1"],'
+        '"cv_experience_years":3,"job_required_years":2}\n'
+        '- score: رقم من 0 إلى 100\n'
+        '- decision: "apply" فقط إذا score >= 70 ولا توجد متطلبات إلزامية ناقصة وسنوات الخبرة كافية\n'
+        '- reasons: 1-2 سبب موجز للقرار بالعربية\n'
+        '- missing: الشروط الإلزامية الناقصة (رخص/شهادات/مؤهل محدد/خبرة مطلوبة) — فارغة إذا لا يوجد\n'
+        '- cv_experience_years: سنوات خبرة المرشح الفعلية كرقم (0 إذا حديث تخرج، -1 إذا غير واضح)\n'
+        '- job_required_years: سنوات الخبرة المطلوبة في الوظيفة كرقم (0 إذا لا يوجد شرط، -1 إذا غير واضح)\n'
         'أعد JSON فقط، بلا نص إضافي.'
     )
 
@@ -609,21 +782,35 @@ async def _analyze_job_fit(
                          .get("text", "")).strip()
             if not text:
                 continue
-            import re as _re
-            m = _re.search(r'\{[\s\S]*\}', text)
+            m = re.search(r'\{[\s\S]*\}', text)
             if not m:
                 continue
-            import json as _json
-            parsed = _json.loads(m.group())
+            parsed = json.loads(m.group())
             raw_score = parsed.get("score", 0)
             score = max(0, min(100, int(raw_score) if isinstance(raw_score, (int, float, str)) else 0))
-            # فحص النوع الصريح لضمان القوائم
             raw_missing = parsed.get("missing")
             raw_reasons = parsed.get("reasons")
             missing = [x for x in (raw_missing if isinstance(raw_missing, list) else []) if isinstance(x, str) and x.strip()][:4]
             reasons = [x for x in (raw_reasons if isinstance(raw_reasons, list) else []) if isinstance(x, str)][:4]
-            # حاجز صارم: أي متطلب إلزامي ناقص → تخطي حتمي بغض النظر عن الـ score
-            decision = "apply" if (score >= 60 and len(missing) == 0) else "skip"
+
+            # استخراج سنوات الخبرة من رد الـ AI
+            ai_cv_years  = parsed.get("cv_experience_years")
+            ai_job_years = parsed.get("job_required_years")
+
+            # حاجز صارم 1: threshold 70 + لا متطلبات ناقصة
+            decision = "apply" if (score >= 70 and len(missing) == 0) else "skip"
+
+            # حاجز صارم 2: سنوات خبرة AI — إذا cv < required → skip حتمي
+            if (
+                isinstance(ai_cv_years,  (int, float)) and ai_cv_years  >= 0 and
+                isinstance(ai_job_years, (int, float)) and ai_job_years > 0 and
+                ai_cv_years < ai_job_years
+            ):
+                decision = "skip"
+                exp_msg = f"مطلوب {int(ai_job_years)}+ سنة — لديك {int(ai_cv_years)} سنة"
+                if exp_msg not in missing:
+                    missing = [exp_msg] + missing[:3]
+
             return {
                 "score":    score,
                 "decision": decision,
@@ -802,6 +989,12 @@ async def run_cycle() -> None:
                 if not matched:
                     continue
 
+                # ── القواعد الصارمة (قبل AI — توفير API calls) ──────────────────
+                should_skip, skip_reason = _hard_rules_check(cv_parsed_text or "", desc, job_title)
+                if should_skip:
+                    logger.info("   🚫 قاعدة صارمة [%s] — %s", job_title, skip_reason)
+                    continue
+
                 # ── تحليل AI لمدى ملاءمة الوظيفة (يعمل لكل وظيفة مطابقة للتفضيلات) ──
                 fit = await _analyze_job_fit(
                     job_title=job_title,
@@ -931,12 +1124,9 @@ async def _run_job_fetcher() -> None:
 
 
 async def main() -> None:
-    # ─── الـ Worker الرئيسي هو Supabase Edge Function عبر pg_cron ───
-    # هذا الـ worker موقوف — الإرسال يتم عبر Supabase Edge Function
-    if os.getenv("DISABLE_PYTHON_WORKER", "true").lower() in ("true", "1", "yes"):
+    if os.getenv("DISABLE_PYTHON_WORKER", "false").lower() in ("true", "1", "yes"):
         logger.info("⏸️  Python worker موقوف — الـ Edge Function في Supabase هي المسؤولة عن الإرسال")
         logger.info("🐦 جالب الوظائف من تويتر نشط — يعمل كل %d ساعة", JOB_FETCH_INTERVAL // 3600)
-        # نشغّل جالب الوظائف فوراً عند البدء
         await _run_job_fetcher()
         while True:
             await asyncio.sleep(3600)

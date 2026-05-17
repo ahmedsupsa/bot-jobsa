@@ -394,22 +394,28 @@ async function analyzeJobFit(
   const prefsText = fieldNames.length ? fieldNames.join("، ") : "غير محدد";
 
   const prompt =
-    `أنت محلل توظيف محترف. قيّم مدى ملاءمة هذا المرشح لهذه الوظيفة.\n\n` +
+    `أنت محلل توظيف متخصص وصارم جداً. مهمتك حماية سمعة المتقدمين — لا تسمح بالتقديم إلا إذا كان المرشح مناسباً فعلاً.\n\n` +
+    `⚠️ قواعد صارمة لا تُكسر:\n` +
+    `- إذا طالبت الوظيفة بخبرة سنتين+ والمرشح حديث تخرج أو عنده أقل → قرار حتمي: skip\n` +
+    `- إذا كانت الوظيفة Senior/Lead/Manager والمرشح junior أو حديث تخرج → skip\n` +
+    `- لا تحوّل 'تدريب صيفي' أو 'مشاريع جامعية' إلى خبرة عمل حقيقية\n\n` +
     `=== الوظيفة ===\n` +
     `المسمى: ${jobTitle}\n` +
     `الشركة: ${company || "غير محدد"}\n` +
-    `الوصف: ${jobDesc.slice(0, 800) || "غير متاح"}\n\n` +
+    `الوصف: ${jobDesc.slice(0, 900) || "غير متاح"}\n\n` +
     `=== ملف المرشح ===\n` +
     `التفضيلات المهنية: ${prefsText}\n` +
     `الشهادات والرخص:\n${certText}\n` +
-    `ملخص السيرة الذاتية:\n${(cvParsedText ?? "غير متاح").slice(0, 1000)}\n\n` +
+    `ملخص السيرة الذاتية:\n${(cvParsedText ?? "غير متاح").slice(0, 1200)}\n\n` +
     `=== المطلوب ===\n` +
     `أعد JSON فقط (بدون markdown) بهذا الشكل بالضبط:\n` +
-    `{"score":75,"decision":"apply","reasons":["سبب1","سبب2"],"missing":["نقص1"]}\n` +
-    `- score: رقم من 0 إلى 100 يعبر عن نسبة الملاءمة\n` +
-    `- decision: "apply" إذا score >= 60 ولا توجد متطلبات إلزامية ناقصة، و"skip" في غير ذلك\n` +
-    `- reasons: 2-3 أسباب موجزة للقرار بالعربية\n` +
-    `- missing: فقط الشروط الإلزامية (رخص مهنية، شهادات معتمدة، مؤهل محدد) المطلوبة صراحةً في الوظيفة والغائبة عن ملف المرشح. لا تضع "مفضلات" أو خبرة عامة — فقط الحواجز الحتمية. فارغة إذا لا يوجد شرط إلزامي ناقص.\n` +
+    `{"score":75,"decision":"apply","reasons":["سبب1"],"missing":["نقص1"],"cv_experience_years":3,"job_required_years":2}\n` +
+    `- score: رقم من 0 إلى 100\n` +
+    `- decision: "apply" فقط إذا score >= 70 ولا توجد متطلبات إلزامية ناقصة وسنوات الخبرة كافية\n` +
+    `- reasons: 1-2 سبب موجز للقرار بالعربية\n` +
+    `- missing: الشروط الإلزامية الناقصة (رخص/شهادات/مؤهل/خبرة) — فارغة إذا لا يوجد\n` +
+    `- cv_experience_years: سنوات خبرة المرشح كرقم (0 إذا حديث تخرج، -1 إذا غير واضح)\n` +
+    `- job_required_years: سنوات الخبرة المطلوبة كرقم (0 إذا لا يوجد شرط، -1 إذا غير واضح)\n` +
     `أعد JSON فقط، بلا نص إضافي.`;
 
   const MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash"];
@@ -433,8 +439,19 @@ async function analyzeJobFit(
       const parsed = JSON.parse(jsonMatch[0]) as Partial<JobFitResult>;
       const score   = Math.max(0, Math.min(100, Number(parsed.score ?? 0)));
       const missing = Array.isArray(parsed.missing) ? parsed.missing.filter(Boolean).slice(0, 4) : [];
-      // حاجز صارم: أي متطلب إلزامي ناقص → تخطي حتمي بغض النظر عن الـ score
-      const decision: "apply" | "skip" = (score >= 60 && missing.length === 0) ? "apply" : "skip";
+      const aiCvYears  = typeof parsed.cv_experience_years  === "number" ? parsed.cv_experience_years  : -1;
+      const aiJobYears = typeof parsed.job_required_years   === "number" ? parsed.job_required_years   : -1;
+
+      // حاجز 1: threshold 70 + لا متطلبات ناقصة
+      let decision: "apply" | "skip" = (score >= 70 && missing.length === 0) ? "apply" : "skip";
+
+      // حاجز 2: خبرة المرشح أقل من المطلوب → skip حتمي
+      if (aiCvYears >= 0 && aiJobYears > 0 && aiCvYears < aiJobYears) {
+        decision = "skip";
+        const expMsg = `مطلوب ${aiJobYears}+ سنة — لديك ${aiCvYears} سنة`;
+        if (!missing.includes(expMsg)) missing.unshift(expMsg);
+      }
+
       return {
         score,
         decision,
