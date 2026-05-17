@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   // hidden_from_user = false → المستخدم لا يرى التقديمات الخاطئة (تعارض الجنس وغيرها)
   const { data: apps, count } = await supabase
     .from("applications")
-    .select("id,job_title,applied_at,status,application_status,error_reason,match_score,company", { count: "exact" })
+    .select("id,job_title,applied_at,status,application_status,error_reason,match_score", { count: "exact" })
     .eq("user_id", uid)
     .eq("hidden_from_user", false)
     .in("status", ["sent", "error"])
