@@ -5,9 +5,9 @@ import { API_BASE } from "@/lib/api";
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import {
-  Send, XCircle, AlertCircle, RefreshCw, User, Building2,
-  Clock, TrendingUp, Filter, ChevronRight, Loader2,
-  CheckCircle2, BrainCircuit, ListFilter, Calendar,
+  Send, XCircle, AlertCircle, RefreshCw, Building2,
+  Clock, Filter, ChevronRight, Loader2,
+  CheckCircle2, BrainCircuit, ListFilter, Calendar, Mail,
 } from "lucide-react";
 
 type Application = {
@@ -58,6 +58,26 @@ export default function ApplicationsPage() {
   const [filter, setFilter] = useState<"all" | "sent" | "skipped" | "error">("all");
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState<"today" | "week" | "all">("today");
+  const [reportSending, setReportSending] = useState(false);
+  const [reportMsg, setReportMsg]         = useState<{ ok: boolean; text: string } | null>(null);
+
+  const sendReport = async () => {
+    setReportSending(true);
+    setReportMsg(null);
+    try {
+      const r = await fetch(`${API_BASE}/api/internal/weekly-report`, { method: "GET", credentials: "include" });
+      const j = await r.json();
+      if (j.ok) {
+        setReportMsg({ ok: true, text: `✅ أُرسل التقرير إلى ${j.sentTo} — ${j.stats?.totalSent || 0} تقديم، ${j.stats?.totalSkipped || 0} متجاوز` });
+      } else {
+        setReportMsg({ ok: false, text: j.error || "فشل الإرسال" });
+      }
+    } catch (e) {
+      setReportMsg({ ok: false, text: String(e) });
+    } finally {
+      setReportSending(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -108,11 +128,25 @@ export default function ApplicationsPage() {
               جميع قرارات البوت — التقديم والرفض — مع الأسباب الحقيقية
             </p>
           </div>
-          <button onClick={load} disabled={loading} className="flex items-center gap-2 px-3 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-750 transition">
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            تحديث
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={sendReport} disabled={reportSending}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-lg transition">
+              {reportSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+              إرسال التقرير الأسبوعي
+            </button>
+            <button onClick={load} disabled={loading} className="flex items-center gap-2 px-3 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-750 transition">
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+              تحديث
+            </button>
+          </div>
         </div>
+
+        {/* Report feedback */}
+        {reportMsg && (
+          <div className={`px-4 py-3 rounded-xl text-sm font-medium ${reportMsg.ok ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800" : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800"}`}>
+            {reportMsg.text}
+          </div>
+        )}
 
         {/* Stats */}
         {stats && (

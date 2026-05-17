@@ -812,6 +812,52 @@ async function logRun(data: {
   } catch { /* silent */ }
 }
 
+// ─── التقرير الأسبوعي ─────────────────────────────────────────────────────────
+
+async function maybeSendWeeklyReport() {
+  const APP_URL      = Deno.env.get("APP_URL") ?? "";
+  const workerSecret = WORKER_SECRET;
+  if (!APP_URL || !workerSecret) return;
+
+  // تحقق: هل اليوم الأحد (بتوقيت الرياض)؟ وهل الساعة بين 8 و 9 صباحاً؟
+  const now = new Date();
+  const ksa = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Riyadh" }));
+  const isSunday = ksa.getDay() === 0;
+  const hour     = ksa.getHours();
+  if (!isSunday || hour < 8 || hour >= 9) return;
+
+  // تحقق: هل أُرسل التقرير هذا الأسبوع بالفعل؟
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/worker_status?select=weekly_report_last_sent&limit=1`, { headers: SB });
+    const rows: Array<{ weekly_report_last_sent: string | null }> = await r.json();
+    const lastSent = rows?.[0]?.weekly_report_last_sent;
+    if (lastSent) {
+      const daysSince = (Date.now() - new Date(lastSent).getTime()) / 86400000;
+      if (daysSince < 6) {
+        console.log(`[worker] التقرير الأسبوعي أُرسل منذ ${daysSince.toFixed(1)} يوم — تخطي`);
+        return;
+      }
+    }
+  } catch { /* نتجاهل الخطأ ونكمل */ }
+
+  console.log("[worker] 📊 إرسال التقرير الأسبوعي...");
+  try {
+    const res = await fetch(`${APP_URL}/api/internal/weekly-report`, {
+      method: "POST",
+      headers: { "x-worker-secret": workerSecret, "Content-Type": "application/json" },
+    });
+    const json = await res.json();
+    if (json.ok) {
+      console.log(`[worker] ✅ التقرير الأسبوعي أُرسل إلى ${json.sentTo}`);
+      await tgSend(`📊 <b>التقرير الأسبوعي أُرسل</b>\nإلى: ${json.sentTo}\nالتقديمات: ${json.stats?.totalSent || 0} ✅ | ${json.stats?.totalSkipped || 0} ⏭️ | ${json.stats?.totalError || 0} ❌`);
+    } else {
+      console.error("[worker] ❌ فشل التقرير الأسبوعي:", json.error);
+    }
+  } catch (e) {
+    console.error("[worker] ❌ خطأ في إرسال التقرير الأسبوعي:", e);
+  }
+}
+
 // ─── Entry Point ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (_req: Request) => {
@@ -824,6 +870,8 @@ Deno.serve(async (_req: Request) => {
     await logRun({ applied_count: result.applied, active_users: result.users, errors: result.errors, duration_ms, status });
     console.log("[worker] انتهت الدورة:", JSON.stringify({ applied: result.applied, users: result.users, errors: result.errors.length }));
     await tgWorkerResult(result.applied, result.users, Math.round(duration_ms / 1000), result.details);
+    // التقرير الأسبوعي (يُرسَل مرة واحدة كل أحد ٨-٩ ص بتوقيت الرياض)
+    await maybeSendWeeklyReport();
     return new Response(JSON.stringify({ ok: true, ...result, duration_ms }), {
       headers: { "Content-Type": "application/json" },
     });
