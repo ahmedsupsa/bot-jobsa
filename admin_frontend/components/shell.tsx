@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Key, BriefcaseBusiness, Bell, LogOut,
   ShoppingBag, TrendingUp, MessageCircle, MailCheck, ShieldCheck, Send,
-  Sun, Moon, Contact, MessagesSquare, Activity,
+  Sun, Moon, Contact, MessagesSquare, Activity, BrainCircuit,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "@/contexts/theme-context";
@@ -26,6 +26,7 @@ const links: { href: string; label: string; icon: any; perm: Perm | null; superO
   { href: "/users", label: "المستخدمون", icon: Users, perm: "users" },
   { href: "/codes", label: "أكواد التفعيل", icon: Key, perm: "codes" },
   { href: "/jobs", label: "الوظائف", icon: BriefcaseBusiness, perm: "jobs" },
+  { href: "/applications", label: "مراقبة التقديمات", icon: BrainCircuit, perm: "jobs" },
   { href: "/crm", label: "علاقات العملاء", icon: Contact, perm: "crm" },
   { href: "/notifications", label: "إشعارات Push", icon: Bell, perm: "notifications" },
   { href: "/store-admin", label: "المتجر", icon: ShoppingBag, perm: "store", badge: "store" },

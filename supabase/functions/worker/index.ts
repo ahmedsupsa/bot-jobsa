@@ -51,6 +51,20 @@ async function sbInsert(table: string, data: Record<string, unknown>) {
   }
 }
 
+async function sbUpsert(table: string, data: Record<string, unknown>) {
+  const headers = {
+    ...SB,
+    "Prefer": "resolution=merge-duplicates,return=minimal",
+  };
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: "POST", headers, body: JSON.stringify(data),
+  });
+  if (!r.ok) {
+    const err = await r.text().catch(() => "");
+    console.error(`[worker] sbUpsert(${table}) فشل ${r.status}: ${err.slice(0, 200)}`);
+  }
+}
+
 async function sbPatch(table: string, filter: Record<string, string>, data: Record<string, unknown>) {
   const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
   for (const [k, v] of Object.entries(filter)) url.searchParams.set(k, v);
@@ -407,6 +421,7 @@ interface JobFitResult {
   decision: "apply" | "skip";
   reasons: string[];   // أسباب القبول أو الرفض
   missing: string[];   // متطلبات ناقصة في الملف
+  matched: string[];   // مهارات/متطلبات مطابقة في الملف
 }
 
 async function analyzeJobFit(
@@ -418,7 +433,7 @@ async function analyzeJobFit(
   certifications: Array<{ type: string; name: string; issuer?: string }>,
 ): Promise<JobFitResult> {
   // الـ fallback يرفض التقديم بشكل افتراضي — لا نقدّم بدون تحليل AI حقيقي
-  const fallback: JobFitResult = { score: 0, decision: "skip", reasons: ["تعذّر الاتصال بـ Gemini — تم التخطي احترازياً"], missing: [] };
+  const fallback: JobFitResult = { score: 0, decision: "skip", reasons: ["تعذّر الاتصال بـ Gemini — تم التخطي احترازياً"], missing: [], matched: [] };
   if (!GEMINI_KEY) return fallback;
 
   const certText = certifications.length
@@ -443,11 +458,12 @@ async function analyzeJobFit(
     `ملخص السيرة الذاتية:\n${(cvParsedText ?? "غير متاح").slice(0, 1200)}\n\n` +
     `=== المطلوب ===\n` +
     `أعد JSON فقط (بدون markdown) بهذا الشكل بالضبط:\n` +
-    `{"score":75,"decision":"apply","reasons":["سبب1"],"missing":["نقص1"],"cv_experience_years":3,"job_required_years":2}\n` +
+    `{"score":75,"decision":"apply","reasons":["سبب1"],"missing":["نقص1"],"matched":["مهارة1"],"cv_experience_years":3,"job_required_years":2}\n` +
     `- score: رقم من 0 إلى 100\n` +
     `- decision: "apply" فقط إذا score >= 70 ولا توجد متطلبات إلزامية ناقصة وسنوات الخبرة كافية\n` +
-    `- reasons: 1-2 سبب موجز للقرار بالعربية\n` +
-    `- missing: الشروط الإلزامية الناقصة (رخص/شهادات/مؤهل/خبرة) — فارغة إذا لا يوجد\n` +
+    `- reasons: 1-2 سبب موجز للقرار بالعربية (اذكر ما وُجد أو ما غاب بالتحديد)\n` +
+    `- missing: الشروط الإلزامية الناقصة (رخص/شهادات/مؤهل/خبرة/مهارة) — فارغة إذا لا يوجد\n` +
+    `- matched: المهارات والمؤهلات الموجودة في السيرة وتتطابق مع الوظيفة — فارغة إذا لا يوجد\n` +
     `- cv_experience_years: سنوات خبرة المرشح كرقم (0 إذا حديث تخرج، -1 إذا غير واضح)\n` +
     `- job_required_years: سنوات الخبرة المطلوبة كرقم (0 إذا لا يوجد شرط، -1 إذا غير واضح)\n` +
     `أعد JSON فقط، بلا نص إضافي.`;
@@ -486,11 +502,13 @@ async function analyzeJobFit(
         if (!missing.includes(expMsg)) missing.unshift(expMsg);
       }
 
+      const matched = Array.isArray((parsed as any).matched) ? (parsed as any).matched.filter(Boolean).slice(0, 6) : [];
       return {
         score,
         decision,
         reasons: Array.isArray(parsed.reasons) ? parsed.reasons.slice(0, 4) : [],
         missing,
+        matched,
       };
     } catch { continue; }
   }
@@ -656,13 +674,35 @@ async function runCycle() {
       if (fit.decision === "skip") {
         const reason = `AI رفض (${fit.score}/100): ${fit.reasons.slice(0, 2).join("؛ ")}${fit.missing.length ? " | ناقص: " + fit.missing.slice(0, 2).join("، ") : ""}`;
         details.push({ user: name, job: jobTitle, status: "skipped", reason });
+        // حفظ قرار الرفض في قاعدة البيانات مع تفاصيل Decision Engine الكاملة
+        await sbUpsert("applications", {
+          user_id: uid, job_id: jobId, job_title: jobTitle,
+          applied_at: new Date().toISOString(), status: "skipped",
+          skip_reason: reason,
+          decision_reasons: fit.reasons,
+          missing_skills: fit.missing,
+          matched_skills: fit.matched,
+          match_score: fit.score, job_fingerprint: fingerprint,
+          provider_used: null,
+        });
         continue;
       }
 
       // فلتر الجنس (حاجز صارم بعد AI)
       const userGender = String(user.gender ?? "male");
       if (userGender === "male" && isFeminineJob(job)) {
-        details.push({ user: name, job: jobTitle, status: "skipped", reason: `وظيفة نسائية — المستخدم ذكر (AI score=${fit.score})` });
+        const genderReason = `وظيفة نسائية — المستخدم ذكر (AI score=${fit.score})`;
+        details.push({ user: name, job: jobTitle, status: "skipped", reason: genderReason });
+        await sbUpsert("applications", {
+          user_id: uid, job_id: jobId, job_title: jobTitle,
+          applied_at: new Date().toISOString(), status: "skipped",
+          skip_reason: genderReason,
+          decision_reasons: [`وظيفة مخصصة للإناث — المستخدم ذكر`],
+          missing_skills: [`شرط الجنس: أنثى`],
+          matched_skills: fit.matched,
+          match_score: fit.score, job_fingerprint: fingerprint,
+          provider_used: null,
+        });
         continue;
       }
 
@@ -696,11 +736,15 @@ async function runCycle() {
         console.error(`[worker] ❌ ${name} → ${jobTitle}: ${errorReason}`);
       }
 
-      await sbInsert("applications", {
+      await sbUpsert("applications", {
         user_id: uid, job_id: jobId, job_title: jobTitle,
         applied_at: sentAt, status, provider_used: "smtp",
         error_reason: errorReason, sent_at: status === "sent" ? sentAt : null,
         match_score: fit.score, job_fingerprint: fingerprint,
+        decision_reasons: fit.reasons,
+        missing_skills: fit.missing,
+        matched_skills: fit.matched,
+        skip_reason: null,
       });
     }
   }
