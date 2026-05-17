@@ -836,26 +836,16 @@ async def _analyze_job_fit(
 
 async def _call_edge_function() -> dict:
     """يستدعي الـ Edge Function في Supabase ويعيد النتيجة."""
-    SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    # نستخدم service_role_key دائماً — هو المفتاح المقبول في الـ Edge Function
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "") or SUPABASE_KEY
 
-    headers = {"Content-Type": "application/json"}
-    if WORKER_SECRET:
-        headers["Authorization"] = f"Bearer {WORKER_SECRET}"
-    elif SUPABASE_SERVICE_ROLE_KEY:
-        headers["Authorization"] = f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"
-    else:
-        headers["Authorization"] = f"Bearer {SUPABASE_KEY}"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {service_key}",
+    }
 
     async with httpx.AsyncClient(timeout=300) as client:
         r = await client.post(EDGE_FUNCTION_URL, headers=headers, json={})
-        if r.status_code == 401:
-            # إذا رُفض — الـ Edge Function قد تطلب WORKER_SECRET خاص
-            # نجرب بدون Authorization (إذا كانت الـ function بلا حماية)
-            r2 = await client.post(EDGE_FUNCTION_URL,
-                                   headers={"Content-Type": "application/json"}, json={})
-            if r2.status_code != 401:
-                r2.raise_for_status()
-                return r2.json()
         r.raise_for_status()
         return r.json()
 

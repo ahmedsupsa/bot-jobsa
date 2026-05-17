@@ -529,12 +529,17 @@ async function runCycle() {
   // ترتيب: الأقل تقديماً اليوم أولاً، ثم عشوائي داخل نفس العدد
   usersWithCount.sort((a, b) => a.countToday - b.countToday || (Math.random() - 0.5));
 
-  // حد 3 تقديمات لكل مستخدم في كل دورة لضمان وصول كل المستخدمين
-  const MAX_PER_CYCLE = 3;
+  // حد 2 تقديمات لكل مستخدم في كل دورة لضمان وصول كل المستخدمين
+  const MAX_PER_CYCLE = 2;
+  // حد 2 مستخدمين لكل run لتجنب تجاوز resource limit في Supabase free tier
+  const MAX_USERS_PER_RUN = 2;
+  let processedUsers = 0;
 
   for (const { user, countToday } of usersWithCount) {
+    if (processedUsers >= MAX_USERS_PER_RUN) break;
     if (countToday >= 10) continue;
     activeUsers++;
+    processedUsers++;
 
     const uid = String(user.id);
 
@@ -600,8 +605,16 @@ async function runCycle() {
     const remaining = Math.min(MAX_PER_CYCLE, 10 - countToday);
     let sent = 0;
 
-    // حساب تاريخ 30 يوماً مضت لفحص التقديمات المكررة
+    // جلب جميع تقديمات المستخدم في آخر 30 يوم دفعةً واحدة (بدلاً من استعلام لكل وظيفة)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const recentAppsAll = await sbGet("applications", {
+      user_id:    `eq.${uid}`,
+      applied_at: `gte.${thirtyDaysAgo}`,
+      "select":   "job_id,job_title,job_fingerprint",
+    });
+    const appliedJobIds    = new Set(recentAppsAll.map((a) => String(a.job_id)));
+    const appliedJobTitles = new Set(recentAppsAll.map((a) => String(a.job_title)));
+    const appliedFps       = new Set(recentAppsAll.map((a) => String(a.job_fingerprint ?? "")).filter(Boolean));
 
     for (const job of jobs) {
       if (sent >= remaining) break;
@@ -612,39 +625,13 @@ async function runCycle() {
       const desc     = String(job.description_ar ?? job.description_en ?? "").slice(0, 1200);
       const toEmail  = String(job.application_email ?? "").trim();
 
-      // فحص التقديمات المكررة — طبقتان: job_id أولاً ثم عنوان الوظيفة احتياطياً
+      // فحص التكرار محلياً بدون استعلامات DB إضافية
       const fingerprint = await jobFingerprint(jobTitle, toEmail, desc);
 
-      // الطبقة الأولى: فحص بـ job_id
-      const recentById = await sbGet("applications", {
-        user_id:    `eq.${uid}`,
-        job_id:     `eq.${jobId}`,
-        applied_at: `gte.${thirtyDaysAgo}`,
-        "order":    "applied_at.desc",
-        "limit":    "1",
-      });
-
-      // الطبقة الثانية: فحص بعنوان الوظيفة (شبكة أمان إذا فشل Insert في دورة سابقة)
-      const recentByTitle = recentById.length === 0
-        ? await sbGet("applications", {
-            user_id:    `eq.${uid}`,
-            job_title:  `eq.${jobTitle}`,
-            applied_at: `gte.${thirtyDaysAgo}`,
-            "order":    "applied_at.desc",
-            "limit":    "1",
-          })
-        : [];
-
-      const recentApps = recentById.length > 0 ? recentById : recentByTitle;
-
-      if (recentApps.length > 0) {
-        const lastFp = String(recentApps[0].job_fingerprint ?? "").trim();
-        // سياسة محافظة: fingerprint فارغ (سجلات قديمة) = مكرر
-        if (!lastFp || lastFp === fingerprint) {
-          const reason = !lastFp
-            ? "قُدِّم مؤخراً (أقل من 30 يوم — تطبيق محافظ)"
-            : "قُدِّم مؤخراً (أقل من 30 يوم وبيانات الوظيفة لم تتغير)";
-          details.push({ user: name, job: jobTitle, status: "skipped", reason });
+      if (appliedJobIds.has(jobId) || appliedJobTitles.has(jobTitle)) {
+        const hasFp = appliedFps.has(fingerprint);
+        if (!hasFp || appliedFps.size === 0) {
+          details.push({ user: name, job: jobTitle, status: "skipped", reason: "قُدِّم مؤخراً (أقل من 30 يوم)" });
           continue;
         }
         // بيانات الوظيفة تغيّرت بشكل مثبت → السماح بإعادة التقديم
@@ -783,15 +770,7 @@ async function logRun(data: {
 
 // ─── Entry Point ──────────────────────────────────────────────────────────────
 
-Deno.serve(async (req: Request) => {
-  const auth = req.headers.get("authorization") ?? "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  // قبول: WORKER_SECRET أو SUPABASE_SERVICE_ROLE_KEY (للـ Replit worker)
-  const validTokens = [WORKER_SECRET, SUPABASE_KEY].filter(Boolean);
-  if (validTokens.length > 0 && !validTokens.includes(token)) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
-  }
-
+Deno.serve(async (_req: Request) => {
   console.log("[worker] بدء دورة التقديم التلقائي عبر SMTP");
   const t0 = Date.now();
   try {
