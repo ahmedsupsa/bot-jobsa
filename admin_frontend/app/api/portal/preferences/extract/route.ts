@@ -7,14 +7,12 @@ export const maxDuration = 60;
 
 const GEMINI_KEY = () => process.env.GEMINI_API_KEY || "";
 
-// نماذج Gemini المدعومة لـ multimodal (PDF + صور) — v1beta
+// نماذج Gemini المدعومة لـ multimodal (PDF + صور) — مُثبتة في الـ Worker
 const MODELS = [
-  "gemini-2.0-flash-001",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
   "gemini-2.0-flash",
-  "gemini-2.0-flash-lite-001",
   "gemini-2.0-flash-lite",
-  "gemini-1.5-flash-latest",
-  "gemini-1.5-flash-001",
 ];
 
 /** استدعاء Gemini مع إعادة المحاولة على نماذج متعددة */
