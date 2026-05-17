@@ -7,7 +7,7 @@ import { PushPermissionBanner } from "@/components/PushPermissionBanner";
 import Image from "next/image";
 import {
   Home, ClipboardList, FileText, User, LogOut,
-  MessageCircle, TrendingUp, Sun, Moon, Mail,
+  MessageCircle, TrendingUp, Sun, Moon, Mail, Sparkles,
 } from "lucide-react";
 
 const SIDEBAR_NAV = [
@@ -16,6 +16,7 @@ const SIDEBAR_NAV = [
   { href: "/portal/cv",           icon: FileText,      label: "سيرتي"        },
   { href: "/portal/email",        icon: Mail,          label: "ربط الإيميل"  },
   { href: "/portal/profile",      icon: User,          label: "حسابي"        },
+  { href: "/portal/rewards",      icon: Sparkles,      label: "عجلة الحظ 🎡" },
   { href: "/portal/affiliate",    icon: TrendingUp,    label: "برنامج الربح" },
   { href: "/portal/support",      icon: MessageCircle, label: "الدعم"        },
 ];
@@ -24,8 +25,7 @@ const SIDEBAR_NAV = [
 const BOTTOM_NAV = [
   { href: "/portal/dashboard",    icon: Home,          label: "الرئيسية"  },
   { href: "/portal/applications", icon: ClipboardList, label: "التقديمات" },
-  { href: "/portal/cv",           icon: FileText,      label: "سيرتي"     },
-  { href: "/portal/email",        icon: Mail,          label: "الإيميل"   },
+  { href: "/portal/rewards",      icon: Sparkles,      label: "العجلة 🎡" },
   { href: "/portal/affiliate",    icon: TrendingUp,    label: "الربح"     },
   { href: "/portal/support",      icon: MessageCircle, label: "الدعم"     },
   { href: "/portal/profile",      icon: User,          label: "حسابي"     },

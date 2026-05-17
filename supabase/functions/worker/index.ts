@@ -916,6 +916,28 @@ async function runCycle() {
         details.push({ user: name, job: jobTitle, status: "sent", reason: `score=${fit.score}/100 — ${fit.reasons.slice(0, 1).join("")}` });
         console.log(`[worker] ✅ ${name} → ${jobTitle} (${toEmail}) | score=${fit.score}`);
 
+        // ── منح نقرة عجلة حظ لكل تقديم ناجح ──────────────────────────────
+        try {
+          const spinR = await fetch(
+            `${SUPABASE_URL}/rest/v1/users?id=eq.${uid}`,
+            {
+              method: "PATCH",
+              headers: { ...SB, "Content-Type": "application/json", "Prefer": "return=minimal" },
+              body: JSON.stringify({ pending_spins: `pending_spins + 1` }),
+            }
+          );
+          // Supabase REST لا يدعم تعبيرات SQL — نستخدم RPC بديلاً
+          if (!spinR.ok) {
+            await fetch(`${SUPABASE_URL}/rest/v1/rpc/increment_pending_spins`, {
+              method: "POST",
+              headers: { ...SB, "Content-Type": "application/json" },
+              body: JSON.stringify({ p_user_id: uid }),
+            });
+          }
+        } catch (spinErr) {
+          console.warn(`[worker] ⚠️ فشل منح نقرة العجلة لـ ${name}: ${spinErr}`);
+        }
+
         await new Promise((r) => setTimeout(r, 5000));
       } catch (e) {
         status = "error";
