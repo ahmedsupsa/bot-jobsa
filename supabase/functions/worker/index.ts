@@ -464,14 +464,92 @@ async function jobFingerprint(title: string, email: string, desc: string): Promi
   return Array.from(new Uint8Array(hash)).slice(0, 8).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// ─── Job Level Classification & Flexibility Score ─────────────────────────────
+
+type JobLevel = "entry" | "junior" | "mid" | "senior";
+
+// وظائف يسمح فيها بالتقديم حتى بدون خبرة — لأن أصحاب العمل يقبلون مبتدئين غالباً
+const BEGINNER_FRIENDLY_KEYWORDS = [
+  // عربي
+  "كاشير", "صندوق", "استقبال", "موظف استقبال", "استقبالية",
+  "خدمة عملاء", "ممثل خدمة", "دعم عملاء", "مركز اتصال", "call center",
+  "مساعد إداري", "مساعد اداري", "سكرتير", "سكرتارية",
+  "بائع", "بائعة", "موظف مبيعات", "مندوب مبيعات", "مندوبة مبيعات",
+  "مسوق", "مسوقة", "تسويق ميداني",
+  "منسق", "منسقة", "مدخل بيانات", "إدخال بيانات", "ادخال بيانات",
+  "دعم فني", "دعم تقني", "helpdesk", "help desk",
+  "مراقب كاميرات", "موظف أمن", "حارس أمن", "أمن", "مراقبة",
+  "موظف موارد بشرية", "مساعد موارد بشرية", "أخصائي توظيف مبتدئ",
+  "موظف تشغيل", "موظف خدمات", "موظف صندوق", "موظف طلبات",
+  "مشرف قاعة", "موظف استعلامات", "متعقب", "سائق توصيل", "توصيل",
+  "موزع", "مستودع", "مخزن", "مخازن", "شحن وتغليف",
+  "خياط", "عامل", "فني صيانة", "صيانة", "تنسيق اجتماعات",
+  // إنجليزي
+  "cashier", "receptionist", "customer service", "customer support",
+  "sales representative", "sales rep", "sales associate", "retail associate",
+  "store associate", "admin assistant", "administrative assistant",
+  "data entry", "secretary", "front desk", "operator",
+  "security guard", "security officer", "warehouse", "dispatcher",
+  "hr assistant", "coordinator", "scheduler", "office assistant",
+  "delivery driver", "field sales", "telesales", "telemarketer",
+];
+
+// علامات الوظائف المتخصصة التي تتطلب خبرة فعلية
+const SENIOR_MARKERS = [
+  // عربي
+  "أول", "كبير", "مدير", "رئيس قسم", "رئيس", "مستشار",
+  "محاسب أول", "مهندس أول", "أخصائي أول", "قيادي",
+  // إنجليزي
+  "senior", "sr.", "lead", "manager", "director", "head of",
+  "principal", "chief", "vp", "vice president",
+  "architect", "consultant", "cto", "cfo", "coo",
+];
+
+// وظائف متخصصة لا تنفع بدون خبرة حقيقية (حتى لو المسمى بسيط)
+const SPECIALIZED_TITLES = [
+  "محاسب", "accountant", "مدقق", "auditor",
+  "مهندس", "engineer", "طبيب", "doctor", "صيدلاني",
+  "محامي", "lawyer", "مستشار قانوني",
+  "مطور", "developer", "برمجة", "programmer",
+  "مصمم", "designer", "مصور احترافي",
+  "معالج", "therapist", "اخصائي نفسي",
+  "أخصائي أمن", "security analyst", "cybersecurity",
+];
+
+function classifyJobLevel(jobTitle: string, jobDesc: string): JobLevel {
+  const t = jobTitle.toLowerCase();
+  const d = jobDesc.slice(0, 400).toLowerCase();
+  const combined = t + " " + d;
+
+  // Senior أولاً — أي إشارة لـ senior يعني متطلبات حقيقية
+  if (SENIOR_MARKERS.some(m => combined.includes(m.toLowerCase()))) return "senior";
+
+  // مصرّح صراحةً بأنه entry/junior
+  if (
+    t.includes("مبتدئ") || t.includes("مبتدئة") || t.includes("حديث تخرج") ||
+    t.includes("entry") || t.includes("junior") || t.includes("trainee") ||
+    t.includes("متدرب") || t.includes("متدربة") || t.includes("تدريب")
+  ) return "entry";
+
+  // وظائف متخصصة → mid بحد أدنى (تحتاج تطابق مهاري)
+  if (SPECIALIZED_TITLES.some(k => t.includes(k.toLowerCase()))) return "mid";
+
+  // وظائف مناسبة للمبتدئين
+  if (BEGINNER_FRIENDLY_KEYWORDS.some(k => t.includes(k.toLowerCase()))) return "entry";
+
+  // باقي الوظائف → junior (يُقيَّم بحذر)
+  return "junior";
+}
+
 // ─── تحليل مدى ملاءمة المستخدم للوظيفة (Gemini AI) ───────────────────────────
 
 interface JobFitResult {
   score: number;       // 0-100
   decision: "apply" | "skip";
-  reasons: string[];   // أسباب القبول أو الرفض
-  missing: string[];   // متطلبات ناقصة في الملف
-  matched: string[];   // مهارات/متطلبات مطابقة في الملف
+  reasons: string[];
+  missing: string[];
+  matched: string[];
+  job_level: JobLevel;
 }
 
 async function analyzeJobFit(
@@ -482,8 +560,13 @@ async function analyzeJobFit(
   fieldNames: string[],
   certifications: Array<{ type: string; name: string; issuer?: string }>,
 ): Promise<JobFitResult> {
-  // الـ fallback يرفض التقديم بشكل افتراضي — لا نقدّم بدون تحليل AI حقيقي
-  const fallback: JobFitResult = { score: 0, decision: "skip", reasons: ["تعذّر الاتصال بـ Gemini — تم التخطي احترازياً"], missing: [], matched: [] };
+  const jobLevel = classifyJobLevel(jobTitle, jobDesc);
+
+  const fallback: JobFitResult = {
+    score: 0, decision: "skip",
+    reasons: ["تعذّر الاتصال بـ Gemini — تم التخطي احترازياً"],
+    missing: [], matched: [], job_level: jobLevel,
+  };
   if (!GEMINI_KEY) return fallback;
 
   const certText = certifications.length
@@ -492,12 +575,36 @@ async function analyzeJobFit(
 
   const prefsText = fieldNames.length ? fieldNames.join("، ") : "غير محدد";
 
+  // ── قواعد الخبرة تختلف حسب مستوى الوظيفة ──────────────────────────────────
+  const experienceRules =
+    jobLevel === "entry"
+      ? `💡 هذه وظيفة مناسبة للمبتدئين (entry level).
+- لا ترفض المرشح بسبب نقص الخبرة فقط — الكثير من أصحاب العمل يقبلون مبتدئين في هذا النوع.
+- قيّم بناءً على المؤهل الدراسي والمهارات وملاءمة الشخصية للوظيفة.
+- لا تُضف "نقص الخبرة" في قائمة missing.
+- إذا كان المرشح مناسباً بشكل عام → apply حتى بدون خبرة.`
+      : jobLevel === "junior"
+      ? `💡 هذه وظيفة junior (مبتدئ إلى متوسط).
+- إذا طالبت الوظيفة بأقل من سنتين خبرة والمرشح مبتدئ أو لديه خبرة جزئية → يُسمح بالتقديم بحذر.
+- إذا طالبت بسنتين أو أكثر والمرشح بدون أي خبرة → skip.
+- لا تحوّل تدريب صيفي أو مشاريع جامعية إلى خبرة عمل حقيقية.`
+      : jobLevel === "mid"
+      ? `⚠️ هذه وظيفة متوسطة المستوى (mid level).
+- يحتاج المرشح إلى تطابق واضح في المهارات والمؤهلات.
+- إذا طالبت بخبرة سنتين+ والمرشح حديث تخرج → skip.
+- لا تحوّل تدريب أو مشاريع جامعية إلى خبرة.`
+      : /* senior */
+        `🚫 هذه وظيفة متخصصة/قيادية (senior/specialized).
+- إذا طالبت بخبرة سنتين+ والمرشح حديث تخرج أو أقل → قرار حتمي: skip.
+- إذا كانت وظيفة Senior/Lead/Manager والمرشح junior → skip.
+- لا تحوّل تدريب أو مشاريع جامعية إلى خبرة عمل حقيقية.`;
+
+  const scoreThreshold = jobLevel === "entry" ? 55 : jobLevel === "junior" ? 60 : 70;
+
   const prompt =
-    `أنت محلل توظيف متخصص وصارم جداً. مهمتك حماية سمعة المتقدمين — لا تسمح بالتقديم إلا إذا كان المرشح مناسباً فعلاً.\n\n` +
-    `⚠️ قواعد صارمة لا تُكسر:\n` +
-    `- إذا طالبت الوظيفة بخبرة سنتين+ والمرشح حديث تخرج أو عنده أقل → قرار حتمي: skip\n` +
-    `- إذا كانت الوظيفة Senior/Lead/Manager والمرشح junior أو حديث تخرج → skip\n` +
-    `- لا تحوّل 'تدريب صيفي' أو 'مشاريع جامعية' إلى خبرة عمل حقيقية\n\n` +
+    `أنت محلل توظيف ذكي ومتوازن. مهمتك تقييم مدى ملاءمة المرشح للوظيفة بشكل واقعي.\n\n` +
+    `=== مستوى الوظيفة: ${jobLevel.toUpperCase()} ===\n` +
+    experienceRules + `\n\n` +
     `=== الوظيفة ===\n` +
     `المسمى: ${jobTitle}\n` +
     `الشركة: ${company || "غير محدد"}\n` +
@@ -507,15 +614,15 @@ async function analyzeJobFit(
     `الشهادات والرخص:\n${certText}\n` +
     `ملخص السيرة الذاتية:\n${(cvParsedText ?? "غير متاح").slice(0, 1200)}\n\n` +
     `=== المطلوب ===\n` +
-    `أعد JSON فقط (بدون markdown) بهذا الشكل بالضبط:\n` +
+    `أعد JSON فقط (بدون markdown) بهذا الشكل:\n` +
     `{"score":75,"decision":"apply","reasons":["سبب1"],"missing":["نقص1"],"matched":["مهارة1"],"cv_experience_years":3,"job_required_years":2}\n` +
     `- score: رقم من 0 إلى 100\n` +
-    `- decision: "apply" فقط إذا score >= 70 ولا توجد متطلبات إلزامية ناقصة وسنوات الخبرة كافية\n` +
-    `- reasons: 1-2 سبب موجز للقرار بالعربية (اذكر ما وُجد أو ما غاب بالتحديد)\n` +
-    `- missing: الشروط الإلزامية الناقصة (رخص/شهادات/مؤهل/خبرة/مهارة) — فارغة إذا لا يوجد\n` +
-    `- matched: المهارات والمؤهلات الموجودة في السيرة وتتطابق مع الوظيفة — فارغة إذا لا يوجد\n` +
-    `- cv_experience_years: سنوات خبرة المرشح كرقم (0 إذا حديث تخرج، -1 إذا غير واضح)\n` +
-    `- job_required_years: سنوات الخبرة المطلوبة كرقم (0 إذا لا يوجد شرط، -1 إذا غير واضح)\n` +
+    `- decision: "apply" إذا score >= ${scoreThreshold} ولا توجد متطلبات إلزامية ناقصة (راعِ قواعد المستوى أعلاه)\n` +
+    `- reasons: 1-2 سبب موجز للقرار بالعربية\n` +
+    `- missing: الشروط الإلزامية الناقصة (رخص/شهادات/مؤهل/مهارة أساسية) — لا تضع "خبرة" لوظائف entry level\n` +
+    `- matched: المهارات والمؤهلات الموجودة في السيرة\n` +
+    `- cv_experience_years: سنوات خبرة المرشح (0 حديث تخرج، -1 غير واضح)\n` +
+    `- job_required_years: سنوات الخبرة المطلوبة (0 لا يوجد شرط، -1 غير واضح)\n` +
     `أعد JSON فقط، بلا نص إضافي.`;
 
   const MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash"];
@@ -533,32 +640,38 @@ async function analyzeJobFit(
       const data = await r.json();
       const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
       if (!text) continue;
-      // استخراج JSON من الرد (قد يكون محاطاً بـ markdown)
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) continue;
-      const parsed = JSON.parse(jsonMatch[0]) as Partial<JobFitResult>;
+      const parsed = JSON.parse(jsonMatch[0]) as Partial<JobFitResult> & { cv_experience_years?: number; job_required_years?: number };
       const score   = Math.max(0, Math.min(100, Number(parsed.score ?? 0)));
       const missing = Array.isArray(parsed.missing) ? parsed.missing.filter(Boolean).slice(0, 4) : [];
       const aiCvYears  = typeof parsed.cv_experience_years  === "number" ? parsed.cv_experience_years  : -1;
       const aiJobYears = typeof parsed.job_required_years   === "number" ? parsed.job_required_years   : -1;
 
-      // حاجز 1: threshold 70 + لا متطلبات ناقصة
-      let decision: "apply" | "skip" = (score >= 70 && missing.length === 0) ? "apply" : "skip";
+      // حاجز الخبرة — يُفعَّل فقط لـ mid وsenior
+      let decision: "apply" | "skip" = (score >= scoreThreshold && missing.length === 0) ? "apply" : "skip";
 
-      // حاجز 2: خبرة المرشح أقل من المطلوب → skip حتمي
-      if (aiCvYears >= 0 && aiJobYears > 0 && aiCvYears < aiJobYears) {
-        decision = "skip";
-        const expMsg = `مطلوب ${aiJobYears}+ سنة — لديك ${aiCvYears} سنة`;
-        if (!missing.includes(expMsg)) missing.unshift(expMsg);
+      if (jobLevel === "mid" || jobLevel === "senior") {
+        if (aiCvYears >= 0 && aiJobYears > 0 && aiCvYears < aiJobYears) {
+          decision = "skip";
+          const expMsg = `مطلوب ${aiJobYears}+ سنة — لديك ${aiCvYears} سنة`;
+          if (!missing.includes(expMsg)) missing.unshift(expMsg);
+        }
+      } else if (jobLevel === "junior") {
+        // junior: فقط امنع إذا المطلوب سنتان أو أكثر والمرشح صفر خبرة
+        if (aiCvYears === 0 && aiJobYears >= 2) {
+          decision = "skip";
+          const expMsg = `مطلوب ${aiJobYears}+ سنة — لديك ${aiCvYears} سنة`;
+          if (!missing.includes(expMsg)) missing.unshift(expMsg);
+        }
       }
+      // entry: لا حاجز خبرة — الـ AI يقرر بناءً على المؤهل والمهارات فقط
 
       const matched = Array.isArray((parsed as any).matched) ? (parsed as any).matched.filter(Boolean).slice(0, 6) : [];
       return {
-        score,
-        decision,
+        score, decision,
         reasons: Array.isArray(parsed.reasons) ? parsed.reasons.slice(0, 4) : [],
-        missing,
-        matched,
+        missing, matched, job_level: jobLevel,
       };
     } catch { continue; }
   }
@@ -759,10 +872,11 @@ async function runCycle() {
 
       // ── تحليل AI لمدى ملاءمة الوظيفة ────────────────────────────────────────
       const fit = await analyzeJobFit(jobTitle, company, desc, cvParsedText, fieldNames, certifications);
-      console.log(`[worker] 🤖 ${name} ← ${jobTitle} | score=${fit.score} | ${fit.decision} | gender=${genderCheck.jobGender}(${genderCheck.confidence}) | missing=${fit.missing.join(", ") || "لا يوجد"}`);
+      const levelLabel = { entry: "مبتدئ", junior: "جونيور", mid: "متوسط", senior: "متخصص" }[fit.job_level];
+      console.log(`[worker] 🤖 ${name} ← ${jobTitle} | level=${fit.job_level}(${levelLabel}) | score=${fit.score} | ${fit.decision} | gender=${genderCheck.jobGender}(${genderCheck.confidence}) | missing=${fit.missing.join(", ") || "لا يوجد"}`);
 
       if (fit.decision === "skip") {
-        const reason = `AI رفض (${fit.score}/100): ${fit.reasons.slice(0, 2).join("؛ ")}${fit.missing.length ? " | ناقص: " + fit.missing.slice(0, 2).join("، ") : ""}`;
+        const reason = `AI رفض [${levelLabel}] (${fit.score}/100): ${fit.reasons.slice(0, 2).join("؛ ")}${fit.missing.length ? " | ناقص: " + fit.missing.slice(0, 2).join("، ") : ""}`;
         details.push({ user: name, job: jobTitle, status: "skipped", reason });
         await sbUpsert("applications", {
           user_id: uid, job_id: jobId, job_title: jobTitle,
