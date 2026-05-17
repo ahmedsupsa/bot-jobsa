@@ -8,7 +8,9 @@ import {
   ShoppingBag, Package, ClipboardList, Plus, Pencil, Trash2,
   CheckCircle2, XCircle, Clock, RefreshCw, X, Save, Zap,
   Building2, Wallet, Copy, CheckCheck, Tag, Percent, DollarSign,
+  ImagePlus, Trash,
 } from "lucide-react";
+import Image from "next/image";
 
 type Product = {
   id: string;
@@ -19,6 +21,7 @@ type Product = {
   streampay_product_id?: string;
   is_active: boolean;
   is_secret?: boolean;
+  image_url?: string | null;
   created_at: string;
 };
 
@@ -59,7 +62,7 @@ type BankAccount = {
   created_at: string;
 };
 
-const EMPTY_PRODUCT = { name: "", description: "", price: "", duration_days: "", is_secret: false };
+const EMPTY_PRODUCT = { name: "", description: "", price: "", duration_days: "", is_secret: false, image_url: "" };
 
 const EMPTY_BANK = { type: "bank", name: "", account_number: "", iban: "", phone: "", display_order: "0" };
 
@@ -133,6 +136,8 @@ export default function StoreAdminPage() {
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [pForm, setPForm] = useState(EMPTY_PRODUCT);
   const [saving, setSaving] = useState(false);
+  const [imgUploading, setImgUploading] = useState(false);
+  const [imgPreview, setImgPreview] = useState<string | null>(null);
 
   // Orders state
   const [orders, setOrders] = useState<Order[]>([]);
@@ -302,7 +307,50 @@ export default function StoreAdminPage() {
   const openAddProduct = () => {
     setEditProduct(null);
     setPForm(EMPTY_PRODUCT);
+    setImgPreview(null);
     setShowForm(true);
+  };
+
+  const handleImageUpload = async (file: File, productId: string) => {
+    setImgUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("product_id", productId);
+      const r = await fetch(`${API_BASE}/api/admin/store/products/upload-image`, {
+        method: "POST", credentials: "include", body: fd,
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "فشل رفع الصورة");
+      setImgPreview(j.image_url);
+      setPForm(s => ({ ...s, image_url: j.image_url }));
+      setPMsg("تم رفع الصورة ✓"); setPMsgType("ok");
+      await loadProducts();
+    } catch (e) {
+      setPMsg(String(e).replace("Error: ", "")); setPMsgType("err");
+    }
+    setImgUploading(false);
+  };
+
+  const handleRemoveImage = async (productId: string) => {
+    if (!confirm("حذف صورة المنتج؟")) return;
+    setImgUploading(true);
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/store/products/upload-image`, {
+        method: "DELETE", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product_id: productId }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "فشل الحذف");
+      setImgPreview(null);
+      setPForm(s => ({ ...s, image_url: "" }));
+      setPMsg("تم حذف الصورة"); setPMsgType("ok");
+      await loadProducts();
+    } catch (e) {
+      setPMsg(String(e).replace("Error: ", "")); setPMsgType("err");
+    }
+    setImgUploading(false);
   };
 
   const openEditProduct = (p: Product) => {
@@ -313,7 +361,9 @@ export default function StoreAdminPage() {
       price: String(p.price),
       duration_days: String(p.duration_days),
       is_secret: !!p.is_secret,
+      image_url: p.image_url || "",
     });
+    setImgPreview(p.image_url || null);
     setShowForm(true);
   };
 
@@ -581,6 +631,11 @@ export default function StoreAdminPage() {
                     className="rounded-2xl border border-line bg-panel p-4"
                   >
                     <div className="flex items-start justify-between gap-4">
+                      {p.image_url && (
+                        <div className="relative flex-shrink-0 rounded-xl overflow-hidden border border-line" style={{ width: 60, height: 60 }}>
+                          <Image src={p.image_url} alt={p.name} fill className="object-cover" unoptimized />
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="font-semibold text-ink text-sm">{p.name}</span>
@@ -700,6 +755,80 @@ export default function StoreAdminPage() {
                           />
                         </div>
                       </div>
+                      {/* ── صورة المنتج ── */}
+                      <div>
+                        <label className="block text-xs text-muted mb-1.5">صورة المنتج</label>
+                        {imgPreview ? (
+                          <div className="relative rounded-xl overflow-hidden border border-line bg-bg" style={{ height: 130 }}>
+                            <Image
+                              src={imgPreview}
+                              alt="صورة المنتج"
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                            <div className="absolute inset-0 bg-black/30 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <label className="cursor-pointer rounded-lg bg-white/90 text-gray-800 px-3 py-1.5 text-xs font-semibold flex items-center gap-1 hover:bg-white transition-all">
+                                <ImagePlus size={13} />
+                                تغيير
+                                <input
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/webp"
+                                  className="hidden"
+                                  onChange={e => {
+                                    const f = e.target.files?.[0];
+                                    if (f && editProduct) handleImageUpload(f, editProduct.id);
+                                    e.target.value = "";
+                                  }}
+                                />
+                              </label>
+                              {editProduct && (
+                                <button
+                                  onClick={() => handleRemoveImage(editProduct.id)}
+                                  disabled={imgUploading}
+                                  className="rounded-lg bg-red-500/90 text-white px-3 py-1.5 text-xs font-semibold flex items-center gap-1 hover:bg-red-500 transition-all"
+                                >
+                                  <Trash size={13} />
+                                  حذف
+                                </button>
+                              )}
+                            </div>
+                            {imgUploading && (
+                              <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                <RefreshCw size={20} className="text-white animate-spin" />
+                              </div>
+                            )}
+                          </div>
+                        ) : editProduct ? (
+                          <label className="cursor-pointer flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line hover:border-line2 bg-bg transition-all py-6 text-muted2 hover:text-muted">
+                            {imgUploading ? (
+                              <RefreshCw size={22} className="animate-spin" />
+                            ) : (
+                              <>
+                                <ImagePlus size={22} />
+                                <span className="text-xs">اضغط لرفع صورة</span>
+                                <span className="text-[10px] text-muted2">JPG · PNG · WebP (حد أقصى 5MB)</span>
+                              </>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              className="hidden"
+                              onChange={e => {
+                                const f = e.target.files?.[0];
+                                if (f && editProduct) handleImageUpload(f, editProduct.id);
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-line bg-bg py-5 text-muted2">
+                            <ImagePlus size={20} />
+                            <span className="text-xs">احفظ المنتج أولاً ثم ارفع الصورة</span>
+                          </div>
+                        )}
+                      </div>
+
                       <label className="flex items-center gap-2 cursor-pointer rounded-xl border border-line bg-bg px-3 py-2.5 hover:border-line2 transition-all">
                         <input
                           type="checkbox"

@@ -31,7 +31,7 @@ export async function GET(req: Request) {
 
   const full = await supabase
     .from("store_products")
-    .select("id, name, description, price, duration_days, streampay_product_id, is_active, is_secret, created_at")
+    .select("id, name, description, price, duration_days, streampay_product_id, is_active, is_secret, image_url, created_at")
     .order("duration_days", { ascending: true });
 
   if (full.error && /is_secret/i.test(full.error.message)) {

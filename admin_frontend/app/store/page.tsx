@@ -14,6 +14,7 @@ type Product = {
   description?: string;
   price: number;
   duration_days: number;
+  image_url?: string | null;
 };
 
 type BankAccount = {
@@ -500,6 +501,18 @@ export default function StorePage() {
               return (
                 <div key={p.id} style={s.card}>
                   <div style={s.cardGlow} />
+
+                  {p.image_url && (
+                    <div style={{ position: "relative", width: "100%", height: 140, borderRadius: 14, overflow: "hidden", marginBottom: 16, flexShrink: 0 }}>
+                      <Image
+                        src={p.image_url}
+                        alt={p.name}
+                        fill
+                        style={{ objectFit: "cover" }}
+                        unoptimized
+                      />
+                    </div>
+                  )}
 
                   <div style={s.cardHeader}>
                     <h3 style={s.cardName}>{p.name}</h3>
