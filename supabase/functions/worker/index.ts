@@ -740,7 +740,12 @@ async function runCycle() {
           details.push({ user: name, job: jobTitle, status: "skipped", reason: genderReason });
           await sbUpsert("applications", {
             user_id: uid, job_id: jobId, job_title: jobTitle,
-            applied_at: new Date().toISOString(), status: "skipped",
+            applied_at: new Date().toISOString(),
+            status: "skipped",
+            application_status: "invalid",
+            hidden_from_user: true,
+            invalid_application: true,
+            hidden_reason: "تعارض الجنس — " + genderCheck.reason,
             skip_reason: genderReason,
             decision_reasons: [genderCheck.reason, `جنس المستخدم: ${userGender === "male" ? "ذكر" : "أنثى"}`],
             missing_skills: [missingSkill],
@@ -761,7 +766,11 @@ async function runCycle() {
         details.push({ user: name, job: jobTitle, status: "skipped", reason });
         await sbUpsert("applications", {
           user_id: uid, job_id: jobId, job_title: jobTitle,
-          applied_at: new Date().toISOString(), status: "skipped",
+          applied_at: new Date().toISOString(),
+          status: "skipped",
+          application_status: "rejected",
+          hidden_from_user: false,
+          invalid_application: false,
           skip_reason: reason,
           decision_reasons: fit.reasons,
           missing_skills: fit.missing,
@@ -805,6 +814,9 @@ async function runCycle() {
       await sbUpsert("applications", {
         user_id: uid, job_id: jobId, job_title: jobTitle,
         applied_at: sentAt, status, provider_used: "smtp",
+        application_status: status === "sent" ? "applied" : "error",
+        hidden_from_user: false,
+        invalid_application: false,
         error_reason: errorReason, sent_at: status === "sent" ? sentAt : null,
         match_score: fit.score, job_fingerprint: fingerprint,
         decision_reasons: fit.reasons,
@@ -816,6 +828,34 @@ async function runCycle() {
   }
 
   return { applied, users: activeUsers, errors, details };
+}
+
+// ─── تنظيف تلقائي: إخفاء أي تقديم خاطئ قديم لم يُعالَج ──────────────────────
+
+async function cleanupInvalidApplications() {
+  try {
+    // إخفاء أي تقديم ذكر←وظيفة نسائية أو أنثى←وظيفة رجالية لم يُعلَّم بعد
+    const url = new URL(`${SUPABASE_URL}/rest/v1/applications`);
+    url.searchParams.set("hidden_from_user", "eq.false");
+    url.searchParams.set("invalid_application", "eq.false");
+    url.searchParams.set("or", "(skip_reason.ilike.*نساء*ذكر*,skip_reason.ilike.*رجال*أنثى*)");
+
+    const r = await fetch(url.toString(), {
+      method: "PATCH",
+      headers: { ...SB, "Prefer": "return=minimal" },
+      body: JSON.stringify({
+        hidden_from_user: true,
+        invalid_application: true,
+        application_status: "invalid",
+        hidden_reason: "تعارض الجنس — كُشف في دورة التنظيف",
+      }),
+    });
+    if (r.ok) {
+      console.log("[worker] 🧹 تنظيف: تقديمات خاطئة سابقة أُخفيت");
+    }
+  } catch (e) {
+    console.error("[worker] تنظيف فشل:", e);
+  }
 }
 
 // ─── Telegram Notification ────────────────────────────────────────────────────
@@ -936,6 +976,8 @@ Deno.serve(async (_req: Request) => {
     await logRun({ applied_count: result.applied, active_users: result.users, errors: result.errors, duration_ms, status });
     console.log("[worker] انتهت الدورة:", JSON.stringify({ applied: result.applied, users: result.users, errors: result.errors.length }));
     await tgWorkerResult(result.applied, result.users, Math.round(duration_ms / 1000), result.details);
+    // تنظيف: إخفاء أي تقديم خاطئ قديم لم يُعالَج بعد
+    await cleanupInvalidApplications();
     // التقرير الأسبوعي (يُرسَل مرة واحدة كل أحد ٨-٩ ص بتوقيت الرياض)
     await maybeSendWeeklyReport();
     return new Response(JSON.stringify({ ok: true, ...result, duration_ms }), {

@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from("applications")
-    .select("id,user_id,job_id,job_title,applied_at,status,match_score,skip_reason,decision_reasons,missing_skills,matched_skills,error_reason,provider_used")
+    .select("id,user_id,job_id,job_title,applied_at,status,application_status,hidden_from_user,invalid_application,hidden_reason,match_score,skip_reason,decision_reasons,missing_skills,matched_skills,error_reason,provider_used")
     .order("applied_at", { ascending: false })
     .limit(limit);
 

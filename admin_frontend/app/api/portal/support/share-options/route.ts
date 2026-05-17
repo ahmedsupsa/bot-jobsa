@@ -37,7 +37,9 @@ export async function GET(req: Request) {
     supabase
       .from("applications")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", uid),
+      .eq("user_id", uid)
+      .eq("hidden_from_user", false)
+      .eq("status", "sent"),
     supabase
       .from("user_settings")
       .select("email")

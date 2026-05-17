@@ -22,10 +22,13 @@ export async function GET(req: Request) {
     .limit(1);
   const settings = settingsRows?.[0] || {};
 
+  // عدّ التقديمات المرئية فقط (تستثني المخفية والخاطئة)
   const { count: apps_count } = await supabase
     .from("applications")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", uid);
+    .eq("user_id", uid)
+    .eq("hidden_from_user", false)
+    .eq("status", "sent");
 
   const ends_at = user.subscription_ends_at || null;
   let days_left = 0;

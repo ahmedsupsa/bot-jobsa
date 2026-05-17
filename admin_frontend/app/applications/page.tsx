@@ -19,6 +19,10 @@ type Application = {
   company: string;
   user_name: string;
   status: "sent" | "skipped" | "error";
+  application_status: string | null;
+  hidden_from_user: boolean;
+  invalid_application: boolean;
+  hidden_reason: string | null;
   match_score: number | null;
   skip_reason: string | null;
   decision_reasons: string[] | null;
@@ -39,7 +43,11 @@ function fmtTime(iso: string) {
   return d.toLocaleString("ar-SA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, appStatus, hidden }: { status: string; appStatus?: string; hidden?: boolean }) {
+  if (hidden || appStatus === "invalid")
+    return <span className="inline-flex items-center gap-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full"><XCircle className="w-3 h-3" />مخفي</span>;
+  if (appStatus === "blocked")
+    return <span className="inline-flex items-center gap-1 text-xs font-medium bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 px-2 py-0.5 rounded-full"><AlertCircle className="w-3 h-3" />محظور</span>;
   if (status === "sent")    return <span className="inline-flex items-center gap-1 text-xs font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full"><Send className="w-3 h-3" />أُرسل</span>;
   if (status === "skipped") return <span className="inline-flex items-center gap-1 text-xs font-medium bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full"><XCircle className="w-3 h-3" />تجاوز</span>;
   return <span className="inline-flex items-center gap-1 text-xs font-medium bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-0.5 rounded-full"><AlertCircle className="w-3 h-3" />خطأ</span>;
@@ -241,7 +249,7 @@ export default function ApplicationsPage() {
                         <span className="truncate block">{app.company || "—"}</span>
                       </td>
                       <td className="py-3 px-4">
-                        <StatusBadge status={app.status} />
+                        <StatusBadge status={app.status} appStatus={app.application_status ?? undefined} hidden={app.hidden_from_user} />
                       </td>
                       <td className="py-3 px-4">
                         <ScoreBadge score={app.match_score} />
