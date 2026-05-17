@@ -40,11 +40,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-SUPABASE_URL       = os.getenv("SUPABASE_URL", "").rstrip("/")
-SUPABASE_KEY       = os.getenv("SUPABASE_KEY", "")
-GEMINI_API_KEY     = os.getenv("GEMINI_API_KEY", "")
+SUPABASE_URL        = os.getenv("SUPABASE_URL", "").rstrip("/")
+SUPABASE_KEY        = os.getenv("SUPABASE_KEY", "")
+GEMINI_API_KEY      = os.getenv("GEMINI_API_KEY", "")
 SMTP_ENCRYPTION_KEY = os.getenv("SMTP_ENCRYPTION_KEY", "")
-CYCLE_INTERVAL     = int(os.getenv("AUTO_APPLY_INTERVAL", "1800"))
+CYCLE_INTERVAL      = int(os.getenv("AUTO_APPLY_INTERVAL", "1800"))
+WORKER_SECRET       = os.getenv("WORKER_SECRET", "")
+EDGE_FUNCTION_URL   = os.getenv("SUPABASE_WORKER_URL", "https://vnbaksiabcdnnnoglycr.supabase.co/functions/v1/worker")
 
 _EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
 
@@ -822,9 +824,61 @@ async def _analyze_job_fit(
     return fallback
 
 
+# ─── استدعاء Supabase Edge Function ───
+
+async def _call_edge_function() -> dict:
+    """يستدعي الـ Edge Function في Supabase ويعيد النتيجة."""
+    SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+
+    headers = {"Content-Type": "application/json"}
+    if WORKER_SECRET:
+        headers["Authorization"] = f"Bearer {WORKER_SECRET}"
+    elif SUPABASE_SERVICE_ROLE_KEY:
+        headers["Authorization"] = f"Bearer {SUPABASE_SERVICE_ROLE_KEY}"
+    else:
+        headers["Authorization"] = f"Bearer {SUPABASE_KEY}"
+
+    async with httpx.AsyncClient(timeout=300) as client:
+        r = await client.post(EDGE_FUNCTION_URL, headers=headers, json={})
+        if r.status_code == 401:
+            # إذا رُفض — الـ Edge Function قد تطلب WORKER_SECRET خاص
+            # نجرب بدون Authorization (إذا كانت الـ function بلا حماية)
+            r2 = await client.post(EDGE_FUNCTION_URL,
+                                   headers={"Content-Type": "application/json"}, json={})
+            if r2.status_code != 401:
+                r2.raise_for_status()
+                return r2.json()
+        r.raise_for_status()
+        return r.json()
+
+
 # ─── الدورة الرئيسية ───
 
 async def run_cycle() -> None:
+    logger.info("🚀 استدعاء Supabase Edge Function: %s", EDGE_FUNCTION_URL)
+    try:
+        result = await _call_edge_function()
+        applied = result.get("applied", 0)
+        users   = result.get("users", 0)
+        errors  = result.get("errors", [])
+        logger.info("✅ Edge Function اكتملت: %d تقديم | %d مستخدم | %d خطأ",
+                    applied, users, len(errors))
+        if errors:
+            for err in errors[:5]:
+                logger.warning("   ⚠️  %s", err)
+    except httpx.HTTPStatusError as e:
+        logger.error("❌ Edge Function أعادت خطأ HTTP %d: %s",
+                     e.response.status_code, e.response.text[:300])
+    except Exception as e:
+        logger.error("❌ فشل استدعاء Edge Function: %s", e)
+
+    # تسجيل وقت التشغيل
+    async with httpx.AsyncClient(timeout=15) as client:
+        await _record_run(client)
+
+
+async def _run_cycle_smtp() -> None:
+    """النسخة القديمة — SMTP مباشر من Replit (احتياطي فقط)."""
     if not SMTP_ENCRYPTION_KEY:
         logger.error("SMTP_ENCRYPTION_KEY غير معرّف — دورة متوقفة")
         return
@@ -1133,7 +1187,7 @@ async def main() -> None:
             await _run_job_fetcher()
         return
 
-    logger.info("🚀 Auto-Apply Worker بدأ (كل %d ثانية) — الإرسال عبر SMTP", CYCLE_INTERVAL)
+    logger.info("🚀 Auto-Apply Worker بدأ (كل %d ثانية) — يستدعي Supabase Edge Function", CYCLE_INTERVAL)
     await _run_job_fetcher()  # جلب أول عند البدء
     while True:
         start_ts = datetime.now(timezone.utc)
@@ -1143,9 +1197,6 @@ async def main() -> None:
             logger.exception("خطأ غير متوقع في الدورة: %s", e)
 
         await _run_job_fetcher()
-
-        async with httpx.AsyncClient(timeout=10) as c:
-            await _record_run(c)
 
         elapsed = (datetime.now(timezone.utc) - start_ts).total_seconds()
         sleep_for = max(0, CYCLE_INTERVAL - elapsed)

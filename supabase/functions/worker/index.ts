@@ -750,10 +750,12 @@ async function logRun(data: {
 // ─── Entry Point ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
-  if (WORKER_SECRET) {
-    const auth = req.headers.get("authorization") ?? "";
-    if (auth !== `Bearer ${WORKER_SECRET}`)
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+  const auth = req.headers.get("authorization") ?? "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  // قبول: WORKER_SECRET أو SUPABASE_SERVICE_ROLE_KEY (للـ Replit worker)
+  const validTokens = [WORKER_SECRET, SUPABASE_KEY].filter(Boolean);
+  if (validTokens.length > 0 && !validTokens.includes(token)) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   }
 
   console.log("[worker] بدء دورة التقديم التلقائي عبر SMTP");
