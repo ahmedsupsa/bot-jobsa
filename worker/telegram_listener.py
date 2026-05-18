@@ -42,21 +42,27 @@ async def _extract_jobs_gemini(text: str) -> list[dict]:
     if not GEMINI_KEY:
         return []
 
-    prompt = f"""أنت نظام استخراج وظائف متخصص في السوق السعودي.
-النص التالي جاء من قناة Telegram. استخرج كل إعلانات الوظائف كـ JSON array.
+    prompt = f"""أنت نظام استخراج وظائف متخصص في السوق السعودي والخليجي.
+النص التالي جاء من قناة Telegram. مهمتك استخراج أي فرصة عمل أو وظيفة أو طلب توظيف.
 
-لكل وظيفة:
+كن متساهلاً في التفسير — استخرج الوظيفة حتى لو كانت:
+- قصيرة أو بدون تفاصيل كثيرة
+- مكتوبة بأسلوب غير رسمي
+- تحتوي على مسمى وظيفي فقط مع رقم تواصل أو إيميل
+- إعلان توظيف بسيط
+
+لكل وظيفة أرجع:
 {{
-  "title_ar": "المسمى الوظيفي بالعربية",
-  "company": "اسم الشركة أو فارغ",
-  "description_ar": "وصف الوظيفة والمتطلبات",
-  "application_email": "البريد للتقديم أو null",
+  "title_ar": "المسمى الوظيفي بالعربية — اخترع مسمى معقول إذا لم يُذكر صراحة",
+  "company": "اسم الشركة أو المنشأة أو فارغ",
+  "description_ar": "أي تفاصيل متاحة عن الوظيفة أو المتطلبات",
+  "application_email": "البريد الإلكتروني للتواصل أو null",
   "specializations": "5 كلمات مفتاحية مفصولة بفاصلة",
   "link_url": "رابط التقديم أو null"
 }}
 
-إذا لم يكن النص إعلان وظيفة حقيقية أرجع: []
-أرجع JSON فقط.
+أرجع [] فقط إذا كان النص لا علاقة له بالوظائف أو التوظيف إطلاقاً (مثل أخبار، إعلانات تجارية، مقاطع ترفيهية).
+أرجع JSON فقط بدون أي نص إضافي.
 
 النص:
 {text[:3000]}"""
@@ -174,18 +180,23 @@ async def _post_to_channel(job: dict):
 # ── معالجة رسالة جديدة ───────────────────────────────────────────────────
 async def process_message(text: str, channel_title: str, channel_id: str, msg_id: int):
     text = text.strip()
-    if len(text) < 30:
+    if len(text) < 20:
+        logger.info("[TG] ⏭️ نص قصير جداً (%d حرف) من %s", len(text), channel_title)
         return
 
     uid_base = f"{channel_id}:{msg_id}:{text[:100]}"
     uid = hashlib.md5(uid_base.encode()).hexdigest()
 
     if await _job_exists(uid):
+        logger.info("[TG] ⏭️ مكرر — تجاهل من %s", channel_title)
         return
 
+    logger.info("[TG] 🤖 إرسال لـ Gemini من %s: %s...", channel_title, text[:60].replace("\n", " "))
     jobs = await _extract_jobs_gemini(text)
     if not jobs:
+        logger.info("[TG] ❌ Gemini: لم يجد وظائف في رسالة من %s", channel_title)
         return
+    logger.info("[TG] ✅ Gemini: وجد %d وظيفة من %s", len(jobs), channel_title)
 
     saved = 0
     for i, job in enumerate(jobs):
@@ -236,13 +247,11 @@ async def run_listener():
 
     client = TelegramClient(StringSession(session), int(api_id), api_hash)
 
-    @client.on(events.NewMessage(incoming=True))
+    @client.on(events.NewMessage())
     async def handler(event):
         if not event.is_channel:
             return
         text = event.message.text or event.message.message or ""
-        if not text.strip():
-            return
         try:
             chat = await event.get_chat()
             title = getattr(chat, "title", str(chat.id))
@@ -250,6 +259,11 @@ async def run_listener():
         except:
             title = "unknown"
             cid   = "0"
+
+        logger.info("[TG-Listener] 📩 رسالة جديدة من: %s | الطول: %d", title, len(text))
+
+        if not text.strip():
+            return
 
         asyncio.create_task(
             process_message(text, title, cid, event.message.id)
