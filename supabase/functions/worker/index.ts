@@ -231,19 +231,27 @@ async function downloadCv(storagePath: string): Promise<Uint8Array | null> {
   return new Uint8Array(await r.arrayBuffer());
 }
 
-// ─── تحليل السيرة الذاتية وتخزينها (مرة واحدة فقط) ─────────────────────────
+// ─── Structured CV Profile — يُحلَّل مرة واحدة ويُخزَّن إلى الأبد ─────────────
 
-async function parseCvWithAI(cvBytes: Uint8Array, cvMime: string): Promise<string | null> {
+interface CvProfile {
+  degree: string;           // "بكالوريوس علوم حاسب"
+  specialization: string;   // "هندسة البرمجيات"
+  experience_years: number; // -1=غير محدد، 0=حديث تخرج، N=سنوات
+  skills: string[];
+  languages: string[];
+  prev_jobs: string[];
+  is_fresh_graduate: boolean;
+}
+
+// استخراج نص من PDF (مرة واحدة فقط)
+async function parseCvBytesWithAI(cvBytes: Uint8Array, cvMime: string): Promise<string | null> {
   if (!GEMINI_KEY || !cvBytes.length) return null;
   const prompt =
     "استخرج من هذه السيرة الذاتية المعلومات التالية بشكل منظّم ومختصر بالعربية:\n" +
-    "المؤهل العلمي والتخصص:\n" +
-    "سنوات الخبرة الإجمالية:\n" +
-    "الوظائف السابقة (مسمى + جهة + مدة):\n" +
-    "المهارات التقنية والبرامج:\n" +
-    "الشهادات والرخص المهنية:\n" +
-    "اللغات:\n" +
-    "اكتب فقط المعلومات الموجودة فعلاً. لا تضف تخمينات. إذا لم تجد معلومة اكتب (غير محدد).";
+    "المؤهل العلمي والتخصص:\nسنوات الخبرة الإجمالية:\n" +
+    "الوظائف السابقة (مسمى + جهة + مدة):\nالمهارات التقنية والبرامج:\n" +
+    "الشهادات والرخص المهنية:\nاللغات:\n" +
+    "اكتب فقط المعلومات الموجودة فعلاً. لا تضف تخمينات.";
   const parts = [
     { inline_data: { mime_type: cvMime, data: toBase64(cvBytes) } },
     { text: prompt },
@@ -255,43 +263,188 @@ async function parseCvWithAI(cvBytes: Uint8Array, cvMime: string): Promise<strin
     );
     if (!r.ok) return null;
     const data = await r.json();
-    const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
-    return text || null;
+    return (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim() || null;
   } catch { return null; }
 }
 
-async function getOrParseCv(cv: Record<string, unknown>): Promise<{ parsedText: string | null; cvBytes: Uint8Array | null }> {
+// تحويل النص → JSON منظّم (Flash Lite = رخيص جداً، prompt قصير)
+async function parseCvProfileFromText(cvText: string): Promise<CvProfile | null> {
+  if (!GEMINI_KEY || !cvText.trim()) return null;
+  const prompt = `استخرج البيانات من السيرة الذاتية التالية. أعد JSON فقط بدون markdown:
+{"degree":"المؤهل","specialization":"التخصص","experience_years":0,"skills":["مهارة1"],"languages":["العربية"],"prev_jobs":["مسمى - جهة - مدة"],"is_fresh_graduate":false}
+القواعد: experience_years: -1 غير محدد | 0 حديث تخرج | رقم موجب سنوات. is_fresh_graduate: true إذا لا وظائف سابقة. skills: حد 15.
+
+السيرة الذاتية:
+${cvText.slice(0, 1800)}`;
+
+  for (const model of ["gemini-2.0-flash-lite", "gemini-2.0-flash"]) {
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
+      );
+      if (!r.ok) continue;
+      const data = await r.json();
+      const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
+      const m = text.match(/\{[\s\S]*\}/);
+      if (!m) continue;
+      const p = JSON.parse(m[0]);
+      return {
+        degree:           String(p.degree || ""),
+        specialization:   String(p.specialization || ""),
+        experience_years: typeof p.experience_years === "number" ? p.experience_years : -1,
+        skills:    Array.isArray(p.skills)    ? p.skills.slice(0, 15).map(String)   : [],
+        languages: Array.isArray(p.languages) ? p.languages.map(String)             : [],
+        prev_jobs: Array.isArray(p.prev_jobs) ? p.prev_jobs.slice(0, 5).map(String) : [],
+        is_fresh_graduate: !!p.is_fresh_graduate,
+      };
+    } catch { continue; }
+  }
+  return null;
+}
+
+// جلب/تحليل السيرة الذاتية — يُخزّن النص والملف المنظّم مرة واحدة فقط
+async function getOrParseCv(cv: Record<string, unknown>): Promise<{
+  parsedText: string | null;
+  profile: CvProfile | null;
+}> {
   const cvId        = String(cv.id ?? "");
   const storagePath = String(cv.storage_path ?? "").trim();
   const cvName      = String(cv.file_name ?? "cv.pdf");
   const cvMime      = cvName.toLowerCase().endsWith(".pdf") ? "application/pdf"
-    : cvName.toLowerCase().endsWith(".docx") ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    : "application/octet-stream";
+    : cvName.toLowerCase().endsWith(".docx")
+      ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      : "application/octet-stream";
 
-  // إذا يوجد نص محفوظ بالفعل — استخدمه مباشرة بدون تنزيل PDF
-  const existingText = String(cv.cv_parsed_text ?? "").trim();
-  if (existingText) {
-    return { parsedText: existingText, cvBytes: null };
+  const existingText    = String(cv.cv_parsed_text ?? "").trim() || null;
+  const existingProfile = (cv.cv_profile ?? null) as CvProfile | null;
+
+  // كلاهما محفوظ → لا استدعاء Gemini على الإطلاق
+  if (existingText && existingProfile) {
+    return { parsedText: existingText, profile: existingProfile };
   }
 
-  // تنزيل الـ PDF وتحليله
-  const cvBytes = storagePath ? await downloadCv(storagePath) : null;
-  if (!cvBytes) return { parsedText: null, cvBytes: null };
-
-  const parsedText = await parseCvWithAI(cvBytes, cvMime);
-  if (parsedText && cvId) {
-    // حفظ الملخص في قاعدة البيانات لاستخدامه مستقبلاً
-    await sbPatch("user_cvs", { id: `eq.${cvId}` }, {
-      cv_parsed_text: parsedText,
-      cv_parsed_at: new Date().toISOString(),
-    });
-    console.log(`[worker] 💾 حُفظ ملخص السيرة الذاتية للـ cv_id=${cvId}`);
+  // جلب النص إذا لم يكن محفوظاً
+  let parsedText = existingText;
+  if (!parsedText) {
+    const cvBytes = storagePath ? await downloadCv(storagePath) : null;
+    if (!cvBytes) return { parsedText: null, profile: null };
+    parsedText = await parseCvBytesWithAI(cvBytes, cvMime);
+    if (parsedText && cvId) {
+      await sbPatch("user_cvs", { id: `eq.${cvId}` }, {
+        cv_parsed_text: parsedText, cv_parsed_at: new Date().toISOString(),
+      });
+      console.log(`[worker] 💾 حُفظ نص CV — cv_id=${cvId}`);
+    }
   }
 
-  return { parsedText, cvBytes };
+  // بناء الملف المنظّم من النص (Flash Lite — رخيص جداً)
+  let profile: CvProfile | null = existingProfile;
+  if (!profile && parsedText) {
+    profile = await parseCvProfileFromText(parsedText);
+    if (profile && cvId) {
+      await sbPatch("user_cvs", { id: `eq.${cvId}` }, { cv_profile: profile });
+      console.log(`[worker] 📊 حُفظ الملف المنظّم — cv_id=${cvId}`);
+    }
+  }
+
+  return { parsedText, profile };
 }
 
-// ─── Gemini Cover Letter ──────────────────────────────────────────────────────
+// ─── Local Keyword Scoring — تقييم بدون Gemini ──────────────────────────────
+
+function computeLocalScore(
+  profile: CvProfile | null,
+  fieldNames: string[],
+  jobTitle: string,
+  jobDesc: string,
+  jobLevel: JobLevel,
+): number {
+  if (!profile) return 55; // لا profile → دع Gemini يقرر
+  const haystack = `${jobTitle} ${jobDesc}`.toLowerCase();
+  let score = 50;
+
+  // تأثير الخبرة حسب مستوى الوظيفة
+  const exp = profile.experience_years;
+  if (jobLevel === "senior") {
+    if (exp >= 0 && exp < 3) score -= 40;
+    else if (exp >= 3) score += 10;
+  } else if (jobLevel === "mid") {
+    if (exp === 0) score -= 25;
+    else if (exp >= 2) score += 10;
+  } else if (jobLevel === "entry") {
+    score += 15; // وظائف مبتدئين دائماً تستحق المحاولة
+  }
+
+  // حديث تخرج في وظيفة متخصصة/متوسطة
+  if (profile.is_fresh_graduate && (jobLevel === "senior" || jobLevel === "mid")) score -= 20;
+
+  // تطابق المهارات
+  const skillHits = profile.skills.filter(s => s.length > 2 && haystack.includes(s.toLowerCase())).length;
+  score += Math.min(skillHits * 10, 30);
+
+  // تطابق التخصص
+  if (profile.specialization) {
+    const words = profile.specialization.split(/[\s\-،,]+/).filter(w => w.length > 3);
+    if (words.some(w => haystack.includes(w.toLowerCase()))) score += 15;
+  }
+
+  return Math.max(0, Math.min(100, score));
+}
+
+// ─── Cover Letter Templates — قوالب جاهزة بدون Gemini ───────────────────────
+
+type JobCategory = "tech" | "customer_service" | "sales" | "admin" | "fresh_graduate" | "general";
+
+function detectJobCategory(title: string, desc: string): JobCategory {
+  const t = `${title} ${desc}`.toLowerCase();
+  if (/برمج|مطور|developer|engineer|هندس|software|شبكات|cybersec|devops|تقني|it /.test(t)) return "tech";
+  if (/خدمة عملاء|customer service|call center|مركز اتصال|support|دعم فني/.test(t)) return "customer_service";
+  if (/مبيعات|sales|مندوب|تسويق|marketing|بائع/.test(t)) return "sales";
+  if (/إداري|سكرتير|منسق|coordinator|admin|محاسب|accountant|موارد بشرية/.test(t)) return "admin";
+  if (/حديث تخرج|مبتدئ|entry|junior|trainee|متدرب/.test(t)) return "fresh_graduate";
+  return "general";
+}
+
+function buildCoverLetterTemplate(
+  category: JobCategory,
+  name: string,
+  jobTitle: string,
+  company: string,
+  profile: CvProfile | null,
+  lang: string,
+): string {
+  const co     = company ? ` في ${company}` : "";
+  const degree = profile?.degree || "مؤهلي العلمي";
+  const spec   = profile?.specialization || "";
+  const exp    = profile?.experience_years ?? -1;
+  const skills = (profile?.skills ?? []).slice(0, 3).join("، ");
+  const hasExp = exp > 0;
+  const expLine = hasExp ? `لديّ ${exp} ${exp === 1 ? "سنة" : "سنوات"} من الخبرة في هذا المجال. ` : "";
+  const isFresh = profile?.is_fresh_graduate ?? false;
+
+  if (lang !== "ar") {
+    const skillEn = skills ? ` My skills include ${skills}.` : "";
+    const expEn   = hasExp ? ` I have ${exp} year${exp === 1 ? "" : "s"} of relevant experience.` : "";
+    return `I am writing to express my interest in the ${jobTitle} position${company ? " at " + company : ""}. With my background in ${spec || "the relevant field"},${skillEn}${expEn} I am eager to contribute to your team.`;
+  }
+
+  if (isFresh && !hasExp) {
+    return `أتقدم بشغف لوظيفة ${jobTitle}${co}. أنا حديث التخرج في ${spec || degree}، وأحمل رغبة حقيقية في التعلم والنمو المهني. أنا متحمس للانضمام إلى فريقكم والمساهمة بطاقتي وجهدي لتحقيق أهداف مؤسستكم.`;
+  }
+
+  const tpls: Record<JobCategory, string> = {
+    tech: `أتقدم بكل اهتمام لوظيفة ${jobTitle}${co}. أحمل ${degree}${spec ? " في " + spec : ""}، وأتمتع بمهارات في ${skills || "المجال التقني"}. ${expLine}أسعى للانضمام إلى فريق متميز وتطبيق كفاءاتي التقنية بما يخدم أهداف مؤسستكم.`,
+    customer_service: `يسعدني التقدم لوظيفة ${jobTitle}${co}. أتمتع بمهارات تواصل فعّال وخدمة عملاء احترافية. ${expLine}أنا جاهز للإسهام في رفع مستوى رضا عملائكم وتعزيز تجربتهم.`,
+    sales: `أتقدم بحماس لوظيفة ${jobTitle}${co}. أتمتع بمهارات التفاوض وبناء علاقات العملاء وتحقيق أهداف المبيعات. ${expLine}هدفي المساهمة الفعّالة في نمو إيراداتكم وتوسيع قاعدة عملائكم.`,
+    admin: `أتقدم بكل اهتمام لوظيفة ${jobTitle}${co}. أحمل ${degree}${spec ? " في " + spec : ""}، وأتمتع بمهارات التنظيم والدقة في إدارة الأعمال. ${expLine}أسعى للإسهام في رفع الكفاءة التشغيلية لمؤسستكم.`,
+    fresh_graduate: `أتقدم بشغف لوظيفة ${jobTitle}${co}. أنا حديث التخرج في ${spec || degree}، ولديّ رغبة قوية في التطور المهني والتعلم. أنا متحمس للعمل ضمن فريقكم والمساهمة بجهدي وطاقتي.`,
+    general: `أتقدم بكل اهتمام لوظيفة ${jobTitle}${co}. أحمل ${degree}${spec ? " في " + spec : ""}${skills ? "، وأتمتع بمهارات في " + skills : ""}. ${expLine}أنا متحمس للانضمام إلى فريقكم والإسهام في تحقيق أهداف مؤسستكم.`,
+  };
+  return tpls[category];
+}
+
+// ─── Gemini Cover Letter (ذكي: template للوظائف العادية، AI للمهمة) ───────────
 
 function toBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -302,81 +455,48 @@ function toBase64(bytes: Uint8Array): string {
 async function generateCoverLetter(
   jobTitle: string, name: string, company: string, desc: string, lang: string,
   cvParsedText?: string | null,
+  cvProfile?: CvProfile | null,
+  aiScore?: number,
 ): Promise<string> {
-  const fallback = lang === "ar"
-    ? `أتقدم بكل اهتمام لشغل وظيفة ${jobTitle}${company ? " في " + company : ""}. أنا مهتم بهذه الفرصة وأثق في قدرتي على إضافة قيمة حقيقية لفريقكم.`
-    : `I am writing to express my interest in the ${jobTitle} position${company ? " at " + company : ""}. I am confident in my ability to contribute effectively to your team.`;
-  if (!GEMINI_KEY) return fallback;
+  const category = detectJobCategory(jobTitle, desc);
 
-  const hasCv = !!(cvParsedText?.trim());
-  const cvSection = hasCv
-    ? `\nالسيرة الذاتية:\n${cvParsedText}\n`
-    : "\nالسيرة الذاتية:\nغير متاحة — اذكر المؤهل والاهتمام بالفرصة فقط.\n";
+  // Template للوظائف العادية (score < 78) أو بدون مفتاح Gemini → لا استدعاء AI
+  const useTemplate = !GEMINI_KEY || (typeof aiScore === "number" && aiScore < 78);
+  if (useTemplate) {
+    const tpl = buildCoverLetterTemplate(category, name, jobTitle, company, cvProfile ?? null, lang);
+    console.log(`[worker] 📝 Template(${category}) score=${aiScore ?? "—"} → ${jobTitle}`);
+    return tpl;
+  }
 
-  const prompt = `أنت مساعد توظيف احترافي متخصص في كتابة رسائل التقديم الوظيفي الواقعية اعتمادًا على السيرة الذاتية فقط.
+  // Fallback لو Gemini فشل
+  const fallback = buildCoverLetterTemplate(category, name, jobTitle, company, cvProfile ?? null, lang);
 
-مهمتك:
-قراءة السيرة الذاتية كاملة بدقة شديدة ثم كتابة رسالة تغطية ${lang === "ar" ? "عربية" : "إنجليزية"} رسمية قصيرة واحترافية للتقديم على الوظيفة المطلوبة بدون أي اختلاق أو مبالغة.
+  // Prompt مختصر باستخدام الملف المنظّم (أقل tokens بكثير)
+  const cvSection = cvProfile
+    ? `المؤهل: ${cvProfile.degree}\nالتخصص: ${cvProfile.specialization}\nالخبرة: ${cvProfile.experience_years <= 0 ? "حديث تخرج" : cvProfile.experience_years + " سنة"}\nمهارات: ${cvProfile.skills.slice(0, 8).join("، ")}\nوظائف سابقة: ${cvProfile.prev_jobs.slice(0, 3).join(" | ") || "لا يوجد"}`
+    : `ملخص السيرة:\n${(cvParsedText ?? "").slice(0, 700)}`;
 
-السيرة الذاتية هي المصدر الوحيد للحقيقة، وأي معلومة غير موجودة فيها تعتبر ممنوعة تمامًا.
+  const isAr = lang === "ar";
+  const prompt = isAr
+    ? `اكتب رسالة تغطية عربية رسمية قصيرة (3-4 جمل) للوظيفة التالية. لا تخترع معلومات. لا إيموجي. لا توقيع. أخرج الرسالة فقط.
 
-التعليمات الأساسية:
-* اكتب رسالة احترافية من 3 إلى 5 جمل فقط.
-* ابدأ بالتعريف باسم المتقدم وتخصصه أو مؤهله الحالي.
-* اربط بين السيرة الذاتية ومتطلبات الوظيفة بشكل واقعي فقط.
-* استخدم لغة رسمية واضحة وبشرية.
-* لا تستخدم إيموجي.
-* لا تستخدم أسلوب تسويقي مبالغ فيه.
-* لا تضف معلومات من عندك.
-* لا تكرر وصف الوظيفة بشكل أعمى.
-* لا تكتب مقدمة طويلة أو فلسفة.
-* لا تضف توقيع أو معلومات تواصل.
-* لا تستخدم كلمات توحي بخبرة قوية إذا السيرة الذاتية لا تدعم ذلك.
+الوظيفة: ${jobTitle}${company ? " | " + company : ""}
+الوصف: ${desc.slice(0, 350)}
+المتقدم: ${name}
+${cvSection}`
+    : `Write a short professional cover letter (3-4 sentences). No invented info. No emoji. No signature. Output only the letter.
 
-قيود صارمة جدًا — ممنوع تمامًا اختلاق أو افتراض أي:
-خبرة عملية، سنوات خبرة، وظيفة سابقة، مهارة تقنية، لغة، شهادة، دورة، مشروع، تدريب، تطوع، مسؤوليات وظيفية، إنجازات، برامج أو أنظمة، أدوات تقنية، شهادات احترافية، عضويات، اعتمادات، دعم حكومي (هدف، تمهير، صندوق الموارد البشرية، إعانة باحثين عن عمل، أي برنامج حكومي أو أهلي).
+Job: ${jobTitle}${company ? " at " + company : ""}
+Description: ${desc.slice(0, 350)}
+Applicant: ${name}
+${cvSection}`;
 
-إذا لم يتم ذكر الشيء نصيًا داخل السيرة الذاتية: ممنوع ذكره أو التلميح له أو استنتاجه.
-
-إذا كانت السيرة الذاتية لا تحتوي على خبرة مباشرة:
-* اذكر المؤهل أو التخصص فقط.
-* اذكر الاهتمام بالتعلم والتطوير والاستعداد للعمل.
-* كن صادقًا ومهنيًا بدون تجميل وهمي.
-
-قاعدة إلزامية: عند الشك تجاهل المعلومة. الواقعية أهم من الإقناع.
-
-اسم المتقدم:
-${name}
-
-المسمى الوظيفي:
-${jobTitle}
-
-الشركة:
-${company || "غير محددة"}
-
-وصف الوظيفة:
-${desc.slice(0, 600) || "غير متاح"}
-${cvSection}
-المطلوب:
-إخراج رسالة تغطية رسمية قصيرة فقط بدون أي شرح إضافي.`;
-
-  const parts: unknown[] = [{ text: prompt }];
-
-  const MODELS = [
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
-  ];
-
+  const MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash"];
   for (const model of MODELS) {
     try {
       const r = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
-        {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts }] }),
-        }
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
       );
       if (r.status === 429 || r.status === 503 || r.status === 404) continue;
       if (!r.ok) continue;
@@ -559,6 +679,7 @@ async function analyzeJobFit(
   cvParsedText: string | null,
   fieldNames: string[],
   certifications: Array<{ type: string; name: string; issuer?: string }>,
+  cvProfile?: CvProfile | null,
 ): Promise<JobFitResult> {
   const jobLevel = classifyJobLevel(jobTitle, jobDesc);
 
@@ -569,71 +690,48 @@ async function analyzeJobFit(
   };
   if (!GEMINI_KEY) return fallback;
 
-  const certText = certifications.length
-    ? certifications.map((c) => `- ${c.type}: ${c.name}${c.issuer ? " (" + c.issuer + ")" : ""}`).join("\n")
-    : "لا توجد شهادات أو رخص مسجّلة";
-
-  const prefsText = fieldNames.length ? fieldNames.join("، ") : "غير محدد";
-
-  // ── قواعد الخبرة تختلف حسب مستوى الوظيفة ──────────────────────────────────
-  const experienceRules =
-    jobLevel === "entry"
-      ? `💡 هذه وظيفة مناسبة للمبتدئين (entry level).
-- لا ترفض المرشح بسبب نقص الخبرة فقط — الكثير من أصحاب العمل يقبلون مبتدئين في هذا النوع.
-- قيّم بناءً على المؤهل الدراسي والمهارات وملاءمة الشخصية للوظيفة.
-- لا تُضف "نقص الخبرة" في قائمة missing.
-- إذا كان المرشح مناسباً بشكل عام → apply حتى بدون خبرة.`
-      : jobLevel === "junior"
-      ? `💡 هذه وظيفة junior (مبتدئ إلى متوسط).
-- إذا طالبت الوظيفة بأقل من سنتين خبرة والمرشح مبتدئ أو لديه خبرة جزئية → يُسمح بالتقديم بحذر.
-- إذا طالبت بسنتين أو أكثر والمرشح بدون أي خبرة → skip.
-- لا تحوّل تدريب صيفي أو مشاريع جامعية إلى خبرة عمل حقيقية.`
-      : jobLevel === "mid"
-      ? `⚠️ هذه وظيفة متوسطة المستوى (mid level).
-- يحتاج المرشح إلى تطابق واضح في المهارات والمؤهلات.
-- إذا طالبت بخبرة سنتين+ والمرشح حديث تخرج → skip.
-- لا تحوّل تدريب أو مشاريع جامعية إلى خبرة.`
-      : /* senior */
-        `🚫 هذه وظيفة متخصصة/قيادية (senior/specialized).
-- إذا طالبت بخبرة سنتين+ والمرشح حديث تخرج أو أقل → قرار حتمي: skip.
-- إذا كانت وظيفة Senior/Lead/Manager والمرشح junior → skip.
-- لا تحوّل تدريب أو مشاريع جامعية إلى خبرة عمل حقيقية.`;
-
   const scoreThreshold = jobLevel === "entry" ? 55 : jobLevel === "junior" ? 60 : 70;
 
+  const levelRules: Record<string, string> = {
+    entry:  "وظيفة مبتدئين: لا ترفض بسبب نقص الخبرة. قيّم بالمؤهل والمهارات. apply إذا score≥55.",
+    junior: "وظيفة junior: اسمح إذا الخبرة المطلوبة <2 سنة. امنع إذا المطلوب 2+ سنة والمرشح حديث تخرج.",
+    mid:    "وظيفة متوسطة: تطابق واضح في المهارات مطلوب. امنع إذا المطلوب 2+ سنة والمرشح بدون خبرة.",
+    senior: "وظيفة متخصصة: امنع إذا المطلوب 2+ سنة والمرشح حديث تخرج أو junior.",
+  };
+
+  // الملف المنظّم → prompt أقصر بكثير (يوفر 60-70% من الـ tokens)
+  const candidateSection = cvProfile
+    ? [
+        `المؤهل: ${cvProfile.degree || "غير محدد"}`,
+        `التخصص: ${cvProfile.specialization || "غير محدد"}`,
+        `الخبرة: ${cvProfile.experience_years === -1 ? "غير محدد" : cvProfile.experience_years === 0 ? "حديث تخرج" : cvProfile.experience_years + " سنة"}`,
+        `مهارات: ${cvProfile.skills.slice(0, 10).join("، ") || "—"}`,
+        `لغات: ${cvProfile.languages.join("، ") || "—"}`,
+        `وظائف سابقة: ${cvProfile.prev_jobs.slice(0, 3).join(" | ") || "لا يوجد"}`,
+      ].join("\n")
+    : `ملخص السيرة:\n${(cvParsedText ?? "غير متاح").slice(0, 800)}`;
+
+  const certText = certifications.length
+    ? certifications.map(c => `${c.type}: ${c.name}`).join("، ")
+    : "لا يوجد";
+
   const prompt =
-    `أنت محلل توظيف ذكي ومتوازن. مهمتك تقييم مدى ملاءمة المرشح للوظيفة بشكل واقعي.\n\n` +
-    `=== مستوى الوظيفة: ${jobLevel.toUpperCase()} ===\n` +
-    experienceRules + `\n\n` +
-    `=== الوظيفة ===\n` +
-    `المسمى: ${jobTitle}\n` +
-    `الشركة: ${company || "غير محدد"}\n` +
-    `الوصف: ${jobDesc.slice(0, 900) || "غير متاح"}\n\n` +
-    `=== ملف المرشح ===\n` +
-    `التفضيلات المهنية: ${prefsText}\n` +
-    `الشهادات والرخص:\n${certText}\n` +
-    `ملخص السيرة الذاتية:\n${(cvParsedText ?? "غير متاح").slice(0, 1200)}\n\n` +
-    `=== المطلوب ===\n` +
-    `أعد JSON فقط (بدون markdown) بهذا الشكل:\n` +
-    `{"score":75,"decision":"apply","reasons":["سبب1"],"missing":["نقص1"],"matched":["مهارة1"],"cv_experience_years":3,"job_required_years":2}\n` +
-    `- score: رقم من 0 إلى 100\n` +
-    `- decision: "apply" إذا score >= ${scoreThreshold} ولا توجد متطلبات إلزامية ناقصة (راعِ قواعد المستوى أعلاه)\n` +
-    `- reasons: 1-2 سبب موجز للقرار بالعربية\n` +
-    `- missing: الشروط الإلزامية الناقصة (رخص/شهادات/مؤهل/مهارة أساسية) — لا تضع "خبرة" لوظائف entry level\n` +
-    `- matched: المهارات والمؤهلات الموجودة في السيرة\n` +
-    `- cv_experience_years: سنوات خبرة المرشح (0 حديث تخرج، -1 غير واضح)\n` +
-    `- job_required_years: سنوات الخبرة المطلوبة (0 لا يوجد شرط، -1 غير واضح)\n` +
-    `أعد JSON فقط، بلا نص إضافي.`;
+    `أنت محلل توظيف. قيّم ملاءمة المرشح للوظيفة وأعد JSON فقط.\n\n` +
+    `الوظيفة: ${jobTitle} | ${company || "—"} | مستوى: ${jobLevel.toUpperCase()}\n` +
+    `القاعدة: ${levelRules[jobLevel]}\n` +
+    `الوصف: ${jobDesc.slice(0, 500) || "غير متاح"}\n\n` +
+    `المرشح:\n${candidateSection}\n` +
+    `التفضيلات: ${fieldNames.join("، ") || "—"}\n` +
+    `الشهادات: ${certText}\n\n` +
+    `أعد JSON فقط: {"score":75,"decision":"apply","reasons":["سبب"],"missing":["نقص"],"matched":["مهارة"],"cv_experience_years":2,"job_required_years":1}\n` +
+    `decision: "apply" إذا score≥${scoreThreshold} ولا متطلبات إلزامية ناقصة. أعد JSON فقط بلا نص.`;
 
   const MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash"];
   for (const model of MODELS) {
     try {
       const r = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
-        {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-        }
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
       );
       if (r.status === 429 || r.status === 503 || r.status === 404) continue;
       if (!r.ok) continue;
@@ -764,9 +862,9 @@ async function runCycle() {
       continue;
     }
 
-    // تحليل السيرة الذاتية مرة واحدة وتخزينها — الدورات التالية تستخدم النص المحفوظ
+    // جلب النص والملف المنظّم — يُخزَّنان مرة واحدة فقط
     const cvName = String(cv.file_name ?? "cv.pdf");
-    const { parsedText: cvParsedText, cvBytes } = await getOrParseCv(cv);
+    const { parsedText: cvParsedText, profile: cvProfile } = await getOrParseCv(cv);
 
     const prefIds    = new Set(prefsRows.map((p) => String(p.job_field_id)).filter(Boolean));
     const fieldNames = fieldsRaw
@@ -870,8 +968,16 @@ async function runCycle() {
         }
       }
 
-      // ── تحليل AI لمدى ملاءمة الوظيفة ────────────────────────────────────────
-      const fit = await analyzeJobFit(jobTitle, company, desc, cvParsedText, fieldNames, certifications);
+      // ── تقييم محلي سريع بدون Gemini (يحذف 50%+ من استدعاءات AI) ────────────
+      const jobLevelLocal = classifyJobLevel(jobTitle, desc);
+      const localScore    = computeLocalScore(cvProfile, fieldNames, jobTitle, desc, jobLevelLocal);
+      if (localScore < 38) {
+        details.push({ user: name, job: jobTitle, status: "skipped", reason: `تقييم محلي منخفض (${localScore}/100) — محذوف بدون AI` });
+        continue; // لا استدعاء Gemini على الإطلاق
+      }
+
+      // ── تحليل AI لمدى ملاءمة الوظيفة (prompt مختصر بالملف المنظّم) ─────────
+      const fit = await analyzeJobFit(jobTitle, company, desc, cvParsedText, fieldNames, certifications, cvProfile);
       const levelLabel = { entry: "مبتدئ", junior: "جونيور", mid: "متوسط", senior: "متخصص" }[fit.job_level];
       console.log(`[worker] 🤖 ${name} ← ${jobTitle} | level=${fit.job_level}(${levelLabel}) | score=${fit.score} | ${fit.decision} | gender=${genderCheck.jobGender}(${genderCheck.confidence}) | missing=${fit.missing.join(", ") || "لا يوجد"}`);
 
@@ -900,16 +1006,20 @@ async function runCycle() {
       let errorReason: string | null = null;
 
       try {
-        let cover = await generateCoverLetter(jobTitle, name, company, desc, lang, cvParsedText);
+        let cover = await generateCoverLetter(jobTitle, name, company, desc, lang, cvParsedText, cvProfile, fit.score);
         cover = stripEmojis(cover);
         const html    = buildEmailHtml(name, phone, jobTitle, company, cover, lang);
         const subject = lang === "ar"
           ? `التقديم على وظيفة: ${stripEmojis(jobTitle)}`
           : `Application for: ${stripEmojis(jobTitle)}`;
 
+        // تنزيل ملف CV للإرفاق بالبريد (منفصل عن التحليل المخزّن)
+        const storagePath = String(cv.storage_path ?? "").trim();
+        const sendCvBytes = storagePath ? await downloadCv(storagePath) : null;
+
         await sendSmtp({
           smtpHost, smtpPort, smtpSecure, smtpEmail, appPassword,
-          to: toEmail, subject, html, fromName: name, cvBytes, cvName,
+          to: toEmail, subject, html, fromName: name, cvBytes: sendCvBytes, cvName,
         });
 
         sent++; applied++;
