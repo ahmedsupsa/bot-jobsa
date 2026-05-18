@@ -247,15 +247,19 @@ async function parseCvBytesWithAI(cvBytes: Uint8Array, cvMime: string): Promise<
     { inline_data: { mime_type: cvMime, data: toBase64(cvBytes) } },
     { text: prompt },
   ];
-  try {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts }] }) }
-    );
-    if (!r.ok) return null;
-    const data = await r.json();
-    return (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim() || null;
-  } catch { return null; }
+  for (const model of ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"]) {
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts }] }) }
+      );
+      if (!r.ok) continue;
+      const data = await r.json();
+      const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
+      if (text) return text;
+    } catch { continue; }
+  }
+  return null;
 }
 
 // تحويل النص → JSON منظّم (Flash Lite = رخيص جداً، prompt قصير)
@@ -268,7 +272,7 @@ async function parseCvProfileFromText(cvText: string): Promise<CvProfile | null>
 السيرة الذاتية:
 ${cvText.slice(0, 1800)}`;
 
-  for (const model of ["gemini-2.0-flash-lite", "gemini-2.0-flash"]) {
+  for (const model of ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"]) {
     try {
       const r = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
@@ -482,7 +486,7 @@ Description: ${desc.slice(0, 350)}
 Applicant: ${name}
 ${cvSection}`;
 
-  const MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash"];
+  const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"];
   for (const model of MODELS) {
     try {
       const r = await fetch(
@@ -718,7 +722,7 @@ async function analyzeJobFit(
     `أعد JSON فقط: {"score":75,"decision":"apply","reasons":["سبب"],"missing":["نقص"],"matched":["مهارة"],"cv_experience_years":2,"job_required_years":1}\n` +
     `decision: "apply" إذا score≥${scoreThreshold} ولا متطلبات إلزامية ناقصة. أعد JSON فقط بلا نص.`;
 
-  const MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash"];
+  const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"];
   for (const model of MODELS) {
     try {
       const r = await fetch(
@@ -785,8 +789,8 @@ async function runCycle() {
 
   // حد 2 تقديمات لكل مستخدم في كل دورة لضمان وصول كل المستخدمين
   const MAX_PER_CYCLE = 2;
-  // حد 2 مستخدمين لكل run لتجنب تجاوز resource limit في Supabase free tier
-  const MAX_USERS_PER_RUN = 2;
+  // حد 5 مستخدمين لكل run لضمان معالجة جميع المشتركين بشكل عادل
+  const MAX_USERS_PER_RUN = 5;
   let processedUsers = 0;
 
   for (const { user, countToday } of usersWithCount) {
