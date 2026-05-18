@@ -159,110 +159,6 @@ async def _send_tg(chat_id: str, text: str, disable_preview: bool = False):
         pass
 
 
-# ── بناء نص منشور الوظيفة ────────────────────────────────────────────────
-def _build_post_text(job: dict) -> str:
-    desc = (job.get("description_ar") or "").strip()
-    short_desc = desc[:200] + "..." if len(desc) > 200 else desc
-    lines = [f"🚀 <b>وظيفة جديدة — {job['title_ar']}</b>", ""]
-    if short_desc:
-        lines += [short_desc, ""]
-    if job.get("application_email"):
-        lines += [f"📧 <b>البريد الإلكتروني للتقديم:</b>", job["application_email"], ""]
-    lines += [
-        "🤖 <b>للتقديم التلقائي عبر الذكاء الاصطناعي — وفّر وقتك وقدّم على عشرات الوظائف بضغطة واحدة:</b>",
-        "https://www.jobbots.org/store",
-    ]
-    return "\n".join(lines)
-
-
-# ── نشر وظيفة في القناة وحفظ message_id ─────────────────────────────────
-async def _post_job_to_channel(job_id: str, job: dict) -> bool:
-    if not JOB_CHANNEL or not BOT_TOKEN:
-        return False
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            r = await client.post(
-                f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-                json={
-                    "chat_id":                  JOB_CHANNEL,
-                    "text":                     _build_post_text(job),
-                    "parse_mode":               "HTML",
-                    "disable_web_page_preview": True,
-                },
-            )
-            d = r.json()
-            if d.get("ok"):
-                msg_id = d["result"]["message_id"]
-                # حفظ tg_message_id في DB
-                await client.patch(
-                    f"{SUPABASE_URL}/rest/v1/admin_jobs?id=eq.{job_id}",
-                    json={"tg_message_id": msg_id},
-                    headers=_SB_HEADERS(),
-                )
-                logger.info("[TG-Post] ✅ نُشرت: %s (msg_id=%s)", job.get("title_ar"), msg_id)
-                return True
-            else:
-                logger.warning("[TG-Post] ❌ فشل نشر %s: %s", job.get("title_ar"), d.get("description"))
-                return False
-    except Exception as e:
-        logger.error("[TG-Post] خطأ: %s", e)
-        return False
-
-
-# ── scheduler: وظيفة واحدة كل 10 دقائق — بحد أقصى 30 وظيفة يومياً ───────
-POST_INTERVAL   = 10 * 60   # 10 دقائق بالثواني
-DAILY_POST_LIMIT = 30        # أقصى عدد منشورات في اليوم
-
-async def _post_pending_loop():
-    """ينشر وظيفة واحدة كل 10 دقائق، ويتوقف عند 30 وظيفة يومياً."""
-    await asyncio.sleep(30)  # انتظر قليلاً بعد بدء التشغيل
-
-    posted_today   = 0
-    today_date     = datetime.now(tz.utc).date()
-
-    while True:
-        # إعادة العداد إذا تغيّر اليوم
-        current_date = datetime.now(tz.utc).date()
-        if current_date != today_date:
-            posted_today = 0
-            today_date   = current_date
-            logger.info("[TG-Post] 📅 يوم جديد — تمت إعادة عداد النشر")
-
-        if posted_today >= DAILY_POST_LIMIT:
-            logger.info("[TG-Post] 🔴 وصلنا الحد اليومي (%d) — ننتظر يوماً جديداً", DAILY_POST_LIMIT)
-            await asyncio.sleep(POST_INTERVAL)
-            continue
-
-        try:
-            async with httpx.AsyncClient(timeout=15) as client:
-                r = await client.get(
-                    f"{SUPABASE_URL}/rest/v1/admin_jobs",
-                    params={
-                        "tg_message_id": "is.null",
-                        "is_active":     "eq.true",
-                        "select":        "id,title_ar,description_ar,application_email",
-                        "order":         "created_at.asc",
-                        "limit":         "1",
-                    },
-                    headers=_SB_HEADERS(),
-                )
-                jobs = r.json() if r.status_code == 200 else []
-        except Exception as e:
-            logger.error("[TG-Post] خطأ جلب الوظائف: %s", e)
-            jobs = []
-
-        if jobs:
-            job = jobs[0]
-            ok = await _post_job_to_channel(job["id"], job)
-            if ok:
-                posted_today += 1
-                logger.info("[TG-Post] ✅ %d/%d اليوم — %s", posted_today, DAILY_POST_LIMIT, job.get("title_ar"))
-        else:
-            logger.info("[TG-Post] ✅ لا توجد وظائف منتظرة للنشر")
-
-        await asyncio.sleep(POST_INTERVAL)
-
-
 # ── معالجة رسالة جديدة ───────────────────────────────────────────────────
 async def process_message(text: str, channel_title: str, channel_id: str, msg_id: int):
     text = text.strip()
@@ -405,8 +301,5 @@ async def run_listener():
     except Exception as e:
         logger.warning("[TG-Listener] تعذّر جلب القنوات: %s", e)
 
-    # ── تشغيل scheduler النشر في الخلفية ─────────────────────────
-    asyncio.create_task(_post_pending_loop())
-    logger.info("[TG-Post] 🕐 Scheduler النشر: كل 15 دقيقة — 10 وظائف")
-
+    # النشر يُدار الآن عبر Supabase Edge Function (tg-poster) + pg_cron
     await client.run_until_disconnected()
