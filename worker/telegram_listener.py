@@ -159,10 +159,8 @@ async def _send_tg(chat_id: str, text: str, disable_preview: bool = False):
         pass
 
 
-# ── نشر وظيفة في القناة ──────────────────────────────────────────────────
-async def _post_to_channel(job: dict):
-    if not JOB_CHANNEL:
-        return
+# ── بناء نص منشور الوظيفة ────────────────────────────────────────────────
+def _build_post_text(job: dict) -> str:
     desc = (job.get("description_ar") or "").strip()
     short_desc = desc[:200] + "..." if len(desc) > 200 else desc
     lines = [f"🚀 <b>وظيفة جديدة — {job['title_ar']}</b>", ""]
@@ -174,7 +172,78 @@ async def _post_to_channel(job: dict):
         "🤖 <b>للتقديم التلقائي عبر الذكاء الاصطناعي — وفّر وقتك وقدّم على عشرات الوظائف بضغطة واحدة:</b>",
         "https://www.jobbots.org/store",
     ]
-    await _send_tg(JOB_CHANNEL, "\n".join(lines), disable_preview=True)
+    return "\n".join(lines)
+
+
+# ── نشر وظيفة في القناة وحفظ message_id ─────────────────────────────────
+async def _post_job_to_channel(job_id: str, job: dict) -> bool:
+    if not JOB_CHANNEL or not BOT_TOKEN:
+        return False
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.post(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                json={
+                    "chat_id":                  JOB_CHANNEL,
+                    "text":                     _build_post_text(job),
+                    "parse_mode":               "HTML",
+                    "disable_web_page_preview": True,
+                },
+            )
+            d = r.json()
+            if d.get("ok"):
+                msg_id = d["result"]["message_id"]
+                # حفظ tg_message_id في DB
+                await client.patch(
+                    f"{SUPABASE_URL}/rest/v1/admin_jobs?id=eq.{job_id}",
+                    json={"tg_message_id": msg_id},
+                    headers=_SB_HEADERS(),
+                )
+                logger.info("[TG-Post] ✅ نُشرت: %s (msg_id=%s)", job.get("title_ar"), msg_id)
+                return True
+            else:
+                logger.warning("[TG-Post] ❌ فشل نشر %s: %s", job.get("title_ar"), d.get("description"))
+                return False
+    except Exception as e:
+        logger.error("[TG-Post] خطأ: %s", e)
+        return False
+
+
+# ── scheduler: ينشر 10 وظائف غير منشورة كل 15 دقيقة ─────────────────────
+POST_BATCH    = 10
+POST_INTERVAL = 15 * 60  # 15 دقيقة بالثواني
+
+async def _post_pending_loop():
+    """يعمل في الخلفية — ينشر 10 وظائف غير منشورة كل 15 دقيقة."""
+    await asyncio.sleep(30)  # انتظر قليلاً بعد بدء التشغيل
+    while True:
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                r = await client.get(
+                    f"{SUPABASE_URL}/rest/v1/admin_jobs",
+                    params={
+                        "tg_message_id": "is.null",
+                        "is_active":     "eq.true",
+                        "select":        "id,title_ar,description_ar,application_email",
+                        "order":         "created_at.asc",
+                        "limit":         str(POST_BATCH),
+                    },
+                    headers=_SB_HEADERS(),
+                )
+                jobs = r.json() if r.status_code == 200 else []
+        except Exception as e:
+            logger.error("[TG-Post] خطأ جلب الوظائف: %s", e)
+            jobs = []
+
+        if jobs:
+            logger.info("[TG-Post] 📤 نشر %d وظيفة من %d منتظرة", len(jobs), len(jobs))
+            for job in jobs:
+                await _post_job_to_channel(job["id"], job)
+                await asyncio.sleep(2)  # تجنب flood limit
+        else:
+            logger.info("[TG-Post] ✅ لا توجد وظائف منتظرة للنشر")
+
+        await asyncio.sleep(POST_INTERVAL)
 
 
 # ── معالجة رسالة جديدة ───────────────────────────────────────────────────
@@ -213,16 +282,16 @@ async def process_message(text: str, channel_title: str, channel_id: str, msg_id
         job_id = await _save_job(job, job_uid, channel_title)
         if job_id:
             saved += 1
-            await _post_to_channel(job)
             await _send_tg(
                 ADMIN_CHAT_ID,
                 f"💼 <b>وظيفة جديدة من Telegram</b>\n"
                 f"📢 القناة: {channel_title}\n"
                 f"🏷️ المسمى: {job['title_ar']}\n"
                 f"🏢 الشركة: {job.get('company') or '—'}\n"
-                f"📧 البريد: {job.get('application_email') or '—'}",
+                f"📧 البريد: {job.get('application_email') or '—'}\n"
+                f"⏳ ستُنشر في القناة خلال 15 دقيقة",
             )
-            logger.info(f"[TG] حُفظت: {job['title_ar']} من {channel_title}")
+            logger.info(f"[TG] حُفظت في DB: {job['title_ar']} من {channel_title}")
 
     if saved:
         logger.info(f"[TG] {saved} وظيفة من {channel_title}")
@@ -309,7 +378,7 @@ async def run_listener():
         await _send_tg(ADMIN_CHAT_ID, summary)
 
         # جلب آخر 10 أيام من كل قناة
-        cutoff = datetime.now(tz.utc) - timedelta(days=10)
+        cutoff = datetime.now(tz.utc) - timedelta(days=30)
         for entity in channels_entities:
             try:
                 logger.info("[TG-Listener] جلب رسائل قديمة: %s", entity.title)
@@ -327,5 +396,9 @@ async def run_listener():
 
     except Exception as e:
         logger.warning("[TG-Listener] تعذّر جلب القنوات: %s", e)
+
+    # ── تشغيل scheduler النشر في الخلفية ─────────────────────────
+    asyncio.create_task(_post_pending_loop())
+    logger.info("[TG-Post] 🕐 Scheduler النشر: كل 15 دقيقة — 10 وظائف")
 
     await client.run_until_disconnected()
