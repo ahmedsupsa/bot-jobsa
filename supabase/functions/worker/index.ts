@@ -899,6 +899,14 @@ async function runCycle() {
         continue;
       }
 
+      // فلتر وظائف التدريب التعاوني — مخصصة لطلاب الجامعات وليست وظائف حقيقية
+      const TRAINING_KEYWORDS = ["تدريب تعاوني", "cooperative training", "تدريب طلاب", "برنامج تدريبي للطلاب", "internship for students"];
+      const jobBlob = `${jobTitle} ${desc}`.toLowerCase();
+      if (TRAINING_KEYWORDS.some(kw => jobBlob.includes(kw.toLowerCase()))) {
+        details.push({ user: name, job: jobTitle, status: "skipped", reason: "وظيفة تدريب تعاوني — مخصصة لطلاب الجامعات" });
+        continue;
+      }
+
       // مطابقة مبنية على تخصص السيرة الذاتية + تفضيلات المستخدم (بدون قيود كلمات صارمة)
       if (!jobMatchesUser(job, fieldNames, cvProfile)) {
         details.push({ user: name, job: jobTitle, status: "skipped", reason: "لا يطابق تخصص السيرة الذاتية" });
