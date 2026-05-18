@@ -19,25 +19,66 @@ type Me = { ok: true; username: string; isSuper: boolean; permissions: Perm[] } 
 type BadgeKey = "support" | "store" | "affiliate";
 type Badges = Partial<Record<BadgeKey, number>>;
 
-const links: { href: string; label: string; icon: any; perm: Perm | null; superOnly?: boolean; badge?: BadgeKey }[] = [
-  { href: "/admin", label: "الرئيسية", icon: LayoutDashboard, perm: null, superOnly: true },
-  { href: "/admin/status", label: "حالة النظام", icon: Activity, perm: null, superOnly: true },
-  { href: "/admin/chat", label: "الدردشة الداخلية", icon: MessagesSquare, perm: null },
-  { href: "/users", label: "المستخدمون", icon: Users, perm: "users" },
-  { href: "/codes", label: "أكواد التفعيل", icon: Key, perm: "codes" },
-  { href: "/jobs", label: "الوظائف", icon: BriefcaseBusiness, perm: "jobs" },
-  { href: "/applications", label: "مراقبة التقديمات", icon: BrainCircuit, perm: "jobs" },
-  { href: "/crm", label: "علاقات العملاء", icon: Contact, perm: "crm" },
-  { href: "/notifications", label: "إشعارات Push", icon: Bell, perm: "notifications" },
-  { href: "/store-admin", label: "المتجر", icon: ShoppingBag, perm: "store", badge: "store" },
-  { href: "/support-admin", label: "الدعم الفني", icon: MessageCircle, perm: "support", badge: "support" },
-  { href: "/affiliate-admin", label: "برنامج الربح", icon: TrendingUp, perm: "affiliate", badge: "affiliate" },
-  { href: "/finance", label: "المالية", icon: TrendingUp, perm: "finance" },
-  { href: "/admin/email-test", label: "اختبار الإيميل", icon: MailCheck, perm: "email-test" },
-  { href: "/admin/send-email", label: "إرسال بريد", icon: Send, perm: "email-test" },
-  { href: "/admin/telegram-channel", label: "قناة Telegram", icon: Radio, perm: "jobs", superOnly: true },
-  { href: "/admin/admins", label: "إدارة المسؤولين", icon: ShieldCheck, perm: "admins" },
+type NavLink = {
+  href: string;
+  label: string;
+  icon: any;
+  perm: Perm | null;
+  superOnly?: boolean;
+  badge?: BadgeKey;
+};
+
+type NavGroup = {
+  title: string;
+  links: NavLink[];
+};
+
+const groups: NavGroup[] = [
+  {
+    title: "لوحة التحكم",
+    links: [
+      { href: "/admin",        label: "الرئيسية",        icon: LayoutDashboard, perm: null,    superOnly: true },
+      { href: "/admin/status", label: "حالة النظام",      icon: Activity,        perm: null,    superOnly: true },
+    ],
+  },
+  {
+    title: "إدارة المستخدمين",
+    links: [
+      { href: "/users",        label: "المستخدمون",       icon: Users,       perm: "users" },
+      { href: "/codes",        label: "أكواد التفعيل",    icon: Key,         perm: "codes" },
+      { href: "/admin/admins", label: "إدارة المسؤولين",  icon: ShieldCheck, perm: "admins" },
+    ],
+  },
+  {
+    title: "الوظائف والتقديم",
+    links: [
+      { href: "/jobs",                      label: "الوظائف",            icon: BriefcaseBusiness, perm: "jobs" },
+      { href: "/applications",              label: "مراقبة التقديمات",   icon: BrainCircuit,      perm: "jobs" },
+      { href: "/admin/telegram-channel",    label: "قناة Telegram",      icon: Radio,             perm: "jobs", superOnly: true },
+    ],
+  },
+  {
+    title: "التواصل والعملاء",
+    links: [
+      { href: "/admin/chat",    label: "الدردشة الداخلية", icon: MessagesSquare, perm: null },
+      { href: "/crm",           label: "علاقات العملاء",   icon: Contact,        perm: "crm" },
+      { href: "/support-admin", label: "الدعم الفني",       icon: MessageCircle,  perm: "support",       badge: "support" },
+      { href: "/notifications", label: "إشعارات Push",     icon: Bell,           perm: "notifications" },
+      { href: "/admin/send-email",  label: "إرسال بريد",    icon: Send,           perm: "email-test" },
+      { href: "/admin/email-test",  label: "اختبار الإيميل", icon: MailCheck,     perm: "email-test" },
+    ],
+  },
+  {
+    title: "المتجر والربح",
+    links: [
+      { href: "/store-admin",     label: "المتجر",        icon: ShoppingBag, perm: "store",     badge: "store" },
+      { href: "/affiliate-admin", label: "برنامج الربح",  icon: TrendingUp,  perm: "affiliate", badge: "affiliate" },
+      { href: "/finance",         label: "المالية",       icon: TrendingUp,  perm: "finance" },
+    ],
+  },
 ];
+
+const allLinks: NavLink[] = groups.flatMap(g => g.links);
 
 export default function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
@@ -64,7 +105,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         if (!r.ok) return;
         const j = await r.json();
         if (!cancelled && j.ok) setBadges(j.badges || {});
-      } catch { /* ignore */ }
+      } catch { }
     };
     load();
     const id = setInterval(load, 30_000);
@@ -73,34 +114,68 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true; clearInterval(id); window.removeEventListener("focus", onFocus); };
   }, [me, path]);
 
-  const visible = me
-    ? links.filter(l => {
-        if (l.superOnly && !me.isSuper) return false;
-        return l.perm === null || me.isSuper || me.permissions.includes(l.perm);
-      })
-    : [];
+  function isVisible(l: NavLink): boolean {
+    if (!me) return false;
+    if (l.superOnly && !me.isSuper) return false;
+    return l.perm === null || me.isSuper || me.permissions.includes(l.perm);
+  }
 
-  // Block rendering when current page is forbidden for this admin.
+  const visibleGroups = groups
+    .map(g => ({ ...g, links: g.links.filter(isVisible) }))
+    .filter(g => g.links.length > 0);
+
   useEffect(() => {
     if (!me) return;
-    const firstAllowed = links.find(l => {
-      if (l.superOnly && !me.isSuper) return false;
-      return l.perm === null || me.isSuper || me.permissions.includes(l.perm);
-    });
+    const firstAllowed = allLinks.find(isVisible);
     const fallback = firstAllowed?.href ?? "/login";
 
-    // If on home page but not super → redirect to first allowed page
     if (path === "/admin" && !me.isSuper) {
       router.replace(fallback);
       return;
     }
 
-    const link = links.find(l => l.href !== "/admin" && path.startsWith(l.href));
+    const link = allLinks.find(l => l.href !== "/admin" && path.startsWith(l.href));
     if (link) {
       const blocked = (link.superOnly && !me.isSuper) || (link.perm && !me.isSuper && !me.permissions.includes(link.perm));
       if (blocked) router.replace(fallback);
     }
   }, [me, path, router]);
+
+  const renderLink = (l: NavLink) => {
+    const active = path === l.href || (l.href !== "/admin" && path.startsWith(l.href));
+    const count = l.badge ? badges[l.badge] || 0 : 0;
+    return (
+      <Link
+        key={l.href}
+        href={l.href}
+        onClick={() => setMobileOpen(false)}
+        className={`
+          flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all
+          ${active
+            ? "bg-panel2 text-ink border border-line2"
+            : "text-muted hover:bg-panel2 hover:text-ink border border-transparent"
+          }
+        `}
+      >
+        <l.icon size={17} className={active ? "text-ink" : "text-muted2"} />
+        <span className="flex-1 truncate">{l.label}</span>
+        {count > 0 && (
+          <span
+            style={{
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999,
+              background: "#ef4444", color: "#fff",
+              fontSize: 11, fontWeight: 800, lineHeight: 1,
+              boxShadow: "0 0 0 2px var(--sidebar, #fff)",
+            }}
+            title={`${count} عنصر يحتاج انتباهك`}
+          >
+            {count > 99 ? "99+" : count}
+          </span>
+        )}
+      </Link>
+    );
+  };
 
   return (
     <div className="flex min-h-screen" dir="rtl">
@@ -124,42 +199,17 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          {visible.map((l) => {
-            const active = path === l.href;
-            const count = l.badge ? badges[l.badge] || 0 : 0;
-            return (
-              <Link
-                key={l.href}
-                href={l.href}
-                onClick={() => setMobileOpen(false)}
-                className={`
-                  flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all
-                  ${active
-                    ? "bg-panel2 text-ink border border-line2"
-                    : "text-muted hover:bg-panel2 hover:text-ink border border-transparent"
-                  }
-                `}
-              >
-                <l.icon size={17} className={active ? "text-ink" : "text-muted2"} />
-                <span className="flex-1 truncate">{l.label}</span>
-                {count > 0 && (
-                  <span
-                    style={{
-                      display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999,
-                      background: "#ef4444", color: "#fff",
-                      fontSize: 11, fontWeight: 800, lineHeight: 1,
-                      boxShadow: "0 0 0 2px var(--sidebar, #fff)",
-                    }}
-                    title={`${count} عنصر يحتاج انتباهك`}
-                  >
-                    {count > 99 ? "99+" : count}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+          {visibleGroups.map((group) => (
+            <div key={group.title}>
+              <div className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted select-none">
+                {group.title}
+              </div>
+              <div className="space-y-0.5">
+                {group.links.map(renderLink)}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="px-3 py-4 border-t border-line space-y-1.5">
