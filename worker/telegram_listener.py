@@ -257,6 +257,24 @@ async def run_listener():
 
     await client.start()
 
+    # ── الاشتراك في القنوات المطلوبة تلقائياً ─────────────────────
+    # القنوات الثابتة + أي قنوات إضافية من متغير TELEGRAM_EXTRA_CHANNELS (مفصولة بفاصلة)
+    _required_channels = ["jwkri"]
+    _extra = os.getenv("TELEGRAM_EXTRA_CHANNELS", "")
+    if _extra:
+        _required_channels += [c.strip().lstrip("@").lstrip("https://t.me/") for c in _extra.split(",") if c.strip()]
+
+    try:
+        from telethon.tl.functions.channels import JoinChannelRequest
+        for _ch in _required_channels:
+            try:
+                await client(JoinChannelRequest(_ch))
+                logger.info("[TG-Listener] ✅ انضممت إلى قناة: %s", _ch)
+            except Exception as _e:
+                logger.info("[TG-Listener] قناة %s — %s", _ch, _e)
+    except Exception as _e:
+        logger.warning("[TG-Listener] خطأ اشتراك القنوات: %s", _e)
+
     # ── قائمة القنوات + جلب الرسائل التاريخية ────────────────────
     try:
         from telethon.tl.types import Channel
