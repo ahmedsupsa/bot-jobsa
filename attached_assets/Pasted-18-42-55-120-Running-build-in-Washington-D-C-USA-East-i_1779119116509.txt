@@ -1,0 +1,48 @@
+18:42:55.120 Running build in Washington, D.C., USA (East) – iad1
+18:42:55.121 Build machine configuration: 2 cores, 8 GB
+18:42:55.301 Cloning github.com/ahmedsupsa/bot-jobsa (Branch: main, Commit: 824c369)
+18:42:56.103 Cloning completed: 801.000ms
+18:42:56.382 Restored build cache from previous deployment (4isourHYtQ9fE4iJRZnKjiNZmV8w)
+18:42:56.592 Running "vercel build"
+18:42:56.610 Vercel CLI 53.3.2
+18:42:56.934 Running "install" command: `npm install --legacy-peer-deps`...
+18:43:02.549 
+18:43:02.550 up to date, audited 257 packages in 5s
+18:43:02.550 
+18:43:02.551 36 packages are looking for funding
+18:43:02.551   run `npm fund` for details
+18:43:02.619 
+18:43:02.620 3 vulnerabilities (1 moderate, 2 high)
+18:43:02.620 
+18:43:02.621 To address all issues possible (including breaking changes), run:
+18:43:02.621   npm audit fix --force
+18:43:02.621 
+18:43:02.621 Some issues need review, and may require choosing
+18:43:02.622 a different dependency.
+18:43:02.622 
+18:43:02.622 Run `npm audit` for details.
+18:43:02.664 Detected Next.js version: 14.2.35
+18:43:02.665 Running "npm run build"
+18:43:02.775 
+18:43:02.776 > admin-frontend@1.0.0 build
+18:43:02.776 > next build
+18:43:02.776 
+18:43:03.473   ▲ Next.js 14.2.35
+18:43:03.473 
+18:43:03.505    Creating an optimized production build ...
+18:43:18.138  ✓ Compiled successfully
+18:43:18.140    Linting and checking validity of types ...
+18:43:32.966 Failed to compile.
+18:43:32.966 
+18:43:32.967 ./app/api/portal/preferences/route.ts:33:29
+18:43:32.967 Type error: Property 'allow_tamheer' does not exist on type '{}'.
+18:43:32.967 
+18:43:32.967   31 |     selected_ids: (prefs || []).map((p: any) => String(p.job_field_id)),
+18:43:32.967   32 |     all_fields: (fields || []).map((f: any) => ({ ...f, id: String(f.id) })),
+18:43:32.967 > 33 |     allow_tamheer: settings.allow_tamheer ?? false,
+18:43:32.968      |                             ^
+18:43:32.968   34 |     allow_cooperative: settings.allow_cooperative ?? false,
+18:43:32.968   35 |   });
+18:43:32.968   36 | }
+18:43:33.015 Next.js build worker exited with code: 1 and signal: null
+18:43:33.047 Error: Command "npm run build" exited with 1
