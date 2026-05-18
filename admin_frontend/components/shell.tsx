@@ -111,15 +111,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     return new Set(active ? [active] : []);
   });
 
-  // When path changes, ensure the active group is open
   useEffect(() => {
     const active = getActiveGroupId(path);
     if (active) {
       setOpenGroups(prev => {
         if (prev.has(active)) return prev;
-        const next = new Set(prev);
-        next.add(active);
-        return next;
+        return new Set([...prev, active]);
       });
     }
   }, [path]);
@@ -144,9 +141,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     };
     load();
     const id = setInterval(load, 30_000);
-    const onFocus = () => load();
-    window.addEventListener("focus", onFocus);
-    return () => { cancelled = true; clearInterval(id); window.removeEventListener("focus", onFocus); };
+    window.addEventListener("focus", load);
+    return () => { cancelled = true; clearInterval(id); window.removeEventListener("focus", load); };
   }, [me, path]);
 
   function isVisible(l: NavLink): boolean {
@@ -172,12 +168,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     if (!me) return;
     const firstAllowed = allLinks.find(l => isVisible(l));
     const fallback = firstAllowed?.href ?? "/login";
-
-    if (path === "/admin" && !me.isSuper) {
-      router.replace(fallback);
-      return;
-    }
-
+    if (path === "/admin" && !me.isSuper) { router.replace(fallback); return; }
     const link = allLinks.find(l => l.href !== "/admin" && path.startsWith(l.href));
     if (link) {
       const blocked = (link.superOnly && !me.isSuper) || (link.perm && !me.isSuper && !me.permissions.includes(link.perm));
@@ -185,7 +176,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     }
   }, [me, path, router]);
 
-  const renderLink = (l: NavLink) => {
+  function renderLink(l: NavLink) {
     const active = path === l.href || (l.href !== "/admin" && path.startsWith(l.href));
     const count = l.badge ? badges[l.badge] || 0 : 0;
     return (
@@ -193,98 +184,86 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         key={l.href}
         href={l.href}
         onClick={() => setMobileOpen(false)}
-        className={`
-          flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all
-          ${active
+        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+          active
             ? "bg-panel2 text-ink border border-line2"
             : "text-muted hover:bg-panel2 hover:text-ink border border-transparent"
-          }
-        `}
+        }`}
       >
         <l.icon size={17} className={active ? "text-ink" : "text-muted2"} />
         <span className="flex-1 truncate">{l.label}</span>
         {count > 0 && (
-          <span
-            style={{
-              display: "inline-flex", alignItems: "center", justifyContent: "center",
-              minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999,
-              background: "#ef4444", color: "#fff",
-              fontSize: 11, fontWeight: 800, lineHeight: 1,
-              boxShadow: "0 0 0 2px var(--sidebar, #fff)",
-            }}
-          >
+          <span style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999,
+            background: "#ef4444", color: "#fff", fontSize: 11, fontWeight: 800, lineHeight: 1,
+            boxShadow: "0 0 0 2px var(--sidebar, #fff)",
+          }}>
             {count > 99 ? "99+" : count}
           </span>
         )}
       </Link>
     );
-  };
+  }
 
-  const nav = (
-    <nav className="flex-1 overflow-y-auto px-3 py-3">
-      <div className="space-y-1">
-        {visibleGroups.map((group) => {
-          const isOpen = openGroups.has(group.id);
-          const hasActive = group.links.some(
-            l => path === l.href || (l.href !== "/admin" && path.startsWith(l.href))
-          );
-          return (
-            <div key={group.id}>
-              <button
-                onClick={() => toggleGroup(group.id)}
-                className={`
-                  w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all
-                  text-xs font-semibold uppercase tracking-wider select-none
-                  ${hasActive
-                    ? "text-ink bg-panel2 border border-line2"
-                    : "text-muted hover:text-ink hover:bg-panel2 border border-transparent"
-                  }
-                `}
-              >
-                <span>{group.title}</span>
-                <ChevronDown
-                  size={13}
-                  className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-
-              {isOpen && (
-                <div className="mt-0.5 mb-1 space-y-0.5 pr-1">
-                  {group.links.map(renderLink)}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </nav>
-  );
-
-  return (
-    <div className="flex min-h-screen" dir="rtl">
-      <aside
-        className={`
-          fixed inset-y-0 right-0 z-40 flex w-60 flex-col bg-sidebar shadow-sidebar
-          border-l border-line transition-transform duration-300
-          ${mobileOpen ? "translate-x-0" : "translate-x-full"}
-          md:translate-x-0 md:static md:z-auto
-        `}
-      >
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-line">
-          <div style={{ width: 38, height: 38, borderRadius: 11, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 5 }}>
-            <Image src="/logo-transparent.png" alt="Jobbots" width={28} height={28} style={{ display: "block" }} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm font-bold text-ink truncate">Jobbots</div>
-            <div className="text-xs text-muted truncate">
-              {me ? (me.isSuper ? "مدير عام" : `أهلاً، ${me.username}`) : "لوحة الإدارة"}
-            </div>
+  const sidebar = (
+    <aside className={`
+      fixed inset-y-0 right-0 z-40 flex w-60 flex-col bg-sidebar shadow-sidebar
+      border-l border-line transition-transform duration-300
+      ${mobileOpen ? "translate-x-0" : "translate-x-full"}
+      md:translate-x-0 md:static md:z-auto
+    `}>
+      {/* Logo */}
+      <div className="flex items-center gap-3 px-5 py-5 border-b border-line shrink-0">
+        <div style={{ width: 38, height: 38, borderRadius: 11, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 5 }}>
+          <Image src="/logo-transparent.png" alt="Jobbots" width={28} height={28} style={{ display: "block" }} />
+        </div>
+        <div className="min-w-0">
+          <div className="text-sm font-bold text-ink truncate">Jobbots</div>
+          <div className="text-xs text-muted truncate">
+            {me ? (me.isSuper ? "مدير عام" : `أهلاً، ${me.username}`) : "لوحة الإدارة"}
           </div>
         </div>
+      </div>
 
-        {nav}
+      {/* Scrollable area: nav + bottom buttons together */}
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+        {/* Nav groups */}
+        <nav className="px-3 py-3 space-y-1">
+          {visibleGroups.map((group) => {
+            const isOpen = openGroups.has(group.id);
+            const hasActive = group.links.some(
+              l => path === l.href || (l.href !== "/admin" && path.startsWith(l.href))
+            );
+            return (
+              <div key={group.id}>
+                <button
+                  onClick={() => toggleGroup(group.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all text-xs font-semibold uppercase tracking-wider select-none ${
+                    hasActive
+                      ? "text-ink bg-panel2 border border-line2"
+                      : "text-muted hover:text-ink hover:bg-panel2 border border-transparent"
+                  }`}
+                >
+                  <span>{group.title}</span>
+                  <ChevronDown
+                    size={13}
+                    className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
 
-        <div className="px-3 py-4 border-t border-line space-y-1.5">
+                {isOpen && (
+                  <div className="mt-0.5 mb-1 space-y-0.5 pr-1">
+                    {group.links.map(l => renderLink(l))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+
+        {/* Bottom buttons — follow nav content, no gap */}
+        <div className="px-3 py-4 border-t border-line space-y-1.5 mt-auto">
           <button
             onClick={toggle}
             aria-label={dark ? "الوضع النهاري" : "الوضع الليلي"}
@@ -304,7 +283,13 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             تسجيل الخروج
           </button>
         </div>
-      </aside>
+      </div>
+    </aside>
+  );
+
+  return (
+    <div className="flex min-h-screen" dir="rtl">
+      {sidebar}
 
       {mobileOpen && (
         <div
