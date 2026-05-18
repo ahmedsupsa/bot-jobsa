@@ -150,6 +150,15 @@ Admin → Store → tab **«أكواد الخصم»** to create/manage codes.
 Tables: `users`, `admin_jobs`, `applications`, `job_fields`, `user_settings`, `user_cvs`, `user_job_preferences`, `worker_logs`, `push_subscriptions`, `store_orders`, `store_products`, `activation_codes`, `affiliates`, `affiliate_referrals`
 Storage bucket: `cvs` — stores user CV files
 
+## DB Migration — cv_profile (تشغيل مرة واحدة في Supabase SQL Editor)
+
+```sql
+ALTER TABLE user_cvs ADD COLUMN IF NOT EXISTS cv_profile jsonb;
+```
+ملف جاهز: `database/migrations/cv_profile_cache.sql`
+
+---
+
 ## تحديثات اليوم — 18 مايو 2026
 
 ### Telegram Channel Admin Page
