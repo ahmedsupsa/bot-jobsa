@@ -9,12 +9,81 @@ const JOB_CHANNEL   = Deno.env.get("TELEGRAM_JOB_CHANNEL_ID") ?? "";
 const WORKER_SECRET = Deno.env.get("WORKER_SECRET") ?? "";
 const DAILY_LIMIT   = 30;
 
+// كل كم وظيفة تُرسل رسالة تسويقية
+const PROMO_EVERY = 5;
+
 const SB = {
   apikey: SUPABASE_KEY,
   Authorization: `Bearer ${SUPABASE_KEY}`,
   "Content-Type": "application/json",
   Prefer: "return=representation",
 };
+
+// ─── الرسائل التسويقية المتنوعة ──────────────────────────────────────────
+
+const PROMO_MESSAGES = [
+  `💡 <b>هل تعلم؟</b>
+
+أصحاب العمل يفضّلون المتقدمين الأوائل.
+مع <b>Jobbots</b> يتقدم البوت عنك فور نزول الوظيفة — حتى وأنت نايم! 😴
+
+🔗 جرّبه الآن: https://www.jobbots.org/store`,
+
+  `⏱️ <b>وقتك ثمين</b>
+
+التقديم اليدوي على 10 وظائف = ساعات من الوقت الضائع.
+<b>Jobbots</b> يقدّم على عشرات الوظائف في دقائق برسالة تغطية مخصصة لكل وظيفة.
+
+🚀 ابدأ الآن: https://www.jobbots.org/store`,
+
+  `🤖 <b>ذكاء اصطناعي في خدمة مسيرتك المهنية</b>
+
+<b>Jobbots</b> يقرأ سيرتك الذاتية، يفهم مهاراتك، ويكتب رسالة تغطية احترافية لكل وظيفة.
+لا نسخ، لا لصق — كل تقديم فريد.
+
+✨ https://www.jobbots.org/store`,
+
+  `📊 <b>إحصائية مثيرة</b>
+
+80% من الوظائف تُشغَل قبل أن يرى معظم الناس الإعلان.
+<b>Jobbots</b> يضمن أنك دائماً من الأوائل.
+
+⚡ سجّل الآن: https://www.jobbots.org/store`,
+
+  `🎯 <b>تقديم ذكي، نتائج أفضل</b>
+
+البوت يطابق مهاراتك مع متطلبات الوظيفة ويقدّم فقط على المناسب لك.
+لا تضييع وقت، لا تقديمات عشوائية.
+
+💼 https://www.jobbots.org/store`,
+
+  `🔔 <b>لا تفوّت أي فرصة</b>
+
+هذه القناة تجمع وظائف من عشرات المصادر يومياً.
+اشترك في <b>Jobbots</b> والبوت يقدّم عنك على كل وظيفة تناسبك — تلقائياً.
+
+👆 https://www.jobbots.org/store`,
+
+  `💼 <b>باحث عن عمل؟</b>
+
+مئات المتقدمين ينافسونك على نفس الوظيفة.
+<b>Jobbots</b> يعطيك أفضلية التقديم المبكر والرسالة الاحترافية المخصصة.
+
+🏆 ميّز نفسك: https://www.jobbots.org/store`,
+
+  `✅ <b>بسيط وسريع</b>
+
+١. ارفع سيرتك الذاتية
+٢. حدّد تخصصاتك
+٣. البوت يتولى الباقي 🤖
+
+<b>Jobbots</b> — التقديم التلقائي الأذكى في السوق السعودي.
+https://www.jobbots.org/store`,
+];
+
+function getPromoMessage(index: number): string {
+  return PROMO_MESSAGES[index % PROMO_MESSAGES.length];
+}
 
 // ─── بناء نص منشور الوظيفة ────────────────────────────────────────────────
 
@@ -68,9 +137,9 @@ async function fetchPendingJob(): Promise<Record<string, string> | null> {
   return data[0] ?? null;
 }
 
-// ─── نشر الوظيفة في القناة ──────────────────────────────────────────────
+// ─── إرسال رسالة للقناة (وظيفة أو تسويقية) ─────────────────────────────
 
-async function postToChannel(job: Record<string, string>): Promise<number | null> {
+async function sendToChannel(text: string): Promise<number | null> {
   if (!BOT_TOKEN || !JOB_CHANNEL) return null;
 
   const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -78,7 +147,7 @@ async function postToChannel(job: Record<string, string>): Promise<number | null
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       chat_id: JOB_CHANNEL,
-      text: buildPostText(job),
+      text,
       parse_mode: "HTML",
       disable_web_page_preview: true,
     }),
@@ -120,7 +189,6 @@ async function deactivateJob(jobId: string): Promise<void> {
 // ─── Handler الرئيسي ─────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
-  // التحقق من الـ secret
   const auth = req.headers.get("Authorization") ?? "";
   if (WORKER_SECRET && auth !== `Bearer ${WORKER_SECRET}`) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
@@ -131,14 +199,24 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // التحقق من الحد اليومي
     const todayCount = await countTodayPosts();
+
+    // التحقق من الحد اليومي
     if (todayCount >= DAILY_LIMIT) {
       return new Response(JSON.stringify({
         ok: true,
         skipped: true,
         reason: `وصلنا الحد اليومي (${todayCount}/${DAILY_LIMIT})`,
       }));
+    }
+
+    // ── رسالة تسويقية كل PROMO_EVERY وظيفة ──────────────────────────────
+    // todayCount = 5, 10, 15 … → أرسل رسالة تسويقية قبل الوظيفة التالية
+    if (todayCount > 0 && todayCount % PROMO_EVERY === 0) {
+      const promoIndex = Math.floor(todayCount / PROMO_EVERY) - 1;
+      const promoText  = getPromoMessage(promoIndex);
+      await sendToChannel(promoText);
+      // الرسالة التسويقية لا تُحسب ضمن الوظائف — نكمل ونحسب الوظيفة أيضاً
     }
 
     // جلب وظيفة معلّقة
@@ -162,7 +240,7 @@ Deno.serve(async (req) => {
     }
 
     // نشر الوظيفة
-    const msgId = await postToChannel(job);
+    const msgId = await sendToChannel(buildPostText(job));
     if (!msgId) {
       return new Response(JSON.stringify({ ok: false, error: "فشل الإرسال لـ Telegram" }), { status: 500 });
     }
@@ -175,6 +253,7 @@ Deno.serve(async (req) => {
       msg_id: msgId,
       today: todayCount + 1,
       daily_limit: DAILY_LIMIT,
+      promo_sent: todayCount > 0 && todayCount % PROMO_EVERY === 0,
     }));
 
   } catch (e) {
