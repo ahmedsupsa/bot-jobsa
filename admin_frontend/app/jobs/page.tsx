@@ -44,6 +44,8 @@ export default function JobsPage() {
   const [filter, setFilter] = useState<"all" | "active" | "expired">("all");
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [deduping, setDeduping] = useState(false);
+  const [dedupeResult, setDedupeResult] = useState<{ deleted: number } | null>(null);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
@@ -153,6 +155,25 @@ export default function JobsPage() {
     finally { setBulkDeleting(false); }
   };
 
+  const dedupeDuplicates = async () => {
+    if (!window.confirm("سيتم الاحتفاظ بأحدث نسخة من كل وظيفة (نفس الشركة + نفس المسمى) وحذف الباقي. تأكيد؟")) return;
+    setDeduping(true); setMsg(""); setDedupeResult(null);
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/jobs`, {
+        method: "DELETE", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "dedupe" }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "فشل التنظيف");
+      setDedupeResult({ deleted: j.deleted });
+      setMsg(j.deleted > 0 ? `تم حذف ${j.deleted} وظيفة مكررة ✓` : "لا توجد مكررات");
+      setMsgType(j.deleted > 0 ? "ok" : "ok");
+      await load();
+    } catch (e: any) { setMsg(String(e)); setMsgType("err"); }
+    finally { setDeduping(false); }
+  };
+
   const deleteExpired = async () => {
     if (!window.confirm(`حذف ${expiredCount} وظيفة منتهية الصلاحية (أكثر من 10 أيام)؟`)) return;
     setBulkDeleting(true); setMsg("");
@@ -239,6 +260,13 @@ export default function JobsPage() {
             className="flex items-center gap-1.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3.5 py-2 text-xs text-sky-400 font-semibold hover:bg-sky-500/20 transition-colors"
           >
             <Sparkles size={13} /> استخراج بالذكاء الاصطناعي
+          </button>
+          <button
+            onClick={dedupeDuplicates}
+            disabled={deduping}
+            className="flex items-center gap-1.5 rounded-xl border border-purple-500/30 bg-purple-500/10 px-3.5 py-2 text-xs text-purple-400 font-semibold hover:bg-purple-500/20 transition-colors disabled:opacity-60"
+          >
+            {deduping ? <><Loader2 size={13} className="animate-spin" /> يتحقق...</> : <><Filter size={13} /> حذف المكررات</>}
           </button>
           {expiredCount > 0 && (
             <button
