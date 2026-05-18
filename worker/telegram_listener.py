@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import re
+from datetime import datetime, timedelta
 
 import httpx
 
@@ -256,22 +257,42 @@ async def run_listener():
 
     await client.start()
 
-    # ── قائمة القنوات المشترك فيها ─────────────────────────────────
+    # ── قائمة القنوات + جلب الرسائل التاريخية ────────────────────
     try:
         from telethon.tl.types import Channel
-        channels = []
+        from datetime import timezone as tz
+        channels_entities = []
         async for dialog in client.iter_dialogs():
             if isinstance(dialog.entity, Channel) and not dialog.entity.megagroup:
-                channels.append(dialog.entity.title)
+                channels_entities.append(dialog.entity)
 
-        channel_list = "\n".join(f"  • {c}" for c in channels) or "  (لا توجد قنوات)"
+        channel_names = [c.title for c in channels_entities]
+        channel_list  = "\n".join(f"  • {c}" for c in channel_names) or "  (لا توجد قنوات)"
         summary = (
             f"📡 <b>مستمع Telegram متصل</b>\n"
-            f"يراقب <b>{len(channels)}</b> قناة:\n"
+            f"يراقب <b>{len(channel_names)}</b> قناة:\n"
             f"{channel_list}"
         )
-        logger.info("[TG-Listener] ✅ متصل — يراقب %d قناة:\n%s", len(channels), "\n".join(channels))
+        logger.info("[TG-Listener] ✅ متصل — يراقب %d قناة", len(channel_names))
         await _send_tg(ADMIN_CHAT_ID, summary)
+
+        # جلب آخر 10 أيام من كل قناة
+        cutoff = datetime.now(tz.utc) - timedelta(days=10)
+        for entity in channels_entities:
+            try:
+                logger.info("[TG-Listener] جلب رسائل قديمة: %s", entity.title)
+                async for msg in client.iter_messages(entity, limit=200, offset_date=None, reverse=False):
+                    if msg.date and msg.date < cutoff:
+                        break
+                    text = getattr(msg, "text", "") or getattr(msg, "message", "") or ""
+                    if text.strip():
+                        asyncio.create_task(
+                            process_message(text, entity.title, str(entity.id), msg.id)
+                        )
+                await asyncio.sleep(1)  # تجنب rate limit
+            except Exception as e:
+                logger.warning("[TG-Listener] خطأ جلب %s: %s", entity.title, e)
+
     except Exception as e:
         logger.warning("[TG-Listener] تعذّر جلب القنوات: %s", e)
 

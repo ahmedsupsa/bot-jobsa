@@ -18,8 +18,8 @@ export async function postJobToChannel(job: {
   description_ar?: string | null;
   application_email?: string | null;
   link_url?: string | null;
-}): Promise<void> {
-  if (!BOT_TOKEN || !JOB_CHANNEL) return;
+}): Promise<number | null> {
+  if (!BOT_TOKEN || !JOB_CHANNEL) return null;
 
   const desc = (job.description_ar || "").trim();
   const shortDesc = desc.length > 200 ? desc.slice(0, 197) + "..." : desc;
@@ -36,20 +36,20 @@ export async function postJobToChannel(job: {
   lines.push(`🤖 <b>للتقديم التلقائي عبر الذكاء الاصطناعي — وفّر وقتك وقدّم على عشرات الوظائف بضغطة واحدة:</b>`);
   lines.push(`https://www.jobbots.org/store`);
 
-  const text = lines.join("\n");
-
   try {
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: JOB_CHANNEL,
-        text,
+        text: lines.join("\n"),
         parse_mode: "HTML",
         disable_web_page_preview: true,
       }),
     });
-  } catch {}
+    const d = await r.json();
+    return d?.result?.message_id ?? null;
+  } catch { return null; }
 }
 
 function now(): string {

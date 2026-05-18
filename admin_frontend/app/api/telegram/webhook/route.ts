@@ -141,12 +141,20 @@ async function handleChannelPost(post: Record<string, unknown>) {
     const id = await saveJob(job, tweetUid + `_${saved}`, channelTitle);
     if (id) {
       saved++;
-      // نشر في قناة الوظائف
+      // نشر في قناة الوظائف وحفظ message_id
       postJobToChannel({
         title_ar: job.title_ar,
         description_ar: job.description_ar || null,
         application_email: job.application_email || null,
         link_url: job.link_url || null,
+      }).then(async (msgId) => {
+        if (msgId && SUPABASE_URL && SUPABASE_KEY) {
+          await fetch(`${SUPABASE_URL}/rest/v1/admin_jobs?id=eq.${id}`, {
+            method: "PATCH",
+            headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ tg_message_id: msgId }),
+          }).catch(() => {});
+        }
       }).catch(() => {});
       // إشعار الأدمن
       sendTelegram(

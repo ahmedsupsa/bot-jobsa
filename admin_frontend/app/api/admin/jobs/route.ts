@@ -57,7 +57,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
   tg.jobAdded(titleAr, (body.company || "").trim(), email).catch(() => {});
-  postJobToChannel({ title_ar: titleAr, description_ar: descAr, application_email: email }).catch(() => {});
+  postJobToChannel({ title_ar: titleAr, description_ar: descAr, application_email: email })
+    .then(async (msgId) => {
+      if (msgId && data?.id) {
+        await supabase.from("admin_jobs").update({ tg_message_id: msgId }).eq("id", data.id);
+      }
+    }).catch(() => {});
   return NextResponse.json({ ok: true, id: data?.id, specializations });
 }
 

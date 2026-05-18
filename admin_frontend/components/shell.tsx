@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Key, BriefcaseBusiness, Bell, LogOut,
   ShoppingBag, TrendingUp, MessageCircle, MailCheck, ShieldCheck, Send,
-  Sun, Moon, Contact, MessagesSquare, Activity, BrainCircuit,
+  Sun, Moon, Contact, MessagesSquare, Activity, BrainCircuit, Radio,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "@/contexts/theme-context";
@@ -35,6 +35,7 @@ const links: { href: string; label: string; icon: any; perm: Perm | null; superO
   { href: "/finance", label: "المالية", icon: TrendingUp, perm: "finance" },
   { href: "/admin/email-test", label: "اختبار الإيميل", icon: MailCheck, perm: "email-test" },
   { href: "/admin/send-email", label: "إرسال بريد", icon: Send, perm: "email-test" },
+  { href: "/admin/telegram-channel", label: "قناة Telegram", icon: Radio, perm: "jobs", superOnly: true },
   { href: "/admin/admins", label: "إدارة المسؤولين", icon: ShieldCheck, perm: "admins" },
 ];
 
