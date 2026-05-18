@@ -6,7 +6,7 @@ import {
   Sparkles, Check, ShoppingCart, X, RefreshCw, Loader2, ShieldCheck,
   Copy, CheckCheck, Building2, Wallet, Tag, Search, ArrowUpDown, Clock,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Product = {
   id: string;
@@ -99,6 +99,8 @@ export default function StorePage() {
 
   const [pendingBanner, setPendingBanner] = useState<{ order_id: string; product_name: string; amount: number } | null>(null);
   const [resuming, setResuming] = useState(false);
+
+  const checkoutRef = useRef<HTMLDivElement>(null);
 
   // Search + sort
   const [search, setSearch] = useState("");
@@ -198,12 +200,14 @@ export default function StorePage() {
   const handleBuy = (p: Product) => {
     setSelected(p); setFormErr(""); setStep("form"); setBankData(null);
     setDiscountInput(""); setDiscountState({ applied: false });
+    setTimeout(() => checkoutRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
   };
 
   const closeModal = () => {
     setSelected(null); setFormErr(""); setStep("form"); setBankData(null);
     setReceiptFile(null); setUploadDone(false); setUploadErr("");
     setDiscountInput(""); setDiscountState({ applied: false });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const applyDiscountCode = async () => {
@@ -562,21 +566,16 @@ export default function StorePage() {
         )}
       </main>
 
-      <footer style={s.footer}>
-        <div style={s.footerInner}>
-          <span style={{ color: "var(--text3)", fontSize: 12.5 }}>© 2026 Jobbots</span>
-          <div style={{ display: "flex", gap: 22 }}>
-            <Link href="/privacy" style={s.footerLink}>الخصوصية</Link>
-            <Link href="/terms" style={s.footerLink}>الشروط</Link>
-          </div>
-        </div>
-      </footer>
-
-      {/* Checkout Modal */}
+      {/* Checkout Section — inline */}
       {selected && (
-        <div style={s.overlay} onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
-          <div style={s.modal} dir="rtl" className="__modal">
-            <div style={s.modalGlow} />
+        <div ref={checkoutRef} style={s.checkoutSection} dir="rtl">
+          <div style={s.checkoutInner} className="__modal">
+
+            {/* Back button */}
+            <button onClick={closeModal} style={s.backBtn}>
+              <X size={14} />
+              <span>العودة للباقات</span>
+            </button>
 
             {/* Header */}
             <div style={s.modalHeader}>
@@ -589,9 +588,6 @@ export default function StorePage() {
                   <div style={s.modalSub}>{selected.name}</div>
                 </div>
               </div>
-              <button onClick={closeModal} style={s.closeBtn}>
-                <X size={16} />
-              </button>
             </div>
 
             {/* Price strip */}
@@ -929,6 +925,16 @@ export default function StorePage() {
         </div>
       )}
 
+      <footer style={s.footer}>
+        <div style={s.footerInner}>
+          <span style={{ color: "var(--text3)", fontSize: 12.5 }}>© 2026 Jobbots</span>
+          <div style={{ display: "flex", gap: 22 }}>
+            <Link href="/privacy" style={s.footerLink}>الخصوصية</Link>
+            <Link href="/terms" style={s.footerLink}>الشروط</Link>
+          </div>
+        </div>
+      </footer>
+
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @media (max-width: 760px) {
@@ -990,15 +996,14 @@ const s: Record<string, React.CSSProperties> = {
   footerInner: { maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 },
   footerLink: { color: "var(--text3)", fontSize: 12.5, textDecoration: "none" },
 
-  // MODAL
-  overlay: { position: "fixed", inset: 0, background: "var(--modal-backdrop)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 },
-  modal: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 20, padding: "22px 22px 18px", width: "100%", maxWidth: 440, maxHeight: "92vh", overflowY: "auto", boxShadow: "var(--shadow)", position: "relative" },
-  modalGlow: { display: "none" },
+  // INLINE CHECKOUT SECTION
+  checkoutSection: { background: "var(--bg)", borderTop: "1px solid var(--border)", padding: "48px 24px 64px" },
+  checkoutInner: { maxWidth: 520, margin: "0 auto", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 20, padding: "24px 26px 22px", boxShadow: "var(--shadow)", position: "relative" as const },
+  backBtn: { display: "flex", alignItems: "center", gap: 7, background: "var(--surface2)", border: "1px solid var(--border2)", borderRadius: 9, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", color: "var(--text3)", marginBottom: 20 },
   modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, position: "relative", zIndex: 1 },
   modalIconWrap: { width: 34, height: 34, borderRadius: 10, background: "var(--surface2)", border: "1px solid var(--border2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
   modalTitle: { color: "var(--text)", fontSize: 16, fontWeight: 800, marginBottom: 2 },
   modalSub: { color: "var(--text3)", fontSize: 12 },
-  closeBtn: { background: "var(--surface2)", border: "1px solid var(--border2)", borderRadius: 8, padding: "6px", cursor: "pointer", color: "var(--text3)", display: "flex", lineHeight: 1, flexShrink: 0 },
 
   // Price strip
   priceStrip: { background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", zIndex: 1 },
