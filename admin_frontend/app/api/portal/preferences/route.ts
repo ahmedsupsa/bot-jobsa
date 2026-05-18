@@ -25,7 +25,7 @@ export async function GET(req: Request) {
   if (prefsErr) console.error("prefs GET error:", JSON.stringify(prefsErr));
   if (fieldsErr) console.error("fields GET error:", JSON.stringify(fieldsErr));
 
-  const settings = settingsRows?.[0] || {};
+  const settings = (settingsRows?.[0] || {}) as { allow_tamheer?: boolean; allow_cooperative?: boolean };
 
   return NextResponse.json({
     selected_ids: (prefs || []).map((p: any) => String(p.job_field_id)),
