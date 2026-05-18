@@ -1160,19 +1160,8 @@ _last_job_fetch: float = 0.0
 
 
 async def _run_job_fetcher() -> None:
-    """يشغّل جالب الوظائف من تويتر."""
-    global _last_job_fetch
-    now = time.time()
-    if now - _last_job_fetch < JOB_FETCH_INTERVAL:
-        return
-    _last_job_fetch = now
-    try:
-        from job_fetcher import fetch_jobs_from_twitter
-        logger.info("🐦 بدء جلب الوظائف من تويتر...")
-        result = await fetch_jobs_from_twitter()
-        logger.info("🐦 اكتمل جلب الوظائف: %s", result)
-    except Exception as e:
-        logger.error("خطأ في جالب الوظائف: %s", e)
+    """جلب الوظائف من تويتر — معطّل."""
+    return  # تم تعطيل جلب تويتر
 
 
 async def _run_telegram_listener() -> None:
