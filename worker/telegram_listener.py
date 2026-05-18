@@ -220,6 +220,12 @@ async def run_listener():
 
     client = TelegramClient(StringSession(session), int(api_id), api_hash)
 
+    # معرّف قناة البوت بدون بادئة -100 (لمقارنة موحّدة)
+    def _norm_cid(cid: str) -> str:
+        return cid.lstrip("-").removeprefix("100")
+
+    _job_channel_norm = _norm_cid(JOB_CHANNEL) if JOB_CHANNEL else None
+
     @client.on(events.NewMessage())
     async def handler(event):
         if not event.is_channel:
@@ -232,6 +238,10 @@ async def run_listener():
         except:
             title = "unknown"
             cid   = "0"
+
+        # تجاهل قناة البوت نفسها لتفادي الحلقة اللانهائية
+        if _job_channel_norm and _norm_cid(cid) == _job_channel_norm:
+            return
 
         logger.info("[TG-Listener] 📩 رسالة جديدة من: %s | الطول: %d", title, len(text))
 
@@ -269,6 +279,9 @@ async def run_listener():
         channels_entities = []
         async for dialog in client.iter_dialogs():
             if isinstance(dialog.entity, Channel) and not dialog.entity.megagroup:
+                # تجاهل قناة البوت نفسها
+                if _job_channel_norm and _norm_cid(str(dialog.entity.id)) == _job_channel_norm:
+                    continue
                 channels_entities.append(dialog.entity)
 
         channel_names = [c.title for c in channels_entities]
