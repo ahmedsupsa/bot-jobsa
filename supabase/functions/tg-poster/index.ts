@@ -101,6 +101,22 @@ async function markPosted(jobId: string, msgId: number): Promise<void> {
   });
 }
 
+// ─── فلتر تمهير والتدريب التعاوني ───────────────────────────────────────
+
+const TAMHEER_KW = ["تمهير", "tamheer", "تدريب تعاوني", "تعاوني", "cooperative training", "متدرب", "متدربة"];
+function isTamheer(title: string): boolean {
+  const t = title.toLowerCase();
+  return TAMHEER_KW.some(kw => t.includes(kw));
+}
+
+async function deactivateJob(jobId: string): Promise<void> {
+  await fetch(`${SUPABASE_URL}/rest/v1/admin_jobs?id=eq.${jobId}`, {
+    method: "PATCH",
+    headers: SB,
+    body: JSON.stringify({ is_active: false }),
+  });
+}
+
 // ─── Handler الرئيسي ─────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -132,6 +148,16 @@ Deno.serve(async (req) => {
         ok: true,
         skipped: true,
         reason: "لا توجد وظائف منتظرة للنشر",
+      }));
+    }
+
+    // فلتر تمهير — تعطيل بدون نشر
+    if (isTamheer(job.title_ar ?? "")) {
+      await deactivateJob(job.id);
+      return new Response(JSON.stringify({
+        ok: true,
+        skipped: true,
+        reason: `وظيفة تمهير/تدريب — تم تعطيلها: ${job.title_ar}`,
       }));
     }
 
