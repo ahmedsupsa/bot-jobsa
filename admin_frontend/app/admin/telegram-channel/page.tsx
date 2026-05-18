@@ -257,7 +257,7 @@ export default function TelegramChannelPage() {
               <p className="font-semibold mb-1">📋 أين تظهر الوظائف التي يجمعها البوت؟</p>
               <p>
                 الوظائف التي يجمعها البوت تلقائياً من القنوات وتويتر تُحفظ في{" "}
-                <a href="/admin/jobs" className="underline font-semibold">صفحة الوظائف</a>
+                <a href="/jobs" className="underline font-semibold">صفحة الوظائف</a>
                 {" "}وتُرسل تلقائياً لقناة Telegram. الوظائف المنشورة في القناة تظهر أدناه.
               </p>
             </div>
