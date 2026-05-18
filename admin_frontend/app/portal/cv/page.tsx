@@ -55,6 +55,7 @@ export default function CVPrefsPage() {
   const [addingCustom, setAddingCustom] = useState(false);
   const [allowTamheer, setAllowTamheer] = useState(false);
   const [allowCooperative, setAllowCooperative] = useState(false);
+  const [showAllFields, setShowAllFields] = useState(false);
 
   async function loadCV() {
     try {
@@ -409,43 +410,67 @@ export default function CVPrefsPage() {
               <p style={{ color: t.text3, textAlign: "center", padding: 40 }}>جاري التحميل…</p>
             ) : (
               <>
-                {/* Search + count bar */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-                  <div style={{
-                    flex: 1, minWidth: 180, display: "flex", alignItems: "center", gap: 10,
-                    background: t.surface, border: `1px solid ${t.border2}`,
-                    borderRadius: 10, padding: "9px 14px",
-                  }}>
-                    <Search size={14} strokeWidth={1.5} color={t.text3} style={{ flexShrink: 0 }} />
-                    <input
-                      type="text" placeholder="ابحث عن مجال…" value={search}
-                      onChange={e => setSearch(e.target.value)}
-                      style={{ flex: 1, background: "transparent", border: "none", color: t.text, fontSize: 13, outline: "none", fontFamily: "inherit" }}
-                    />
-                    {search && (
-                      <button onClick={() => setSearch("")} style={{ background: "transparent", border: "none", color: t.text3, cursor: "pointer", padding: 2, display: "flex" }}>
-                        <X size={12} strokeWidth={2} />
-                      </button>
-                    )}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {/* ── قسم التخصصات المختارة ── */}
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{
+                        width: 22, height: 22, borderRadius: 6,
+                        background: dark ? "#071a07" : "#dcfce7",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <CheckCircle size={13} strokeWidth={2.2} color={dark ? "#4ade80" : "#16a34a"} />
+                      </div>
+                      <span style={{ color: t.text, fontSize: 13, fontWeight: 700 }}>تخصصاتك المختارة</span>
+                      <span style={{
+                        background: dark ? "#071a07" : "#dcfce7",
+                        color: dark ? "#4ade80" : "#16a34a",
+                        borderRadius: 100, padding: "1px 9px", fontSize: 11, fontWeight: 700,
+                      }}>{selected.size}</span>
+                    </div>
                     {selected.size > 0 && (
                       <button onClick={() => setSelected(new Set())} style={{
-                        background: "transparent", border: `1px solid ${t.border2}`,
-                        borderRadius: 8, padding: "5px 12px", color: t.text3, fontSize: 12, cursor: "pointer", fontFamily: "inherit",
+                        background: "transparent", border: "none",
+                        color: t.text3, fontSize: 12, cursor: "pointer", fontFamily: "inherit",
+                        textDecoration: "underline",
                       }}>إلغاء الكل</button>
                     )}
-                    <span style={{
-                      background: t.iconBg, border: `1px solid ${t.border2}`,
-                      borderRadius: 100, padding: "5px 14px", color: t.text2, fontSize: 12, whiteSpace: "nowrap",
-                    }}>{selected.size} محدد</span>
                   </div>
+
+                  {selected.size === 0 ? (
+                    <div style={{
+                      border: `1.5px dashed ${t.border2}`, borderRadius: 14,
+                      padding: "20px 16px", textAlign: "center",
+                    }}>
+                      <p style={{ color: t.text3, fontSize: 13, margin: "0 0 10px" }}>لم تختر أي تخصص بعد</p>
+                      <p style={{ color: t.text3, fontSize: 12, margin: 0 }}>استخدم الزر أعلاه لاستخراجها من سيرتك، أو تصفّح المجالات أدناه</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {fields.filter(f => selected.has(String(f.id))).map(f => (
+                        <button
+                          key={f.id}
+                          onClick={() => toggleField(String(f.id))}
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: 6,
+                            padding: "8px 14px 8px 10px", borderRadius: 100,
+                            background: dark ? "#071a07" : "#f0fdf4",
+                            border: `1px solid ${dark ? "#1a3a1a" : "#bbf7d0"}`,
+                            color: dark ? "#4ade80" : "#16a34a",
+                            fontSize: 13, cursor: "pointer", fontFamily: "inherit",
+                            transition: "all 0.12s",
+                          }}
+                        >
+                          <X size={12} strokeWidth={2.5} />
+                          {f.name_ar}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {/* Add custom field */}
-                <div style={{
-                  display: "flex", gap: 8, marginBottom: 14, alignItems: "stretch",
-                }}>
+                {/* ── إضافة مسمى خاص ── */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "stretch" }}>
                   <div style={{
                     flex: 1, display: "flex", alignItems: "center", gap: 10,
                     background: t.surface, border: `1px solid ${t.border2}`,
@@ -454,7 +479,7 @@ export default function CVPrefsPage() {
                     <Sparkles size={14} strokeWidth={1.5} color={dark ? "#a78bfa" : "#7c3aed"} style={{ flexShrink: 0 }} />
                     <input
                       type="text"
-                      placeholder="أضف مسمى وظيفي خاص بك…"
+                      placeholder="أضف مسمى وظيفي غير موجود في القائمة…"
                       value={customName}
                       onChange={e => setCustomName(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter" && !addingCustom) { e.preventDefault(); addCustomField(); } }}
@@ -479,30 +504,83 @@ export default function CVPrefsPage() {
                   </button>
                 </div>
 
-                {/* Chips */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginBottom: 20 }}>
-                  {sortedFiltered.length === 0 && <p style={{ color: t.text3, fontSize: 13 }}>لا توجد نتائج</p>}
-                  {sortedFiltered.map(f => {
-                    const isActive = selected.has(String(f.id));
-                    return (
-                      <button
-                        key={f.id}
-                        onClick={() => toggleField(String(f.id))}
-                        style={{
-                          display: "inline-flex", alignItems: "center", gap: 6,
-                          padding: "8px 16px", borderRadius: 100,
-                          background: isActive ? (dark ? "#071a07" : "#f0fdf4") : t.surface,
-                          border: `1px solid ${isActive ? (dark ? "#2a2a2a" : "#bbf7d0") : t.border}`,
-                          color: isActive ? (dark ? "#e8ffe8" : "#166534") : t.text3,
-                          fontSize: 13, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
-                          transition: "all 0.12s",
-                        }}
-                      >
-                        {isActive && <CheckCircle size={12} strokeWidth={2.5} color={dark ? "#fff" : "#166534"} style={{ flexShrink: 0 }} />}
-                        {f.name_ar}
+                {/* ── استعراض المجالات (غير المختارة) ── */}
+                <div style={{
+                  background: dark ? "#0d0d0d" : "#fafafa",
+                  border: `1px solid ${t.border}`,
+                  borderRadius: 14, padding: "14px", marginBottom: 16,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                    <span style={{ color: t.text2, fontSize: 13, fontWeight: 700 }}>
+                      استعراض المجالات
+                    </span>
+                    <span style={{ color: t.text3, fontSize: 12 }}>
+                      {fields.filter(f => !selected.has(String(f.id))).length} مجال
+                    </span>
+                  </div>
+
+                  {/* Search */}
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    background: t.surface, border: `1px solid ${t.border2}`,
+                    borderRadius: 10, padding: "8px 12px", marginBottom: 12,
+                  }}>
+                    <Search size={13} strokeWidth={1.5} color={t.text3} style={{ flexShrink: 0 }} />
+                    <input
+                      type="text" placeholder="ابحث في المجالات…" value={search}
+                      onChange={e => { setSearch(e.target.value); setShowAllFields(true); }}
+                      style={{ flex: 1, background: "transparent", border: "none", color: t.text, fontSize: 13, outline: "none", fontFamily: "inherit" }}
+                    />
+                    {search && (
+                      <button onClick={() => setSearch("")} style={{ background: "transparent", border: "none", color: t.text3, cursor: "pointer", padding: 2, display: "flex" }}>
+                        <X size={12} strokeWidth={2} />
                       </button>
+                    )}
+                  </div>
+
+                  {/* Unselected chips */}
+                  {(() => {
+                    const unselected = sortedFiltered.filter(f => !selected.has(String(f.id)));
+                    const shown = showAllFields || search ? unselected : unselected.slice(0, 18);
+                    return (
+                      <>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {shown.length === 0 && <p style={{ color: t.text3, fontSize: 13, margin: 0 }}>لا توجد نتائج</p>}
+                          {shown.map(f => (
+                            <button
+                              key={f.id}
+                              onClick={() => toggleField(String(f.id))}
+                              style={{
+                                display: "inline-flex", alignItems: "center", gap: 5,
+                                padding: "7px 14px", borderRadius: 100,
+                                background: t.surface,
+                                border: `1px solid ${t.border}`,
+                                color: t.text2,
+                                fontSize: 13, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                                transition: "all 0.12s",
+                              }}
+                            >
+                              {f.name_ar}
+                            </button>
+                          ))}
+                        </div>
+                        {!showAllFields && !search && unselected.length > 18 && (
+                          <button
+                            onClick={() => setShowAllFields(true)}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 6,
+                              marginTop: 12, background: "transparent", border: "none",
+                              color: dark ? "#a78bfa" : "#7c3aed", fontSize: 13, cursor: "pointer",
+                              fontFamily: "inherit", fontWeight: 600, padding: 0,
+                            }}
+                          >
+                            <Search size={13} />
+                            عرض {unselected.length - 18} مجال إضافي
+                          </button>
+                        )}
+                      </>
                     );
-                  })}
+                  })()}
                 </div>
 
                 {/* برامج التوظيف */}
