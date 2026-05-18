@@ -60,6 +60,11 @@ export async function POST(req: Request) {
   return NextResponse.json({ status: "ok", count: fieldIds.length, titles });
 }
 
+function isArabicTitle(s: string): boolean {
+  const arabicChars = (s.match(/[\u0600-\u06FF]/g) || []).length;
+  return arabicChars >= 2 && !s.includes("{") && !s.includes("[") && !s.includes(":");
+}
+
 export async function GET(req: Request) {
   const token = extractToken(req);
   if (!token) return NextResponse.json({ error: "غير مخوّل" }, { status: 401 });
@@ -75,7 +80,7 @@ export async function GET(req: Request) {
 
   const titles = (data || [])
     .map((r: any) => r.job_fields?.name_ar)
-    .filter(Boolean) as string[];
+    .filter((t: any): t is string => typeof t === "string" && isArabicTitle(t));
 
   return NextResponse.json({ titles });
 }
