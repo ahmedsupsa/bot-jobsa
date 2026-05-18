@@ -360,24 +360,24 @@ function computeLocalScore(
   jobDesc: string,
   jobLevel: JobLevel,
 ): number {
-  if (!profile) return 55; // لا profile → دع Gemini يقرر
+  // بدون profile → دع Gemini يقرر دائماً
+  if (!profile) return 55;
   const haystack = `${jobTitle} ${jobDesc}`.toLowerCase();
   let score = 50;
 
-  // تأثير الخبرة حسب مستوى الوظيفة
+  // تأثير الخبرة — خفيف لأن Gemini هو الحَكَم الأساسي
   const exp = profile.experience_years;
   if (jobLevel === "senior") {
-    if (exp >= 0 && exp < 3) score -= 40;
+    // وظيفة متخصصة بدون أي خبرة → حذف محلي فقط لتوفير API
+    if (exp === 0) score -= 20;
     else if (exp >= 3) score += 10;
   } else if (jobLevel === "mid") {
-    if (exp === 0) score -= 25;
+    // خريج جديد في وظيفة متوسطة → Gemini يقرر
+    if (exp === 0) score -= 10;
     else if (exp >= 2) score += 10;
   } else if (jobLevel === "entry") {
-    score += 15; // وظائف مبتدئين دائماً تستحق المحاولة
+    score += 15;
   }
-
-  // حديث تخرج في وظيفة متخصصة/متوسطة
-  if (profile.is_fresh_graduate && (jobLevel === "senior" || jobLevel === "mid")) score -= 20;
 
   // تطابق المهارات
   const skillHits = profile.skills.filter(s => s.length > 2 && haystack.includes(s.toLowerCase())).length;
@@ -971,8 +971,8 @@ async function runCycle() {
       // ── تقييم محلي سريع بدون Gemini (يحذف 50%+ من استدعاءات AI) ────────────
       const jobLevelLocal = classifyJobLevel(jobTitle, desc);
       const localScore    = computeLocalScore(cvProfile, fieldNames, jobTitle, desc, jobLevelLocal);
-      if (localScore < 38) {
-        details.push({ user: name, job: jobTitle, status: "skipped", reason: `تقييم محلي منخفض (${localScore}/100) — محذوف بدون AI` });
+      if (localScore < 20) {
+        details.push({ user: name, job: jobTitle, status: "skipped", reason: `تقييم محلي منخفض جداً (${localScore}/100) — محذوف بدون AI` });
         continue; // لا استدعاء Gemini على الإطلاق
       }
 
