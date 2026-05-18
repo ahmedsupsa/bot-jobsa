@@ -19,13 +19,10 @@ const SB = {
 // ─── بناء نص منشور الوظيفة ────────────────────────────────────────────────
 
 function buildPostText(job: Record<string, string>): string {
-  const desc = (job.description_ar ?? "").trim();
-  const short = desc.length > 200 ? desc.slice(0, 200) + "..." : desc;
   const lines: string[] = [
     `🚀 <b>وظيفة جديدة — ${job.title_ar}</b>`,
     "",
   ];
-  if (short) lines.push(short, "");
   if (job.application_email) {
     lines.push("📧 <b>البريد الإلكتروني للتقديم:</b>", job.application_email, "");
   }
