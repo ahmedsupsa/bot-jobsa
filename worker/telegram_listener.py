@@ -159,6 +159,20 @@ async def _send_tg(chat_id: str, text: str, disable_preview: bool = False):
         pass
 
 
+# ── فلتر وظائف التمهير والتدريب التعاوني ─────────────────────────────────
+_TAMHEER_KEYWORDS = [
+    "تمهير", "tamheer",
+    "تدريب تعاوني", "التدريب التعاوني", "تعاوني",
+    "cooperative training", "co-op",
+    "تدريب طلاب", "برنامج تدريبي للطلاب",
+    "متدرب", "متدربة",
+]
+
+def _is_tamheer(title: str) -> bool:
+    t = title.lower()
+    return any(kw in t for kw in _TAMHEER_KEYWORDS)
+
+
 # ── معالجة رسالة جديدة ───────────────────────────────────────────────────
 async def process_message(text: str, channel_title: str, channel_id: str, msg_id: int):
     text = text.strip()
@@ -182,7 +196,13 @@ async def process_message(text: str, channel_title: str, channel_id: str, msg_id
 
     saved = 0
     for i, job in enumerate(jobs):
-        if not job.get("title_ar", "").strip():
+        title = job.get("title_ar", "").strip()
+        if not title:
+            continue
+
+        # فلتر تمهير والتدريب التعاوني — لا تُحفظ في DB ولا تُنشر
+        if _is_tamheer(title):
+            logger.info("[TG] 🚫 تمهير/تدريب — تجاهل: %s", title)
             continue
 
         # fallback للإيميل
@@ -195,7 +215,7 @@ async def process_message(text: str, channel_title: str, channel_id: str, msg_id
         job_id = await _save_job(job, job_uid, channel_title)
         if job_id:
             saved += 1
-            logger.info(f"[TG] حُفظت في DB: {job['title_ar']} من {channel_title}")
+            logger.info(f"[TG] حُفظت في DB: {title} من {channel_title}")
 
     if saved:
         logger.info(f"[TG] {saved} وظيفة من {channel_title}")
