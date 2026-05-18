@@ -6,6 +6,7 @@ import { tg } from "@/lib/telegram";
 const pdfParse = require("pdf-parse");
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 async function extractTextFromPdf(buffer: Buffer): Promise<string | null> {
   try {
