@@ -53,14 +53,14 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   function logout() { clearToken(); router.replace("/portal/login"); }
 
   const t = {
-    bg:        dark ? "#0a0a0a" : "#f4f4f5",
+    bg:        dark ? "#0a0a0a" : "#f7f7f8",
     sidebar:   dark ? "#0f0f0f" : "#ffffff",
     border:    dark ? "#1f1f1f" : "#e4e4e7",
     border2:   dark ? "#2a2a2a" : "#d4d4d8",
     text:      dark ? "#ffffff" : "#09090b",
-    text3:     dark ? "#666"    : "#a1a1aa",
+    text3:     dark ? "#666"    : "#71717a",
     navActive: dark ? "#1e1e1e" : "#f0f0f0",
-    main:      dark ? "#0a0a0a" : "#f4f4f5",
+    main:      dark ? "#0a0a0a" : "#ffffff",
     // floating nav colors
     navBg:     dark ? "rgba(18,18,18,0.96)"  : "rgba(255,255,255,0.96)",
     navShadow: dark
