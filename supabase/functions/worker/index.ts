@@ -187,39 +187,37 @@ function detectJobGender(job: Record<string, unknown>): GenderCheckResult {
   return { jobGender: "neutral", confidence: "none", reason: "الوظيفة محايدة أو غير محدد الجنس" };
 }
 
-function jobMatchesUser(job: Record<string, unknown>, fieldNames: string[]): boolean {
-  if (!fieldNames.length) return false;
+function jobMatchesUser(
+  job: Record<string, unknown>,
+  fieldNames: string[],
+  cvProfile?: CvProfile | null,
+): boolean {
+  // بناء قائمة الكلمات: تفضيلات المستخدم + تخصص السيرة الذاتية
+  const keywords = new Set<string>();
+  for (const f of fieldNames) if (f.trim()) keywords.add(f.trim().toLowerCase());
 
-  const spec    = String(job.specializations ?? "").toLowerCase().trim();
-  const titleAr = String(job.title_ar ?? "").toLowerCase();
-  const titleEn = String(job.title_en ?? "").toLowerCase();
-  const descAr  = String(job.description_ar ?? "").toLowerCase();
-  const descEn  = String(job.description_en ?? "").toLowerCase();
-
-  // 1. إذا كان حقل التخصصات معبأً — نطابق فقط معه ونرفض إذا لم يتطابق
-  if (spec) {
-    for (const name of fieldNames) {
-      const n = (name ?? "").trim().toLowerCase();
-      if (n && spec.includes(n)) return true;
-    }
-    return false; // الوظيفة لها تصنيف واضح لا يناسب المستخدم
+  // إضافة كلمات من تخصص السيرة الذاتية
+  if (cvProfile?.specialization) {
+    keywords.add(cvProfile.specialization.toLowerCase());
+    for (const w of cvProfile.specialization.split(/[\s\-،,\/]+/))
+      if (w.trim().length > 2) keywords.add(w.trim().toLowerCase());
+  }
+  if (cvProfile?.degree) {
+    for (const w of cvProfile.degree.split(/[\s\-،,\/]+/))
+      if (w.trim().length > 3) keywords.add(w.trim().toLowerCase());
   }
 
-  // 2. لا يوجد تخصص — نطابق مع العنوان فقط (أكثر موثوقية من الوصف)
-  const titleBlob = `${titleAr} ${titleEn}`;
-  for (const name of fieldNames) {
-    const n = (name ?? "").trim().toLowerCase();
-    if (n && titleBlob.includes(n)) return true;
-  }
+  // لا تفضيلات ولا سيرة ذاتية → قدّم على كل الوظائف
+  if (!keywords.size) return true;
 
-  // 3. ملاذ أخير: الوصف مع معايير صارمة (كلمات 6+ أحرف، 3+ تطابقات)
-  const descBlob = `${descAr} ${descEn}`;
-  const words = new Set<string>();
-  for (const name of fieldNames)
-    for (const w of (name ?? "").toLowerCase().split(/[\s\-/_,()]+/))
-      if (w.trim().length >= 6) words.add(w.trim());
-  if (words.size < 2) return false;
-  return [...words].filter((w) => descBlob.includes(w)).length >= 3;
+  // مسح الوظيفة كاملاً (تخصص + عنوان + وصف)
+  const blob = [
+    job.specializations, job.title_ar, job.title_en,
+    job.description_ar,  job.description_en,
+  ].map(v => String(v ?? "")).join(" ").toLowerCase();
+
+  // أي كلمة واحدة تتطابق → يُقدَّم
+  return [...keywords].some(k => k && blob.includes(k));
 }
 
 // ─── CV Download ──────────────────────────────────────────────────────────────
@@ -690,13 +688,14 @@ async function analyzeJobFit(
   };
   if (!GEMINI_KEY) return fallback;
 
-  const scoreThreshold = jobLevel === "entry" ? 55 : jobLevel === "junior" ? 60 : 70;
+  // عتبة موحّدة منخفضة — لا نمنع المتقدم بسبب الخبرة
+  const scoreThreshold = 42;
 
   const levelRules: Record<string, string> = {
-    entry:  "وظيفة مبتدئين: لا ترفض بسبب نقص الخبرة. قيّم بالمؤهل والمهارات. apply إذا score≥55.",
-    junior: "وظيفة junior: اسمح إذا الخبرة المطلوبة <2 سنة. امنع إذا المطلوب 2+ سنة والمرشح حديث تخرج.",
-    mid:    "وظيفة متوسطة: تطابق واضح في المهارات مطلوب. امنع إذا المطلوب 2+ سنة والمرشح بدون خبرة.",
-    senior: "وظيفة متخصصة: امنع إذا المطلوب 2+ سنة والمرشح حديث تخرج أو junior.",
+    entry:  "وظيفة مبتدئين: قيّم بالمؤهل والتخصص. لا ترفض بسبب نقص الخبرة.",
+    junior: "قيّم بالتخصص الجامعي والمهارات. لا تمنع بسبب سنوات الخبرة.",
+    mid:    "قيّم بالتخصص والمهارات. لا تمنع بسبب سنوات الخبرة — المتقدم يريد المحاولة.",
+    senior: "قيّم بالتخصص. لا تمنع فقط بسبب الخبرة — قدّر التطابق بالمجال والمؤهل.",
   };
 
   // الملف المنظّم → prompt أقصر بكثير (يوفر 60-70% من الـ tokens)
@@ -743,27 +742,10 @@ async function analyzeJobFit(
       const parsed = JSON.parse(jsonMatch[0]) as Partial<JobFitResult> & { cv_experience_years?: number; job_required_years?: number };
       const score   = Math.max(0, Math.min(100, Number(parsed.score ?? 0)));
       const missing = Array.isArray(parsed.missing) ? parsed.missing.filter(Boolean).slice(0, 4) : [];
-      const aiCvYears  = typeof parsed.cv_experience_years  === "number" ? parsed.cv_experience_years  : -1;
-      const aiJobYears = typeof parsed.job_required_years   === "number" ? parsed.job_required_years   : -1;
 
-      // حاجز الخبرة — يُفعَّل فقط لـ mid وsenior
-      let decision: "apply" | "skip" = (score >= scoreThreshold && missing.length === 0) ? "apply" : "skip";
-
-      if (jobLevel === "mid" || jobLevel === "senior") {
-        if (aiCvYears >= 0 && aiJobYears > 0 && aiCvYears < aiJobYears) {
-          decision = "skip";
-          const expMsg = `مطلوب ${aiJobYears}+ سنة — لديك ${aiCvYears} سنة`;
-          if (!missing.includes(expMsg)) missing.unshift(expMsg);
-        }
-      } else if (jobLevel === "junior") {
-        // junior: فقط امنع إذا المطلوب سنتان أو أكثر والمرشح صفر خبرة
-        if (aiCvYears === 0 && aiJobYears >= 2) {
-          decision = "skip";
-          const expMsg = `مطلوب ${aiJobYears}+ سنة — لديك ${aiCvYears} سنة`;
-          if (!missing.includes(expMsg)) missing.unshift(expMsg);
-        }
-      }
-      // entry: لا حاجز خبرة — الـ AI يقرر بناءً على المؤهل والمهارات فقط
+      // القرار بناءً على الـ score فقط — لا حواجز خبرة
+      // المستخدم يريد التقديم على كل الوظائف المناسبة بغض النظر عن سنوات الخبرة
+      const decision: "apply" | "skip" = score >= scoreThreshold ? "apply" : "skip";
 
       const matched = Array.isArray((parsed as any).matched) ? (parsed as any).matched.filter(Boolean).slice(0, 6) : [];
       return {
@@ -924,8 +906,9 @@ async function runCycle() {
         continue;
       }
 
-      if (!jobMatchesUser(job, fieldNames)) {
-        details.push({ user: name, job: jobTitle, status: "skipped", reason: "لا يطابق التفضيلات" });
+      // مطابقة مبنية على تخصص السيرة الذاتية + تفضيلات المستخدم (بدون قيود كلمات صارمة)
+      if (!jobMatchesUser(job, fieldNames, cvProfile)) {
+        details.push({ user: name, job: jobTitle, status: "skipped", reason: "لا يطابق تخصص السيرة الذاتية" });
         continue;
       }
 
@@ -966,14 +949,6 @@ async function runCycle() {
           });
           continue;
         }
-      }
-
-      // ── تقييم محلي سريع بدون Gemini (يحذف 50%+ من استدعاءات AI) ────────────
-      const jobLevelLocal = classifyJobLevel(jobTitle, desc);
-      const localScore    = computeLocalScore(cvProfile, fieldNames, jobTitle, desc, jobLevelLocal);
-      if (localScore < 20) {
-        details.push({ user: name, job: jobTitle, status: "skipped", reason: `تقييم محلي منخفض جداً (${localScore}/100) — محذوف بدون AI` });
-        continue; // لا استدعاء Gemini على الإطلاق
       }
 
       // ── تحليل AI لمدى ملاءمة الوظيفة (prompt مختصر بالملف المنظّم) ─────────
