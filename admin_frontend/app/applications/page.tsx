@@ -7,7 +7,7 @@ import Link from "next/link";
 import {
   Send, XCircle, AlertCircle, RefreshCw, Building2,
   Clock, Filter, ChevronRight, Loader2,
-  CheckCircle2, BrainCircuit, ListFilter, Calendar, Mail,
+  CheckCircle2, BrainCircuit, ListFilter, Calendar, Mail, RotateCcw,
 } from "lucide-react";
 
 type Application = {
@@ -68,6 +68,9 @@ export default function ApplicationsPage() {
   const [dateFilter, setDateFilter] = useState<"today" | "week" | "all">("today");
   const [reportSending, setReportSending] = useState(false);
   const [reportMsg, setReportMsg]         = useState<{ ok: boolean; text: string } | null>(null);
+  const [retrying, setRetrying]           = useState(false);
+  const [retryMsg, setRetryMsg]           = useState<{ ok: boolean; text: string } | null>(null);
+  const [retryUserId, setRetryUserId]     = useState<string | null>(null);
 
   const sendReport = async () => {
     setReportSending(true);
@@ -85,6 +88,28 @@ export default function ApplicationsPage() {
     } finally {
       setReportSending(false);
     }
+  };
+
+  const retrySkipped = async (userId?: string) => {
+    const label = userId ? "لهذا المستخدم" : "لجميع المستخدمين";
+    if (!window.confirm(`سيتم حذف سجلات التجاوز ${label} ليعيد الـ Worker التقديم عليها في الدورة القادمة. تأكيد؟`)) return;
+    setRetrying(true); setRetryMsg(null);
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/applications`, {
+        method: "DELETE", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "retry_skipped", ...(userId ? { user_id: userId } : {}) }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "فشل");
+      setRetryMsg({ ok: true, text: j.deleted > 0
+        ? `✅ تم حذف ${j.deleted} سجل متجاوز — سيعيد الـ Worker التقديم في الدورة القادمة (حتى 30 دقيقة)`
+        : "لا توجد سجلات متجاوزة قابلة لإعادة التقديم"
+      });
+      await load();
+    } catch (e: any) {
+      setRetryMsg({ ok: false, text: String(e) });
+    } finally { setRetrying(false); }
   };
 
   const load = async () => {
@@ -136,7 +161,12 @@ export default function ApplicationsPage() {
               جميع قرارات البوت — التقديم والرفض — مع الأسباب الحقيقية
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={() => retrySkipped()} disabled={retrying}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white rounded-lg transition font-medium">
+              {retrying ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+              إعادة تقديم المتجاوزة
+            </button>
             <button onClick={sendReport} disabled={reportSending}
               className="flex items-center gap-2 px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-lg transition">
               {reportSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
@@ -153,6 +183,13 @@ export default function ApplicationsPage() {
         {reportMsg && (
           <div className={`px-4 py-3 rounded-xl text-sm font-medium ${reportMsg.ok ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800" : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800"}`}>
             {reportMsg.text}
+          </div>
+        )}
+
+        {/* Retry feedback */}
+        {retryMsg && (
+          <div className={`px-4 py-3 rounded-xl text-sm font-medium ${retryMsg.ok ? "bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800" : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800"}`}>
+            {retryMsg.text}
           </div>
         )}
 
@@ -241,6 +278,17 @@ export default function ApplicationsPage() {
                             {app.user_name}
                           </span>
                         </Link>
+                        {app.status === "skipped" && app.application_status !== "invalid" && (
+                          <button
+                            onClick={() => retrySkipped(app.user_id)}
+                            disabled={retrying}
+                            title="إعادة التقديم لهذا المستخدم"
+                            className="mt-1 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 hover:underline disabled:opacity-50"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            إعادة التقديم
+                          </button>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-gray-700 dark:text-gray-300 max-w-[180px]">
                         <span className="truncate block">{app.job_title_display}</span>

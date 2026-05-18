@@ -78,3 +78,31 @@ export async function GET(request: Request) {
 
   return NextResponse.json({ ok: true, applications: enriched, stats });
 }
+
+export async function DELETE(req: Request) {
+  const denied = enforcePermission("jobs");
+  if (denied) return denied;
+
+  const body = await req.json().catch(() => ({}));
+  const { mode, user_id } = body;
+
+  if (mode !== "retry_skipped") {
+    return NextResponse.json({ ok: false, error: "mode غير معروف" }, { status: 400 });
+  }
+
+  // حذف سجلات الـ skipped (غير المحظورة بالجنس) لإعادة معالجتها من الـ Worker
+  let query = supabase
+    .from("applications")
+    .delete({ count: "exact" })
+    .eq("status", "skipped")
+    .neq("application_status", "invalid"); // نبقي حظر الجنس والحظر الصريح
+
+  if (user_id) {
+    query = (query as any).eq("user_id", user_id);
+  }
+
+  const { error, count } = await (query as any);
+  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+
+  return NextResponse.json({ ok: true, deleted: count || 0 });
+}
