@@ -107,7 +107,10 @@ export default function LandingPage() {
             <div style={{ width: 34, height: 34, borderRadius: 9, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: 5, flexShrink: 0 }}>
               <Image src="/logo-transparent.png" alt="Jobbots" width={24} height={24} style={{ display: "block" }} />
             </div>
-            <span style={s.logoText}>Jobbots</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <span style={{ fontSize: 11, color: "var(--text3)", fontWeight: 500, lineHeight: 1 }}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
+              <span style={s.logoText}>Jobbots</span>
+            </div>
           </div>
           <div style={s.navLinks} className="landing-nav-links">
             <Link href="/store" style={{ ...s.navBtn, background: "transparent", color: "var(--text2)", border: "1px solid var(--border2)" }} className="nav-secondary">
@@ -263,26 +266,50 @@ export default function LandingPage() {
       {/* ── FOOTER ── */}
       <footer style={s.footer}>
         <div style={s.footerInner}>
-          <div style={s.logo}>
-            <div style={{ width: 28, height: 28, borderRadius: 7, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: 4, flexShrink: 0 }}>
-              <Image src="/logo-transparent.png" alt="Jobbots" width={20} height={20} style={{ display: "block" }} />
+          {/* العمود الأول — الشعار والوصف */}
+          <div style={s.footerBrand}>
+            <div style={s.logo}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: 5, flexShrink: 0 }}>
+                <Image src="/logo-transparent.png" alt="Jobbots" width={22} height={22} style={{ display: "block" }} />
+              </div>
+              <span style={{ ...s.logoText, fontSize: 17 }}>Jobbots</span>
             </div>
-            <span style={{ ...s.logoText, fontSize: 16 }}>Jobbots</span>
+            <p style={s.footerTagline}>بوت التقديم على الوظائف بالذكاء الاصطناعي — يقدّم عنك تلقائياً كل 30 دقيقة.</p>
+            <div style={s.footerSocial}>
+              <a href="https://t.me/jobbotssa" target="_blank" rel="noopener noreferrer" style={s.socialBtn} aria-label="Telegram">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.19 13.9l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.958.659z"/></svg>
+              </a>
+              <a href="https://twitter.com/jobbotssa" target="_blank" rel="noopener noreferrer" style={s.socialBtn} aria-label="Twitter">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+              </a>
+            </div>
           </div>
-          <div style={s.footerLinks}>
-            <Link href="/store" style={s.footerLink}>المتجر</Link>
-            <span style={{ color: "var(--text4)" }}>·</span>
-            <Link href="/wazaif" style={s.footerLink}>الوظائف</Link>
-            <span style={{ color: "var(--text4)" }}>·</span>
-            <Link href="/daleel" style={s.footerLink}>الأدلة</Link>
-            <span style={{ color: "var(--text4)" }}>·</span>
-            <Link href="/privacy" style={s.footerLink}>سياسة الخصوصية</Link>
-            <span style={{ color: "var(--text4)" }}>·</span>
-            <Link href="/terms" style={s.footerLink}>الشروط والأحكام</Link>
-            <span style={{ color: "var(--text4)" }}>·</span>
-            <Link href="/portal/login" style={s.footerLink}>دخول المشترك</Link>
+
+          {/* أعمدة الروابط */}
+          <div style={s.footerCols}>
+            <div style={s.footerCol}>
+              <p style={s.footerColTitle}>المنتج</p>
+              <Link href="/store" style={s.footerColLink}>المتجر</Link>
+              <Link href="/wazaif" style={s.footerColLink}>الوظائف</Link>
+              <Link href="/daleel" style={s.footerColLink}>الأدلة</Link>
+            </div>
+            <div style={s.footerCol}>
+              <p style={s.footerColTitle}>الحساب</p>
+              <Link href="/portal/login" style={s.footerColLink}>دخول المشترك</Link>
+              <Link href="/?scroll=pricing" style={s.footerColLink}>الباقات</Link>
+            </div>
+            <div style={s.footerCol}>
+              <p style={s.footerColTitle}>قانوني</p>
+              <Link href="/privacy" style={s.footerColLink}>سياسة الخصوصية</Link>
+              <Link href="/terms" style={s.footerColLink}>الشروط والأحكام</Link>
+            </div>
           </div>
-          <div style={s.footerCopy}>© 2026 Jobbots. جميع الحقوق محفوظة.</div>
+        </div>
+
+        {/* شريط الحقوق */}
+        <div style={s.footerBottom}>
+          <span style={s.footerCopy}>© 2026 Jobbots. جميع الحقوق محفوظة.</span>
+          <span style={s.footerCopy}>صُنع بالسعودية 🇸🇦</span>
         </div>
       </footer>
 
@@ -292,6 +319,13 @@ export default function LandingPage() {
           .hero-ctas { flex-direction: column; align-items: stretch !important; }
           .hero-ctas a { text-align: center; justify-content: center; }
         }
+        @media (max-width: 640px) {
+          .footer-inner { flex-direction: column !important; gap: 32px !important; }
+          .footer-cols { gap: 24px !important; }
+          .footer-bottom { flex-direction: column !important; align-items: flex-start !important; gap: 4px !important; }
+        }
+        .footer-col-link:hover { color: var(--text) !important; }
+        .social-btn:hover { border-color: var(--accent) !important; color: var(--accent) !important; }
         .__company-card {
           transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
@@ -403,9 +437,16 @@ const s: Record<string, React.CSSProperties> = {
   companyName: { fontSize: 12, fontWeight: 600, color: "var(--text3)", textAlign: "center" as const },
 
   /* FOOTER */
-  footer: { borderTop: "1px solid var(--border)", padding: "28px 20px" },
-  footerInner: { maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 },
-  footerLinks: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" },
-  footerLink: { color: "var(--text2)", fontSize: 13 },
-  footerCopy: { color: "var(--text3)", fontSize: 13 },
+  footer: { borderTop: "1px solid var(--border)", padding: "60px 20px 28px", background: "var(--surface)" },
+  footerInner: { maxWidth: 1100, margin: "0 auto", display: "flex", justifyContent: "space-between", gap: 48, flexWrap: "wrap" as const, paddingBottom: 48, borderBottom: "1px solid var(--border)" },
+  footerBrand: { display: "flex", flexDirection: "column" as const, gap: 16, maxWidth: 280 },
+  footerTagline: { fontSize: 13, color: "var(--text3)", lineHeight: 1.8, margin: 0 },
+  footerSocial: { display: "flex", gap: 8 },
+  socialBtn: { width: 34, height: 34, borderRadius: 8, border: "1px solid var(--border2)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text3)", background: "var(--bg)", transition: "all 0.15s" },
+  footerCols: { display: "flex", gap: 48, flexWrap: "wrap" as const },
+  footerCol: { display: "flex", flexDirection: "column" as const, gap: 10, minWidth: 100 },
+  footerColTitle: { fontSize: 12, fontWeight: 700, color: "var(--text)", textTransform: "uppercase" as const, letterSpacing: "0.06em", margin: "0 0 4px" },
+  footerColLink: { fontSize: 13, color: "var(--text3)" },
+  footerBottom: { maxWidth: 1100, margin: "28px auto 0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" as const, gap: 8 },
+  footerCopy: { color: "var(--text4)", fontSize: 12 },
 };
