@@ -16,8 +16,26 @@ async function getUser(req: Request) {
   const payload = await verifyToken(token);
   if (!payload) return null;
   const supabase = freshClient();
-  const { data } = await supabase.from("users").select("id, email").eq("id", payload.user_id).maybeSingle();
+  const { data } = await supabase
+    .from("users")
+    .select("id, email")
+    .eq("id", payload.user_id)
+    .maybeSingle();
   return data;
+}
+
+async function getUserEmails(supabase: ReturnType<typeof freshClient>, userId: string, primaryEmail: string | null): Promise<string[]> {
+  const emails = new Set<string>();
+  if (primaryEmail) emails.add(primaryEmail.toLowerCase().trim());
+
+  const { data: settings } = await supabase
+    .from("user_settings")
+    .select("email")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (settings?.email) emails.add((settings.email as string).toLowerCase().trim());
+
+  return [...emails].filter(Boolean);
 }
 
 export async function GET(req: Request) {
@@ -25,10 +43,16 @@ export async function GET(req: Request) {
   if (!user) return NextResponse.json({ ok: false, error: "غير مخوّل" }, { status: 401 });
   const supabase = freshClient();
 
+  const emails = await getUserEmails(supabase, user.id, user.email);
+
+  if (emails.length === 0) {
+    return NextResponse.json({ ok: true, orders: [] });
+  }
+
   const { data, error } = await supabase
     .from("store_orders")
     .select("id, status, amount, paid_at, created_at, payment_gateway, refund_status, refund_reason, refund_admin_notes, refund_requested_at, refund_processed_at, store_products(name, duration_days)")
-    .eq("user_email", (user.email || "").toLowerCase())
+    .in("user_email", emails)
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
@@ -56,7 +80,9 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   if (!order) return NextResponse.json({ ok: false, error: "الطلب غير موجود" }, { status: 404 });
-  if ((order.user_email || "").toLowerCase() !== (user.email || "").toLowerCase()) {
+
+  const emails = await getUserEmails(supabase, user.id, user.email);
+  if (!emails.includes((order.user_email || "").toLowerCase())) {
     return NextResponse.json({ ok: false, error: "الطلب لا يخصك" }, { status: 403 });
   }
   if (order.status !== "paid") {
