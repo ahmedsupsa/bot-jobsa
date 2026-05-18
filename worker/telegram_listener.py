@@ -209,14 +209,30 @@ async def _post_job_to_channel(job_id: str, job: dict) -> bool:
         return False
 
 
-# ── scheduler: ينشر 10 وظائف غير منشورة كل 15 دقيقة ─────────────────────
-POST_BATCH    = 10
-POST_INTERVAL = 15 * 60  # 15 دقيقة بالثواني
+# ── scheduler: وظيفة واحدة كل 10 دقائق — بحد أقصى 30 وظيفة يومياً ───────
+POST_INTERVAL   = 10 * 60   # 10 دقائق بالثواني
+DAILY_POST_LIMIT = 30        # أقصى عدد منشورات في اليوم
 
 async def _post_pending_loop():
-    """يعمل في الخلفية — ينشر 10 وظائف غير منشورة كل 15 دقيقة."""
+    """ينشر وظيفة واحدة كل 10 دقائق، ويتوقف عند 30 وظيفة يومياً."""
     await asyncio.sleep(30)  # انتظر قليلاً بعد بدء التشغيل
+
+    posted_today   = 0
+    today_date     = datetime.now(tz.utc).date()
+
     while True:
+        # إعادة العداد إذا تغيّر اليوم
+        current_date = datetime.now(tz.utc).date()
+        if current_date != today_date:
+            posted_today = 0
+            today_date   = current_date
+            logger.info("[TG-Post] 📅 يوم جديد — تمت إعادة عداد النشر")
+
+        if posted_today >= DAILY_POST_LIMIT:
+            logger.info("[TG-Post] 🔴 وصلنا الحد اليومي (%d) — ننتظر يوماً جديداً", DAILY_POST_LIMIT)
+            await asyncio.sleep(POST_INTERVAL)
+            continue
+
         try:
             async with httpx.AsyncClient(timeout=15) as client:
                 r = await client.get(
@@ -226,7 +242,7 @@ async def _post_pending_loop():
                         "is_active":     "eq.true",
                         "select":        "id,title_ar,description_ar,application_email",
                         "order":         "created_at.asc",
-                        "limit":         str(POST_BATCH),
+                        "limit":         "1",
                     },
                     headers=_SB_HEADERS(),
                 )
@@ -236,10 +252,11 @@ async def _post_pending_loop():
             jobs = []
 
         if jobs:
-            logger.info("[TG-Post] 📤 نشر %d وظيفة من %d منتظرة", len(jobs), len(jobs))
-            for job in jobs:
-                await _post_job_to_channel(job["id"], job)
-                await asyncio.sleep(2)  # تجنب flood limit
+            job = jobs[0]
+            ok = await _post_job_to_channel(job["id"], job)
+            if ok:
+                posted_today += 1
+                logger.info("[TG-Post] ✅ %d/%d اليوم — %s", posted_today, DAILY_POST_LIMIT, job.get("title_ar"))
         else:
             logger.info("[TG-Post] ✅ لا توجد وظائف منتظرة للنشر")
 
