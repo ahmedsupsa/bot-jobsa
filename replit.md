@@ -7,6 +7,7 @@ A job application automation platform. Users register via activation codes or em
 - **`admin_frontend/`** — Next.js 14 admin dashboard + user portal (port 5000), deployed on Vercel
 - **`supabase/functions/worker/`** — Auto-Apply Worker as a Supabase Edge Function (Deno/TypeScript)
 - **`worker/main.py`** — Python worker (development/testing only, not used in production)
+- **`worker/telegram_listener.py`** — Telethon personal account listener (monitors Telegram channels)
 - **`database/`** — Supabase database schemas and utilities
 - **`scripts/`** — Admin utility scripts
 
@@ -18,13 +19,43 @@ Vercel (Next.js frontend)
 Supabase (database + storage + edge functions)
     → supabase/functions/worker  ← تشغيل تلقائي كل 30 دقيقة عبر pg_cron
     → Resend (إرسال إيميلات)
-    → Gemini AI (رسائل التغطية)
+    → Gemini AI (رسائل التغطية + استخراج الوظائف)
+
+Replit (Python Worker — يعمل دائماً)
+    → telegram_listener.py  ← Telethon يراقب قنوات Telegram الشخصية
+    → main.py               ← جلب وظائف تويتر + استدعاء Edge Function
 ```
 
-## Workflows (Replit — للتطوير فقط)
+## Workflows (Replit)
 
 - **Start application** — Next.js dev server (`cd admin_frontend && npm run dev`) on port 5000
-- **Auto Apply Worker** — Python worker for local testing only (not production)
+- **Auto Apply Worker** — Python worker: يشغّل `telegram_listener.py` (Telethon) + جلب وظائف تويتر + استدعاء Supabase Edge Function كل 30 دقيقة
+
+## Telegram Integration
+
+### Bot (@jobbotssa_bot)
+- Webhook على `/api/telegram/webhook` — يستقبل رسائل القنوات ويستخرج الوظائف عبر Gemini
+- ينشر الوظائف تلقائياً في قناة الوظائف ويحفظ `tg_message_id`
+
+### Telethon Personal Listener (`worker/telegram_listener.py`)
+- يستخدم `TELEGRAM_SESSION_STRING` لحساب +973 33926430
+- عند الاتصال: يجلب آخر 10 أيام من رسائل كل قناة مشترك فيها (حتى 200 رسالة/قناة)
+- يراقب الرسائل الجديدة في الوقت الفعلي
+- يستخرج الوظائف عبر Gemini ويحفظها في `admin_jobs` مع `tg_message_id`
+
+### صفحة إدارة القناة (`/admin/telegram-channel`)
+- إحصائيات: عدد المشتركين، إجمالي المنشورات، إجمالي المشاهدات
+- إرسال منشور مخصص للقناة (يُحفظ في DB ويظهر في القائمة)
+- قائمة بآخر 20 منشور مع:
+  - **فتح** في Telegram مباشرة
+  - **تعديل** النص (يتعدّل لجميع المشتركين عبر `editMessageText`)
+  - **حذف** من القناة (يُحذف لجميع المشتركين نهائياً)
+
+### DB Columns (admin_jobs)
+```sql
+ALTER TABLE admin_jobs ADD COLUMN IF NOT EXISTS tg_message_id bigint;
+ALTER TABLE admin_jobs ADD COLUMN IF NOT EXISTS tg_views integer DEFAULT 0;
+```
 
 ## Deploying the Edge Function
 
@@ -69,6 +100,12 @@ select cron.schedule(
 - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` — VAPID public key for push notifications
 - `VAPID_PRIVATE_KEY` — VAPID private key for push notifications
 - `VAPID_EMAIL` — VAPID contact email (default: mailto:admin@jobbots.app)
+- `TELEGRAM_BOT_TOKEN` — Bot token (@jobbotssa_bot)
+- `TELEGRAM_JOB_CHANNEL_ID` — Job channel ID (e.g. -1003049097618)
+- `TELEGRAM_ADMIN_CHAT_ID` — Admin chat ID for notifications
+- `TELEGRAM_API_ID` — Telethon API ID
+- `TELEGRAM_API_HASH` — Telethon API Hash
+- `TELEGRAM_SESSION_STRING` — Telethon session string (generated once)
 
 ### Edge Function env vars (Supabase Dashboard → Edge Functions → Secrets)
 
@@ -112,3 +149,20 @@ Admin → Store → tab **«أكواد الخصم»** to create/manage codes.
 
 Tables: `users`, `admin_jobs`, `applications`, `job_fields`, `user_settings`, `user_cvs`, `user_job_preferences`, `worker_logs`, `push_subscriptions`, `store_orders`, `store_products`, `activation_codes`, `affiliates`, `affiliate_referrals`
 Storage bucket: `cvs` — stores user CV files
+
+## تحديثات اليوم — 18 مايو 2026
+
+### Telegram Channel Admin Page
+- صفحة جديدة `/admin/telegram-channel` في لوحة التحكم
+- إحصائيات القناة: المشتركون، المنشورات، المشاهدات
+- إرسال منشورات مخصصة مع حفظها في DB
+- تعديل أي منشور (يتعدّل لجميع المشتركين فوراً عبر `editMessageText`)
+- حذف المنشورات من القناة لجميع المستخدمين نهائياً
+
+### Historical Telegram Fetch
+- عند كل إعادة تشغيل للـ Worker، يجلب آخر 10 أيام من رسائل كل قناة
+- الوظائف المكررة محمية بـ `tweet_uid`
+
+### tg_message_id Tracking
+- كل وظيفة تُنشر في القناة (يدوياً أو بالبوت) يُحفظ معها `tg_message_id`
+- يتيح التعديل والحذف والربط المباشر بالمنشور في Telegram
