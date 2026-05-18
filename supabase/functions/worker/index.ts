@@ -899,11 +899,16 @@ async function runCycle() {
         continue;
       }
 
-      // فلتر وظائف التدريب التعاوني — مخصصة لطلاب الجامعات وليست وظائف حقيقية
-      const TRAINING_KEYWORDS = ["تدريب تعاوني", "cooperative training", "تدريب طلاب", "برنامج تدريبي للطلاب", "internship for students"];
+      // فلتر وظائف التمهير والتدريب التعاوني — ليست وظائف توظيف حقيقية
+      const TRAINING_KEYWORDS = [
+        "تمهير", "tamheer",
+        "تدريب تعاوني", "cooperative training",
+        "تدريب طلاب", "برنامج تدريبي للطلاب",
+        "internship for students",
+      ];
       const jobBlob = `${jobTitle} ${desc}`.toLowerCase();
       if (TRAINING_KEYWORDS.some(kw => jobBlob.includes(kw.toLowerCase()))) {
-        details.push({ user: name, job: jobTitle, status: "skipped", reason: "وظيفة تدريب تعاوني — مخصصة لطلاب الجامعات" });
+        details.push({ user: name, job: jobTitle, status: "skipped", reason: "وظيفة تمهير/تدريب تعاوني — محذوفة تلقائياً" });
         continue;
       }
 
