@@ -1175,7 +1175,23 @@ async def _run_job_fetcher() -> None:
         logger.error("خطأ في جالب الوظائف: %s", e)
 
 
+async def _run_telegram_listener() -> None:
+    """يشغّل مستمع Telegram في الخلفية — لا يوقف بقية الـ Worker"""
+    try:
+        from telegram_listener import run_listener
+        await run_listener()
+    except Exception as e:
+        logger.error("[TG-Listener] توقف بخطأ: %s", e)
+
+
 async def main() -> None:
+    # ابدأ مستمع Telegram في الخلفية (إن كانت الإعدادات موجودة)
+    if os.getenv("TELEGRAM_SESSION_STRING") and os.getenv("TELEGRAM_API_ID"):
+        logger.info("📡 بدء مستمع Telegram الشخصي...")
+        asyncio.create_task(_run_telegram_listener())
+    else:
+        logger.info("📡 مستمع Telegram متوقف (TELEGRAM_SESSION_STRING غير مضبوط)")
+
     if os.getenv("DISABLE_PYTHON_WORKER", "false").lower() in ("true", "1", "yes"):
         logger.info("⏸️  Python worker موقوف — الـ Edge Function في Supabase هي المسؤولة عن الإرسال")
         logger.info("🐦 جالب الوظائف من تويتر نشط — يعمل كل %d ساعة", JOB_FETCH_INTERVAL // 3600)

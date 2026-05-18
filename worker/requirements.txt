@@ -3,3 +3,4 @@ python-dotenv>=1.0.0
 cryptography>=42.0.0
 feedparser>=6.0.0
 pdfplumber>=0.10.0
+telethon>=1.36.0
