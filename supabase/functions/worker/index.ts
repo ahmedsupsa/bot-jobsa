@@ -200,8 +200,8 @@ function jobMatchesUser(
       if (w.trim().length > 3) keywords.add(w.trim().toLowerCase());
   }
 
-  // لا تفضيلات ولا سيرة ذاتية → قدّم على كل الوظائف
-  if (!keywords.size) return true;
+  // لا تفضيلات ولا cv_profile → لا يمكن تحديد التخصص، لا تقدّم عشوائياً
+  if (!keywords.size) return false;
 
   // مسح الوظيفة كاملاً (تخصص + عنوان + وصف)
   const blob = [
@@ -857,6 +857,17 @@ async function runCycle() {
     const lang      = String(settings.application_language ?? "ar");
     // حد اليوم (10) مع حد الدورة الواحدة (MAX_PER_CYCLE) لضمان العدالة بين المستخدمين
     const remaining = Math.min(MAX_PER_CYCLE, 10 - countToday);
+    // إذا ما في تفضيلات ولا cv_profile → لا يمكن تحديد التخصص → تخطّى
+    const hasPrefs   = fieldNames.length > 0;
+    const hasProfile = !!(cvProfile?.specialization || cvProfile?.degree || cvProfile?.major);
+    if (!hasPrefs && !hasProfile) {
+      details.push({
+        user: name, job: "—", status: "skipped",
+        reason: "لا توجد تفضيلات وظيفية ولا ملف سيرة ذاتية محلَّل — يرجى إضافة التفضيلات أو رفع السيرة الذاتية",
+      });
+      continue;
+    }
+
     let sent = 0;
 
     // جلب جميع تقديمات المستخدم في آخر 30 يوم دفعةً واحدة (بدلاً من استعلام لكل وظيفة)
