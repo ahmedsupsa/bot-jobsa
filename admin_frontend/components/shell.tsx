@@ -7,6 +7,7 @@ import {
   LayoutDashboard, Users, Key, BriefcaseBusiness, Bell, LogOut,
   ShoppingBag, TrendingUp, MessageCircle, MailCheck, ShieldCheck, Send,
   Sun, Moon, Contact, MessagesSquare, Activity, BrainCircuit, Radio,
+  ChevronDown,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "@/contexts/theme-context";
@@ -29,56 +30,73 @@ type NavLink = {
 };
 
 type NavGroup = {
+  id: string;
   title: string;
   links: NavLink[];
 };
 
 const groups: NavGroup[] = [
   {
+    id: "dashboard",
     title: "لوحة التحكم",
     links: [
-      { href: "/admin",        label: "الرئيسية",        icon: LayoutDashboard, perm: null,    superOnly: true },
-      { href: "/admin/status", label: "حالة النظام",      icon: Activity,        perm: null,    superOnly: true },
+      { href: "/admin",        label: "الرئيسية",       icon: LayoutDashboard, perm: null, superOnly: true },
+      { href: "/admin/status", label: "حالة النظام",     icon: Activity,        perm: null, superOnly: true },
     ],
   },
   {
+    id: "users",
     title: "إدارة المستخدمين",
     links: [
-      { href: "/users",        label: "المستخدمون",       icon: Users,       perm: "users" },
-      { href: "/codes",        label: "أكواد التفعيل",    icon: Key,         perm: "codes" },
-      { href: "/admin/admins", label: "إدارة المسؤولين",  icon: ShieldCheck, perm: "admins" },
+      { href: "/users",        label: "المستخدمون",      icon: Users,       perm: "users" },
+      { href: "/codes",        label: "أكواد التفعيل",   icon: Key,         perm: "codes" },
+      { href: "/admin/admins", label: "إدارة المسؤولين", icon: ShieldCheck, perm: "admins" },
     ],
   },
   {
+    id: "jobs",
     title: "الوظائف والتقديم",
     links: [
-      { href: "/jobs",                      label: "الوظائف",            icon: BriefcaseBusiness, perm: "jobs" },
-      { href: "/applications",              label: "مراقبة التقديمات",   icon: BrainCircuit,      perm: "jobs" },
-      { href: "/admin/telegram-channel",    label: "قناة Telegram",      icon: Radio,             perm: "jobs", superOnly: true },
+      { href: "/jobs",                   label: "الوظائف",           icon: BriefcaseBusiness, perm: "jobs" },
+      { href: "/applications",           label: "مراقبة التقديمات",  icon: BrainCircuit,      perm: "jobs" },
+      { href: "/admin/telegram-channel", label: "قناة Telegram",     icon: Radio,             perm: "jobs", superOnly: true },
     ],
   },
   {
+    id: "comms",
     title: "التواصل والعملاء",
     links: [
-      { href: "/admin/chat",    label: "الدردشة الداخلية", icon: MessagesSquare, perm: null },
-      { href: "/crm",           label: "علاقات العملاء",   icon: Contact,        perm: "crm" },
-      { href: "/support-admin", label: "الدعم الفني",       icon: MessageCircle,  perm: "support",       badge: "support" },
-      { href: "/notifications", label: "إشعارات Push",     icon: Bell,           perm: "notifications" },
-      { href: "/admin/send-email",  label: "إرسال بريد",    icon: Send,           perm: "email-test" },
-      { href: "/admin/email-test",  label: "اختبار الإيميل", icon: MailCheck,     perm: "email-test" },
+      { href: "/admin/chat",       label: "الدردشة الداخلية", icon: MessagesSquare, perm: null },
+      { href: "/crm",              label: "علاقات العملاء",   icon: Contact,        perm: "crm" },
+      { href: "/support-admin",    label: "الدعم الفني",      icon: MessageCircle,  perm: "support",      badge: "support" },
+      { href: "/notifications",    label: "إشعارات Push",     icon: Bell,           perm: "notifications" },
+      { href: "/admin/send-email", label: "إرسال بريد",       icon: Send,           perm: "email-test" },
+      { href: "/admin/email-test", label: "اختبار الإيميل",   icon: MailCheck,      perm: "email-test" },
     ],
   },
   {
+    id: "store",
     title: "المتجر والربح",
     links: [
-      { href: "/store-admin",     label: "المتجر",        icon: ShoppingBag, perm: "store",     badge: "store" },
-      { href: "/affiliate-admin", label: "برنامج الربح",  icon: TrendingUp,  perm: "affiliate", badge: "affiliate" },
-      { href: "/finance",         label: "المالية",       icon: TrendingUp,  perm: "finance" },
+      { href: "/store-admin",     label: "المتجر",       icon: ShoppingBag, perm: "store",     badge: "store" },
+      { href: "/affiliate-admin", label: "برنامج الربح", icon: TrendingUp,  perm: "affiliate", badge: "affiliate" },
+      { href: "/finance",         label: "المالية",      icon: TrendingUp,  perm: "finance" },
     ],
   },
 ];
 
 const allLinks: NavLink[] = groups.flatMap(g => g.links);
+
+function getActiveGroupId(pathname: string): string | null {
+  for (const g of groups) {
+    for (const l of g.links) {
+      if (pathname === l.href || (l.href !== "/admin" && pathname.startsWith(l.href))) {
+        return g.id;
+      }
+    }
+  }
+  return groups[0]?.id ?? null;
+}
 
 export default function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
@@ -88,6 +106,23 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [me, setMe] = useState<Me>(null);
   const [badges, setBadges] = useState<Badges>({});
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+    const active = getActiveGroupId(path);
+    return new Set(active ? [active] : []);
+  });
+
+  // When path changes, ensure the active group is open
+  useEffect(() => {
+    const active = getActiveGroupId(path);
+    if (active) {
+      setOpenGroups(prev => {
+        if (prev.has(active)) return prev;
+        const next = new Set(prev);
+        next.add(active);
+        return next;
+      });
+    }
+  }, [path]);
 
   useEffect(() => {
     fetch("/api/admin/me", { credentials: "include" })
@@ -124,9 +159,18 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     .map(g => ({ ...g, links: g.links.filter(isVisible) }))
     .filter(g => g.links.length > 0);
 
+  function toggleGroup(id: string) {
+    setOpenGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   useEffect(() => {
     if (!me) return;
-    const firstAllowed = allLinks.find(isVisible);
+    const firstAllowed = allLinks.find(l => isVisible(l));
     const fallback = firstAllowed?.href ?? "/login";
 
     if (path === "/admin" && !me.isSuper) {
@@ -168,7 +212,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               fontSize: 11, fontWeight: 800, lineHeight: 1,
               boxShadow: "0 0 0 2px var(--sidebar, #fff)",
             }}
-            title={`${count} عنصر يحتاج انتباهك`}
           >
             {count > 99 ? "99+" : count}
           </span>
@@ -176,6 +219,46 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       </Link>
     );
   };
+
+  const nav = (
+    <nav className="flex-1 overflow-y-auto px-3 py-3">
+      <div className="space-y-1">
+        {visibleGroups.map((group) => {
+          const isOpen = openGroups.has(group.id);
+          const hasActive = group.links.some(
+            l => path === l.href || (l.href !== "/admin" && path.startsWith(l.href))
+          );
+          return (
+            <div key={group.id}>
+              <button
+                onClick={() => toggleGroup(group.id)}
+                className={`
+                  w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all
+                  text-xs font-semibold uppercase tracking-wider select-none
+                  ${hasActive
+                    ? "text-ink bg-panel2 border border-line2"
+                    : "text-muted hover:text-ink hover:bg-panel2 border border-transparent"
+                  }
+                `}
+              >
+                <span>{group.title}</span>
+                <ChevronDown
+                  size={13}
+                  className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {isOpen && (
+                <div className="mt-0.5 mb-1 space-y-0.5 pr-1">
+                  {group.links.map(renderLink)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </nav>
+  );
 
   return (
     <div className="flex min-h-screen" dir="rtl">
@@ -199,18 +282,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
-          {visibleGroups.map((group) => (
-            <div key={group.title}>
-              <div className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted select-none">
-                {group.title}
-              </div>
-              <div className="space-y-0.5">
-                {group.links.map(renderLink)}
-              </div>
-            </div>
-          ))}
-        </nav>
+        {nav}
 
         <div className="px-3 py-4 border-t border-line space-y-1.5">
           <button
