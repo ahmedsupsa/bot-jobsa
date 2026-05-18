@@ -78,6 +78,39 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ ok: true, deleted: count || 0 });
   }
 
+  // حذف المكررات (نفس الشركة + نفس المسمى)
+  if (body.mode === "dedupe") {
+    const { data: allJobs, error: fetchErr } = await supabase
+      .from("admin_jobs")
+      .select("id, company, title_ar, created_at")
+      .order("created_at", { ascending: false });
+    if (fetchErr) return NextResponse.json({ ok: false, error: fetchErr.message }, { status: 500 });
+
+    const seen = new Map<string, string>();
+    const toDelete: string[] = [];
+    for (const job of allJobs || []) {
+      const key = `${(job.company || "").trim().toLowerCase()}|||${(job.title_ar || "").trim().toLowerCase()}`;
+      if (!key.replace(/\|/g, "").trim()) continue; // تجاهل الوظائف بدون شركة وعنوان
+      if (seen.has(key)) {
+        toDelete.push(job.id);
+      } else {
+        seen.set(key, job.id);
+      }
+    }
+
+    if (toDelete.length === 0) return NextResponse.json({ ok: true, deleted: 0 });
+
+    // حذف على دفعات بحد أقصى 100 لكل مرة
+    let deletedCount = 0;
+    for (let i = 0; i < toDelete.length; i += 100) {
+      const batch = toDelete.slice(i, i + 100);
+      const { error, count } = await supabase.from("admin_jobs").delete({ count: "exact" }).in("id", batch);
+      if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      deletedCount += count || 0;
+    }
+    return NextResponse.json({ ok: true, deleted: deletedCount });
+  }
+
   // حذف متعدد
   if (Array.isArray(body.ids) && body.ids.length > 0) {
     const { error, count } = await supabase.from("admin_jobs").delete({ count: "exact" }).in("id", body.ids);
