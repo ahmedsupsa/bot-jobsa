@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { extractToken, verifyToken } from "@/lib/auth";
 import { tg } from "@/lib/telegram";
-import pdfParse from "pdf-parse";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require("pdf-parse");
 
 export const runtime = "nodejs";
 
