@@ -775,7 +775,7 @@ export default function StorePage() {
                       ? <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
                       : <Building2 size={14} />}
                     <span>{submitting === "bank_transfer" ? "جاري..." : "تحويل بنكي"}</span>
-                    {selected && Number(selected.price) > 40 && (
+                    {selected && Number(selected.price) > 20 && (
                       <span style={s.discountBadge}>خصم 15%</span>
                     )}
                   </button>

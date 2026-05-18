@@ -236,7 +236,7 @@ export async function POST(req: Request) {
     if (gateway === "bank_transfer") {
       const originalAmount = Number(product.price);
       let discountedAmount = finalAmount;
-      if (!appliedDiscount && originalAmount > 40) {
+      if (!appliedDiscount && originalAmount > 20) {
         discountedAmount = Math.round(originalAmount * 0.85 * 100) / 100;
       }
       const hasDiscount = discountedAmount < originalAmount;
