@@ -6,8 +6,123 @@ import {
   CheckCircle2, XCircle, AlertCircle, RefreshCw, Clock,
   Database, Bot, Mail, Cpu, Users, Briefcase, Send,
   ShoppingCart, MessageCircle, Bell, Key, Zap, Activity,
-  TrendingUp, AlertTriangle, Sparkles, BrainCircuit,
+  TrendingUp, AlertTriangle, Sparkles, BrainCircuit, Link,
 } from "lucide-react";
+
+/* ── Telegram Webhook Panel ────────────────────────────────────────── */
+function TelegramWebhookPanel() {
+  const [info, setInfo] = useState<{ ok?: boolean; result?: { url?: string; pending_update_count?: number; last_error_message?: string }; expected_url?: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [msgType, setMsgType] = useState<"ok" | "err">("ok");
+
+  const loadInfo = async () => {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/telegram/webhook?action=info", { credentials: "include" });
+      setInfo(await r.json());
+    } catch { setInfo(null); }
+    setLoading(false);
+  };
+
+  const register = async () => {
+    setLoading(true); setMsg("");
+    try {
+      const r = await fetch("/api/telegram/webhook?action=register", { credentials: "include" });
+      const d = await r.json();
+      if (d.ok) { setMsg("✅ تم تسجيل الـ Webhook بنجاح"); setMsgType("ok"); await loadInfo(); }
+      else { setMsg(`❌ ${d.description || "فشل التسجيل"}`); setMsgType("err"); }
+    } catch (e) { setMsg(`❌ ${e}`); setMsgType("err"); }
+    setLoading(false);
+  };
+
+  const remove = async () => {
+    if (!confirm("حذف الـ Webhook؟")) return;
+    setLoading(true); setMsg("");
+    try {
+      const r = await fetch("/api/telegram/webhook?action=delete", { credentials: "include" });
+      const d = await r.json();
+      setMsg(d.ok ? "🗑️ تم حذف الـ Webhook" : `❌ ${d.description}`);
+      setMsgType(d.ok ? "ok" : "err");
+      await loadInfo();
+    } catch (e) { setMsg(`❌ ${e}`); setMsgType("err"); }
+    setLoading(false);
+  };
+
+  useEffect(() => { loadInfo(); }, []);
+
+  const currentUrl   = info?.result?.url || "";
+  const expectedUrl  = info?.expected_url || "";
+  const isRegistered = currentUrl && currentUrl === expectedUrl;
+  const isWrong      = currentUrl && currentUrl !== expectedUrl;
+  const pendingCount = info?.result?.pending_update_count ?? 0;
+  const lastErr      = info?.result?.last_error_message || "";
+
+  return (
+    <div>
+      <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+        <Link size={14} /> Telegram Webhook — قنوات الوظائف
+      </h2>
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+        <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              {isRegistered ? (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
+                  <CheckCircle2 size={11} /> مُسجَّل وشغّال
+                </span>
+              ) : isWrong ? (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
+                  <AlertTriangle size={11} /> مُسجَّل بـ URL مختلف
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                  <XCircle size={11} /> غير مُسجَّل
+                </span>
+              )}
+              {pendingCount > 0 && (
+                <span className="text-xs text-amber-600 dark:text-amber-400">({pendingCount} رسالة معلقة)</span>
+              )}
+            </div>
+            {currentUrl && (
+              <div className="text-xs text-gray-400 font-mono truncate max-w-md" title={currentUrl}>{currentUrl}</div>
+            )}
+            {lastErr && (
+              <div className="text-xs text-red-500 mt-1">آخر خطأ: {lastErr}</div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={loadInfo} disabled={loading} className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-1">
+              <RefreshCw size={11} className={loading ? "animate-spin" : ""} /> تحديث
+            </button>
+            <button onClick={register} disabled={loading} className="text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-1">
+              {isRegistered ? "إعادة تسجيل" : "تسجيل الآن"}
+            </button>
+            {currentUrl && (
+              <button onClick={remove} disabled={loading} className="text-xs px-2.5 py-1.5 rounded-lg border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
+                حذف
+              </button>
+            )}
+          </div>
+        </div>
+
+        {msg && (
+          <div className={`text-xs rounded-lg px-3 py-2 mb-3 ${msgType === "ok" ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400" : "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"}`}>
+            {msg}
+          </div>
+        )}
+
+        <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 space-y-1">
+          <p className="font-semibold text-gray-700 dark:text-gray-200 mb-2">كيفية الاستخدام:</p>
+          <p>١. اضغط <b>تسجيل الآن</b> لتفعيل الـ Webhook</p>
+          <p>٢. افتح تطبيق Telegram → اذهب لـ <b>@jobbotssa_bot</b></p>
+          <p>٣. أضف البوت كمشرف (<b>Admin</b>) في أي قناة وظائف</p>
+          <p>٤. كل رسالة وظيفة تنزل في القناة → تُحلَّل تلقائياً وتُضاف للمنصة</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface ServiceStatus { ok: boolean; latencyMs?: number; botName?: string; error?: string }
 interface StatusData {
@@ -501,6 +616,9 @@ export default function StatusPage() {
                 </div>
               </div>
             )}
+
+            {/* Telegram Webhook */}
+            <TelegramWebhookPanel />
 
             {/* Orders + Support + Push */}
             {data && (
