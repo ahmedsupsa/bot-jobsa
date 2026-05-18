@@ -48,13 +48,14 @@ export async function POST(req: Request) {
     }
   }
 
-  // احذف التفضيلات القديمة وأضف الجديدة
-  await supabase.from("user_job_preferences").delete().eq("user_id", uid);
-
+  // أضف الجديدة فقط بدون حذف القديمة (upsert يتجنب التكرار)
   if (fieldIds.length > 0) {
     await supabase
       .from("user_job_preferences")
-      .insert(fieldIds.map((fid) => ({ user_id: uid, job_field_id: fid })));
+      .upsert(
+        fieldIds.map((fid) => ({ user_id: uid, job_field_id: fid })),
+        { onConflict: "user_id,job_field_id", ignoreDuplicates: true }
+      );
   }
 
   return NextResponse.json({ status: "ok", count: fieldIds.length, titles });
