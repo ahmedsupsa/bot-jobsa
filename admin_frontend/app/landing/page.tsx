@@ -97,7 +97,6 @@ export default function LandingPage() {
                 >
                   جرّب Jobbots لمدة 7 أيام بـ 12 ر.س <ArrowRight size={16} />
                 </Link>
-                <p style={{ color: "var(--text4)", fontSize: 11, margin: 0 }}>العرض يتجدد كل نصف ساعة</p>
               </>
             ) : (
               <>
