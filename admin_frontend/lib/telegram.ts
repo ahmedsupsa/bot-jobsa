@@ -21,13 +21,9 @@ export async function postJobToChannel(job: {
 }): Promise<number | null> {
   if (!BOT_TOKEN || !JOB_CHANNEL) return null;
 
-  const desc = (job.description_ar || "").trim();
-  const shortDesc = desc.length > 200 ? desc.slice(0, 197) + "..." : desc;
-
   const lines: string[] = [];
   lines.push(`🚀 <b>وظيفة جديدة — ${job.title_ar}</b>`);
   lines.push("");
-  if (shortDesc) { lines.push(shortDesc); lines.push(""); }
   if (job.application_email) {
     lines.push(`📧 <b>البريد الإلكتروني للتقديم:</b>`);
     lines.push(job.application_email);
