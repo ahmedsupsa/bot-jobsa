@@ -129,6 +129,33 @@ _NEUTRAL_ENDINGS_AR = {
 }
 
 
+_TAMHEER_KW = (
+    "تمهير", "tamheer",
+)
+
+_COOPERATIVE_KW = (
+    "تدريب تعاوني", "التدريب التعاوني",
+    "تعاوني", "cooperative training", "co-op",
+)
+
+def _is_tamheer_job(job: dict) -> bool:
+    """يتحقق إذا كانت الوظيفة برنامج تمهير."""
+    blob = " ".join([
+        job.get("title_ar") or "", job.get("title_en") or "",
+        job.get("description_ar") or "", job.get("description_en") or "",
+    ]).lower()
+    return any(k in blob for k in _TAMHEER_KW)
+
+
+def _is_cooperative_job(job: dict) -> bool:
+    """يتحقق إذا كانت الوظيفة تدريباً تعاونياً."""
+    blob = " ".join([
+        job.get("title_ar") or "", job.get("title_en") or "",
+        job.get("description_ar") or "", job.get("description_en") or "",
+    ]).lower()
+    return any(k in blob for k in _COOPERATIVE_KW)
+
+
 def _is_feminine_job(job: dict) -> bool:
     """
     يكشف الوظائف المخصصة للإناث فقط.
@@ -992,6 +1019,8 @@ async def _run_cycle_smtp() -> None:
             phone = user.get("phone") or ""
             lang = settings.get("application_language") or "ar"
             template = settings.get("template_type") or "classic"
+            allow_tamheer     = bool(settings.get("allow_tamheer", False))
+            allow_cooperative = bool(settings.get("allow_cooperative", False))
             remaining = 10 - count_today
             sent = 0
 
@@ -1038,6 +1067,14 @@ async def _run_cycle_smtp() -> None:
                 # الفلاتر الرخيصة قبل استدعاء AI
                 if not _is_valid_email(to_email):
                     logger.warning("   ⚠️  إيميل الوظيفة غير صالح: [%s] — تخطي", to_email)
+                    continue
+
+                # فلتر برامج التوظيف — تمهير والتدريب التعاوني
+                if _is_tamheer_job(job) and not allow_tamheer:
+                    logger.info("   ⏭️  وظيفة تمهير — المستخدم لم يفعّل هذا البرنامج: [%s]", job_title)
+                    continue
+                if _is_cooperative_job(job) and not allow_cooperative:
+                    logger.info("   ⏭️  وظيفة تدريب تعاوني — المستخدم لم يفعّل هذا البرنامج: [%s]", job_title)
                     continue
 
                 matched = _job_matches_user(job, field_names)
