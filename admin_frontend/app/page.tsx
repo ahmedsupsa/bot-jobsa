@@ -107,10 +107,7 @@ export default function LandingPage() {
             <div style={{ width: 34, height: 34, borderRadius: 9, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: 5, flexShrink: 0 }}>
               <Image src="/logo-transparent.png" alt="Jobbots" width={24} height={24} style={{ display: "block" }} />
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              <span style={{ fontSize: 11, color: "var(--text3)", fontWeight: 500, lineHeight: 1 }}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
-              <span style={s.logoText}>Jobbots</span>
-            </div>
+            <span style={{ fontSize: 14, color: "var(--text)", fontWeight: 700, lineHeight: 1 }}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
           </div>
           <div style={s.navLinks} className="landing-nav-links">
             <Link href="/store" style={{ ...s.navBtn, background: "transparent", color: "var(--text2)", border: "1px solid var(--border2)" }} className="nav-secondary">
