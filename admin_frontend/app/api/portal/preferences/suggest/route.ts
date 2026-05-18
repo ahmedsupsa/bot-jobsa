@@ -60,23 +60,31 @@ async function suggestFromFile(fileBase64: string, mimeType: string): Promise<st
 }
 
 async function callGeminiText(key: string, prompt: string): Promise<string[]> {
-  try {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-      }
-    );
-    if (!r.ok) return [];
-    const data = await r.json();
-    return parseTitles(data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "");
-  } catch { return []; }
+  const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"];
+  for (const model of models) {
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+          signal: AbortSignal.timeout(45000),
+        }
+      );
+      if (!r.ok) { console.warn(`[suggest-text] ${model} HTTP ${r.status}`); continue; }
+      const data = await r.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+      if (!text) { console.warn(`[suggest-text] ${model} empty response`); continue; }
+      const titles = parseTitles(text);
+      if (titles.length > 0) return titles;
+    } catch (e) { console.warn(`[suggest-text] ${model} error:`, e); continue; }
+  }
+  return [];
 }
 
 async function callGeminiMultimodal(key: string, prompt: string, fileBase64: string, mimeType: string): Promise<string[]> {
-  const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
+  const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"];
   for (const model of models) {
     try {
       const r = await fetch(
