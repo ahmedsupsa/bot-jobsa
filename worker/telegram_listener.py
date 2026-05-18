@@ -282,15 +282,6 @@ async def process_message(text: str, channel_title: str, channel_id: str, msg_id
         job_id = await _save_job(job, job_uid, channel_title)
         if job_id:
             saved += 1
-            await _send_tg(
-                ADMIN_CHAT_ID,
-                f"💼 <b>وظيفة جديدة من Telegram</b>\n"
-                f"📢 القناة: {channel_title}\n"
-                f"🏷️ المسمى: {job['title_ar']}\n"
-                f"🏢 الشركة: {job.get('company') or '—'}\n"
-                f"📧 البريد: {job.get('application_email') or '—'}\n"
-                f"⏳ ستُنشر في القناة خلال 15 دقيقة",
-            )
             logger.info(f"[TG] حُفظت في DB: {job['title_ar']} من {channel_title}")
 
     if saved:
