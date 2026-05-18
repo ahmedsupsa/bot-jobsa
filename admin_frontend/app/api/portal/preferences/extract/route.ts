@@ -106,6 +106,12 @@ function extractJson(raw: string): Record<string, unknown> {
   }
 }
 
+/** يتحقق أن النص يحتوي على حروف عربية حقيقية (وليس مفتاح JSON أو نص إنجليزي) */
+function isArabicTitle(s: string): boolean {
+  const arabicChars = (s.match(/[\u0600-\u06FF]/g) || []).length;
+  return arabicChars >= 2 && !s.includes("{") && !s.includes("[") && !s.includes(":") && !s.includes('"');
+}
+
 /** fallback: استخراج مسميات من نص خام إذا فشل JSON */
 function extractTitlesFromText(raw: string): string[] {
   const lines = raw.split(/[\n,،]+/).map(l => l.trim()).filter(Boolean);
@@ -114,9 +120,9 @@ function extractTitlesFromText(raw: string): string[] {
     const cleaned = line
       .replace(/^\d+[\.\)]\s*/, "")   // أزل ترقيم 1. أو 1)
       .replace(/^[-*•]\s*/, "")        // أزل نقاط القائمة
-      .replace(/["'«»]/g, "")          // أزل علامات الاقتباس
+      .replace(/["'«»{}[\]]/g, "")     // أزل علامات الاقتباس والأقواس
       .trim();
-    if (cleaned.length > 2 && cleaned.length < 80) {
+    if (cleaned.length > 2 && cleaned.length < 80 && isArabicTitle(cleaned)) {
       titles.push(cleaned);
     }
   }
