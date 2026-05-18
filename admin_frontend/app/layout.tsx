@@ -25,9 +25,9 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "بوت التقديم" },
   other: { "mobile-web-app-capable": "yes" },
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }, { url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+    icon: [{ url: "/favicon.png", type: "image/png" }, { url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
-    shortcut: "/icon.svg",
+    shortcut: "/favicon.png",
   },
   applicationName: "Jobbots",
   formatDetection: { telephone: false },
