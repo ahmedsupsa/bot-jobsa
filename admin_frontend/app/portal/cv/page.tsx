@@ -53,6 +53,8 @@ export default function CVPrefsPage() {
   const [prefsMsg, setPrefsMsg] = useState<{ text: string; type: "ok" | "err" | "info" } | null>(null);
   const [customName, setCustomName] = useState("");
   const [addingCustom, setAddingCustom] = useState(false);
+  const [allowTamheer, setAllowTamheer] = useState(false);
+  const [allowCooperative, setAllowCooperative] = useState(false);
 
   async function loadCV() {
     try {
@@ -71,6 +73,8 @@ export default function CVPrefsPage() {
       const unique = (d.all_fields || []).filter((f: Field) => { if (seen.has(f.name_ar)) return false; seen.add(f.name_ar); return true; });
       setFields(unique);
       setSelected(new Set((d.selected_ids || []).map(String)));
+      setAllowTamheer(d.allow_tamheer ?? false);
+      setAllowCooperative(d.allow_cooperative ?? false);
     } catch {}
     finally { setPrefsLoading(false); }
   }
@@ -143,7 +147,14 @@ export default function CVPrefsPage() {
   async function savePrefs() {
     setSaving(true); setPrefsMsg(null);
     try {
-      const res = await portalFetch("/preferences", { method: "POST", body: JSON.stringify({ field_ids: Array.from(selected) }) });
+      const res = await portalFetch("/preferences", {
+        method: "POST",
+        body: JSON.stringify({
+          field_ids: Array.from(selected),
+          allow_tamheer: allowTamheer,
+          allow_cooperative: allowCooperative,
+        }),
+      });
       const d = await res.json();
       if (!res.ok) { setPrefsMsg({ text: d.error || "فشل الحفظ", type: "err" }); return; }
       setPrefsMsg({ text: `تم حفظ ${d.count} مجال بنجاح ✓`, type: "ok" });
@@ -492,6 +503,59 @@ export default function CVPrefsPage() {
                       </button>
                     );
                   })}
+                </div>
+
+                {/* برامج التوظيف */}
+                <div style={{
+                  background: dark ? "#0d0d0d" : "#fafafa",
+                  border: `1px solid ${t.border}`,
+                  borderRadius: 14, padding: "16px", marginBottom: 16,
+                }}>
+                  <p style={{ color: t.text2, fontSize: 13, fontWeight: 700, margin: "0 0 12px", display: "flex", alignItems: "center", gap: 7 }}>
+                    <Briefcase size={14} strokeWidth={1.5} color={t.text2} />
+                    برامج التوظيف
+                  </p>
+                  <p style={{ color: t.text3, fontSize: 12, margin: "0 0 14px", lineHeight: 1.6 }}>
+                    اختر البرامج التي تريد التقديم عليها — الوظائف الأخرى لن تتأثر
+                  </p>
+                  {[
+                    {
+                      key: "tamheer",
+                      label: "تمهير",
+                      desc: "برنامج حكومي لتوظيف الخريجين — مدفوع من صندوق الموارد البشرية",
+                      value: allowTamheer,
+                      set: setAllowTamheer,
+                    },
+                    {
+                      key: "cooperative",
+                      label: "التدريب التعاوني",
+                      desc: "تدريب أثناء الدراسة لاكتساب الخبرة العملية",
+                      value: allowCooperative,
+                      set: setAllowCooperative,
+                    },
+                  ].map(item => (
+                    <label key={item.key} style={{
+                      display: "flex", alignItems: "flex-start", gap: 12,
+                      padding: "12px 14px", borderRadius: 10, marginBottom: 8,
+                      background: item.value ? (dark ? "#071a07" : "#f0fdf4") : t.surface,
+                      border: `1px solid ${item.value ? (dark ? "#2a2a2a" : "#bbf7d0") : t.border2}`,
+                      cursor: "pointer", transition: "all 0.15s",
+                    }}>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: 6, flexShrink: 0, marginTop: 1,
+                        background: item.value ? (dark ? "#fff" : "#09090b") : "transparent",
+                        border: `2px solid ${item.value ? (dark ? "#fff" : "#09090b") : t.border2}`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        transition: "all 0.15s",
+                      }} onClick={() => item.set(!item.value)}>
+                        {item.value && <CheckCircle size={12} color={dark ? "#0a0a0a" : "#fff"} strokeWidth={3} />}
+                      </div>
+                      <div style={{ flex: 1 }} onClick={() => item.set(!item.value)}>
+                        <p style={{ color: item.value ? (dark ? "#e8ffe8" : "#166534") : t.text, fontSize: 13, fontWeight: 600, margin: "0 0 3px" }}>{item.label}</p>
+                        <p style={{ color: t.text3, fontSize: 12, margin: 0, lineHeight: 1.5 }}>{item.desc}</p>
+                      </div>
+                    </label>
+                  ))}
                 </div>
 
                 {/* Save */}
