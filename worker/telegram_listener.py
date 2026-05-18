@@ -255,5 +255,24 @@ async def run_listener():
         )
 
     await client.start()
-    logger.info("[TG-Listener] ✅ متصل — يراقب جميع القنوات")
+
+    # ── قائمة القنوات المشترك فيها ─────────────────────────────────
+    try:
+        from telethon.tl.types import Channel
+        channels = []
+        async for dialog in client.iter_dialogs():
+            if isinstance(dialog.entity, Channel) and not dialog.entity.megagroup:
+                channels.append(dialog.entity.title)
+
+        channel_list = "\n".join(f"  • {c}" for c in channels) or "  (لا توجد قنوات)"
+        summary = (
+            f"📡 <b>مستمع Telegram متصل</b>\n"
+            f"يراقب <b>{len(channels)}</b> قناة:\n"
+            f"{channel_list}"
+        )
+        logger.info("[TG-Listener] ✅ متصل — يراقب %d قناة:\n%s", len(channels), "\n".join(channels))
+        await _send_tg(ADMIN_CHAT_ID, summary)
+    except Exception as e:
+        logger.warning("[TG-Listener] تعذّر جلب القنوات: %s", e)
+
     await client.run_until_disconnected()
