@@ -189,24 +189,18 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0 }}
-          className={`rounded-2xl border p-5 ${
-            bot.is_active
-              ? "border-emerald-500/25 bg-panel2"
-              : "border-amber-500/25 bg-amber-950/20"
-          }`}
+          className="rounded-2xl border border-line bg-panel p-5 shadow-card"
         >
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
-              <div className={`flex h-11 w-11 items-center justify-center rounded-xl border ${
-                bot.is_active ? "bg-panel2 border-emerald-500/30" : "bg-amber-950/50 border-amber-500/30"
-              }`}>
-                <Bot size={20} className={bot.is_active ? "text-ink" : "text-amber-400"} />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-panel2">
+                <Bot size={20} className="text-ink" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <div className={`h-2 w-2 rounded-full ${bot.is_active ? "bg-ink animate-pulse" : "bg-muted"}`} />
-                  <span className={`text-sm font-bold ${bot.is_active ? "text-ink" : "text-amber-300"}`}>
-                    {bot.is_active ? "Worker يعمل وآخر تقديم حديث" : "Worker لم يقدّم منذ فترة"}
+                  <div className={`h-2 w-2 rounded-full ${bot.last_application_at ? "bg-emerald-400 animate-pulse" : "bg-muted"}`} />
+                  <span className="text-sm font-bold text-ink">
+                    حالة التقديمات
                   </span>
                 </div>
                 <div className="text-xs text-muted2 mt-1">
