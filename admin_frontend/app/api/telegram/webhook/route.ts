@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { geminiText } from "@/lib/gemini";
-import { sendTelegram } from "@/lib/telegram";
+import { sendTelegram, postJobToChannel } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -141,16 +141,22 @@ async function handleChannelPost(post: Record<string, unknown>) {
     const id = await saveJob(job, tweetUid + `_${saved}`, channelTitle);
     if (id) {
       saved++;
-      // إرسال إشعار Telegram
-      await sendTelegram(
+      // نشر في قناة الوظائف
+      postJobToChannel({
+        title_ar: job.title_ar,
+        description_ar: job.description_ar || null,
+        application_email: job.application_email || null,
+        link_url: job.link_url || null,
+      }).catch(() => {});
+      // إشعار الأدمن
+      sendTelegram(
         `💼 <b>وظيفة جديدة من Telegram</b>\n` +
         `📢 القناة: ${channelTitle}\n` +
         `🏷️ المسمى: ${job.title_ar}\n` +
         `🏢 الشركة: ${job.company || "—"}\n` +
         `📧 البريد: ${job.application_email || "—"}\n` +
-        `🔗 رابط: ${job.link_url || "—"}\n` +
         `🕐 ${new Date().toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" })}`
-      );
+      ).catch(() => {});
     }
   }
 }

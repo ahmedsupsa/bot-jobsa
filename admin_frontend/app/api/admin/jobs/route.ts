@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { enforcePermission } from "@/lib/admin-auth";
-import { tg } from "@/lib/telegram";
+import { tg, postJobToChannel } from "@/lib/telegram";
 import { geminiText } from "@/lib/gemini";
 
 async function generateSpecializations(titleAr: string, descAr: string): Promise<string> {
@@ -57,6 +57,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
   tg.jobAdded(titleAr, (body.company || "").trim(), email).catch(() => {});
+  postJobToChannel({ title_ar: titleAr, description_ar: descAr, application_email: email }).catch(() => {});
   return NextResponse.json({ ok: true, id: data?.id, specializations });
 }
 

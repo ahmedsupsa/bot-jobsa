@@ -1,5 +1,6 @@
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
-const CHAT_ID = process.env.TELEGRAM_CHAT_ID || "";
+const BOT_TOKEN  = process.env.TELEGRAM_BOT_TOKEN || "";
+const CHAT_ID    = process.env.TELEGRAM_CHAT_ID || "";
+const JOB_CHANNEL = process.env.TELEGRAM_JOB_CHANNEL_ID || "";
 
 export async function sendTelegram(message: string): Promise<void> {
   if (!BOT_TOKEN || !CHAT_ID) return;
@@ -7,10 +8,45 @@ export async function sendTelegram(message: string): Promise<void> {
     await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
+    });
+  } catch {}
+}
+
+export async function postJobToChannel(job: {
+  title_ar: string;
+  description_ar?: string | null;
+  application_email?: string | null;
+  link_url?: string | null;
+}): Promise<void> {
+  if (!BOT_TOKEN || !JOB_CHANNEL) return;
+
+  const desc = (job.description_ar || "").trim();
+  const shortDesc = desc.length > 200 ? desc.slice(0, 197) + "..." : desc;
+
+  const lines: string[] = [];
+  lines.push(`🚀 <b>وظيفة جديدة — ${job.title_ar}</b>`);
+  lines.push("");
+  if (shortDesc) { lines.push(shortDesc); lines.push(""); }
+  if (job.application_email) {
+    lines.push(`📧 <b>البريد الإلكتروني للتقديم:</b>`);
+    lines.push(job.application_email);
+    lines.push("");
+  }
+  lines.push(`🤖 <b>للتقديم التلقائي عبر الذكاء الاصطناعي — وفّر وقتك وقدّم على عشرات الوظائف بضغطة واحدة:</b>`);
+  lines.push(`https://www.jobbots.org/store`);
+
+  const text = lines.join("\n");
+
+  try {
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        chat_id: CHAT_ID,
-        text: message,
+        chat_id: JOB_CHANNEL,
+        text,
         parse_mode: "HTML",
+        disable_web_page_preview: true,
       }),
     });
   } catch {}
