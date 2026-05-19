@@ -387,59 +387,109 @@ function computeLocalScore(
   return Math.max(0, Math.min(100, score));
 }
 
-// ─── Cover Letter Templates — قوالب جاهزة بدون Gemini ───────────────────────
-
-type JobCategory = "tech" | "customer_service" | "sales" | "admin" | "fresh_graduate" | "general";
-
-function detectJobCategory(title: string, desc: string): JobCategory {
-  const t = `${title} ${desc}`.toLowerCase();
-  if (/برمج|مطور|developer|engineer|هندس|software|شبكات|cybersec|devops|تقني|it /.test(t)) return "tech";
-  if (/خدمة عملاء|customer service|call center|مركز اتصال|support|دعم فني/.test(t)) return "customer_service";
-  if (/مبيعات|sales|مندوب|تسويق|marketing|بائع/.test(t)) return "sales";
-  if (/إداري|سكرتير|منسق|coordinator|admin|محاسب|accountant|موارد بشرية/.test(t)) return "admin";
-  if (/حديث تخرج|مبتدئ|entry|junior|trainee|متدرب/.test(t)) return "fresh_graduate";
-  return "general";
-}
+// ─── Cover Letter — قالب HTML ثابت (بدون AI) ────────────────────────────────
 
 function buildCoverLetterTemplate(
-  category: JobCategory,
   name: string,
   jobTitle: string,
   company: string,
   profile: CvProfile | null,
+  phone: string,
+  email: string,
   lang: string,
 ): string {
-  const co     = company ? ` في ${company}` : "";
-  const degree = profile?.degree || "مؤهلي العلمي";
-  const spec   = profile?.specialization || "";
+  const isAr = lang !== "en";
+  const companyDisplay = company || (isAr ? "جهة التوظيف" : "Your Company");
+  const spec   = profile?.specialization || profile?.degree || (isAr ? "مجال التخصص" : "my field");
   const exp    = profile?.experience_years ?? -1;
-  const skills = (profile?.skills ?? []).slice(0, 3).join("، ");
-  const hasExp = exp > 0;
-  const expLine = hasExp ? `لديّ ${exp} ${exp === 1 ? "سنة" : "سنوات"} من الخبرة في هذا المجال. ` : "";
-  const isFresh = profile?.is_fresh_graduate ?? false;
+  const skills = (profile?.skills ?? []).slice(0, 5).join(isAr ? "، " : ", ") || (isAr ? "مهارات متنوعة في المجال" : "relevant skills");
 
-  if (lang !== "ar") {
-    const skillEn = skills ? ` My skills include ${skills}.` : "";
-    const expEn   = hasExp ? ` I have ${exp} year${exp === 1 ? "" : "s"} of relevant experience.` : "";
-    return `I am writing to express my interest in the ${jobTitle} position${company ? " at " + company : ""}. With my background in ${spec || "the relevant field"},${skillEn}${expEn} I am eager to contribute to your team.`;
+  let degreeItem: string;
+  let expItem: string;
+  let skillsItem: string;
+
+  if (isAr) {
+    degreeItem = profile?.degree
+      ? profile.degree + (profile.specialization ? " في " + profile.specialization : "")
+      : "مؤهل علمي مناسب";
+    expItem = exp > 0
+      ? `خبرة ${exp} ${exp === 1 ? "سنة" : "سنوات"} في المجال`
+      : "حديث التخرج، لديّ رغبة قوية في التطور والتعلم";
+    skillsItem = skills;
+  } else {
+    degreeItem = profile?.degree
+      ? profile.degree + (profile.specialization ? " in " + profile.specialization : "")
+      : "Relevant academic qualification";
+    expItem = exp > 0
+      ? `${exp} year${exp === 1 ? "" : "s"} of relevant experience`
+      : "Recent graduate, eager to learn and grow professionally";
+    skillsItem = skills;
   }
 
-  if (isFresh && !hasExp) {
-    return `أتقدم بشغف لوظيفة ${jobTitle}${co}. أنا حديث التخرج في ${spec || degree}، وأحمل رغبة حقيقية في التعلم والنمو المهني. أنا متحمس للانضمام إلى فريقكم والمساهمة بطاقتي وجهدي لتحقيق أهداف مؤسستكم.`;
+  if (isAr) {
+    return `<!DOCTYPE html><html dir="rtl" lang="ar">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:24px;background:#f0f2f5;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;">
+<div dir="rtl" style="background-color:#0a1e36;color:#ffffff;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;padding:40px;border-radius:12px;max-width:600px;margin:0 auto;">
+  <h2 style="margin-top:0;font-size:20px;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:16px;">
+    إلى فريق التوظيف في <strong>${companyDisplay}</strong>
+  </h2>
+  <p style="line-height:2;margin:20px 0;font-size:15px;">
+    السلام عليكم ورحمة الله وبركاته،<br><br>
+    أنا <strong>${name}</strong>، متخصص في ${spec}،<br>
+    وأرغب بالانضمام إلى فريقكم في وظيفة <strong>${jobTitle}</strong>.
+  </p>
+  <ul style="line-height:2.2;padding-right:20px;font-size:15px;margin:0 0 20px;">
+    <li>${degreeItem}</li>
+    <li>${expItem}</li>
+    <li>${skillsItem}</li>
+  </ul>
+  <p style="line-height:2;font-size:15px;margin:0 0 24px;">
+    أرفقت لكم سيرتي الذاتية، وأتطلع لفرصة للتواصل معكم.
+  </p>
+  <p style="margin:0;line-height:2;font-size:14px;border-top:1px solid rgba(255,255,255,0.15);padding-top:16px;">
+    مع خالص التحية،<br>
+    <strong>${name}</strong><br>
+    ${phone}<br>
+    ${email}
+  </p>
+</div>
+</body></html>`;
   }
 
-  const tpls: Record<JobCategory, string> = {
-    tech: `أتقدم بكل اهتمام لوظيفة ${jobTitle}${co}. أحمل ${degree}${spec ? " في " + spec : ""}، وأتمتع بمهارات في ${skills || "المجال التقني"}. ${expLine}أسعى للانضمام إلى فريق متميز وتطبيق كفاءاتي التقنية بما يخدم أهداف مؤسستكم.`,
-    customer_service: `يسعدني التقدم لوظيفة ${jobTitle}${co}. أتمتع بمهارات تواصل فعّال وخدمة عملاء احترافية. ${expLine}أنا جاهز للإسهام في رفع مستوى رضا عملائكم وتعزيز تجربتهم.`,
-    sales: `أتقدم بحماس لوظيفة ${jobTitle}${co}. أتمتع بمهارات التفاوض وبناء علاقات العملاء وتحقيق أهداف المبيعات. ${expLine}هدفي المساهمة الفعّالة في نمو إيراداتكم وتوسيع قاعدة عملائكم.`,
-    admin: `أتقدم بكل اهتمام لوظيفة ${jobTitle}${co}. أحمل ${degree}${spec ? " في " + spec : ""}، وأتمتع بمهارات التنظيم والدقة في إدارة الأعمال. ${expLine}أسعى للإسهام في رفع الكفاءة التشغيلية لمؤسستكم.`,
-    fresh_graduate: `أتقدم بشغف لوظيفة ${jobTitle}${co}. أنا حديث التخرج في ${spec || degree}، ولديّ رغبة قوية في التطور المهني والتعلم. أنا متحمس للعمل ضمن فريقكم والمساهمة بجهدي وطاقتي.`,
-    general: `أتقدم بكل اهتمام لوظيفة ${jobTitle}${co}. أحمل ${degree}${spec ? " في " + spec : ""}${skills ? "، وأتمتع بمهارات في " + skills : ""}. ${expLine}أنا متحمس للانضمام إلى فريقكم والإسهام في تحقيق أهداف مؤسستكم.`,
-  };
-  return tpls[category];
+  return `<!DOCTYPE html><html dir="ltr" lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:24px;background:#f0f2f5;font-family:'Segoe UI',Arial,sans-serif;">
+<div style="background-color:#0a1e36;color:#ffffff;font-family:'Segoe UI',Arial,sans-serif;padding:40px;border-radius:12px;max-width:600px;margin:0 auto;">
+  <h2 style="margin-top:0;font-size:20px;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:16px;">
+    To the Hiring Team at <strong>${companyDisplay}</strong>
+  </h2>
+  <p style="line-height:1.9;margin:20px 0;font-size:15px;">
+    Dear Hiring Manager,<br><br>
+    My name is <strong>${name}</strong>, a professional specializing in ${spec}.<br>
+    I am writing to express my interest in the <strong>${jobTitle}</strong> position.
+  </p>
+  <ul style="line-height:2.2;font-size:15px;margin:0 0 20px;">
+    <li>${degreeItem}</li>
+    <li>${expItem}</li>
+    <li>${skillsItem}</li>
+  </ul>
+  <p style="line-height:1.9;font-size:15px;margin:0 0 24px;">
+    Please find my CV attached. I look forward to the opportunity to speak with you.
+  </p>
+  <p style="margin:0;line-height:2;font-size:14px;border-top:1px solid rgba(255,255,255,0.15);padding-top:16px;">
+    Best regards,<br>
+    <strong>${name}</strong><br>
+    ${phone}<br>
+    ${email}
+  </p>
+</div>
+</body></html>`;
 }
 
-// ─── Gemini Cover Letter (ذكي: template للوظائف العادية، AI للمهمة) ───────────
+// ─── توليد رسالة التقديم (قالب ثابت — بدون استدعاء AI) ───────────────────────
 
 function toBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -447,92 +497,22 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-async function generateCoverLetter(
-  jobTitle: string, name: string, company: string, desc: string, lang: string,
-  cvParsedText?: string | null,
+function generateCoverLetter(
+  jobTitle: string, name: string, company: string, _desc: string, lang: string,
+  _cvParsedText?: string | null,
   cvProfile?: CvProfile | null,
-  aiScore?: number,
-): Promise<string> {
-  const category = detectJobCategory(jobTitle, desc);
-
-  // Template للوظائف العادية (score < 78) أو بدون مفتاح Gemini → لا استدعاء AI
-  const useTemplate = !GEMINI_KEY || (typeof aiScore === "number" && aiScore < 78);
-  if (useTemplate) {
-    const tpl = buildCoverLetterTemplate(category, name, jobTitle, company, cvProfile ?? null, lang);
-    console.log(`[worker] 📝 Template(${category}) score=${aiScore ?? "—"} → ${jobTitle}`);
-    return tpl;
-  }
-
-  // Fallback لو Gemini فشل
-  const fallback = buildCoverLetterTemplate(category, name, jobTitle, company, cvProfile ?? null, lang);
-
-  // Prompt مختصر باستخدام الملف المنظّم (أقل tokens بكثير)
-  const cvSection = cvProfile
-    ? `المؤهل: ${cvProfile.degree}\nالتخصص: ${cvProfile.specialization}\nالخبرة: ${cvProfile.experience_years <= 0 ? "حديث تخرج" : cvProfile.experience_years + " سنة"}\nمهارات: ${cvProfile.skills.slice(0, 8).join("، ")}\nوظائف سابقة: ${cvProfile.prev_jobs.slice(0, 3).join(" | ") || "لا يوجد"}`
-    : `ملخص السيرة:\n${(cvParsedText ?? "").slice(0, 700)}`;
-
-  const isAr = lang === "ar";
-  const prompt = isAr
-    ? `اكتب رسالة تغطية عربية رسمية قصيرة (3-4 جمل) للوظيفة التالية. لا تخترع معلومات. لا إيموجي. لا توقيع. أخرج الرسالة فقط.
-
-الوظيفة: ${jobTitle}${company ? " | " + company : ""}
-الوصف: ${desc.slice(0, 350)}
-المتقدم: ${name}
-${cvSection}`
-    : `Write a short professional cover letter (3-4 sentences). No invented info. No emoji. No signature. Output only the letter.
-
-Job: ${jobTitle}${company ? " at " + company : ""}
-Description: ${desc.slice(0, 350)}
-Applicant: ${name}
-${cvSection}`;
-
-  const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"];
-  for (const model of MODELS) {
-    try {
-      const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
-      );
-      if (r.status === 429 || r.status === 503 || r.status === 404) continue;
-      if (!r.ok) continue;
-      const data = await r.json();
-      const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
-      if (text) return text;
-    } catch { continue; }
-  }
-  return fallback;
+  _aiScore?: number,
+  phone?: string,
+  email?: string,
+): string {
+  console.log(`[worker] 📝 FixedTemplate → ${jobTitle}`);
+  return buildCoverLetterTemplate(name, jobTitle, company, cvProfile ?? null, phone ?? "", email ?? "", lang);
 }
 
 // ─── بناء HTML للإيميل ────────────────────────────────────────────────────────
 
-function buildEmailHtml(name: string, phone: string, jobTitle: string, company: string, cover: string, lang: string): string {
-  const isAr = lang === "ar";
-  const dir  = isAr ? "rtl" : "ltr";
-  const align = isAr ? "right" : "left";
-  const coverHtml = cover.replace(/\n/g, "<br>");
-  const companyRow = company
-    ? `<tr><td style="color:#666;padding:4px 10px 4px 0;">${isAr ? "الشركة" : "Company"}</td><td style="color:#111;font-weight:600;">${company}</td></tr>`
-    : "";
-  return `<!DOCTYPE html><html dir="${dir}" lang="${isAr ? "ar" : "en"}">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f4f4f4;font-family:'Segoe UI',Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 16px;">
-<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:8px;border:1px solid #ddd;">
-  <tr><td style="background:#1a1a1a;border-radius:8px 8px 0 0;padding:18px 28px;direction:${dir};text-align:${align};">
-    <p style="margin:0;color:#e5e5e5;font-size:13px;">${isAr ? "طلب توظيف" : "Job Application"} — <strong style="color:#fff;">${jobTitle}</strong></p>
-  </td></tr>
-  <tr><td style="padding:28px;direction:${dir};text-align:${align};">
-    <p style="margin:0 0 18px;color:#1a1a1a;font-size:15px;line-height:2.0;border-right:3px solid #1a1a1a;padding-right:14px;">${coverHtml}</p>
-    <hr style="border:none;border-top:1px solid #eee;margin:22px 0;">
-    <table cellpadding="0" cellspacing="0" style="font-size:13px;"><tbody>
-      <tr><td style="color:#666;padding:4px 10px 4px 0;">${isAr ? "الاسم" : "Name"}</td><td style="color:#111;font-weight:600;">${name}</td></tr>
-      <tr><td style="color:#666;padding:4px 10px 4px 0;">${isAr ? "الجوال" : "Phone"}</td><td style="color:#111;" dir="ltr">${phone}</td></tr>
-      ${companyRow}
-    </tbody></table>
-  </td></tr>
-</table>
-</td></tr></table>
-</body></html>`;
+function buildEmailHtml(_name: string, _phone: string, _jobTitle: string, _company: string, cover: string, _lang: string): string {
+  return cover;
 }
 
 // ─── إرسال عبر SMTP الشخصي ────────────────────────────────────────────────────
@@ -1002,7 +982,7 @@ async function runCycle() {
       let errorReason: string | null = null;
 
       try {
-        let cover = await generateCoverLetter(jobTitle, name, company, desc, lang, cvParsedText, cvProfile, fit.score);
+        let cover = generateCoverLetter(jobTitle, name, company, desc, lang, cvParsedText, cvProfile, fit.score, phone, smtpEmail);
         cover = stripEmojis(cover);
         const html    = buildEmailHtml(name, phone, jobTitle, company, cover, lang);
         const subject = lang === "ar"
