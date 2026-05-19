@@ -210,12 +210,21 @@ export default function CVPage() {
                     rel="noopener noreferrer"
                     onClick={e => {
                       e.preventDefault();
+                      const win = window.open("", "_blank");
+                      if (!win) return;
+                      win.document.write('<html><body style="font-family:sans-serif;padding:40px;color:#555">جاري التحميل...</body></html>');
                       const headers = authHeaders();
                       fetch("/api/portal/cv/preview-letter", { headers })
                         .then(r => r.text())
                         .then(html => {
-                          const win = window.open("", "_blank");
-                          if (win) { win.document.write(html); win.document.close(); }
+                          win.document.open();
+                          win.document.write(html);
+                          win.document.close();
+                        })
+                        .catch(() => {
+                          win.document.open();
+                          win.document.write('<html><body style="padding:40px;color:red">حدث خطأ، حاول مجدداً</body></html>');
+                          win.document.close();
                         });
                     }}
                     style={{
