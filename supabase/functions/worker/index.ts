@@ -144,6 +144,12 @@ const FEMALE_JOB_TITLES = [
   "موظفة", "مسؤولة",
 ];
 
+// كلمات صريحة تدل على وظائف رجالية
+const MALE_EXPLICIT = [
+  "للرجال", "رجال فقط", "موظفين رجال", "ذكور فقط", "للذكور",
+  "حارس أمن", "رجل أمن", "أمن رجالي", "نجار", "سباك", "لحام", "بواب",
+];
+
 type GenderCheckResult = {
   jobGender: "female" | "male" | "neutral";
   confidence: "explicit" | "implicit" | "none";
