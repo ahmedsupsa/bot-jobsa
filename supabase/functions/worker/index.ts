@@ -113,23 +113,35 @@ function isActiveSubscription(user: Record<string, unknown>): boolean {
 
 // ─── Gender Validation — كشف جنس الوظيفة ─────────────────────────────────────
 
-// كلمات أو عبارات صريحة تدل على وظائف نسائية (يجب أن تكون دقيقة جداً)
+// كلمات أو عبارات صريحة تدل على وظائف نسائية
 const FEMALE_EXPLICIT = [
   "للسيدات", "للنساء", "للإناث", "نسائي", "نسائية", "قسم نسائي",
   "موظفات", "استقبال نسائي", "مبيعات نسائية", "فرع نسائي",
-  "للمرأة", "سيدات فقط", "إناث فقط",
+  "للمرأة", "سيدات فقط", "إناث فقط", "قسم النساء", "أقسام نسائية",
+  "سيدة", "امرأة فقط", "بنات فقط",
 ];
 
-// عناوين وظائف نسائية محددة (أسماء وظائف مؤنثة واضحة)
+// عناوين وظائف مؤنثة — قائمة شاملة
 const FEMALE_JOB_TITLES = [
-  "سكرتيرة", "كاشيرة", "مشرفة مبيعات", "ممرضة", "قابلة", "مربية",
-  "حاضنة", "مصففة", "خياطة", "طباخة", "عاملة منزلية",
-];
-
-// كلمات صريحة تدل على وظائف رجالية
-const MALE_EXPLICIT = [
-  "للرجال", "رجال فقط", "موظفين رجال", "ذكور فقط", "للذكور",
-  "حارس أمن", "رجل أمن", "أمن رجالي", "نجار", "سباك", "لحام", "بواب",
+  // استقبال وإدارة
+  "سكرتيرة", "سكرتيره", "موظفة استقبال", "موظفه استقبال",
+  "مساعدة إدارية", "مساعده ادارية", "أمينة سر", "امينة سر",
+  // مبيعات وخدمة عملاء
+  "كاشيرة", "كاشيره", "مشرفة مبيعات", "مندوبة مبيعات",
+  "موظفة مبيعات", "بائعة",
+  // صحة وتمريض
+  "ممرضة", "ممرضه", "قابلة", "مولّدة",
+  // تعليم
+  "معلمة", "مدرّسة", "مدرسة", "مشرفة طالبات",
+  // خياطة وتجميل
+  "مصففة", "خياطة", "حلاقة", "مكيّجة", "إخصائية تجميل", "أخصائية تجميل",
+  // رعاية
+  "مربية", "حاضنة", "عاملة منزلية",
+  // تقنية وإدارة (مؤنثة)
+  "أخصائية", "إخصائية", "مشرفة", "مديرة", "محاسبة",
+  "مستشارة", "مصممة", "مهندسة", "محللة", "منسقة",
+  "مراقبة", "مدققة", "مقيّمة", "باحثة", "مطورة",
+  "موظفة", "مسؤولة",
 ];
 
 type GenderCheckResult = {
@@ -1166,7 +1178,69 @@ async function maybeSendWeeklyReport() {
 
 // ─── Entry Point ──────────────────────────────────────────────────────────────
 
-Deno.serve(async (_req: Request) => {
+// ─── وضع التجربة: إرسال قالب تجريبي لإيميل محدد باستخدام حساب أول مستخدم ─────
+
+async function sendTestEmail(toEmail: string): Promise<{ ok: boolean; from?: string; error?: string }> {
+  if (!ENC_KEY_HEX) return { ok: false, error: "SMTP_ENCRYPTION_KEY غير معرّف" };
+
+  const settingsRows = await sbGet("user_settings", {
+    select: "user_id,smtp_email,smtp_host,smtp_port,smtp_secure,smtp_app_password_encrypted",
+    "email_connected": "eq.true",
+    "smtp_app_password_encrypted": "not.is.null",
+    "limit": "5",
+  });
+
+  if (!Array.isArray(settingsRows) || !settingsRows.length) {
+    return { ok: false, error: "لا يوجد مستخدم مكتمل الإعداد" };
+  }
+
+  for (const s of settingsRows) {
+    try {
+      const userRows = await sbGet("users", { select: "full_name,phone", "id": `eq.${s.user_id}`, "limit": "1" });
+      const cvRows   = await sbGet("user_cvs", { select: "cv_profile", "user_id": `eq.${s.user_id}`, "limit": "1" });
+
+      const name    = userRows?.[0]?.full_name ?? "اسم المستخدم";
+      const phone   = userRows?.[0]?.phone ?? "";
+      const profile = (cvRows?.[0]?.cv_profile ?? null) as CvProfile | null;
+      const appPw   = await decryptAES(String(s.smtp_app_password_encrypted), ENC_KEY_HEX);
+
+      const html = buildCoverLetterTemplate(
+        name, "مطوّر برمجيات (تجربة)", "شركة جوببوتس", profile,
+        phone, String(s.smtp_email), "ar",
+      );
+
+      await sendSmtp({
+        smtpHost: String(s.smtp_host ?? "smtp.gmail.com"),
+        smtpPort: Number(s.smtp_port ?? 465),
+        smtpSecure: Boolean(s.smtp_secure ?? true),
+        smtpEmail: String(s.smtp_email),
+        appPassword: appPw,
+        to: toEmail,
+        subject: "تجربة — قالب رسالة التقديم",
+        html,
+        fromName: name,
+      });
+
+      return { ok: true, from: String(s.smtp_email) };
+    } catch (e) {
+      console.error("[test-email]", e);
+      continue;
+    }
+  }
+  return { ok: false, error: "فشل الإرسال من جميع الحسابات" };
+}
+
+Deno.serve(async (req: Request) => {
+  let body: Record<string, unknown> = {};
+  try { body = await req.json(); } catch { /* no body */ }
+
+  // وضع التجربة
+  if (body.test_email && typeof body.test_email === "string") {
+    console.log(`[worker] 📧 وضع التجربة → ${body.test_email}`);
+    const result = await sendTestEmail(body.test_email);
+    return new Response(JSON.stringify(result), { headers: { "Content-Type": "application/json" } });
+  }
+
   console.log("[worker] بدء دورة التقديم التلقائي عبر SMTP");
   const t0 = Date.now();
   try {
@@ -1176,9 +1250,7 @@ Deno.serve(async (_req: Request) => {
     await logRun({ applied_count: result.applied, active_users: result.users, errors: result.errors, duration_ms, status });
     console.log("[worker] انتهت الدورة:", JSON.stringify({ applied: result.applied, users: result.users, errors: result.errors.length }));
     await tgWorkerResult(result.applied, result.users, Math.round(duration_ms / 1000), result.details);
-    // تنظيف: إخفاء أي تقديم خاطئ قديم لم يُعالَج بعد
     await cleanupInvalidApplications();
-    // التقرير الأسبوعي (يُرسَل مرة واحدة كل أحد ٨-٩ ص بتوقيت الرياض)
     await maybeSendWeeklyReport();
     return new Response(JSON.stringify({ ok: true, ...result, duration_ms }), {
       headers: { "Content-Type": "application/json" },
