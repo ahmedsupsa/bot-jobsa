@@ -507,6 +507,28 @@ function buildCoverLetterTemplate(
 </body></html>`;
 }
 
+// ─── ترجمة المسمى الوظيفي للإنجليزية (عند الحاجة فقط) ──────────────────────
+
+async function translateJobTitleToEn(titleAr: string): Promise<string> {
+  if (!titleAr.trim()) return titleAr;
+  const prompt = `Translate this Arabic job title to English. Return ONLY the translated job title, nothing else.\nArabic: ${titleAr}`;
+  const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"];
+  for (const model of MODELS) {
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
+        { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
+      );
+      if (!r.ok) continue;
+      const data = await r.json();
+      const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
+      if (text) return text.replace(/^["']|["']$/g, "").trim();
+    } catch { continue; }
+  }
+  return titleAr; // fallback: العنوان الأصلي إذا فشلت الترجمة
+}
+
 // ─── توليد رسالة التقديم (قالب ثابت — بدون استدعاء AI) ───────────────────────
 
 function toBase64(bytes: Uint8Array): string {
@@ -887,10 +909,25 @@ async function runCycle() {
       if (sent >= remaining) break;
 
       const jobId    = String(job.id);
-      const jobTitle = String(job.title_ar ?? job.title_en ?? "وظيفة");
+      const jobTitle = String(job.title_ar ?? job.title_en ?? "وظيفة"); // دائماً عربي للـ DB والتكرار
       const company  = String(job.company ?? "");
       const desc     = String(job.description_ar ?? job.description_en ?? "").slice(0, 1200);
       const toEmail  = String(job.application_email ?? "").trim();
+
+      // المسمى الوظيفي للعرض — إنجليزي إذا المستخدم اختار الإنجليزية
+      const rawTitleEn = String(job.title_en ?? "").trim();
+      const rawTitleAr = String(job.title_ar ?? "").trim();
+      let displayJobTitle = jobTitle;
+      if (lang === "en") {
+        if (rawTitleEn) {
+          displayJobTitle = rawTitleEn;
+        } else if (rawTitleAr) {
+          displayJobTitle = await translateJobTitleToEn(rawTitleAr);
+          console.log(`[worker] 🔤 ترجمة المسمى: "${rawTitleAr}" → "${displayJobTitle}"`);
+        } else {
+          displayJobTitle = "Position";
+        }
+      }
 
       // فحص التكرار محلياً بدون استعلامات DB إضافية
       const fingerprint = await jobFingerprint(jobTitle, toEmail, desc);
@@ -1000,12 +1037,12 @@ async function runCycle() {
       let errorReason: string | null = null;
 
       try {
-        let cover = generateCoverLetter(jobTitle, name, company, desc, lang, cvParsedText, cvProfile, fit.score, phone, smtpEmail);
+        let cover = generateCoverLetter(displayJobTitle, name, company, desc, lang, cvParsedText, cvProfile, fit.score, phone, smtpEmail);
         cover = stripEmojis(cover);
-        const html    = buildEmailHtml(name, phone, jobTitle, company, cover, lang);
+        const html    = buildEmailHtml(name, phone, displayJobTitle, company, cover, lang);
         const subject = lang === "ar"
           ? `التقديم على وظيفة: ${stripEmojis(jobTitle)}`
-          : `Application for: ${stripEmojis(jobTitle)}`;
+          : `Application for: ${stripEmojis(displayJobTitle)}`;
 
         // تنزيل ملف CV للإرفاق بالبريد (منفصل عن التحليل المخزّن)
         const storagePath = String(cv.storage_path ?? "").trim();
