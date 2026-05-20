@@ -417,7 +417,7 @@ function buildCoverLetterFromSavedBody(
   savedBody: string,
 ): string {
   const isAr = lang !== "en";
-  const companyDisplay = company || (isAr ? "جهة التوظيف" : "Your Company");
+  const companyTrim = (company || "").trim();
 
   const paragraphs = savedBody
     .split(/\n{2,}/)
@@ -425,6 +425,13 @@ function buildCoverLetterFromSavedBody(
     .filter(Boolean)
     .map(p => `<p style="line-height:2;margin:0 0 16px;font-size:15px;">${p.replace(/\n/g, "<br>")}</p>`)
     .join("");
+
+  const headerAr = companyTrim
+    ? `إلى فريق التوظيف في <strong>${companyTrim}</strong>`
+    : `إلى فريق التوظيف المختص`;
+  const headerEn = companyTrim
+    ? `To the Hiring Team at <strong>${companyTrim}</strong>`
+    : `To the Hiring Manager`;
 
   if (isAr) {
     return `<!DOCTYPE html><html dir="rtl" lang="ar">
@@ -434,7 +441,7 @@ function buildCoverLetterFromSavedBody(
 <body style="margin:0;padding:24px;background:#f0f2f5;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;">
 <div dir="rtl" style="background-color:#0a1e36;color:#ffffff;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;padding:40px;border-radius:12px;max-width:600px;margin:0 auto;">
   <h2 style="margin-top:0;font-size:20px;font-weight:700;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:16px;">
-    إلى فريق التوظيف في <strong>${companyDisplay}</strong>
+    ${headerAr}
   </h2>
   <p style="font-size:15px;font-weight:600;margin:20px 0 16px;color:#93c5fd;">السلام عليكم ورحمة الله وبركاته،</p>
   <div style="color:#e2e8f0;">${paragraphs}</div>
@@ -450,7 +457,7 @@ function buildCoverLetterFromSavedBody(
 <body style="margin:0;padding:24px;background:#f0f2f5;font-family:'Segoe UI',Arial,sans-serif;">
 <div style="background-color:#0a1e36;color:#ffffff;padding:40px;border-radius:12px;max-width:600px;margin:0 auto;">
   <h2 style="margin-top:0;font-size:20px;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:16px;">
-    To the Hiring Team at <strong>${companyDisplay}</strong>
+    ${headerEn}
   </h2>
   <p style="font-size:15px;font-weight:600;margin:20px 0 16px;color:#93c5fd;">Dear Hiring Manager,</p>
   <div style="color:#e2e8f0;">${paragraphs}</div>
@@ -474,7 +481,13 @@ function buildCoverLetterTemplate(
   certs?: Array<{ type: string; name: string; issuer?: string }>,
 ): string {
   const isAr = lang !== "en";
-  const companyDisplay = company || (isAr ? "جهة التوظيف" : "Your Company");
+  const companyTrimmed = (company || "").trim();
+  const headerAr = companyTrimmed
+    ? `إلى فريق التوظيف في <strong>${companyTrimmed}</strong>`
+    : `إلى فريق التوظيف المختص`;
+  const headerEn = companyTrimmed
+    ? `To the Hiring Team at <strong>${companyTrimmed}</strong>`
+    : `To the Hiring Manager`;
   const spec   = profile?.specialization || profile?.degree || (isAr ? "مجال التخصص" : "my field");
   const exp    = profile?.experience_years ?? -1;
   const skills = (profile?.skills ?? []).slice(0, 5).join(isAr ? "، " : ", ") || (isAr ? "مهارات متنوعة في المجال" : "relevant skills");
@@ -518,7 +531,7 @@ function buildCoverLetterTemplate(
 <body style="margin:0;padding:24px;background:#f0f2f5;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;">
 <div dir="rtl" style="background-color:#0a1e36;color:#ffffff;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;padding:40px;border-radius:12px;max-width:600px;margin:0 auto;">
   <h2 style="margin-top:0;font-size:20px;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:16px;">
-    إلى فريق التوظيف في <strong>${companyDisplay}</strong>
+    ${headerAr}
   </h2>
   <p style="line-height:2;margin:20px 0;font-size:15px;">
     السلام عليكم ورحمة الله وبركاته،<br><br>
@@ -549,7 +562,7 @@ function buildCoverLetterTemplate(
 <body style="margin:0;padding:24px;background:#f0f2f5;font-family:'Segoe UI',Arial,sans-serif;">
 <div style="background-color:#0a1e36;color:#ffffff;font-family:'Segoe UI',Arial,sans-serif;padding:40px;border-radius:12px;max-width:600px;margin:0 auto;">
   <h2 style="margin-top:0;font-size:20px;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:16px;">
-    To the Hiring Team at <strong>${companyDisplay}</strong>
+    ${headerEn}
   </h2>
   <p style="line-height:1.9;margin:20px 0;font-size:15px;">
     Dear Hiring Manager,<br><br>
