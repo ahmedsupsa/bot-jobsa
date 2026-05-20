@@ -6,7 +6,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { portalFetch, clearToken, getToken } from "@/lib/portal-auth";
 import {
   User, Phone, MapPin, Calendar, Mail, CreditCard, Send,
-  Languages, CheckCircle, XCircle, Loader2, Pencil, Save, X,
+  CheckCircle, XCircle, Loader2, Pencil, Save, X,
   LogOut, Trash2, FileDown, Receipt, Award, Plus, GraduationCap,
   ShieldCheck, BookOpen, ClipboardList, BadgeCheck, Eye, ChevronDown,
 } from "lucide-react";
@@ -16,7 +16,7 @@ interface UserData {
   full_name: string; phone: string; age: number | null; city: string; gender: string;
   subscription_active: boolean; days_left: number; subscription_ends_at: string;
   applications_count: number; email: string; sender_email_alias: string;
-  application_language: string; template_type: string;
+  template_type: string;
   email_connected: boolean; smtp_email: string;
 }
 
@@ -60,7 +60,6 @@ export default function AccountPage() {
   const [msg, setMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
 
   // settings state
-  const [savingLang, setSavingLang] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
 
   // delete state
@@ -133,7 +132,7 @@ export default function AccountPage() {
       if (meRes.status === 401) { clearToken(); router.replace("/portal/login"); return; }
       const me = await meRes.json();
       const settings = await setRes.json();
-      setUser({ ...me, application_language: settings.application_language || "ar", template_type: settings.template_type || "classic" });
+      setUser({ ...me, template_type: settings.template_type || "classic" });
     } catch { clearToken(); router.replace("/portal/login"); }
     finally { setLoading(false); }
   }
@@ -207,20 +206,6 @@ export default function AccountPage() {
       else { setMsg({ text: d.error || "فشل الحفظ", type: "err" }); }
     } catch { setMsg({ text: "خطأ في الاتصال", type: "err" }); }
     finally { setSaving(false); }
-  }
-
-  async function changeLanguage(lang: "ar" | "en") {
-    if (user?.application_language === lang) return;
-    setSavingLang(true); setMsg(null);
-    try {
-      const res = await portalFetch("/settings", { method: "POST", body: JSON.stringify({ application_language: lang }) });
-      if (res.ok) {
-        setMsg({ text: `تم تغيير لغة التقديم إلى ${lang === "ar" ? "العربية" : "English"}`, type: "ok" });
-        await load();
-        if (showPreview) loadPreview(true);
-      } else { const d = await res.json(); setMsg({ text: d.error || "فشل التغيير", type: "err" }); }
-    } catch { setMsg({ text: "خطأ في الاتصال", type: "err" }); }
-    finally { setSavingLang(false); }
   }
 
   async function changeTemplate(tpl: string) {
@@ -842,64 +827,6 @@ export default function AccountPage() {
         ) : (
           /* ══════════════ SETTINGS TAB ══════════════ */
           <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeIn 0.2s ease" }}>
-
-            {/* ─── Language ─── */}
-            <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 18, overflow: "hidden" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 20px", borderBottom: `1px solid ${t.border}` }}>
-                <div style={{ width: 32, height: 32, borderRadius: 10, background: t.iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Languages size={16} strokeWidth={1.5} color={t.text2} />
-                </div>
-                <div>
-                  <p style={{ margin: 0, color: t.text, fontSize: 14, fontWeight: 700 }}>لغة التقديم</p>
-                  <p style={{ margin: "1px 0 0", color: t.text3, fontSize: 11 }}>اللغة التي تُكتب بها رسائل التوظيف</p>
-                </div>
-                {savingLang && <Loader2 size={14} color={t.text3} style={{ animation: "spin 1s linear infinite", marginRight: "auto" }} />}
-              </div>
-
-              <div style={{ padding: "16px 20px 20px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  {([
-                    { lang: "ar" as const, label: "العربية", emoji: "🇸🇦", sub: "مناسب للشركات السعودية والخليجية" },
-                    { lang: "en" as const, label: "English", emoji: "🌍", sub: "Suitable for international companies" },
-                  ]).map(({ lang, label, emoji, sub }) => {
-                    const isActive = lang === "ar" ? user.application_language !== "en" : user.application_language === "en";
-                    return (
-                      <button key={lang} onClick={() => changeLanguage(lang)} disabled={savingLang} style={{
-                        position: "relative", padding: "16px 18px",
-                        borderRadius: 14, cursor: savingLang ? "wait" : "pointer",
-                        border: `2px solid ${isActive ? (dark ? "#fff" : "#09090b") : t.border2}`,
-                        background: isActive ? (dark ? "#fff" : "#09090b") : t.iconBg,
-                        textAlign: "right", transition: "all 0.18s",
-                        display: "flex", flexDirection: "column", gap: 4,
-                      }}>
-                        {isActive && (
-                          <div style={{
-                            position: "absolute", top: 10, left: 10,
-                            width: 20, height: 20, borderRadius: 100,
-                            background: isActive ? (dark ? "#0a0a0a" : "#fff") : "transparent",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                          }}>
-                            <CheckCircle size={14} color={dark ? "#fff" : "#09090b"} />
-                          </div>
-                        )}
-                        <span style={{ fontSize: 24 }}>{emoji}</span>
-                        <p style={{
-                          margin: 0,
-                          color: isActive ? (dark ? "#0a0a0a" : "#fff") : t.text,
-                          fontSize: 15, fontWeight: 800,
-                        }}>{label}</p>
-                        <p style={{
-                          margin: 0,
-                          color: isActive ? (dark ? "#52525b" : "#a1a1aa") : t.text3,
-                          fontSize: 10, lineHeight: 1.5,
-                        }}>{sub}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
 
             {/* ─── Inline Preview ─── */}
             <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 18, overflow: "hidden" }}>
