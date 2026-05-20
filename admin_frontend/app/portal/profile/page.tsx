@@ -217,7 +217,7 @@ export default function AccountPage() {
       if (res.ok) {
         setMsg({ text: `تم تغيير لغة التقديم إلى ${lang === "ar" ? "العربية" : "English"}`, type: "ok" });
         await load();
-        if (showPreview) loadPreview();
+        if (showPreview) loadPreview(true);
       } else { const d = await res.json(); setMsg({ text: d.error || "فشل التغيير", type: "err" }); }
     } catch { setMsg({ text: "خطأ في الاتصال", type: "err" }); }
     finally { setSavingLang(false); }
