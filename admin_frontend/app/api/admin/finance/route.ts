@@ -153,9 +153,19 @@ export async function GET() {
   });
   const tamaraNet = tamaraGross - tamaraFees;
 
-  // Bank transfer totals
-  const bankCount = paid.filter(o => o.payment_gateway === "bank_transfer").length;
-  const bankGross = paid.filter(o => o.payment_gateway === "bank_transfer").reduce((s, o) => s + (o.amount || 0), 0);
+  // Bank transfer totals + detailed list
+  const bankOrdersRaw = paid.filter(o => o.payment_gateway === "bank_transfer");
+  const bankCount = bankOrdersRaw.length;
+  const bankGross = bankOrdersRaw.reduce((s, o) => s + (o.amount || 0), 0);
+  const bankOrdersList = bankOrdersRaw.slice(0, 200).map(o => ({
+    id: o.id,
+    user_name: o.user_name,
+    user_email: o.user_email,
+    amount: Number(o.amount || 0),
+    paid_at: o.paid_at,
+    product_name: getProduct(o)?.name || "—",
+    ref_code: o.ref_code,
+  }));
 
   // StreamPay detailed fee breakdown
   const streampayOrdersRaw = paid.filter(o => o.payment_gateway === "streampay");
@@ -304,5 +314,6 @@ export async function GET() {
     affiliateOrders: affiliateList,
     tamaraOrders: tamaraOrdersList,
     streampayOrders: streampayOrdersList,
+    bankOrders: bankOrdersList,
   });
 }

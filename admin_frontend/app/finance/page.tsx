@@ -38,6 +38,7 @@ type ProductStat = { name: string; direct: number; affiliate: number; commission
 type ChartPoint = { month: string; direct: number; affiliate: number; commissions: number; net: number };
 type DirectOrder = { id: string; user_name?: string; user_email?: string; amount?: number; paid_at?: string; product_name: string; payment_gateway?: string | null };
 type AffOrder = DirectOrder & { ref_code?: string; commission: number; commission_status: string; affiliate_name: string; net: number };
+type BankOrder = { id: string; user_name?: string; user_email?: string; amount: number; paid_at?: string; product_name: string; ref_code?: string | null };
 
 const GATEWAY_AR: Record<string, string> = { tamara: "تمارا", streampay: "StreamPay", bank_transfer: "تحويل بنكي" };
 
@@ -214,9 +215,9 @@ function StackedBarChart({ data }: { data: ChartPoint[] }) {
 }
 
 export default function FinancePage() {
-  const [data, setData] = useState<{ summary: Summary; byProduct: ProductStat[]; chart: ChartPoint[]; directOrders: DirectOrder[]; affiliateOrders: AffOrder[]; tamaraOrders: TamaraOrder[]; streampayOrders: StreamPayOrder[] } | null>(null);
+  const [data, setData] = useState<{ summary: Summary; byProduct: ProductStat[]; chart: ChartPoint[]; directOrders: DirectOrder[]; affiliateOrders: AffOrder[]; tamaraOrders: TamaraOrder[]; streampayOrders: StreamPayOrder[]; bankOrders: BankOrder[] } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"overview" | "direct" | "affiliate" | "tamara" | "streampay">("overview");
+  const [tab, setTab] = useState<"overview" | "direct" | "affiliate" | "tamara" | "streampay" | "bank">("overview");
   const [exporting, setExporting] = useState(false);
   const [amountOverrides, setAmountOverrides] = useState<Record<string, number>>({});
 
@@ -328,6 +329,7 @@ export default function FinancePage() {
                 { k: "affiliate", l: `مبيعات بعمولة (${data.summary.affiliateCount})`, i: Users },
                 { k: "tamara", l: `تمارا (${data.summary.tamaraCount})`, i: Wallet },
                 { k: "streampay", l: `ستريم باي (${data.summary.streampayCount})`, i: DollarSign },
+                { k: "bank", l: `تحويل بنكي (${data.summary.bankCount})`, i: Wallet },
               ].map(({ k, l, i: I }) => (
                 <button key={k} onClick={() => setTab(k as any)}
                   style={{
@@ -633,6 +635,106 @@ export default function FinancePage() {
                 </div>
               </div>
             )}
+            {tab === "bank" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {/* Summary cards */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                  <StatCard label="إجمالي مبيعات التحويل البنكي"
+                    value={`${fmt(data.summary.bankGross)} ر.س`}
+                    sub={`${data.summary.bankCount} طلب مدفوع`}
+                    icon={Wallet} big />
+                  <StatCard label="صافي الإيراد (بدون رسوم)"
+                    value={`${fmt(data.summary.bankGross)} ر.س`}
+                    sub="التحويل البنكي لا يخصم رسوم بوابة"
+                    icon={Target} big />
+                  <StatCard label="متوسط قيمة الطلب"
+                    value={`${fmt(data.summary.bankCount > 0 ? data.summary.bankGross / data.summary.bankCount : 0)} ر.س`}
+                    sub="متوسط حجم كل تحويل"
+                    icon={BarChart3} big />
+                </div>
+
+                {/* Note */}
+                <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: 22 }}>
+                  <h3 style={{ color: "var(--text)", fontSize: 15, fontWeight: 700, margin: "0 0 12px", display: "flex", alignItems: "center", gap: 8 }}>
+                    <CheckCircle2 size={16} color="var(--text3)" /> ملاحظة حول التحويل البنكي
+                  </h3>
+                  <div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px", fontSize: 12, color: "var(--text3)", lineHeight: 2 }}>
+                    التحويل البنكي <strong style={{ color: "var(--text)" }}>لا يخضع لرسوم بوابة دفع</strong> — المبلغ المدفوع يصل كاملاً بدون خصومات.
+                    <br />
+                    يُحتسب خصم <strong style={{ color: "var(--text)" }}>15%</strong> تلقائياً للطلبات التي لا تستخدم كود خصم صريح.
+                  </div>
+                </div>
+
+                {/* Orders table */}
+                <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: 24 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                    <Wallet size={18} color="var(--text3)" />
+                    <h3 style={{ color: "var(--text)", fontSize: 15, fontWeight: 700, margin: 0 }}>تفصيل طلبات التحويل البنكي</h3>
+                  </div>
+                  <p style={{ color: "var(--text4)", fontSize: 12, margin: "0 0 18px" }}>جميع الطلبات المدفوعة عبر التحويل البنكي</p>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ color: "var(--text4)", borderBottom: "1px solid var(--border)" }}>
+                          <th style={th}>العميل</th>
+                          <th style={th}>البريد</th>
+                          <th style={th}>المنتج</th>
+                          <th style={{ ...th, textAlign: "left" }}>المبلغ</th>
+                          <th style={th}>كود إحالة</th>
+                          <th style={th}>تاريخ الدفع</th>
+                          <th style={th}>فاتورة</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(data.bankOrders || []).length === 0 ? (
+                          <tr><td colSpan={7} style={{ color: "var(--text4)", textAlign: "center", padding: 32 }}>لا توجد طلبات تحويل بنكي مدفوعة بعد</td></tr>
+                        ) : (data.bankOrders || []).map(o => (
+                          <tr key={o.id} style={{ borderBottom: "1px solid var(--border)" }}
+                            onMouseEnter={e => (e.currentTarget.style.background = "var(--surface2)")}
+                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                            <td style={td}>{o.user_name || "—"}</td>
+                            <td style={{ ...td, color: "var(--text3)" }}>{o.user_email || "—"}</td>
+                            <td style={td}>{o.product_name}</td>
+                            <td style={{ ...td, textAlign: "left" }}>
+                              <AmountCell id={o.id} amount={resolveAmount(o.id, o.amount)} onSaved={handleAmountSaved} />
+                            </td>
+                            <td style={{ ...td, textAlign: "center" }}>
+                              {o.ref_code
+                                ? <code style={{ background: "var(--surface2)", padding: "2px 6px", borderRadius: 4, color: "var(--text2)", fontSize: 11 }}>{o.ref_code}</code>
+                                : <span style={{ color: "var(--text4)", fontSize: 11 }}>—</span>}
+                            </td>
+                            <td style={{ ...td, color: "var(--text4)" }}>{fmtDate(o.paid_at)}</td>
+                            <td style={{ ...td, textAlign: "center" }}>
+                              <a href={buildInvoiceUrl({ ...o, payment_gateway: "bank_transfer" })} target="_blank" rel="noopener noreferrer"
+                                title="تحميل الفاتورة"
+                                style={{
+                                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                  width: 30, height: 30, borderRadius: 8,
+                                  background: "var(--surface2)", border: "1px solid var(--border2)",
+                                  color: "var(--text3)", textDecoration: "none",
+                                }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--bg2)"; (e.currentTarget as HTMLAnchorElement).style.color = "var(--text)"; }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--surface2)"; (e.currentTarget as HTMLAnchorElement).style.color = "var(--text3)"; }}
+                              >
+                                <FileDown size={14} />
+                              </a>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ background: "var(--surface2)" }}>
+                          <td colSpan={3} style={{ ...td, color: "var(--text)", fontWeight: 700 }}>الإجمالي</td>
+                          <td style={{ ...td, textAlign: "left", color: "var(--text)", fontWeight: 800, fontSize: 14 }}>{fmt(data.summary.bankGross)} ر.س</td>
+                          <td colSpan={3} />
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {tab === "streampay" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {/* Summary cards */}
