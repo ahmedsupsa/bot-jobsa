@@ -81,6 +81,11 @@ export default function AccountPage() {
   const [previewHtml, setPreviewHtml] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
 
+  // edit cover letter state
+  const [editMode, setEditMode] = useState(false);
+  const [editBody, setEditBody] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
   // invoices state
   type PortalOrder = {
     id: string; status: string; amount: number; paid_at: string | null;
@@ -224,6 +229,7 @@ export default function AccountPage() {
   async function loadPreview(regen = false) {
     setPreviewLoading(true);
     setShowPreview(true);
+    setEditMode(false);
     try {
       const url = regen ? "/cv/preview-letter?regenerate=1" : "/cv/preview-letter";
       const res = await portalFetch(url);
@@ -231,6 +237,34 @@ export default function AccountPage() {
       setPreviewHtml(html);
     } catch { setPreviewHtml(""); }
     finally { setPreviewLoading(false); }
+  }
+
+  async function enterEditMode() {
+    setEditMode(true);
+    try {
+      const res = await portalFetch("/cv/preview-letter?format=json");
+      const data = await res.json();
+      setEditBody(data.body || "");
+    } catch { setEditBody(""); }
+  }
+
+  async function saveEdit() {
+    if (!editBody.trim()) return;
+    setSavingEdit(true);
+    try {
+      const res = await portalFetch("/settings", {
+        method: "POST",
+        body: JSON.stringify({ cover_letter_body: editBody }),
+      });
+      if (res.ok) {
+        setEditMode(false);
+        setPreviewLoading(true);
+        const r = await portalFetch("/cv/preview-letter");
+        setPreviewHtml(await r.text());
+        setPreviewLoading(false);
+      }
+    } catch { /* silent */ }
+    finally { setSavingEdit(false); }
   }
 
   async function deleteAccount() {
@@ -848,29 +882,76 @@ export default function AccountPage() {
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {showPreview && !previewLoading && (
-                    <button
-                      onClick={() => loadPreview(true)}
-                      title="إعادة إنشاء بالذكاء الاصطناعي"
-                      style={{
-                        display: "flex", alignItems: "center", gap: 5,
-                        padding: "6px 12px", borderRadius: 8, cursor: "pointer",
-                        border: `1px solid ${t.border2}`, background: "transparent",
-                        color: t.text2, fontSize: 12, fontWeight: 600,
-                      }}
-                    >
-                      <Loader2 size={12} /> إعادة إنشاء
-                    </button>
+                  {showPreview && !previewLoading && !editMode && (
+                    <>
+                      <button
+                        onClick={enterEditMode}
+                        title="تعديل الرسالة يدوياً"
+                        style={{
+                          display: "flex", alignItems: "center", gap: 5,
+                          padding: "6px 12px", borderRadius: 8, cursor: "pointer",
+                          border: `1px solid ${t.border2}`, background: "transparent",
+                          color: t.text2, fontSize: 12, fontWeight: 600,
+                        }}
+                      >
+                        <Pencil size={12} /> تعديل
+                      </button>
+                      <button
+                        onClick={() => loadPreview(true)}
+                        title="إعادة إنشاء بالذكاء الاصطناعي"
+                        style={{
+                          display: "flex", alignItems: "center", gap: 5,
+                          padding: "6px 12px", borderRadius: 8, cursor: "pointer",
+                          border: `1px solid ${t.border2}`, background: "transparent",
+                          color: t.text2, fontSize: 12, fontWeight: 600,
+                        }}
+                      >
+                        <Loader2 size={12} /> إعادة إنشاء
+                      </button>
+                    </>
                   )}
-                  <div
-                    style={{ cursor: "pointer", padding: 4 }}
-                    onClick={() => { if (!showPreview) { loadPreview(); } else { setShowPreview(false); } }}
-                  >
-                    {previewLoading
-                      ? <Loader2 size={16} color={t.text3} style={{ animation: "spin 1s linear infinite" }} />
-                      : <ChevronDown size={16} color={t.text3} style={{ transform: showPreview ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-                    }
-                  </div>
+                  {editMode && (
+                    <>
+                      <button
+                        onClick={saveEdit}
+                        disabled={savingEdit}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 5,
+                          padding: "6px 14px", borderRadius: 8, cursor: savingEdit ? "wait" : "pointer",
+                          border: "none", background: dark ? "#fff" : "#09090b",
+                          color: dark ? "#09090b" : "#fff", fontSize: 12, fontWeight: 700,
+                        }}
+                      >
+                        {savingEdit
+                          ? <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} />
+                          : <Save size={12} />
+                        }
+                        {savingEdit ? "جاري الحفظ..." : "حفظ"}
+                      </button>
+                      <button
+                        onClick={() => { setEditMode(false); }}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 5,
+                          padding: "6px 12px", borderRadius: 8, cursor: "pointer",
+                          border: `1px solid ${t.border2}`, background: "transparent",
+                          color: t.text3, fontSize: 12, fontWeight: 600,
+                        }}
+                      >
+                        <X size={12} /> إلغاء
+                      </button>
+                    </>
+                  )}
+                  {!editMode && (
+                    <div
+                      style={{ cursor: "pointer", padding: 4 }}
+                      onClick={() => { if (!showPreview) { loadPreview(); } else { setShowPreview(false); } }}
+                    >
+                      {previewLoading
+                        ? <Loader2 size={16} color={t.text3} style={{ animation: "spin 1s linear infinite" }} />
+                        : <ChevronDown size={16} color={t.text3} style={{ transform: showPreview ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+                      }
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -880,7 +961,34 @@ export default function AccountPage() {
                 </div>
               )}
 
-              {showPreview && !previewLoading && previewHtml && (
+              {showPreview && !previewLoading && editMode && (
+                <div style={{ padding: "16px 20px 20px" }}>
+                  <p style={{ margin: "0 0 10px", color: t.text3, fontSize: 12 }}>
+                    عدّل نص رسالتك مباشرة — يُحفظ ويُستخدم في جميع تقديماتك القادمة
+                  </p>
+                  <textarea
+                    value={editBody}
+                    onChange={e => setEditBody(e.target.value)}
+                    dir="rtl"
+                    rows={12}
+                    style={{
+                      width: "100%", boxSizing: "border-box",
+                      padding: "14px 16px", borderRadius: 12,
+                      border: `1px solid ${t.border2}`,
+                      background: t.bg, color: t.text,
+                      fontSize: 14, lineHeight: 2,
+                      fontFamily: "'IBM Plex Sans Arabic', Tahoma, sans-serif",
+                      resize: "vertical", outline: "none",
+                    }}
+                    placeholder="اكتب نص رسالة التقديم هنا..."
+                  />
+                  <p style={{ margin: "8px 0 0", color: t.text3, fontSize: 11 }}>
+                    💡 اكتب فقرات مفصولة بسطر فارغ. التحية والتوقيع يُضافان تلقائياً.
+                  </p>
+                </div>
+              )}
+
+              {showPreview && !previewLoading && !editMode && previewHtml && (
                 <iframe
                   srcDoc={previewHtml}
                   title="معاينة رسالة التقديم"
