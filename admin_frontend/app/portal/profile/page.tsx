@@ -214,8 +214,11 @@ export default function AccountPage() {
     setSavingLang(true); setMsg(null);
     try {
       const res = await portalFetch("/settings", { method: "POST", body: JSON.stringify({ application_language: lang }) });
-      if (res.ok) { setMsg({ text: `تم تغيير لغة التقديم إلى ${lang === "ar" ? "العربية" : "English"}`, type: "ok" }); await load(); }
-      else { const d = await res.json(); setMsg({ text: d.error || "فشل التغيير", type: "err" }); }
+      if (res.ok) {
+        setMsg({ text: `تم تغيير لغة التقديم إلى ${lang === "ar" ? "العربية" : "English"}`, type: "ok" });
+        await load();
+        if (showPreview) loadPreview();
+      } else { const d = await res.json(); setMsg({ text: d.error || "فشل التغيير", type: "err" }); }
     } catch { setMsg({ text: "خطأ في الاتصال", type: "err" }); }
     finally { setSavingLang(false); }
   }
