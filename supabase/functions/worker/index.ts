@@ -409,15 +409,17 @@ function computeLocalScore(
 
 function buildCoverLetterFromSavedBody(
   name: string,
-  jobTitle: string,
+  _jobTitle: string,
   company: string,
   phone: string,
   email: string,
-  lang: string,
+  _lang: string,
   savedBody: string,
 ): string {
-  const isAr = lang !== "en";
   const companyTrim = (company || "").trim();
+  const header = companyTrim
+    ? `إلى فريق التوظيف في <strong>${companyTrim}</strong>`
+    : `إلى فريق التوظيف المختص`;
 
   const paragraphs = savedBody
     .split(/\n{2,}/)
@@ -426,43 +428,19 @@ function buildCoverLetterFromSavedBody(
     .map(p => `<p style="line-height:2;margin:0 0 16px;font-size:15px;">${p.replace(/\n/g, "<br>")}</p>`)
     .join("");
 
-  const headerAr = companyTrim
-    ? `إلى فريق التوظيف في <strong>${companyTrim}</strong>`
-    : `إلى فريق التوظيف المختص`;
-  const headerEn = companyTrim
-    ? `To the Hiring Team at <strong>${companyTrim}</strong>`
-    : `To the Hiring Manager`;
-
-  if (isAr) {
-    return `<!DOCTYPE html><html dir="rtl" lang="ar">
+  return `<!DOCTYPE html><html dir="rtl" lang="ar">
 <head><meta charset="UTF-8">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body style="margin:0;padding:24px;background:#f0f2f5;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;">
 <div dir="rtl" style="background-color:#0a1e36;color:#ffffff;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;padding:40px;border-radius:12px;max-width:600px;margin:0 auto;">
   <h2 style="margin-top:0;font-size:20px;font-weight:700;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:16px;">
-    ${headerAr}
+    ${header}
   </h2>
   <p style="font-size:15px;font-weight:600;margin:20px 0 16px;color:#93c5fd;">السلام عليكم ورحمة الله وبركاته،</p>
   <div style="color:#e2e8f0;">${paragraphs}</div>
   <p style="margin:24px 0 0;line-height:2;font-size:14px;border-top:1px solid rgba(255,255,255,0.15);padding-top:16px;color:#cbd5e1;">
     مع خالص التحية،<br><strong style="color:#fff;">${name}</strong><br>${phone}<br>${email}
-  </p>
-</div>
-</body></html>`;
-  }
-
-  return `<!DOCTYPE html><html lang="en">
-<head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:24px;background:#f0f2f5;font-family:'Segoe UI',Arial,sans-serif;">
-<div style="background-color:#0a1e36;color:#ffffff;padding:40px;border-radius:12px;max-width:600px;margin:0 auto;">
-  <h2 style="margin-top:0;font-size:20px;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:16px;">
-    ${headerEn}
-  </h2>
-  <p style="font-size:15px;font-weight:600;margin:20px 0 16px;color:#93c5fd;">Dear Hiring Manager,</p>
-  <div style="color:#e2e8f0;">${paragraphs}</div>
-  <p style="margin:24px 0 0;line-height:2;font-size:14px;border-top:1px solid rgba(255,255,255,0.15);padding-top:16px;color:#cbd5e1;">
-    Best regards,<br><strong style="color:#fff;">${name}</strong><br>${phone}<br>${email}
   </p>
 </div>
 </body></html>`;
@@ -480,51 +458,28 @@ function buildCoverLetterTemplate(
   lang: string,
   certs?: Array<{ type: string; name: string; issuer?: string }>,
 ): string {
-  const isAr = lang !== "en";
   const companyTrimmed = (company || "").trim();
   const headerAr = companyTrimmed
     ? `إلى فريق التوظيف في <strong>${companyTrimmed}</strong>`
     : `إلى فريق التوظيف المختص`;
-  const headerEn = companyTrimmed
-    ? `To the Hiring Team at <strong>${companyTrimmed}</strong>`
-    : `To the Hiring Manager`;
-  const spec   = profile?.specialization || profile?.degree || (isAr ? "مجال التخصص" : "my field");
+  const spec   = profile?.specialization || profile?.degree || "مجال التخصص";
   const exp    = profile?.experience_years ?? -1;
-  const skills = (profile?.skills ?? []).slice(0, 5).join(isAr ? "، " : ", ") || (isAr ? "مهارات متنوعة في المجال" : "relevant skills");
+  const skills = (profile?.skills ?? []).slice(0, 5).join("، ") || "مهارات متنوعة في المجال";
 
-  let degreeItem: string;
-  let expItem: string;
-  let skillsItem: string;
-  let certsItem: string = "";
-
-  if (isAr) {
-    degreeItem = profile?.degree
-      ? profile.degree + (profile.specialization ? " في " + profile.specialization : "")
-      : "مؤهل علمي مناسب";
-    expItem = exp > 0
-      ? `خبرة ${exp} ${exp === 1 ? "سنة" : "سنوات"} في المجال`
-      : "حديث التخرج، لديّ رغبة قوية في التطور والتعلم";
-    skillsItem = skills;
-    if (certs && certs.length > 0) {
-      const certList = certs.map(c => c.name + (c.issuer ? ` (${c.issuer})` : "")).join("، ");
-      certsItem = `الشهادات والرخص: ${certList}`;
-    }
-  } else {
-    degreeItem = profile?.degree
-      ? profile.degree + (profile.specialization ? " in " + profile.specialization : "")
-      : "Relevant academic qualification";
-    expItem = exp > 0
-      ? `${exp} year${exp === 1 ? "" : "s"} of relevant experience`
-      : "Recent graduate, eager to learn and grow professionally";
-    skillsItem = skills;
-    if (certs && certs.length > 0) {
-      const certList = certs.map(c => c.name + (c.issuer ? ` (${c.issuer})` : "")).join(", ");
-      certsItem = `Certifications & Licenses: ${certList}`;
-    }
+  const degreeItem = profile?.degree
+    ? profile.degree + (profile.specialization ? " في " + profile.specialization : "")
+    : "مؤهل علمي مناسب";
+  const expItem = exp > 0
+    ? `خبرة ${exp} ${exp === 1 ? "سنة" : "سنوات"} في المجال`
+    : "حديث التخرج، لديّ رغبة قوية في التطور والتعلم";
+  const skillsItem = skills;
+  let certsItem = "";
+  if (certs && certs.length > 0) {
+    const certList = certs.map(c => c.name + (c.issuer ? ` (${c.issuer})` : "")).join("، ");
+    certsItem = `الشهادات والرخص: ${certList}`;
   }
 
-  if (isAr) {
-    return `<!DOCTYPE html><html dir="rtl" lang="ar">
+  return `<!DOCTYPE html><html dir="rtl" lang="ar">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet">
 </head>
@@ -555,59 +510,6 @@ function buildCoverLetterTemplate(
   </p>
 </div>
 </body></html>`;
-  }
-
-  return `<!DOCTYPE html><html dir="ltr" lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:24px;background:#f0f2f5;font-family:'Segoe UI',Arial,sans-serif;">
-<div style="background-color:#0a1e36;color:#ffffff;font-family:'Segoe UI',Arial,sans-serif;padding:40px;border-radius:12px;max-width:600px;margin:0 auto;">
-  <h2 style="margin-top:0;font-size:20px;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:16px;">
-    ${headerEn}
-  </h2>
-  <p style="line-height:1.9;margin:20px 0;font-size:15px;">
-    Dear Hiring Manager,<br><br>
-    My name is <strong>${name}</strong>, a professional specializing in ${spec}.<br>
-    I am writing to express my interest in the <strong>${jobTitle}</strong> position.
-  </p>
-  <ul style="line-height:2.2;font-size:15px;margin:0 0 20px;">
-    <li>${degreeItem}</li>
-    <li>${expItem}</li>
-    <li>${skillsItem}</li>
-    ${certsItem ? `<li>${certsItem}</li>` : ""}
-  </ul>
-  <p style="line-height:1.9;font-size:15px;margin:0 0 24px;">
-    Please find my CV attached. I look forward to the opportunity to speak with you.
-  </p>
-  <p style="margin:0;line-height:2;font-size:14px;border-top:1px solid rgba(255,255,255,0.15);padding-top:16px;">
-    Best regards,<br>
-    <strong>${name}</strong><br>
-    ${phone}<br>
-    ${email}
-  </p>
-</div>
-</body></html>`;
-}
-
-// ─── ترجمة المسمى الوظيفي للإنجليزية (عند الحاجة فقط) ──────────────────────
-
-async function translateJobTitleToEn(titleAr: string): Promise<string> {
-  if (!titleAr.trim()) return titleAr;
-  const prompt = `Translate this Arabic job title to English. Return ONLY the translated job title, nothing else.\nArabic: ${titleAr}`;
-  const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"];
-  for (const model of MODELS) {
-    try {
-      const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
-        { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
-      );
-      if (!r.ok) continue;
-      const data = await r.json();
-      const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
-      if (text) return text.replace(/^["']|["']$/g, "").trim();
-    } catch { continue; }
-  }
-  return titleAr; // fallback: العنوان الأصلي إذا فشلت الترجمة
 }
 
 // ─── توليد رسالة التقديم (قالب ثابت — بدون استدعاء AI) ───────────────────────
@@ -960,7 +862,6 @@ async function runCycle() {
 
     const name      = String(user.full_name ?? "المتقدم");
     const phone     = String(user.phone ?? "");
-    const lang      = String(settings.application_language ?? "ar");
     // حد اليوم (10) مع حد الدورة الواحدة (MAX_PER_CYCLE) لضمان العدالة بين المستخدمين
     const remaining = Math.min(MAX_PER_CYCLE, 10 - countToday);
     // إذا ما في تفضيلات ولا cv_profile → لا يمكن تحديد التخصص → تخطّى
@@ -996,20 +897,7 @@ async function runCycle() {
       const desc     = String(job.description_ar ?? job.description_en ?? "").slice(0, 1200);
       const toEmail  = String(job.application_email ?? "").trim();
 
-      // المسمى الوظيفي للعرض — إنجليزي إذا المستخدم اختار الإنجليزية
-      const rawTitleEn = String(job.title_en ?? "").trim();
-      const rawTitleAr = String(job.title_ar ?? "").trim();
-      let displayJobTitle = jobTitle;
-      if (lang === "en") {
-        if (rawTitleEn) {
-          displayJobTitle = rawTitleEn;
-        } else if (rawTitleAr) {
-          displayJobTitle = await translateJobTitleToEn(rawTitleAr);
-          console.log(`[worker] 🔤 ترجمة المسمى: "${rawTitleAr}" → "${displayJobTitle}"`);
-        } else {
-          displayJobTitle = "Position";
-        }
-      }
+      const displayJobTitle = jobTitle;
 
       // فحص التكرار محلياً بدون استعلامات DB إضافية
       const fingerprint = await jobFingerprint(jobTitle, toEmail, desc);
@@ -1122,15 +1010,13 @@ async function runCycle() {
         const savedBody = String(settings.cover_letter_body ?? "").trim();
         let cover: string;
         if (savedBody) {
-          cover = buildCoverLetterFromSavedBody(name, displayJobTitle, company, phone, smtpEmail, lang, savedBody);
+          cover = buildCoverLetterFromSavedBody(name, displayJobTitle, company, phone, smtpEmail, "ar", savedBody);
         } else {
-          cover = generateCoverLetter(displayJobTitle, name, company, desc, lang, cvParsedText, cvProfile, fit.score, phone, smtpEmail, certifications);
+          cover = generateCoverLetter(displayJobTitle, name, company, desc, "ar", cvParsedText, cvProfile, fit.score, phone, smtpEmail, certifications);
         }
         cover = stripEmojis(cover);
-        const html    = buildEmailHtml(name, phone, displayJobTitle, company, cover, lang);
-        const subject = lang === "ar"
-          ? `التقديم على وظيفة: ${stripEmojis(jobTitle)}`
-          : `Application for: ${stripEmojis(displayJobTitle)}`;
+        const html    = buildEmailHtml(name, phone, displayJobTitle, company, cover, "ar");
+        const subject = `التقديم على وظيفة: ${stripEmojis(jobTitle)}`;
 
         // تنزيل ملف CV للإرفاق بالبريد (منفصل عن التحليل المخزّن)
         const storagePath = String(cv.storage_path ?? "").trim();
