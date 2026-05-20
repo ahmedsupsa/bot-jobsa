@@ -190,8 +190,10 @@ export async function GET(req: Request) {
   }
 
   // أفضل مسمى وظيفي من تفضيلات المستخدم
-  const prefs = (prefsRes.data ?? []) as Array<{ job_fields: { name_ar: string; name_en: string } | null }>;
-  const firstPref = prefs[0]?.job_fields;
+  type PrefRow = { job_fields: { name_ar: string; name_en: string } | { name_ar: string; name_en: string }[] | null };
+  const prefs = (prefsRes.data ?? []) as unknown as PrefRow[];
+  const rawField = prefs[0]?.job_fields;
+  const firstPref = Array.isArray(rawField) ? rawField[0] : rawField;
   const jobTitle = firstPref
     ? (isAr ? firstPref.name_ar : firstPref.name_en)
     : (profile?.specialization || (isAr ? "وظيفة مناسبة" : "a suitable position"));
