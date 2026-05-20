@@ -51,6 +51,9 @@ export async function POST(req: Request) {
   if (body.template_type && ["classic", "modern", "brief"].includes(body.template_type)) {
     update.template_type = body.template_type;
   }
+  if (typeof body.cover_letter_body === "string") {
+    update.cover_letter_body = body.cover_letter_body.trim();
+  }
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: "لا يوجد تغيير" }, { status: 400 });
   }
