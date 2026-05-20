@@ -415,6 +415,7 @@ function buildCoverLetterTemplate(
   phone: string,
   email: string,
   lang: string,
+  certs?: Array<{ type: string; name: string; issuer?: string }>,
 ): string {
   const isAr = lang !== "en";
   const companyDisplay = company || (isAr ? "جهة التوظيف" : "Your Company");
@@ -425,6 +426,7 @@ function buildCoverLetterTemplate(
   let degreeItem: string;
   let expItem: string;
   let skillsItem: string;
+  let certsItem: string = "";
 
   if (isAr) {
     degreeItem = profile?.degree
@@ -434,6 +436,10 @@ function buildCoverLetterTemplate(
       ? `خبرة ${exp} ${exp === 1 ? "سنة" : "سنوات"} في المجال`
       : "حديث التخرج، لديّ رغبة قوية في التطور والتعلم";
     skillsItem = skills;
+    if (certs && certs.length > 0) {
+      const certList = certs.map(c => c.name + (c.issuer ? ` (${c.issuer})` : "")).join("، ");
+      certsItem = `الشهادات والرخص: ${certList}`;
+    }
   } else {
     degreeItem = profile?.degree
       ? profile.degree + (profile.specialization ? " in " + profile.specialization : "")
@@ -442,6 +448,10 @@ function buildCoverLetterTemplate(
       ? `${exp} year${exp === 1 ? "" : "s"} of relevant experience`
       : "Recent graduate, eager to learn and grow professionally";
     skillsItem = skills;
+    if (certs && certs.length > 0) {
+      const certList = certs.map(c => c.name + (c.issuer ? ` (${c.issuer})` : "")).join(", ");
+      certsItem = `Certifications & Licenses: ${certList}`;
+    }
   }
 
   if (isAr) {
@@ -463,6 +473,7 @@ function buildCoverLetterTemplate(
     <li>${degreeItem}</li>
     <li>${expItem}</li>
     <li>${skillsItem}</li>
+    ${certsItem ? `<li>${certsItem}</li>` : ""}
   </ul>
   <p style="line-height:2;font-size:15px;margin:0 0 24px;">
     أرفقت لكم سيرتي الذاتية، وأتطلع لفرصة للتواصل معكم.
@@ -493,6 +504,7 @@ function buildCoverLetterTemplate(
     <li>${degreeItem}</li>
     <li>${expItem}</li>
     <li>${skillsItem}</li>
+    ${certsItem ? `<li>${certsItem}</li>` : ""}
   </ul>
   <p style="line-height:1.9;font-size:15px;margin:0 0 24px;">
     Please find my CV attached. I look forward to the opportunity to speak with you.
@@ -544,9 +556,10 @@ function generateCoverLetter(
   _aiScore?: number,
   phone?: string,
   email?: string,
+  certs?: Array<{ type: string; name: string; issuer?: string }>,
 ): string {
   console.log(`[worker] 📝 FixedTemplate → ${jobTitle}`);
-  return buildCoverLetterTemplate(name, jobTitle, company, cvProfile ?? null, phone ?? "", email ?? "", lang);
+  return buildCoverLetterTemplate(name, jobTitle, company, cvProfile ?? null, phone ?? "", email ?? "", lang, certs);
 }
 
 // ─── بناء HTML للإيميل ────────────────────────────────────────────────────────
@@ -1037,7 +1050,7 @@ async function runCycle() {
       let errorReason: string | null = null;
 
       try {
-        let cover = generateCoverLetter(displayJobTitle, name, company, desc, lang, cvParsedText, cvProfile, fit.score, phone, smtpEmail);
+        let cover = generateCoverLetter(displayJobTitle, name, company, desc, lang, cvParsedText, cvProfile, fit.score, phone, smtpEmail, certifications);
         cover = stripEmojis(cover);
         const html    = buildEmailHtml(name, phone, displayJobTitle, company, cover, lang);
         const subject = lang === "ar"
