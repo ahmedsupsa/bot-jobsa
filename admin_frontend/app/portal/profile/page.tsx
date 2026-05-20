@@ -8,7 +8,7 @@ import {
   User, Phone, MapPin, Calendar, Mail, CreditCard, Send,
   Languages, CheckCircle, XCircle, Loader2, Pencil, Save, X,
   LogOut, Trash2, FileDown, Receipt, Award, Plus, GraduationCap,
-  ShieldCheck, BookOpen, ClipboardList, BadgeCheck,
+  ShieldCheck, BookOpen, ClipboardList, BadgeCheck, Eye, ChevronDown,
 } from "lucide-react";
 import { TEMPLATE_META, TEMPLATE_IDS, getTemplatePreview, getTemplateIcon } from "./template-previews";
 
@@ -76,6 +76,11 @@ export default function AccountPage() {
   const [certForm, setCertForm] = useState({ type: "certificate" as CertType, name: "", issuer: "", issued_at: "", expires_at: "" });
   const [certSaving, setCertSaving] = useState(false);
   const [certMsg, setCertMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
+
+  // preview state
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   // invoices state
   type PortalOrder = {
@@ -226,6 +231,17 @@ export default function AccountPage() {
       } else { const d = await res.json(); setMsg({ text: d.error || "فشل الحفظ", type: "err" }); }
     } catch { setMsg({ text: "خطأ في الاتصال", type: "err" }); }
     finally { setSavingTemplate(false); }
+  }
+
+  async function loadPreview() {
+    setPreviewLoading(true);
+    setShowPreview(true);
+    try {
+      const res = await portalFetch("/cv/preview-letter");
+      const html = await res.text();
+      setPreviewHtml(html);
+    } catch { setPreviewHtml(""); }
+    finally { setPreviewLoading(false); }
   }
 
   async function deleteAccount() {
@@ -964,6 +980,50 @@ export default function AccountPage() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* ─── Inline Preview ─── */}
+            <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 18, overflow: "hidden" }}>
+              <div
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  gap: 10, padding: "16px 20px", cursor: "pointer",
+                  borderBottom: showPreview ? `1px solid ${t.border}` : "none",
+                }}
+                onClick={() => {
+                  if (!showPreview) { loadPreview(); }
+                  else { setShowPreview(false); }
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 10, background: t.iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Eye size={16} strokeWidth={1.5} color={t.text2} />
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, color: t.text, fontSize: 14, fontWeight: 700 }}>معاينة رسالة التقديم</p>
+                    <p style={{ margin: "1px 0 0", color: t.text3, fontSize: 11 }}>هذا شكل الإيميل الذي يصل للشركات باسمك</p>
+                  </div>
+                </div>
+                {previewLoading
+                  ? <Loader2 size={16} color={t.text3} style={{ animation: "spin 1s linear infinite" }} />
+                  : <ChevronDown size={16} color={t.text3} style={{ transform: showPreview ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+                }
+              </div>
+
+              {showPreview && previewLoading && (
+                <div style={{ padding: 48, textAlign: "center" }}>
+                  <Loader2 size={26} color={t.text3} style={{ animation: "spin 1s linear infinite" }} />
+                </div>
+              )}
+
+              {showPreview && !previewLoading && previewHtml && (
+                <iframe
+                  srcDoc={previewHtml}
+                  title="معاينة رسالة التقديم"
+                  style={{ width: "100%", height: 480, border: "none", display: "block" }}
+                  sandbox="allow-same-origin"
+                />
+              )}
             </div>
 
           </div>
