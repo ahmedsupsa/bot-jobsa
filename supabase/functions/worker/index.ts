@@ -405,6 +405,62 @@ function computeLocalScore(
   return Math.max(0, Math.min(100, score));
 }
 
+// ─── Cover Letter من القالب المحفوظ للمستخدم ─────────────────────────────────
+
+function buildCoverLetterFromSavedBody(
+  name: string,
+  jobTitle: string,
+  company: string,
+  phone: string,
+  email: string,
+  lang: string,
+  savedBody: string,
+): string {
+  const isAr = lang !== "en";
+  const companyDisplay = company || (isAr ? "جهة التوظيف" : "Your Company");
+
+  const paragraphs = savedBody
+    .split(/\n{2,}/)
+    .map(p => p.trim())
+    .filter(Boolean)
+    .map(p => `<p style="line-height:2;margin:0 0 16px;font-size:15px;">${p.replace(/\n/g, "<br>")}</p>`)
+    .join("");
+
+  if (isAr) {
+    return `<!DOCTYPE html><html dir="rtl" lang="ar">
+<head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:24px;background:#f0f2f5;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;">
+<div dir="rtl" style="background-color:#0a1e36;color:#ffffff;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;padding:40px;border-radius:12px;max-width:600px;margin:0 auto;">
+  <h2 style="margin-top:0;font-size:20px;font-weight:700;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:16px;">
+    إلى فريق التوظيف في <strong>${companyDisplay}</strong>
+  </h2>
+  <p style="font-size:15px;font-weight:600;margin:20px 0 16px;color:#93c5fd;">السلام عليكم ورحمة الله وبركاته،</p>
+  <div style="color:#e2e8f0;">${paragraphs}</div>
+  <p style="margin:24px 0 0;line-height:2;font-size:14px;border-top:1px solid rgba(255,255,255,0.15);padding-top:16px;color:#cbd5e1;">
+    مع خالص التحية،<br><strong style="color:#fff;">${name}</strong><br>${phone}<br>${email}
+  </p>
+</div>
+</body></html>`;
+  }
+
+  return `<!DOCTYPE html><html lang="en">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:24px;background:#f0f2f5;font-family:'Segoe UI',Arial,sans-serif;">
+<div style="background-color:#0a1e36;color:#ffffff;padding:40px;border-radius:12px;max-width:600px;margin:0 auto;">
+  <h2 style="margin-top:0;font-size:20px;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:16px;">
+    To the Hiring Team at <strong>${companyDisplay}</strong>
+  </h2>
+  <p style="font-size:15px;font-weight:600;margin:20px 0 16px;color:#93c5fd;">Dear Hiring Manager,</p>
+  <div style="color:#e2e8f0;">${paragraphs}</div>
+  <p style="margin:24px 0 0;line-height:2;font-size:14px;border-top:1px solid rgba(255,255,255,0.15);padding-top:16px;color:#cbd5e1;">
+    Best regards,<br><strong style="color:#fff;">${name}</strong><br>${phone}<br>${email}
+  </p>
+</div>
+</body></html>`;
+}
+
 // ─── Cover Letter — قالب HTML ثابت (بدون AI) ────────────────────────────────
 
 function buildCoverLetterTemplate(
@@ -1050,7 +1106,13 @@ async function runCycle() {
       let errorReason: string | null = null;
 
       try {
-        let cover = generateCoverLetter(displayJobTitle, name, company, desc, lang, cvParsedText, cvProfile, fit.score, phone, smtpEmail, certifications);
+        const savedBody = String(settings.cover_letter_body ?? "").trim();
+        let cover: string;
+        if (savedBody) {
+          cover = buildCoverLetterFromSavedBody(name, displayJobTitle, company, phone, smtpEmail, lang, savedBody);
+        } else {
+          cover = generateCoverLetter(displayJobTitle, name, company, desc, lang, cvParsedText, cvProfile, fit.score, phone, smtpEmail, certifications);
+        }
         cover = stripEmojis(cover);
         const html    = buildEmailHtml(name, phone, displayJobTitle, company, cover, lang);
         const subject = lang === "ar"
