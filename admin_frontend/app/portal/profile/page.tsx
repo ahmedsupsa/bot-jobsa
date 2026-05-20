@@ -236,11 +236,12 @@ export default function AccountPage() {
     finally { setSavingTemplate(false); }
   }
 
-  async function loadPreview() {
+  async function loadPreview(regen = false) {
     setPreviewLoading(true);
     setShowPreview(true);
     try {
-      const res = await portalFetch("/cv/preview-letter");
+      const url = regen ? "/cv/preview-letter?regenerate=1" : "/cv/preview-letter";
+      const res = await portalFetch(url);
       const html = await res.text();
       setPreviewHtml(html);
     } catch { setPreviewHtml(""); }
@@ -902,30 +903,48 @@ export default function AccountPage() {
 
             {/* ─── Inline Preview ─── */}
             <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 18, overflow: "hidden" }}>
-              <div
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  gap: 10, padding: "16px 20px", cursor: "pointer",
-                  borderBottom: showPreview ? `1px solid ${t.border}` : "none",
-                }}
-                onClick={() => {
-                  if (!showPreview) { loadPreview(); }
-                  else { setShowPreview(false); }
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                gap: 10, padding: "16px 20px",
+                borderBottom: showPreview ? `1px solid ${t.border}` : "none",
+              }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", flex: 1 }}
+                  onClick={() => { if (!showPreview) { loadPreview(); } else { setShowPreview(false); } }}
+                >
                   <div style={{ width: 32, height: 32, borderRadius: 10, background: t.iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <Eye size={16} strokeWidth={1.5} color={t.text2} />
                   </div>
                   <div>
                     <p style={{ margin: 0, color: t.text, fontSize: 14, fontWeight: 700 }}>معاينة رسالة التقديم</p>
-                    <p style={{ margin: "1px 0 0", color: t.text3, fontSize: 11 }}>هذا شكل الإيميل الذي يصل للشركات باسمك</p>
+                    <p style={{ margin: "1px 0 0", color: t.text3, fontSize: 11 }}>الإيميل الحقيقي الذي يصل للشركات باسمك</p>
                   </div>
                 </div>
-                {previewLoading
-                  ? <Loader2 size={16} color={t.text3} style={{ animation: "spin 1s linear infinite" }} />
-                  : <ChevronDown size={16} color={t.text3} style={{ transform: showPreview ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-                }
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {showPreview && !previewLoading && (
+                    <button
+                      onClick={() => loadPreview(true)}
+                      title="إعادة إنشاء بالذكاء الاصطناعي"
+                      style={{
+                        display: "flex", alignItems: "center", gap: 5,
+                        padding: "6px 12px", borderRadius: 8, cursor: "pointer",
+                        border: `1px solid ${t.border2}`, background: "transparent",
+                        color: t.text2, fontSize: 12, fontWeight: 600,
+                      }}
+                    >
+                      <Loader2 size={12} /> إعادة إنشاء
+                    </button>
+                  )}
+                  <div
+                    style={{ cursor: "pointer", padding: 4 }}
+                    onClick={() => { if (!showPreview) { loadPreview(); } else { setShowPreview(false); } }}
+                  >
+                    {previewLoading
+                      ? <Loader2 size={16} color={t.text3} style={{ animation: "spin 1s linear infinite" }} />
+                      : <ChevronDown size={16} color={t.text3} style={{ transform: showPreview ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+                    }
+                  </div>
+                </div>
               </div>
 
               {showPreview && previewLoading && (
