@@ -38,7 +38,6 @@ export async function GET(req: Request) {
     email: settings.email || "",
     sender_email_alias: settings.sender_email_alias || "",
     template_type: settings.template_type || "",
-    application_language: settings.application_language || "ar",
     job_preferences_count: prefs_count || 0,
   });
 }
@@ -49,9 +48,6 @@ export async function POST(req: Request) {
 
   const body = await req.json();
   const update: Record<string, any> = {};
-  if (body.application_language && ["ar", "en"].includes(body.application_language)) {
-    update.application_language = body.application_language;
-  }
   if (body.template_type && ["classic", "modern", "brief"].includes(body.template_type)) {
     update.template_type = body.template_type;
   }
