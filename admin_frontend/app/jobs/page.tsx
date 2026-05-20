@@ -41,7 +41,7 @@ export default function JobsPage() {
   const [aiSpecs, setAiSpecs] = useState("");
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [filter, setFilter] = useState<"all" | "active" | "expired">("all");
+  const [filter, setFilter] = useState<"withEmail" | "all" | "active" | "expired">("withEmail");
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [deduping, setDeduping] = useState(false);
@@ -65,13 +65,15 @@ export default function JobsPage() {
   useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => {
-    if (filter === "expired") return rows.filter(j => daysAgo(j.created_at) > 10);
-    if (filter === "active") return rows.filter(j => daysAgo(j.created_at) <= 10);
+    if (filter === "withEmail") return rows.filter(j => !!j.application_email?.trim());
+    if (filter === "expired")   return rows.filter(j => daysAgo(j.created_at) > 10);
+    if (filter === "active")    return rows.filter(j => daysAgo(j.created_at) <= 10);
     return rows;
   }, [rows, filter]);
 
-  const expiredCount = useMemo(() => rows.filter(j => daysAgo(j.created_at) > 10).length, [rows]);
-  const activeCount  = useMemo(() => rows.filter(j => daysAgo(j.created_at) <= 10).length, [rows]);
+  const expiredCount  = useMemo(() => rows.filter(j => daysAgo(j.created_at) > 10).length, [rows]);
+  const activeCount   = useMemo(() => rows.filter(j => daysAgo(j.created_at) <= 10).length, [rows]);
+  const noEmailCount  = useMemo(() => rows.filter(j => !j.application_email?.trim()).length, [rows]);
 
   const allSelected = filtered.length > 0 && filtered.every(j => selected.has(j.id));
   const someSelected = filtered.some(j => selected.has(j.id));
@@ -174,6 +176,24 @@ export default function JobsPage() {
     finally { setDeduping(false); }
   };
 
+  const deleteNoEmail = async () => {
+    if (!window.confirm(`حذف ${noEmailCount} وظيفة بدون إيميل تقديم نهائياً؟`)) return;
+    setBulkDeleting(true); setMsg("");
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/jobs`, {
+        method: "DELETE", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "no_email" }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "فشل الحذف");
+      setMsg(`تم حذف ${j.deleted} وظيفة بدون إيميل ✓`); setMsgType("ok");
+      setFilter("withEmail");
+      await load();
+    } catch (e: any) { setMsg(String(e)); setMsgType("err"); }
+    finally { setBulkDeleting(false); }
+  };
+
   const deleteExpired = async () => {
     if (!window.confirm(`حذف ${expiredCount} وظيفة منتهية الصلاحية (أكثر من 10 أيام)؟`)) return;
     setBulkDeleting(true); setMsg("");
@@ -235,9 +255,9 @@ export default function JobsPage() {
         <div>
           <h1 className="text-xl font-bold text-ink">الوظائف</h1>
           <p className="text-sm text-muted mt-0.5">
-            {rows.length} وظيفة إجمالاً · {activeCount} نشطة · {expiredCount > 0 && (
-              <span className="text-orange-400">{expiredCount} منتهية</span>
-            )}
+            {rows.length} إجمالاً · {activeCount} نشطة
+            {noEmailCount > 0 && <> · <span className="text-red-400">{noEmailCount} بدون إيميل</span></>}
+            {expiredCount > 0 && <> · <span className="text-orange-400">{expiredCount} منتهية</span></>}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -268,6 +288,15 @@ export default function JobsPage() {
           >
             {deduping ? <><Loader2 size={13} className="animate-spin" /> يتحقق...</> : <><Filter size={13} /> حذف المكررات</>}
           </button>
+          {noEmailCount > 0 && (
+            <button
+              onClick={deleteNoEmail}
+              disabled={bulkDeleting}
+              className="flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2 text-xs text-red-400 font-semibold hover:bg-red-500/20 transition-colors disabled:opacity-60"
+            >
+              <Mail size={13} /> حذف بدون إيميل ({noEmailCount})
+            </button>
+          )}
           {expiredCount > 0 && (
             <button
               onClick={deleteExpired}
@@ -388,7 +417,7 @@ export default function JobsPage() {
             </div>
             {/* Filter tabs */}
             <div className="flex gap-1 rounded-xl border border-line/60 bg-panel2 p-1">
-              {([["all","الكل"], ["active","نشطة"], ["expired","منتهية"]] as const).map(([v, label]) => (
+              {([["withEmail","مع إيميل"], ["all","الكل"], ["active","نشطة"], ["expired","منتهية"]] as const).map(([v, label]) => (
                 <button key={v} onClick={() => { setFilter(v); setSelected(new Set()); }}
                   className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${filter === v ? "bg-accent text-accent-fg" : "text-muted hover:text-ink"}`}>
                   {label}

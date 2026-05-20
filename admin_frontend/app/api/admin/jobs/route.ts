@@ -111,6 +111,16 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ ok: true, deleted: deletedCount });
   }
 
+  // حذف الوظائف بدون إيميل تقديم
+  if (body.mode === "no_email") {
+    const { error, count } = await supabase
+      .from("admin_jobs")
+      .delete({ count: "exact" })
+      .or("application_email.is.null,application_email.eq.");
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, deleted: count || 0 });
+  }
+
   // حذف متعدد
   if (Array.isArray(body.ids) && body.ids.length > 0) {
     const { error, count } = await supabase.from("admin_jobs").delete({ count: "exact" }).in("id", body.ids);
