@@ -204,40 +204,6 @@ export default function CVPage() {
                       <Eye size={14} /> معاينة السيرة
                     </a>
                   )}
-                  <a
-                    href="/api/portal/cv/preview-letter"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={e => {
-                      e.preventDefault();
-                      const win = window.open("", "_blank");
-                      if (!win) return;
-                      win.document.write('<html><body style="font-family:sans-serif;padding:40px;color:#555">جاري التحميل...</body></html>');
-                      const headers = authHeaders();
-                      fetch("/api/portal/cv/preview-letter", { headers })
-                        .then(r => r.text())
-                        .then(html => {
-                          win.document.open();
-                          win.document.write(html);
-                          win.document.close();
-                        })
-                        .catch(() => {
-                          win.document.open();
-                          win.document.write('<html><body style="padding:40px;color:red">حدث خطأ، حاول مجدداً</body></html>');
-                          win.document.close();
-                        });
-                    }}
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: 7,
-                      padding: "10px 18px", borderRadius: 12, cursor: "pointer",
-                      background: dark ? "#0d0d1a" : "#f5f3ff",
-                      border: `1px solid ${dark ? "#1e1e3a" : "#ddd6fe"}`,
-                      color: dark ? "#c4b5fd" : "#5b21b6",
-                      fontSize: 13, fontWeight: 700, textDecoration: "none",
-                    }}
-                  >
-                    <Mail size={14} /> معاينة رسالة التقديم
-                  </a>
                 </div>
 
                 {/* قفل */}
