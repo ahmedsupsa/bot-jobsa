@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { extractToken, verifyToken } from "@/lib/auth";
 
+type Cert = { type: string; name: string; issuer: string | null };
+
 function buildPreviewHtml(
   name: string,
   jobTitle: string,
@@ -16,6 +18,7 @@ function buildPreviewHtml(
     skills?: string[];
     is_fresh_graduate?: boolean;
   } | null,
+  certs?: Cert[],
 ): string {
   const isAr = lang !== "en";
   const companyDisplay = company || (isAr ? "جهة التوظيف" : "Your Company");
@@ -38,6 +41,12 @@ function buildPreviewHtml(
     : exp > 0
       ? `${exp} year${exp === 1 ? "" : "s"} of relevant experience`
       : "Recent graduate, eager to learn and grow professionally";
+
+  let certsItem = "";
+  if (certs && certs.length > 0) {
+    const certList = certs.map(c => c.name + (c.issuer ? ` (${c.issuer})` : "")).join(isAr ? "، " : ", ");
+    certsItem = isAr ? `الشهادات والرخص: ${certList}` : `Certifications & Licenses: ${certList}`;
+  }
 
   if (isAr) {
     return `<!DOCTYPE html><html dir="rtl" lang="ar">
@@ -67,6 +76,7 @@ function buildPreviewHtml(
     <li>${degreeItem}</li>
     <li>${expItem}</li>
     <li>${skills}</li>
+    ${certsItem ? `<li>${certsItem}</li>` : ""}
   </ul>
   <p style="line-height:2;font-size:15px;margin:0 0 24px;">
     أرفقت لكم سيرتي الذاتية، وأتطلع لفرصة للتواصل معكم.
@@ -103,6 +113,7 @@ function buildPreviewHtml(
     <li>${degreeItem}</li>
     <li>${expItem}</li>
     <li>${skills}</li>
+    ${certsItem ? `<li>${certsItem}</li>` : ""}
   </ul>
   <p style="line-height:1.9;font-size:15px;margin:0 0 24px;">Please find my CV attached. I look forward to the opportunity to speak with you.</p>
   <p style="margin:0;line-height:2;font-size:14px;border-top:1px solid rgba(255,255,255,0.15);padding-top:16px;">
@@ -122,15 +133,17 @@ export async function GET(req: Request) {
   if (!payload) return NextResponse.json({ error: "غير مخوّل" }, { status: 401 });
   const uid = payload.user_id;
 
-  const [userRes, cvRes, settingsRes] = await Promise.all([
+  const [userRes, cvRes, settingsRes, certsRes] = await Promise.all([
     supabase.from("users").select("full_name, phone, application_language").eq("id", uid).single(),
     supabase.from("user_cvs").select("cv_profile").eq("user_id", uid).limit(1),
     supabase.from("user_settings").select("smtp_email, email").eq("user_id", uid).single(),
+    supabase.from("user_certifications").select("type, name, issuer").eq("user_id", uid),
   ]);
 
   const user     = userRes.data;
   const cvRow    = cvRes.data?.[0];
   const settings = settingsRes.data;
+  const certs    = (certsRes.data ?? []) as Cert[];
 
   const name    = user?.full_name || "اسمك";
   const phone   = user?.phone || "";
@@ -138,7 +151,8 @@ export async function GET(req: Request) {
   const profile = (cvRow?.cv_profile ?? null) as any;
   const email   = settings?.smtp_email || settings?.email || "";
 
-  const html = buildPreviewHtml(name, "مطوّر برمجيات", "شركة نموذجية", phone, email, lang, profile);
+  const jobTitle  = lang === "en" ? "Software Engineer" : "مطوّر برمجيات";
+  const html = buildPreviewHtml(name, jobTitle, "شركة نموذجية", phone, email, lang, profile, certs);
 
   return new Response(html, {
     headers: { "Content-Type": "text/html; charset=utf-8" },
