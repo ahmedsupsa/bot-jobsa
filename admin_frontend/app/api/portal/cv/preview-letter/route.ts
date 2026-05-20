@@ -116,7 +116,16 @@ export async function GET(req: Request) {
   if (!payload) return NextResponse.json({ error: "غير مخوّل" }, { status: 401 });
   const uid = payload.user_id;
 
-  const forceRegen = new URL(req.url).searchParams.get("regenerate") === "1";
+  const url = new URL(req.url);
+  const forceRegen = url.searchParams.get("regenerate") === "1";
+  const formatJson = url.searchParams.get("format") === "json";
+
+  // وضع JSON — يُرجع نص الجسم الخام فقط (للتعديل)
+  if (formatJson && !forceRegen) {
+    const db = freshClient();
+    const { data } = await db.from("user_settings").select("cover_letter_body").eq("user_id", uid).single();
+    return NextResponse.json({ body: data?.cover_letter_body || "" });
+  }
   const db = freshClient();
 
   const [userRes, cvRes, settingsRes, certsRes, prefsRes] = await Promise.all([
