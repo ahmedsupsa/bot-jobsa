@@ -8,7 +8,7 @@ import {
   Send, Mail, User, FileText, MessageSquare, Reply, CheckCircle, XCircle,
   Loader2, Users, BarChart2, Eye, Clock, ChevronLeft, ChevronRight,
   Inbox, AlertCircle, RefreshCw, Zap, TrendingUp, ArrowUpRight,
-  Paperclip, AtSign, Sparkles, Radio,
+  Paperclip, AtSign, Sparkles, Radio, Pencil, Trash2, Square, CheckSquare, X,
 } from "lucide-react";
 
 type Campaign = {
@@ -510,22 +510,123 @@ function CampaignCreate({ onSent }: { onSent: () => void }) {
   );
 }
 
+// ── Edit Modal ────────────────────────────────────────────────────────────────
+function EditCampaignModal({ campaign, onClose, onSaved }: {
+  campaign: Campaign;
+  onClose: () => void;
+  onSaved: (updated: Partial<Campaign>) => void;
+}) {
+  const [name,     setName]     = useState(campaign.name);
+  const [subject,  setSubject]  = useState(campaign.subject);
+  const [fromName, setFromName] = useState(campaign.from_name);
+  const [saving,   setSaving]   = useState(false);
+  const [err,      setErr]      = useState("");
+
+  const save = async () => {
+    if (!name || !subject) { setErr("الاسم والعنوان مطلوبان"); return; }
+    setSaving(true); setErr("");
+    const r = await fetch(`/api/admin/campaigns/${campaign.id}`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, subject, from_name: fromName }),
+    });
+    const j = await r.json();
+    setSaving(false);
+    if (!j.ok) { setErr(j.error || "خطأ في الحفظ"); return; }
+    onSaved({ name, subject, from_name: fromName });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-line/70 bg-[var(--bg)] shadow-xl">
+        <div className="flex items-center justify-between border-b border-line/60 px-5 py-4">
+          <h3 className="text-sm font-bold text-ink flex items-center gap-2">
+            <Pencil size={14} className="text-accent" /> تعديل الحملة
+          </h3>
+          <button onClick={onClose} className="text-muted2 hover:text-ink transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="p-5 space-y-3">
+          <div>
+            <label className="text-xs text-muted2 mb-1.5 block">اسم الحملة</label>
+            <input value={name} onChange={e => setName(e.target.value)}
+              className="w-full rounded-xl border border-line/70 bg-panel px-3 py-2 text-sm focus:border-accent/50 focus:outline-none" />
+          </div>
+          <div>
+            <label className="text-xs text-muted2 mb-1.5 block">عنوان البريد</label>
+            <input value={subject} onChange={e => setSubject(e.target.value)}
+              className="w-full rounded-xl border border-line/70 bg-panel px-3 py-2 text-sm focus:border-accent/50 focus:outline-none" />
+          </div>
+          <div>
+            <label className="text-xs text-muted2 mb-1.5 block">اسم المرسِل</label>
+            <input value={fromName} onChange={e => setFromName(e.target.value)}
+              className="w-full rounded-xl border border-line/70 bg-panel px-3 py-2 text-sm focus:border-accent/50 focus:outline-none" />
+          </div>
+          {err && <p className="text-xs text-danger flex items-center gap-1"><AlertCircle size={12} />{err}</p>}
+        </div>
+        <div className="flex items-center justify-end gap-2 border-t border-line/60 px-5 py-3">
+          <button onClick={onClose} className="text-sm text-muted hover:text-ink px-4 py-2 rounded-xl transition-colors">إلغاء</button>
+          <button onClick={save} disabled={saving}
+            className="flex items-center gap-2 rounded-xl bg-accent text-white px-5 py-2 text-sm font-bold hover:opacity-90 disabled:opacity-40">
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />}
+            حفظ
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Campaign History ───────────────────────────────────────────────────────────
 function CampaignHistory() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [selected, setSelected]   = useState<string | null>(null);
+  const [campaigns, setCampaigns]   = useState<Campaign[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [detailId, setDetailId]     = useState<string | null>(null);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [editTarget, setEditTarget] = useState<Campaign | null>(null);
+  const [deleting, setDeleting]     = useState<Set<string>>(new Set());
+  const [confirmBulk, setConfirmBulk] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     const r = await fetch("/api/admin/campaigns", { credentials: "include" });
     const j = await r.json();
     setCampaigns(j.campaigns || []);
+    setCheckedIds(new Set());
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  if (selected) return <CampaignDetail id={selected} onBack={() => setSelected(null)} />;
+  // ── single delete ──
+  const deleteSingle = async (id: string) => {
+    setDeleting(p => new Set(p).add(id));
+    await fetch(`/api/admin/campaigns/${id}`, { method: "DELETE", credentials: "include" });
+    setCampaigns(p => p.filter(c => c.id !== id));
+    setCheckedIds(p => { const s = new Set(p); s.delete(id); return s; });
+    setDeleting(p => { const s = new Set(p); s.delete(id); return s; });
+  };
+
+  // ── bulk delete ──
+  const deleteBulk = async () => {
+    setConfirmBulk(false);
+    const ids = [...checkedIds];
+    ids.forEach(id => setDeleting(p => new Set(p).add(id)));
+    await Promise.all(ids.map(id =>
+      fetch(`/api/admin/campaigns/${id}`, { method: "DELETE", credentials: "include" })
+    ));
+    setCampaigns(p => p.filter(c => !ids.includes(c.id)));
+    setCheckedIds(new Set());
+    setDeleting(new Set());
+  };
+
+  const toggleCheck = (id: string) =>
+    setCheckedIds(p => { const s = new Set(p); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  const toggleAll = () =>
+    setCheckedIds(checkedIds.size === campaigns.length ? new Set() : new Set(campaigns.map(c => c.id)));
+
+  if (detailId) return <CampaignDetail id={detailId} onBack={() => setDetailId(null)} />;
 
   if (loading) return (
     <div className="flex items-center justify-center py-20 text-muted2 gap-2">
@@ -543,63 +644,150 @@ function CampaignHistory() {
   const totalSent   = campaigns.reduce((s, c) => s + c.total_sent, 0);
   const totalOpened = campaigns.reduce((s, c) => s + c.total_opened, 0);
   const avgOpen     = totalSent > 0 ? Math.round((totalOpened / totalSent) * 100) : 0;
+  const allChecked  = checkedIds.size === campaigns.length;
+  const someChecked = checkedIds.size > 0;
 
   return (
-    <div className="space-y-5">
-      {/* Stats row */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "إجمالي الحملات", value: campaigns.length, icon: Radio, color: "text-accent" },
-          { label: "إجمالي المُرسَل", value: totalSent.toLocaleString("ar"), icon: Send, color: "text-blue-400" },
-          { label: "متوسط معدل الفتح", value: `${avgOpen}%`, icon: TrendingUp, color: avgOpen >= 30 ? "text-green-400" : "text-yellow-400" },
-        ].map(s => (
-          <div key={s.label} className="rounded-2xl border border-line/70 bg-panel shadow-card p-4">
-            <div className={`flex items-center gap-2 mb-2 ${s.color}`}>
-              <s.icon size={15} />
-              <span className="text-xs text-muted2">{s.label}</span>
+    <>
+      {editTarget && (
+        <EditCampaignModal
+          campaign={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSaved={(updates) => {
+            setCampaigns(p => p.map(c => c.id === editTarget.id ? { ...c, ...updates } : c));
+            setEditTarget(null);
+          }}
+        />
+      )}
+
+      {/* Bulk-delete confirm dialog */}
+      {confirmBulk && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-danger-border bg-[var(--bg)] shadow-xl p-6 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-danger-bg border border-danger-border mx-auto mb-4">
+              <Trash2 size={20} className="text-danger" />
             </div>
-            <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
+            <h3 className="text-sm font-bold text-ink mb-1">حذف {checkedIds.size} حملة؟</h3>
+            <p className="text-xs text-muted2 mb-5">سيُحذف المستلمون وكل البيانات المرتبطة بها نهائياً.</p>
+            <div className="flex gap-2 justify-center">
+              <button onClick={() => setConfirmBulk(false)} className="px-4 py-2 text-sm text-muted hover:text-ink rounded-xl border border-line/60 transition-colors">إلغاء</button>
+              <button onClick={deleteBulk} className="px-4 py-2 text-sm font-bold text-white bg-danger rounded-xl hover:opacity-90">تأكيد الحذف</button>
+            </div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
-      {/* List */}
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-muted2">{campaigns.length} حملة</span>
-        <button onClick={load} className="flex items-center gap-1.5 text-xs text-muted hover:text-ink transition-colors">
-          <RefreshCw size={12} /> تحديث
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {campaigns.map(c => {
-          const openRate = c.total_sent > 0 ? Math.round((c.total_opened / c.total_sent) * 100) : 0;
-          return (
-            <button key={c.id} onClick={() => setSelected(c.id)}
-              className="rounded-2xl border border-line/70 bg-panel shadow-card p-4 text-right hover:border-accent/40 hover:shadow-md transition-all group">
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10 border border-accent/20 shrink-0">
-                  <Mail size={15} className="text-accent" />
-                </div>
-                <ArrowUpRight size={14} className="text-muted2 group-hover:text-accent transition-colors mt-0.5 shrink-0" />
+      <div className="space-y-5">
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "إجمالي الحملات",  value: campaigns.length,            icon: Radio,     color: "text-accent"   },
+            { label: "إجمالي المُرسَل", value: totalSent.toLocaleString("ar"), icon: Send,    color: "text-blue-400" },
+            { label: "متوسط معدل الفتح",value: `${avgOpen}%`,               icon: TrendingUp, color: avgOpen >= 30 ? "text-green-400" : "text-yellow-400" },
+          ].map(s => (
+            <div key={s.label} className="rounded-2xl border border-line/70 bg-panel shadow-card p-4">
+              <div className={`flex items-center gap-2 mb-2 ${s.color}`}>
+                <s.icon size={15} /><span className="text-xs text-muted2">{s.label}</span>
               </div>
-              <div className="text-sm font-bold text-ink truncate mb-0.5">{c.name}</div>
-              <div className="text-xs text-muted2 truncate mb-3">{c.subject}</div>
-              {c.sent_at ? (
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="flex items-center gap-1 text-muted2"><Send size={10} />{c.total_sent}</span>
-                  <span className={`flex items-center gap-1 font-semibold ${openRate >= 30 ? "text-green-400" : openRate >= 10 ? "text-yellow-400" : "text-muted2"}`}>
-                    <Eye size={10} />{openRate}% فتح
-                  </span>
-                </div>
-              ) : (
-                <span className="text-[11px] border border-yellow-500/30 bg-yellow-500/10 text-yellow-400 rounded-md px-2 py-0.5">مسودة</span>
-              )}
+              <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Toolbar */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            {/* Select-all checkbox */}
+            <button onClick={toggleAll}
+              className={`flex items-center gap-2 text-xs rounded-xl border px-3 py-1.5 transition-all ${
+                someChecked ? "border-accent/40 bg-accent/10 text-accent" : "border-line/60 bg-panel text-muted2 hover:text-ink"
+              }`}>
+              {allChecked
+                ? <CheckSquare size={13} />
+                : someChecked
+                  ? <CheckSquare size={13} className="opacity-60" />
+                  : <Square size={13} />}
+              {someChecked ? `${checkedIds.size} محدد` : "تحديد الكل"}
             </button>
-          );
-        })}
+
+            {someChecked && (
+              <button onClick={() => setConfirmBulk(true)}
+                className="flex items-center gap-1.5 text-xs text-danger border border-danger-border bg-danger-bg px-3 py-1.5 rounded-xl hover:opacity-80 transition-opacity">
+                <Trash2 size={12} /> حذف المحدد ({checkedIds.size})
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted2">{campaigns.length} حملة</span>
+            <button onClick={load} className="flex items-center gap-1.5 text-xs text-muted hover:text-ink transition-colors">
+              <RefreshCw size={12} /> تحديث
+            </button>
+          </div>
+        </div>
+
+        {/* Cards grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {campaigns.map(c => {
+            const openRate  = c.total_sent > 0 ? Math.round((c.total_opened / c.total_sent) * 100) : 0;
+            const isChecked = checkedIds.has(c.id);
+            const isDeleting = deleting.has(c.id);
+
+            return (
+              <div key={c.id}
+                className={`relative rounded-2xl border bg-panel shadow-card transition-all ${
+                  isChecked ? "border-accent/50 bg-accent/5" : "border-line/70"
+                } ${isDeleting ? "opacity-40 pointer-events-none" : ""}`}>
+
+                {/* Checkbox top-right */}
+                <button
+                  onClick={() => toggleCheck(c.id)}
+                  className="absolute top-3 left-3 z-10 text-muted2 hover:text-accent transition-colors">
+                  {isChecked ? <CheckSquare size={15} className="text-accent" /> : <Square size={15} />}
+                </button>
+
+                {/* Card body — click to view detail */}
+                <button onClick={() => setDetailId(c.id)}
+                  className="w-full p-4 text-right group">
+                  <div className="flex items-start justify-between gap-2 mb-3 pr-1">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10 border border-accent/20 shrink-0">
+                      <Mail size={15} className="text-accent" />
+                    </div>
+                    <ArrowUpRight size={13} className="text-muted2 group-hover:text-accent transition-colors mt-1 shrink-0" />
+                  </div>
+                  <div className="text-sm font-bold text-ink truncate mb-0.5">{c.name}</div>
+                  <div className="text-xs text-muted2 truncate mb-3">{c.subject}</div>
+                  {c.sent_at ? (
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="flex items-center gap-1 text-muted2"><Send size={10} />{c.total_sent}</span>
+                      <span className={`flex items-center gap-1 font-semibold ${openRate >= 30 ? "text-green-400" : openRate >= 10 ? "text-yellow-400" : "text-muted2"}`}>
+                        <Eye size={10} />{openRate}% فتح
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] border border-yellow-500/30 bg-yellow-500/10 text-yellow-400 rounded-md px-2 py-0.5">مسودة</span>
+                  )}
+                </button>
+
+                {/* Action bar */}
+                <div className="border-t border-line/40 px-3 py-2 flex items-center justify-end gap-1">
+                  <button
+                    onClick={() => setEditTarget(c)}
+                    className="flex items-center gap-1.5 text-[11px] text-muted2 hover:text-ink px-2.5 py-1 rounded-lg hover:bg-panel2 transition-all">
+                    <Pencil size={11} /> تعديل
+                  </button>
+                  <button
+                    onClick={() => deleteSingle(c.id)}
+                    className="flex items-center gap-1.5 text-[11px] text-danger/70 hover:text-danger px-2.5 py-1 rounded-lg hover:bg-danger-bg transition-all">
+                    <Trash2 size={11} /> حذف
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

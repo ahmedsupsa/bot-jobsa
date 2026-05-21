@@ -60,6 +60,40 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   });
 }
 
+// PATCH /api/admin/campaigns/[id] — edit campaign metadata
+export async function PATCH(_req: Request, { params }: { params: { id: string } }) {
+  const denied = enforcePermission("email-test"); if (denied) return denied;
+
+  const body = await _req.json().catch(() => ({}));
+  const allowed = ["name", "subject", "body", "from_name", "reply_to"];
+  const updates: Record<string, string | null> = {};
+  for (const key of allowed) {
+    if (key in body) updates[key] = body[key] ? String(body[key]).trim() : null;
+  }
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ ok: false, error: "لا توجد حقول للتحديث" }, { status: 400 });
+  }
+
+  const { error } = await supabase
+    .from("email_campaigns")
+    .update(updates)
+    .eq("id", params.id);
+
+  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
+
+// DELETE /api/admin/campaigns/[id] — delete campaign + recipients
+export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const denied = enforcePermission("email-test"); if (denied) return denied;
+
+  await supabase.from("email_campaign_recipients").delete().eq("campaign_id", params.id);
+  const { error } = await supabase.from("email_campaigns").delete().eq("id", params.id);
+
+  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
+
 // POST /api/admin/campaigns/[id] — send the campaign
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
   const denied = enforcePermission("email-test"); if (denied) return denied;
