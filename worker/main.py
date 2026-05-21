@@ -190,41 +190,59 @@ def _is_feminine_job(job: dict) -> bool:
 
 
 def _job_matches_user(job: dict, field_names: list[str]) -> bool:
+    """
+    فلتر مبدئي خفيف — يقبل بشكل واسع ويترك القرار الدقيق للـ AI.
+    يرفض فقط إذا كان التخصص معبأً ومختلفاً جذرياً (طب مقابل هندسة).
+    """
     if not field_names:
-        return False
+        # لا تفضيلات = قدّم لكل شيء (AI سيحكم)
+        return True
 
     spec     = (job.get("specializations") or "").lower().strip()
     title_ar = (job.get("title_ar") or "").lower()
     title_en = (job.get("title_en") or "").lower()
     desc_ar  = (job.get("description_ar") or "").lower()
     desc_en  = (job.get("description_en") or "").lower()
+    blob     = f"{spec} {title_ar} {title_en} {desc_ar} {desc_en}"
 
-    # 1. إذا كان حقل التخصصات معبأً — نطابق فقط معه ونرفض إذا لم يتطابق
-    if spec:
-        for name in field_names:
-            n = (name or "").strip().lower()
-            if n and n in spec:
-                return True
-        return False  # الوظيفة لها تصنيف واضح لا يناسب المستخدم
+    # خريطة التخصصات القريبة — مالية/محاسبة/إدارة متداخلة
+    _RELATED: dict[str, list[str]] = {
+        "مالية":         ["محاسب", "اقتصاد", "إدارة أعمال", "مالي", "finance", "accounting"],
+        "محاسبة":        ["مالية", "مالي", "اقتصاد", "إدارة أعمال", "accounting", "finance"],
+        "إدارة أعمال":   ["مالية", "محاسبة", "تسويق", "موارد بشرية", "إدارة", "business"],
+        "موارد بشرية":   ["إدارة أعمال", "إدارة", "human resources", "hr", "تدريب"],
+        "تسويق":         ["إعلام", "علاقات عامة", "مبيعات", "marketing", "إدارة أعمال"],
+        "مبيعات":        ["تسويق", "خدمة عملاء", "sales", "إدارة أعمال"],
+        "تقنية معلومات": ["برمجة", "شبكات", "it", "حاسب", "software", "هندسة حاسب"],
+        "برمجة":         ["تقنية معلومات", "software", "it", "هندسة حاسب", "حاسب"],
+        "هندسة":         ["هندس", "engineer", "فني", "تقني"],
+        "خدمة عملاء":    ["مبيعات", "تسويق", "customer service", "support"],
+        "سكرتارية":      ["إداري", "admin", "مكتبي", "تنسيق"],
+        "قانون":         ["شريعة", "law", "نظام", "حقوق"],
+    }
 
-    # 2. لا يوجد تخصص — نطابق مع العنوان فقط (أكثر موثوقية من الوصف)
-    title_blob = f"{title_ar} {title_en}"
     for name in field_names:
         n = (name or "").strip().lower()
-        if n and n in title_blob:
+        if not n:
+            continue
+        # مطابقة مباشرة
+        if n in blob:
             return True
+        # مطابقة تقريبية (جزء من الكلمة)
+        if len(n) >= 4 and any(n[:5] in w for w in blob.split()):
+            return True
+        # مطابقة عبر الحقول القريبة
+        for related in _RELATED.get(n, []):
+            if related in blob:
+                return True
 
-    # 3. ملاذ أخير: الوصف مع معايير صارمة (كلمات 6+ أحرف، 3+ تطابقات)
-    desc_blob = f"{desc_ar} {desc_en}"
-    words: set[str] = set()
-    for name in field_names:
-        for w in re.split(r"[\s\-/_,()]+", (name or "").lower()):
-            if len(w.strip()) >= 6:
-                words.add(w.strip())
-    if len(words) < 2:
-        return False
-    hits = sum(1 for w in words if w in desc_blob)
-    return hits >= 3
+    # إذا التخصصات فارغة في الوظيفة — قبل (AI سيحكم)
+    if not spec:
+        return True
+
+    # الوظيفة فيها تخصص ولا شيء يطابق — ترفض فقط إذا كان التخصص محدداً جداً
+    # (لا نرفض كل شيء، نترك نسبة للعبور)
+    return False
 
 
 def _is_subscription_active(user: dict) -> bool:
@@ -770,47 +788,52 @@ async def _analyze_job_fit(
     """
     يحلل مدى ملاءمة المستخدم للوظيفة عبر Gemini.
     يعيد: {"score": int, "decision": "apply"|"skip", "reasons": list, "missing": list}
+
+    الفلسفة: قدّم بشكل افتراضي — ارفض فقط عند حواجز صارمة وواضحة.
     """
-    # الـ fallback يرفض التقديم افتراضياً — لا نقدّم بدون تحليل AI حقيقي
-    fallback = {"score": 0, "decision": "skip", "reasons": ["تعذّر الاتصال بـ Gemini — تم التخطي احترازياً"], "missing": []}
+    # Fallback = apply دائماً عند فشل الاتصال — لا نمنع التقديم بسبب مشكلة تقنية
+    fallback = {"score": 70, "decision": "apply", "reasons": ["تعذّر تحليل AI — تم التقديم تلقائياً"], "missing": []}
     if not GEMINI_API_KEY:
         return fallback
 
     cert_text = "\n".join(
         f"- {c.get('type', '')}: {c.get('name', '')}" + (f" ({c['issuer']})" if c.get("issuer") else "")
         for c in certifications
-    ) or "لا توجد شهادات أو رخص مسجّلة"
+    ) or "لا يوجد"
 
     prefs_text = "، ".join(field_names) if field_names else "غير محدد"
 
     prompt = (
-        "أنت محلل توظيف متخصص وصارم جداً. مهمتك حماية سمعة المتقدمين — لا تسمح بالتقديم إلا إذا كان المرشح مناسباً فعلاً.\n\n"
-        "⚠️ قواعد مهمة:\n"
-        "- قدّم لجميع الوظائف بغض النظر عن سنوات الخبرة المطلوبة\n"
-        "- إذا كان المرشح حديث تخرج أو خبرته أقل من المطلوب → قرار: apply مع ذكر الاستعداد للتعلم\n"
-        "- لا تحوّل 'تدريب صيفي' أو 'مشاريع جامعية' إلى خبرة عمل حقيقية\n\n"
+        "أنت مساعد تقديم وظائف. مهمتك إرسال طلبات لأكبر عدد ممكن من الوظائف المناسبة.\n\n"
+        "القاعدة الأساسية: قدّم دائماً إلا في حالات الحاجز الصارم:\n"
+        "❌ ارفض فقط إذا:\n"
+        "  - الوظيفة تشترط جنساً مختلفاً صراحةً (للنساء فقط / للرجال فقط)\n"
+        "  - الوظيفة تشترط جنسية محددة والمرشح لا ينطبق عليه\n"
+        "  - المجال مختلف جذرياً لا علاقة له (مثل: طب لمرشح هندسة كهرباء)\n"
+        "  - تشترط رخصة مهنية إلزامية غير موجودة في السيرة (مثل رخصة ممارسة مهنة طبية)\n\n"
+        "✅ قدّم حتى لو:\n"
+        "  - الخبرة المطلوبة أكثر مما لدى المرشح\n"
+        "  - التخصص قريب وليس مطابقاً 100%\n"
+        "  - المرشح حديث تخرج\n"
+        "  - الوصف الوظيفي ناقص أو غير واضح\n\n"
         f"=== الوظيفة ===\n"
         f"المسمى: {job_title}\n"
         f"الشركة: {company or 'غير محدد'}\n"
-        f"الوصف: {job_desc[:900] or 'غير متاح'}\n\n"
-        f"=== ملف المرشح ===\n"
-        f"التفضيلات المهنية: {prefs_text}\n"
-        f"الشهادات والرخص:\n{cert_text}\n"
-        f"ملخص السيرة الذاتية:\n{(cv_parsed_text or 'غير متاح')[:1200]}\n\n"
+        f"الوصف: {job_desc[:800] or 'غير متاح'}\n\n"
+        f"=== المرشح ===\n"
+        f"التخصصات: {prefs_text}\n"
+        f"الشهادات/الرخص: {cert_text}\n"
+        f"السيرة الذاتية:\n{(cv_parsed_text or 'غير متاح')[:900]}\n\n"
         "=== المطلوب ===\n"
-        'أعد JSON فقط (بدون markdown) بهذا الشكل بالضبط:\n'
-        '{"score":75,"decision":"apply","reasons":["سبب1"],"missing":["نقص1"],'
-        '"cv_experience_years":3,"job_required_years":2}\n'
-        '- score: رقم من 0 إلى 100\n'
-        '- decision: "apply" فقط إذا score >= 70 ولا توجد متطلبات إلزامية ناقصة وسنوات الخبرة كافية\n'
-        '- reasons: 1-2 سبب موجز للقرار بالعربية\n'
-        '- missing: الشروط الإلزامية الناقصة (رخص/شهادات/مؤهل محدد/خبرة مطلوبة) — فارغة إذا لا يوجد\n'
-        '- cv_experience_years: سنوات خبرة المرشح الفعلية كرقم (0 إذا حديث تخرج، -1 إذا غير واضح)\n'
-        '- job_required_years: سنوات الخبرة المطلوبة في الوظيفة كرقم (0 إذا لا يوجد شرط، -1 إذا غير واضح)\n'
-        'أعد JSON فقط، بلا نص إضافي.'
+        'أعد JSON فقط بلا markdown:\n'
+        '{"decision":"apply","hard_block":"","reasons":["سبب موجز"]}\n'
+        '- decision: "apply" أو "skip"\n'
+        '- hard_block: سبب الرفض الصارم إن وُجد، وإلا ""\n'
+        '- reasons: سبب واحد موجز\n'
+        'JSON فقط، بلا نص إضافي.'
     )
 
-    models = ["gemini-2.0-flash-lite", "gemini-2.0-flash"]
+    models = ["gemini-2.0-flash-lite", "gemini-2.0-flash", "gemini-2.5-flash"]
     for model in models:
         try:
             async with httpx.AsyncClient(timeout=30) as c:
@@ -823,41 +846,27 @@ async def _analyze_job_fit(
                 continue
             if not r.is_success:
                 continue
-            text = (r.json().get("candidates", [{}])[0]
-                         .get("content", {})
-                         .get("parts", [{}])[0]
-                         .get("text", "")).strip()
-            if not text:
+            raw_text = (r.json().get("candidates", [{}])[0]
+                            .get("content", {})
+                            .get("parts", [{}])[0]
+                            .get("text", "")).strip()
+            if not raw_text:
                 continue
-            m = re.search(r'\{[\s\S]*\}', text)
+            m = re.search(r'\{[\s\S]*\}', raw_text)
             if not m:
                 continue
             parsed = json.loads(m.group())
-            raw_score = parsed.get("score", 0)
-            score = max(0, min(100, int(raw_score) if isinstance(raw_score, (int, float, str)) else 0))
-            raw_missing = parsed.get("missing")
-            raw_reasons = parsed.get("reasons")
-            missing = [x for x in (raw_missing if isinstance(raw_missing, list) else []) if isinstance(x, str) and x.strip()][:4]
-            reasons = [x for x in (raw_reasons if isinstance(raw_reasons, list) else []) if isinstance(x, str)][:4]
 
-            # استخراج سنوات الخبرة من رد الـ AI
-            ai_cv_years  = parsed.get("cv_experience_years")
-            ai_job_years = parsed.get("job_required_years")
+            ai_decision  = str(parsed.get("decision", "apply")).strip().lower()
+            hard_block   = str(parsed.get("hard_block", "")).strip()
+            reasons      = [x for x in (parsed.get("reasons") or []) if isinstance(x, str) and x.strip()][:2]
 
-            # قرار التقديم: score >= 55 — نقدّم لأغلب الوظائف ونكتفي بالاستعداد للتعلم عند نقص الخبرة
-            # نتجاهل فجوة الخبرة كسبب للرفض — رسالة التغطية ستعالج ذلك
-            non_exp_missing = [
-                m for m in missing
-                if not any(kw in m for kw in ("سنة", "خبرة", "year", "experience"))
-            ]
-            decision = "apply" if (score >= 55 and len(non_exp_missing) == 0) else "skip"
+            # نرفض فقط إذا قرر AI "skip" وذكر حاجزاً صارماً حقيقياً
+            if ai_decision == "skip" and hard_block:
+                return {"score": 20, "decision": "skip", "reasons": reasons or [hard_block], "missing": [hard_block]}
 
-            return {
-                "score":    score,
-                "decision": decision,
-                "reasons":  reasons,
-                "missing":  missing,
-            }
+            # في كل حالة أخرى: قدّم
+            return {"score": 75, "decision": "apply", "reasons": reasons or ["مناسب للتقديم"], "missing": []}
         except Exception:
             continue
     return fallback
