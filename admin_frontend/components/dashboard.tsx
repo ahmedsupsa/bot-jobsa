@@ -1,9 +1,10 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, BriefcaseBusiness, TrendingUp, Clock, Wallet, ShoppingBag,
-  Bot, FileText, Zap, AlertTriangle, CheckCircle2, RefreshCw, Timer, XCircle
+  Bot, FileText, Zap, AlertTriangle, CheckCircle2, RefreshCw, Timer, XCircle,
+  PauseCircle, PlayCircle, CalendarClock, X
 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { API_BASE } from "@/lib/api";
@@ -80,6 +81,8 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+type PauseState = { paused: boolean; until: string | null; reason: string; paused_at: string | null };
+
 export default function Dashboard() {
   const [data, setData] = useState<Summary | null>(null);
   const [bot, setBot] = useState<BotStatus | null>(null);
@@ -91,22 +94,45 @@ export default function Dashboard() {
   const [runDetails, setRunDetails] = useState<Array<{user:string;job:string;to_email:string;status:"sent"|"skipped"|"error";reason?:string}>>([]);
   const [expandedLog, setExpandedLog] = useState<number | null>(null);
 
+  // Pause state
+  const [pause, setPause] = useState<PauseState>({ paused: false, until: null, reason: "", paused_at: null });
+  const [showPausePanel, setShowPausePanel] = useState(false);
+  const [pauseUntil, setPauseUntil] = useState("");
+  const [pauseReason, setPauseReason] = useState("");
+  const [savingPause, setSavingPause] = useState(false);
+
   const loadData = useCallback(async () => {
     try {
-      const [r1, r2, r3] = await Promise.all([
+      const [r1, r2, r3, r4] = await Promise.all([
         fetch(`${API_BASE}/api/admin/summary`, { credentials: "include" }),
         fetch(`${API_BASE}/api/admin/bot-status`, { credentials: "include" }),
         fetch(`${API_BASE}/api/admin/worker-logs`, { credentials: "include" }),
+        fetch(`${API_BASE}/api/admin/pause-worker`, { credentials: "include" }),
       ]);
       if (!r1.ok) throw new Error("Unauthorized or API not reachable");
-      const [j1, j2, j3] = await Promise.all([r1.json(), r2.json(), r3.json()]);
+      const [j1, j2, j3, j4] = await Promise.all([r1.json(), r2.json(), r3.json(), r4.json()]);
       setData(j1);
       setBot(j2);
       setLogs(j3.logs || []);
+      if (j4.ok) setPause(j4);
     } catch (e) {
       setError((e as Error).message);
     }
   }, []);
+
+  const setPauseStatus = async (paused: boolean) => {
+    setSavingPause(true);
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/pause-worker`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paused, until: paused ? (pauseUntil || null) : null, reason: paused ? pauseReason : "" }),
+      });
+      const j = await r.json();
+      if (j.ok) { setPause(j); setShowPausePanel(false); setPauseUntil(""); setPauseReason(""); }
+    } catch {}
+    setSavingPause(false);
+  };
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -226,6 +252,118 @@ export default function Dashboard() {
           </div>
         </motion.div>
       )}
+
+      {/* ── Pause Control Card ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className={`rounded-2xl border p-5 shadow-card ${pause.paused ? "border-yellow-500/40 bg-yellow-500/5" : "border-line bg-panel"}`}
+        dir="rtl"
+      >
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <div className={`flex h-11 w-11 items-center justify-center rounded-xl border ${pause.paused ? "border-yellow-500/30 bg-yellow-500/10" : "border-line bg-panel2"}`}>
+              {pause.paused ? <PauseCircle size={20} className="text-yellow-400" /> : <PlayCircle size={20} className="text-ink" />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-bold ${pause.paused ? "text-yellow-400" : "text-ink"}`}>
+                  {pause.paused ? "⏸ التقديمات موقوفة" : "▶ التقديمات تعمل"}
+                </span>
+              </div>
+              <div className="text-xs text-muted2 mt-0.5">
+                {pause.paused ? (
+                  <>
+                    {pause.reason && <span>{pause.reason} · </span>}
+                    {pause.until
+                      ? `تستأنف تلقائياً: ${new Date(pause.until).toLocaleString("ar-SA", { dateStyle: "medium", timeStyle: "short" })}`
+                      : "بدون موعد انتهاء — يدوي فقط"}
+                  </>
+                ) : "الـ Worker يُقدّم طلبات تلقائياً كل 30 دقيقة"}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {pause.paused ? (
+              <button
+                onClick={() => setPauseStatus(false)}
+                disabled={savingPause}
+                className="flex items-center gap-2 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-2 text-sm font-semibold text-green-400 hover:bg-green-500/20 disabled:opacity-50 transition-all"
+              >
+                {savingPause ? <RefreshCw size={14} className="animate-spin" /> : <PlayCircle size={14} />}
+                استئناف التقديمات
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowPausePanel(true)}
+                className="flex items-center gap-2 rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 text-sm font-semibold text-yellow-400 hover:bg-yellow-500/20 transition-all"
+              >
+                <PauseCircle size={14} />
+                إيقاف التقديمات
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Pause setup panel */}
+        <AnimatePresence>
+          {showPausePanel && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-4 pt-4 border-t border-line space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-muted mb-1.5 flex items-center gap-1">
+                      <CalendarClock size={11} />
+                      إيقاف حتى (اختياري)
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={pauseUntil}
+                      onChange={e => setPauseUntil(e.target.value)}
+                      className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink focus:border-line2 focus:outline-none"
+                      min={new Date().toISOString().slice(0, 16)}
+                    />
+                    <p className="text-[10px] text-muted2 mt-1">إذا تركته فارغاً سيبقى موقوفاً حتى تشغّله يدوياً</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-muted mb-1.5">سبب الإيقاف (اختياري)</label>
+                    <input
+                      type="text"
+                      value={pauseReason}
+                      onChange={e => setPauseReason(e.target.value)}
+                      placeholder="مثال: صيانة، إجازة..."
+                      className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-muted2 focus:border-line2 focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPauseStatus(true)}
+                    disabled={savingPause}
+                    className="flex items-center gap-2 rounded-xl bg-yellow-500 text-black px-5 py-2.5 text-sm font-bold hover:bg-yellow-400 disabled:opacity-50 transition-all"
+                  >
+                    {savingPause ? <RefreshCw size={14} className="animate-spin" /> : <PauseCircle size={14} />}
+                    تأكيد الإيقاف
+                  </button>
+                  <button
+                    onClick={() => { setShowPausePanel(false); setPauseUntil(""); setPauseReason(""); }}
+                    className="rounded-xl border border-line px-4 py-2.5 text-sm text-muted hover:text-ink hover:border-line2 transition-all"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

@@ -768,6 +768,38 @@ async function runCycle() {
   const details: Detail[] = [];
   let applied = 0, activeUsers = 0;
 
+  // ── التحقق من إيقاف التقديمات ─────────────────────────────────────────────
+  try {
+    const pauseRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/system_settings?key=eq.applications_pause&select=value`,
+      { headers: SB }
+    );
+    if (pauseRes.ok) {
+      const pauseData = await pauseRes.json() as Array<{ value: { paused: boolean; until: string | null; reason: string } }>;
+      const cfg = pauseData?.[0]?.value;
+      if (cfg?.paused) {
+        const until = cfg.until ? new Date(cfg.until) : null;
+        if (!until || until > new Date()) {
+          const msg = until
+            ? `التقديمات موقوفة حتى ${until.toLocaleString("ar-SA")}${cfg.reason ? ` — السبب: ${cfg.reason}` : ""}`
+            : `التقديمات موقوفة${cfg.reason ? ` — السبب: ${cfg.reason}` : ""}`;
+          console.log(`[worker] ⏸️ ${msg}`);
+          await tgSend(`⏸️ <b>Worker — تقديمات موقوفة</b>\n${msg}`);
+          return { applied: 0, users: 0, errors: [], details: [], paused: true };
+        } else {
+          // انتهت مدة الإيقاف — ألغِ تلقائياً
+          await fetch(`${SUPABASE_URL}/rest/v1/system_settings?key=eq.applications_pause`, {
+            method: "PATCH", headers: SB,
+            body: JSON.stringify({ value: { paused: false, until: null, reason: "", paused_at: null } }),
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[worker] تحذير: تعذّر التحقق من إعداد الإيقاف:", e);
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   if (!ENC_KEY_HEX) {
     return { applied: 0, users: 0, errors: ["SMTP_ENCRYPTION_KEY غير معرّف في Supabase Secrets"], details: [] };
   }
