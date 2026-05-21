@@ -902,14 +902,13 @@ async function runCycle() {
       // فحص التكرار محلياً بدون استعلامات DB إضافية
       const fingerprint = await jobFingerprint(jobTitle, toEmail, desc);
 
-      if (appliedJobIds.has(jobId) || appliedJobTitles.has(jobTitle)) {
-        const hasFp = appliedFps.has(fingerprint);
-        if (!hasFp || appliedFps.size === 0) {
-          details.push({ user: name, job: jobTitle, status: "skipped", reason: "قُدِّم مؤخراً (أقل من 30 يوم)" });
-          continue;
-        }
-        // بيانات الوظيفة تغيّرت بشكل مثبت → السماح بإعادة التقديم
-        console.log(`[worker] 🔄 ${name} ← ${jobTitle}: بيانات الوظيفة تغيّرت — إعادة التقديم مسموحة`);
+      if (
+        appliedJobIds.has(jobId) ||
+        appliedJobTitles.has(jobTitle) ||
+        appliedFps.has(fingerprint)
+      ) {
+        details.push({ user: name, job: jobTitle, status: "skipped", reason: "قُدِّم مؤخراً (أقل من 30 يوم)" });
+        continue;
       }
 
       // ── الفلاتر الرخيصة قبل استدعاء AI ─────────────────────────────────────
