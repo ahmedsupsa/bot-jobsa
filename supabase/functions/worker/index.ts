@@ -137,10 +137,10 @@ const FEMALE_JOB_TITLES = [
   "مصففة", "خياطة", "حلاقة", "مكيّجة", "إخصائية تجميل", "أخصائية تجميل",
   // رعاية
   "مربية", "حاضنة", "عاملة منزلية",
-  // تقنية وإدارة (مؤنثة)
-  "أخصائية", "إخصائية", "مشرفة", "مديرة", "محاسبة",
+  // تقنية وإدارة (مؤنثة — صيغة تأنيث صريحة فقط، لا أسماء تخصصات)
+  "أخصائية", "إخصائية", "مشرفة", "مديرة",
   "مستشارة", "مصممة", "مهندسة", "محللة", "منسقة",
-  "مراقبة", "مدققة", "مقيّمة", "باحثة", "مطورة",
+  "مدققة", "مقيّمة", "باحثة", "مطورة",
   "موظفة", "مسؤولة",
 ];
 
@@ -198,6 +198,23 @@ function detectJobGender(job: Record<string, unknown>): GenderCheckResult {
   return { jobGender: "neutral", confidence: "none", reason: "الوظيفة محايدة أو غير محدد الجنس" };
 }
 
+// خريطة التخصصات المرتبطة — توسّع بحث المطابقة لتخصصات قريبة
+const RELATED_FIELDS: Record<string, string[]> = {
+  "محاسبة":        ["مالية", "مال", "أعمال", "إدارة", "تدقيق", "ضرائب", "ميزانية"],
+  "مالية":         ["محاسبة", "أعمال", "إدارة", "استثمار", "بنوك", "اقتصاد"],
+  "إدارة أعمال":   ["محاسبة", "مالية", "موارد بشرية", "تسويق", "مبيعات"],
+  "موارد بشرية":   ["إدارة", "أعمال", "تدريب", "توظيف"],
+  "تسويق":         ["مبيعات", "إعلام", "علاقات عامة", "تجارة"],
+  "مبيعات":        ["تسويق", "تجارة", "خدمة عملاء"],
+  "تقنية معلومات": ["حاسب", "برمجة", "شبكات", "أمن معلومات", "software", "it"],
+  "حاسب":          ["تقنية", "برمجة", "software", "it", "شبكات"],
+  "هندسة":         ["تقنية", "صناعة", "ميكانيكا", "كهرباء", "مدني", "كيمياء"],
+  "طب":            ["صحة", "تمريض", "صيدلة", "مختبر"],
+  "تمريض":         ["صحة", "طب", "رعاية"],
+  "تعليم":         ["تدريس", "أكاديمي", "تدريب"],
+  "قانون":         ["محاماة", "شريعة", "قضاء", "legal"],
+};
+
 function jobMatchesUser(
   job: Record<string, unknown>,
   fieldNames: string[],
@@ -218,8 +235,18 @@ function jobMatchesUser(
       if (w.trim().length > 3) keywords.add(w.trim().toLowerCase());
   }
 
-  // لا تفضيلات ولا cv_profile → لا يمكن تحديد التخصص، لا تقدّم عشوائياً
-  if (!keywords.size) return false;
+  // لا تفضيلات ولا cv_profile → لا يمكن تحديد التخصص، قبول كل الوظائف
+  if (!keywords.size) return true;
+
+  // توسيع الكلمات بالتخصصات المرتبطة
+  const expanded = new Set<string>(keywords);
+  for (const kw of keywords) {
+    for (const [key, related] of Object.entries(RELATED_FIELDS)) {
+      if (kw.includes(key) || key.includes(kw)) {
+        for (const r of related) expanded.add(r.toLowerCase());
+      }
+    }
+  }
 
   // مسح الوظيفة كاملاً (تخصص + عنوان + وصف)
   const blob = [
@@ -228,7 +255,7 @@ function jobMatchesUser(
   ].map(v => String(v ?? "")).join(" ").toLowerCase();
 
   // أي كلمة واحدة تتطابق → يُقدَّم
-  return [...keywords].some(k => k && blob.includes(k));
+  return [...expanded].some(k => k && blob.includes(k));
 }
 
 // ─── CV Download ──────────────────────────────────────────────────────────────
@@ -683,8 +710,8 @@ async function analyzeJobFit(
   const jobLevel = classifyJobLevel(jobTitle, jobDesc);
 
   const fallback: JobFitResult = {
-    score: 0, decision: "skip",
-    reasons: ["تعذّر الاتصال بـ Gemini — تم التخطي احترازياً"],
+    score: 55, decision: "apply",
+    reasons: ["تعذّر الاتصال بـ Gemini — تم التقديم تلقائياً (لا نفوّت فرصة)"],
     missing: [], matched: [], job_level: jobLevel,
   };
   if (!GEMINI_KEY) return fallback;
