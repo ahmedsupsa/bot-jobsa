@@ -867,12 +867,16 @@ async def _analyze_job_fit(
 
 async def _call_edge_function() -> dict:
     """يستدعي الـ Edge Function في Supabase ويعيد النتيجة."""
-    # نستخدم service_role_key دائماً — هو المفتاح المقبول في الـ Edge Function
-    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "") or SUPABASE_KEY
+    # الـ Edge Function تحتاج JWT — نستخدم SUPABASE_ANON_KEY أولاً (eyJ...)
+    # ثم SUPABASE_SERVICE_ROLE_KEY، ثم SUPABASE_KEY كـ fallback
+    anon_key    = os.getenv("SUPABASE_ANON_KEY", "")
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    jwt_key = anon_key or service_key or SUPABASE_KEY
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {service_key}",
+        "Authorization": f"Bearer {jwt_key}",
+        "apikey": jwt_key,
     }
 
     async with httpx.AsyncClient(timeout=300) as client:
