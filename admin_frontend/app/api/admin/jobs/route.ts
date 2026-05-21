@@ -22,6 +22,7 @@ export async function GET() {
   const { data: jobs, error } = await supabase
     .from("admin_jobs")
     .select("*")
+    .or("is_active.eq.true,is_active.is.null")
     .order("created_at", { ascending: false });
   if (error) console.error("jobs GET error:", error.message);
   return NextResponse.json({ ok: true, jobs: jobs || [] });
@@ -70,53 +71,61 @@ export async function DELETE(req: Request) {
   const _denied_ = enforcePermission("jobs"); if (_denied_) return _denied_;
   const body = await req.json().catch(() => ({}));
 
-  // حذف الوظائف المنتهية (أكثر من 10 أيام)
+  // تعطيل الوظائف المنتهية (أكثر من 10 أيام) — soft delete لمنع إعادة الإضافة من Telegram
   if (body.mode === "expired") {
     const cutoff = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
-    const { error, count } = await supabase.from("admin_jobs").delete({ count: "exact" }).lt("created_at", cutoff);
+    const { error, count } = await supabase
+      .from("admin_jobs")
+      .update({ is_active: false }, { count: "exact" })
+      .lt("created_at", cutoff)
+      .eq("is_active", true);
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, deleted: count || 0 });
   }
 
-  // حذف المكررات (نفس الشركة + نفس المسمى)
+  // تعطيل المكررات (نفس الشركة + نفس المسمى) — soft delete لمنع إعادة الإضافة من Telegram
   if (body.mode === "dedupe") {
     const { data: allJobs, error: fetchErr } = await supabase
       .from("admin_jobs")
       .select("id, company, title_ar, created_at")
+      .eq("is_active", true)
       .order("created_at", { ascending: false });
     if (fetchErr) return NextResponse.json({ ok: false, error: fetchErr.message }, { status: 500 });
 
     const seen = new Map<string, string>();
-    const toDelete: string[] = [];
+    const toDisable: string[] = [];
     for (const job of allJobs || []) {
       const key = `${(job.company || "").trim().toLowerCase()}|||${(job.title_ar || "").trim().toLowerCase()}`;
-      if (!key.replace(/\|/g, "").trim()) continue; // تجاهل الوظائف بدون شركة وعنوان
+      if (!key.replace(/\|/g, "").trim()) continue;
       if (seen.has(key)) {
-        toDelete.push(job.id);
+        toDisable.push(job.id);
       } else {
         seen.set(key, job.id);
       }
     }
 
-    if (toDelete.length === 0) return NextResponse.json({ ok: true, deleted: 0 });
+    if (toDisable.length === 0) return NextResponse.json({ ok: true, deleted: 0 });
 
-    // حذف على دفعات بحد أقصى 100 لكل مرة
-    let deletedCount = 0;
-    for (let i = 0; i < toDelete.length; i += 100) {
-      const batch = toDelete.slice(i, i + 100);
-      const { error, count } = await supabase.from("admin_jobs").delete({ count: "exact" }).in("id", batch);
+    let disabledCount = 0;
+    for (let i = 0; i < toDisable.length; i += 100) {
+      const batch = toDisable.slice(i, i + 100);
+      const { error, count } = await supabase
+        .from("admin_jobs")
+        .update({ is_active: false }, { count: "exact" })
+        .in("id", batch);
       if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-      deletedCount += count || 0;
+      disabledCount += count || 0;
     }
-    return NextResponse.json({ ok: true, deleted: deletedCount });
+    return NextResponse.json({ ok: true, deleted: disabledCount });
   }
 
-  // حذف الوظائف بدون إيميل تقديم
+  // تعطيل الوظائف بدون إيميل تقديم — soft delete لمنع إعادة الإضافة من Telegram
   if (body.mode === "no_email") {
     const { error, count } = await supabase
       .from("admin_jobs")
-      .delete({ count: "exact" })
-      .or("application_email.is.null,application_email.eq.");
+      .update({ is_active: false }, { count: "exact" })
+      .or("application_email.is.null,application_email.eq.")
+      .eq("is_active", true);
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, deleted: count || 0 });
   }
