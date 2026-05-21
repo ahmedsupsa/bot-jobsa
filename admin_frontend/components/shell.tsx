@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Key, BriefcaseBusiness, Bell, LogOut,
   ShoppingBag, TrendingUp, MessageCircle, MailCheck, ShieldCheck, Send,
   Sun, Moon, Contact, MessagesSquare, Activity, BrainCircuit, Radio,
-  ChevronDown,
+  ChevronDown, KeyRound, X, Loader2, Eye, EyeOff,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "@/contexts/theme-context";
@@ -98,6 +98,119 @@ function getActiveGroupId(pathname: string): string | null {
   return groups[0]?.id ?? null;
 }
 
+function ChangePasswordModal({ onClose }: { onClose: () => void }) {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNext, setShowNext] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const [done, setDone] = useState(false);
+
+  async function save() {
+    setErr("");
+    if (next !== confirm) { setErr("كلمتا المرور الجديدتان غير متطابقتين"); return; }
+    if (next.length < 6) { setErr("كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل"); return; }
+    setSaving(true);
+    try {
+      const r = await fetch("/api/admin/me/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ current_password: current, new_password: next }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setErr(d.error || "فشل التغيير"); return; }
+      setDone(true);
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ width: "100%", maxWidth: 400, background: "var(--sidebar)", border: "1px solid var(--border)", borderRadius: 20, padding: 24, direction: "rtl" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--panel2)", border: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <KeyRound size={16} className="text-ink" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)" }}>تغيير كلمة المرور</div>
+              <div style={{ fontSize: 11, color: "var(--muted2)" }}>سيُطبَّق على حسابك الحالي</div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: 4, borderRadius: 8, display: "flex" }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {done ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: 12, padding: "14px 16px", color: "var(--success-fg)", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+              ✅ تم تغيير كلمة المرور بنجاح
+            </div>
+            <button onClick={onClose} className="w-full rounded-xl bg-accent text-accent-fg py-3 text-sm font-bold">
+              إغلاق
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <PwField label="كلمة المرور الحالية" value={current} onChange={setCurrent} show={showCurrent} onToggle={() => setShowCurrent(v => !v)} />
+            <PwField label="كلمة المرور الجديدة" value={next} onChange={setNext} show={showNext} onToggle={() => setShowNext(v => !v)} />
+            <PwField label="تأكيد كلمة المرور الجديدة" value={confirm} onChange={setConfirm} show={showNext} onToggle={() => setShowNext(v => !v)} />
+            {err && (
+              <div style={{ background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: 10, padding: "9px 13px", color: "var(--danger)", fontSize: 12.5 }}>
+                {err}
+              </div>
+            )}
+            <button
+              onClick={save}
+              disabled={saving || !current || !next || !confirm}
+              className="w-full rounded-xl bg-accent text-accent-fg py-3 text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />}
+              {saving ? "جاري الحفظ…" : "تغيير كلمة المرور"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PwField({ label, value, onChange, show, onToggle }: { label: string; value: string; onChange: (v: string) => void; show: boolean; onToggle: () => void }) {
+  return (
+    <label style={{ display: "block" }}>
+      <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6, fontWeight: 600 }}>{label}</div>
+      <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+        <input
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          dir="ltr"
+          placeholder="••••••••"
+          className="w-full rounded-xl bg-panel2 border border-line px-3 py-2.5 text-sm text-ink outline-none focus:border-line2 pr-10"
+          style={{ paddingLeft: 36 }}
+        />
+        <button
+          type="button"
+          onClick={onToggle}
+          style={{ position: "absolute", left: 10, background: "none", border: "none", cursor: "pointer", color: "var(--muted2)", display: "flex", padding: 2 }}
+          tabIndex={-1}
+        >
+          {show ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
+      </div>
+    </label>
+  );
+}
+
 export default function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const router = useRouter();
@@ -106,6 +219,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [me, setMe] = useState<Me>(null);
   const [badges, setBadges] = useState<Badges>({});
+  const [showChangePw, setShowChangePw] = useState(false);
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
     const active = getActiveGroupId(path);
     return new Set(active ? [active] : []);
@@ -273,6 +387,13 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             {dark ? "الوضع النهاري" : "الوضع الليلي"}
           </button>
           <button
+            onClick={() => setShowChangePw(true)}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-ink2 hover:bg-panel2 transition-all border border-transparent hover:border-line"
+          >
+            <KeyRound size={17} />
+            تغيير كلمة المرور
+          </button>
+          <button
             onClick={async () => {
               await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
               window.location.href = "/login";
@@ -327,6 +448,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}
     </div>
   );
 }

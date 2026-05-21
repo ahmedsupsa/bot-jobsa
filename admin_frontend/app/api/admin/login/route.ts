@@ -19,17 +19,8 @@ export async function POST(req: Request) {
 
   let cookieValue: string | null = null;
 
-  // Super admin via env password: empty username, "admin", or configured ADMIN_USERNAME
-  const isSuperLogin =
-    !username || username === "admin" || username === SUPER_ADMIN_USERNAME;
-  if (isSuperLogin && password === ADMIN_PASSWORD) {
-    cookieValue = buildSessionCookieValue({
-      username: SUPER_ADMIN_USERNAME,
-      isSuper: true,
-      permissions: [],
-    });
-  } else if (username) {
-    // Look up admin account
+  // 1. Always check DB first (covers DB-based admins + super admins who changed their password via UI)
+  if (username) {
     const { data: acc } = await supabase
       .from("admin_accounts")
       .select("username,password_hash,permissions,is_super,disabled")
@@ -40,6 +31,19 @@ export async function POST(req: Request) {
         username: acc.username,
         isSuper: !!acc.is_super,
         permissions: (acc.permissions || []) as Permission[],
+      });
+    }
+  }
+
+  // 2. Fall back to env-based super admin (no DB entry yet, or empty username)
+  if (!cookieValue) {
+    const isSuperLogin =
+      !username || username === "admin" || username === SUPER_ADMIN_USERNAME;
+    if (isSuperLogin && password === ADMIN_PASSWORD) {
+      cookieValue = buildSessionCookieValue({
+        username: SUPER_ADMIN_USERNAME,
+        isSuper: true,
+        permissions: [],
       });
     }
   }
