@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Search, Save, User, FileText, Upload, Check, Loader2,
   ChevronDown, ChevronUp, Tags, Calendar, Trash2, KeyRound,
-  Copy, Mail, WifiOff, Eye, X, Phone, MapPin, Clock,
+  Copy, Mail, WifiOff, Eye, X, Phone, MapPin, Clock, Send,
 } from "lucide-react";
 
 type UserRow = {
@@ -301,6 +301,13 @@ function UserSidePanel({
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [prefsSaved, setPrefsSaved] = useState(false);
 
+  const [showEmailCompose, setShowEmailCompose] = useState(false);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSentOk, setEmailSentOk] = useState(false);
+  const [emailSendErr, setEmailSendErr] = useState("");
+
   const fileRef = useRef<HTMLInputElement>(null);
 
   const left = daysLeft(user.subscription_ends_at);
@@ -358,6 +365,30 @@ function UserSidePanel({
       setTimeout(() => setSubSaved(false), 2500);
     } catch (e) { setErr(String(e)); }
     finally { setSavingSub(false); }
+  };
+
+  const handleSendEmail = async () => {
+    if (!user.email || !emailSubject.trim() || !emailBody.trim()) return;
+    setSendingEmail(true); setEmailSendErr(""); setEmailSentOk(false);
+    try {
+      const res = await fetch("/api/admin/send-email", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to_email: user.email,
+          to_name: user.full_name || "",
+          subject: emailSubject.trim(),
+          message: emailBody.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "فشل الإرسال");
+      setEmailSentOk(true);
+      setEmailSubject(""); setEmailBody("");
+      setTimeout(() => { setEmailSentOk(false); setShowEmailCompose(false); }, 3000);
+    } catch (e) { setEmailSendErr(String(e)); }
+    finally { setSendingEmail(false); }
   };
 
   const loadPrefs = async () => {
@@ -628,6 +659,79 @@ function UserSidePanel({
                   </div>
                 )}
               </div>
+            )}
+          </Section>
+
+          <Section title="إرسال رسالة بريدية">
+            {!user.email ? (
+              <div className="flex items-center gap-2 rounded-xl border border-line/50 bg-panel2 px-3 py-2.5 text-xs text-muted2">
+                <Mail size={13} />
+                لا يوجد بريد إلكتروني لهذا المستخدم
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => { setShowEmailCompose(v => !v); setEmailSendErr(""); setEmailSentOk(false); }}
+                  className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium w-full justify-between transition-colors ${
+                    showEmailCompose
+                      ? "border-accent/50 bg-accent/15 text-accent"
+                      : "border-line/70 bg-panel2 text-ink2 hover:border-accent/40 hover:text-accent"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Send size={12} />
+                    كتابة رسالة إلى {user.full_name || user.email}
+                  </span>
+                  {showEmailCompose ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                </button>
+
+                {showEmailCompose && (
+                  <div className="mt-3 space-y-3">
+                    <div className="rounded-xl border border-line/50 bg-panel2 px-3 py-2 text-xs text-muted2 flex items-center gap-2" dir="ltr">
+                      <Mail size={12} className="shrink-0" />
+                      {user.email}
+                    </div>
+
+                    <input
+                      value={emailSubject}
+                      onChange={(e) => setEmailSubject(e.target.value)}
+                      placeholder="عنوان الرسالة..."
+                      className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none"
+                    />
+
+                    <textarea
+                      value={emailBody}
+                      onChange={(e) => setEmailBody(e.target.value)}
+                      placeholder={`اكتب رسالتك هنا...\n\nيمكنك استخدام {{name}} وسيُستبدل باسم المستخدم تلقائياً.`}
+                      rows={6}
+                      className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none resize-none"
+                    />
+
+                    {emailSendErr && (
+                      <div className="text-xs text-danger bg-danger-bg border border-danger-border rounded-lg px-3 py-2">
+                        {emailSendErr}
+                      </div>
+                    )}
+
+                    {emailSentOk && (
+                      <div className="flex items-center gap-2 text-xs text-green-400 bg-green-500/10 border border-green-500/30 rounded-xl px-3 py-2.5">
+                        <Check size={13} />
+                        تم إرسال الرسالة بنجاح ✓
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleSendEmail}
+                      disabled={sendingEmail || !emailSubject.trim() || !emailBody.trim()}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent/15 px-4 py-2.5 text-sm text-accent font-medium hover:bg-accent/25 transition-colors disabled:opacity-40"
+                    >
+                      {sendingEmail
+                        ? <><Loader2 size={14} className="animate-spin" /> جاري الإرسال...</>
+                        : <><Send size={14} /> إرسال الرسالة</>}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </Section>
         </div>
