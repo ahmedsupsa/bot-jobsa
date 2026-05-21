@@ -792,7 +792,7 @@ async def _analyze_job_fit(
     الفلسفة: قدّم بشكل افتراضي — ارفض فقط عند حواجز صارمة وواضحة.
     """
     # Fallback = apply دائماً عند فشل الاتصال — لا نمنع التقديم بسبب مشكلة تقنية
-    fallback = {"score": 70, "decision": "apply", "reasons": ["تعذّر تحليل AI — تم التقديم تلقائياً"], "missing": []}
+    fallback = {"score": 70, "decision": "apply", "reasons": ["تم التقديم"], "missing": [], "status": "تم التقديم"}
     if not GEMINI_API_KEY:
         return fallback
 
@@ -804,18 +804,34 @@ async def _analyze_job_fit(
     prefs_text = "، ".join(field_names) if field_names else "غير محدد"
 
     prompt = (
-        "أنت مساعد تقديم وظائف. مهمتك إرسال طلبات لأكبر عدد ممكن من الوظائف المناسبة.\n\n"
-        "القاعدة الأساسية: قدّم دائماً إلا في حالات الحاجز الصارم:\n"
-        "❌ ارفض فقط إذا:\n"
-        "  - الوظيفة تشترط جنساً مختلفاً صراحةً (للنساء فقط / للرجال فقط)\n"
-        "  - الوظيفة تشترط جنسية محددة والمرشح لا ينطبق عليه\n"
-        "  - المجال مختلف جذرياً لا علاقة له (مثل: طب لمرشح هندسة كهرباء)\n"
-        "  - تشترط رخصة مهنية إلزامية غير موجودة في السيرة (مثل رخصة ممارسة مهنة طبية)\n\n"
-        "✅ قدّم حتى لو:\n"
+        "أنت نظام ترشيح وتقديم وظائف ذكي. مهمتك الأساسية زيادة فرص التقديم للمستخدم.\n"
+        "دورك 'مساعد تقديم' وليس 'لجنة قبول' ولا 'موظف موارد بشرية متشدد'.\n\n"
+
+        "✅ قدّم دائماً إذا كانت الوظيفة قريبة أو ذات صلة — حتى لو:\n"
         "  - الخبرة المطلوبة أكثر مما لدى المرشح\n"
-        "  - التخصص قريب وليس مطابقاً 100%\n"
-        "  - المرشح حديث تخرج\n"
-        "  - الوصف الوظيفي ناقص أو غير واضح\n\n"
+        "  - التخصص قريب وليس مطابقاً حرفياً\n"
+        "  - المرشح حديث تخرج أو Senior أو Lead\n"
+        "  - الوصف ناقص أو غير واضح\n"
+        "  - ليست كل المهارات موجودة\n\n"
+
+        "❌ امتنع عن التقديم (skip) فقط في هذه الحالات الواضحة جداً:\n"
+        "  1. الوظيفة مخصصة لجنس معين بشكل صريح (للنساء فقط / للرجال فقط)\n"
+        "  2. الوظيفة تشترط جنسية محددة والمرشح لا يملكها\n"
+        "  3. شرط أساسي مستحيل: رخصة مهنية إلزامية أو شهادة طبية متخصصة غير موجودة\n"
+        "  4. المجال بعيد تماماً ولا علاقة له (مثال: وظيفة طبيب لمرشح في المحاسبة)\n\n"
+
+        "⚠️ لا ترفض أبداً بسبب:\n"
+        "  - نقص سنوات الخبرة مهما كان\n"
+        "  - اختلاف بسيط في التخصص\n"
+        "  - كون الوظيفة Senior أو Lead أو Manager\n"
+        "  - التأنيث اللغوي (كلمات مثل: بشرية، رقمية، سلامة، مراجعة، إدارية — ليست دليلاً على أن الوظيفة للنساء)\n\n"
+
+        "التخصصات المترابطة — قبل التقديم بينها:\n"
+        "  المالية ↔ المحاسبة ↔ إدارة الأعمال ↔ التسويق ↔ المبيعات ↔ خدمة العملاء\n"
+        "  ↔ التحليل ↔ الإدارة ↔ الموارد البشرية ↔ التشغيل ↔ الدعم الإداري\n\n"
+
+        "إذا كنت مترددًا بين التقديم والرفض → اختر التقديم.\n\n"
+
         f"=== الوظيفة ===\n"
         f"المسمى: {job_title}\n"
         f"الشركة: {company or 'غير محدد'}\n"
@@ -824,13 +840,14 @@ async def _analyze_job_fit(
         f"التخصصات: {prefs_text}\n"
         f"الشهادات/الرخص: {cert_text}\n"
         f"السيرة الذاتية:\n{(cv_parsed_text or 'غير متاح')[:900]}\n\n"
-        "=== المطلوب ===\n"
-        'أعد JSON فقط بلا markdown:\n'
-        '{"decision":"apply","hard_block":"","reasons":["سبب موجز"]}\n'
-        '- decision: "apply" أو "skip"\n'
-        '- hard_block: سبب الرفض الصارم إن وُجد، وإلا ""\n'
-        '- reasons: سبب واحد موجز\n'
-        'JSON فقط، بلا نص إضافي.'
+
+        "=== الإجابة المطلوبة ===\n"
+        "أعد JSON فقط بلا markdown أو شرح:\n"
+        '{"decision":"apply","status":"تم التقديم","block":""}\n'
+        "- decision: 'apply' أو 'skip'\n"
+        "- status: نص قصير: 'تم التقديم' أو 'تم التقديم رغم نقص بسيط' أو 'تم التجاوز'\n"
+        "- block: سبب التجاوز فقط إن كان skip (جملة واحدة) وإلا ''\n"
+        "JSON فقط، بلا أي نص إضافي."
     )
 
     models = ["gemini-2.0-flash-lite", "gemini-2.0-flash", "gemini-2.5-flash"]
@@ -857,16 +874,16 @@ async def _analyze_job_fit(
                 continue
             parsed = json.loads(m.group())
 
-            ai_decision  = str(parsed.get("decision", "apply")).strip().lower()
-            hard_block   = str(parsed.get("hard_block", "")).strip()
-            reasons      = [x for x in (parsed.get("reasons") or []) if isinstance(x, str) and x.strip()][:2]
+            ai_decision = str(parsed.get("decision", "apply")).strip().lower()
+            status      = str(parsed.get("status", "تم التقديم")).strip()
+            block       = str(parsed.get("block", "")).strip()
 
-            # نرفض فقط إذا قرر AI "skip" وذكر حاجزاً صارماً حقيقياً
-            if ai_decision == "skip" and hard_block:
-                return {"score": 20, "decision": "skip", "reasons": reasons or [hard_block], "missing": [hard_block]}
+            # ارفض فقط إذا قرر AI "skip" وذكر سبباً صارماً
+            if ai_decision == "skip" and block:
+                return {"score": 20, "decision": "skip", "reasons": [block], "missing": [block], "status": "تم التجاوز"}
 
             # في كل حالة أخرى: قدّم
-            return {"score": 75, "decision": "apply", "reasons": reasons or ["مناسب للتقديم"], "missing": []}
+            return {"score": 75, "decision": "apply", "reasons": [status or "تم التقديم"], "missing": [], "status": status or "تم التقديم"}
         except Exception:
             continue
     return fallback
@@ -1112,20 +1129,12 @@ async def _run_cycle_smtp() -> None:
                     field_names=field_names,
                     certifications=certifications,
                 )
-                logger.info(
-                    "   🤖 AI Fit [%s] → قرار: %s | score=%d | ناقص: %s",
-                    job_title, fit["decision"], fit["score"],
-                    "، ".join(fit["missing"]) if fit["missing"] else "لا يوجد",
-                )
+                fit_status = fit.get("status", "تم التقديم" if fit["decision"] == "apply" else "تم التجاوز")
                 if fit["decision"] == "skip":
-                    reasons_str = "؛ ".join(fit["reasons"][:2])
-                    missing_str = "، ".join(fit["missing"][:2])
-                    logger.info(
-                        "   ⛔ تخطي — AI رفض (%d/100): %s%s",
-                        fit["score"], reasons_str,
-                        f" | ناقص: {missing_str}" if missing_str else "",
-                    )
+                    block_str = "، ".join(fit["missing"][:1]) or "؛ ".join(fit["reasons"][:1])
+                    logger.info("   ⛔ تم التجاوز — [%s]: %s", job_title, block_str)
                     continue
+                logger.info("   ✅ %s — [%s]", fit_status, job_title)
 
                 # فلتر الجنس (حاجز صارم بعد AI)
                 user_gender = (user.get("gender") or "male")
