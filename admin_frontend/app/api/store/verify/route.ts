@@ -28,29 +28,6 @@ function genCode(): string {
   return d + l;
 }
 
-async function createActivationCode(
-  supabase: ReturnType<typeof freshSupabase>,
-  durationDays: number
-): Promise<string | null> {
-  for (let i = 0; i < 10; i++) {
-    const candidate = genCode();
-    const { data: existing } = await supabase
-      .from("activation_codes")
-      .select("code")
-      .eq("code", candidate)
-      .maybeSingle();
-    if (!existing) {
-      const { data } = await supabase
-        .from("activation_codes")
-        .insert({ code: candidate, subscription_days: durationDays, used: false, created_at: new Date().toISOString() })
-        .select("id")
-        .single();
-      return data?.id ?? null;
-    }
-  }
-  return null;
-}
-
 async function autoCreateAccount(
   supabase: ReturnType<typeof freshSupabase>,
   order: any,
@@ -62,6 +39,7 @@ async function autoCreateAccount(
     const phone = order.user_phone?.trim() || "غير محدد";
     const ends_at = new Date(Date.now() + durationDays * 86400000).toISOString();
 
+    // ── مستخدم موجود → مدّد الاشتراك فقط، بدون كود ──
     const { data: existingUser } = await supabase
       .from("users")
       .select("id, subscription_ends_at")
@@ -83,19 +61,10 @@ async function autoCreateAccount(
       return { token, user_id: String(existingUser.id), account_created: false };
     }
 
-    const codeId = await createActivationCode(supabase, durationDays);
-
-    const insertData: any = {
-      full_name: name,
-      phone,
-      email,
-      subscription_ends_at: ends_at,
-      ...(codeId ? { activation_code_id: codeId } : {}),
-    };
-
+    // ── مستخدم جديد → أنشئ الحساب أولاً ──
     let { data: userRows, error: userErr } = await supabase
       .from("users")
-      .insert(insertData)
+      .insert({ full_name: name, phone, email, subscription_ends_at: ends_at })
       .select("id");
 
     if (userErr || !userRows?.[0]) {
@@ -105,11 +74,35 @@ async function autoCreateAccount(
 
     const userId = userRows[0].id;
 
-    if (codeId) {
-      await supabase
+    // ── بعد نجاح إنشاء الحساب → أنشئ الكود وضعها مستخدمة مباشرةً ──
+    for (let i = 0; i < 10; i++) {
+      const candidate = genCode();
+      const { data: existing } = await supabase
         .from("activation_codes")
-        .update({ used: true, used_at: new Date().toISOString(), used_by_user_id: userId })
-        .eq("id", codeId);
+        .select("code")
+        .eq("code", candidate)
+        .maybeSingle();
+      if (!existing) {
+        const { data: codeRow } = await supabase
+          .from("activation_codes")
+          .insert({
+            code: candidate,
+            subscription_days: durationDays,
+            used: true,
+            used_at: new Date().toISOString(),
+            used_by_user_id: userId,
+            created_at: new Date().toISOString(),
+          })
+          .select("id")
+          .single();
+        if (codeRow?.id) {
+          await supabase
+            .from("users")
+            .update({ activation_code_id: codeRow.id })
+            .eq("id", userId);
+        }
+        break;
+      }
     }
 
     try {
