@@ -318,6 +318,13 @@ input:focus, textarea:focus { border-color: var(--border2) !important; outline: 
   from { transform: translateY(120%); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.animate-slide-in-left {
+  animation: slideInLeft 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 
 /* ═══════════════════════════════════════
    PRINT
