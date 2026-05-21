@@ -133,7 +133,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: 400, background: "var(--sidebar)", border: "1px solid var(--border)", borderRadius: 20, padding: 24, direction: "rtl" }}
+        style={{ width: "100%", maxWidth: 400, background: "var(--bg2, #ffffff)", border: "1px solid var(--border)", borderRadius: 20, padding: 24, direction: "rtl", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
