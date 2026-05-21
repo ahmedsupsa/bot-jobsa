@@ -31,41 +31,63 @@ _SB_HEADERS = lambda: {
 
 _EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
 
+# أرخص نموذج أولاً، الأقوى فقط كـ fallback عند الفشل
 GEMINI_MODELS = [
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
+    "gemini-2.0-flash",
+    "gemini-2.5-flash",
 ]
+
+# ── فلتر محلي قبل Gemini (يوفّر 60-80% من الاستهلاك) ──────────────────────
+# كلمات دالة على وجود وظيفة — يجب أن تظهر واحدة على الأقل
+_JOB_KEYWORDS = [
+    "وظيف", "شاغر", "مطلوب", "توظيف", "تعيين", "فرصة عمل",
+    "نبحث عن", "نرحب بـ", "للتقديم", "أرسل سيرتك", "ارسل cv",
+    "cv على", "سيرة ذاتية", "راتب", "الراتب",
+    "hr@", "jobs@", "careers@", "recruitment",
+    "hiring", "job", "vacancy", "position", "required",
+    "فرصة وظيفية", "وظائف شاغرة", "فرص عمل",
+    "مدير", "محاسب", "مهندس", "مبرمج", "مصمم", "محامي",
+    "مسوّق", "مندوب", "سكرتير", "موظف", "أخصائي",
+    "مشرف", "مدير", "رئيس قسم", "تقني", "فني",
+]
+
+# رسائل واضحة لا علاقة لها بالوظائف — تُتجاهل فوراً بدون AI
+_SKIP_PATTERNS = [
+    r"whatsapp\.com/channel",
+    r"t\.me/\+",           # دعوة لقناة تيليقرام
+    r"قناة\s+وظائف\s+واتساب",
+    r"اشترك في قناتنا",
+    r"تابعونا على",
+    r"رابط القناة",
+    r"انضم إلى قناة",
+    r"شارك مع أصدقائك",
+    r"^[\U0001F300-\U0001FFFF\s]+$",  # إيموجي فقط
+]
+_SKIP_RE = re.compile("|".join(_SKIP_PATTERNS), re.IGNORECASE)
+
+def _is_likely_job(text: str) -> bool:
+    """فلتر محلي — يتحقق بدون AI هل الرسالة تحتوي وظيفة."""
+    # تجاهل رسائل الترويج الواضحة
+    if _SKIP_RE.search(text):
+        return False
+    t = text.lower()
+    return any(kw in t for kw in _JOB_KEYWORDS)
+
 
 # ── Gemini: استخراج الوظائف ────────────────────────────────────────────────
 async def _extract_jobs_gemini(text: str) -> list[dict]:
     if not GEMINI_KEY:
         return []
 
-    prompt = f"""أنت نظام استخراج وظائف متخصص في السوق السعودي والخليجي.
-النص التالي جاء من قناة Telegram. مهمتك استخراج أي فرصة عمل أو وظيفة أو طلب توظيف.
-
-كن متساهلاً في التفسير — استخرج الوظيفة حتى لو كانت:
-- قصيرة أو بدون تفاصيل كثيرة
-- مكتوبة بأسلوب غير رسمي
-- تحتوي على مسمى وظيفي فقط مع رقم تواصل أو إيميل
-- إعلان توظيف بسيط
-
-لكل وظيفة أرجع:
-{{
-  "title_ar": "المسمى الوظيفي بالعربية — اخترع مسمى معقول إذا لم يُذكر صراحة",
-  "company": "اسم الشركة أو المنشأة أو فارغ",
-  "description_ar": "أي تفاصيل متاحة عن الوظيفة أو المتطلبات",
-  "application_email": "البريد الإلكتروني للتواصل أو null",
-  "specializations": "5 كلمات مفتاحية مفصولة بفاصلة",
-  "link_url": "رابط التقديم أو null"
-}}
-
-أرجع [] فقط إذا كان النص لا علاقة له بالوظائف أو التوظيف إطلاقاً (مثل أخبار، إعلانات تجارية، مقاطع ترفيهية).
-أرجع JSON فقط بدون أي نص إضافي.
-
-النص:
-{text[:3000]}"""
+    # برومبت مضغوط — أقل tokens، نفس الدقة
+    prompt = (
+        "استخرج الوظائف من نص Telegram السعودي/الخليجي.\n"
+        "لكل وظيفة أرجع JSON: "
+        '{"title_ar":"...","company":"...","description_ar":"...","application_email":null,"specializations":"...","link_url":null}\n'
+        "أرجع [] إذا لا توجد وظائف حقيقية. JSON فقط بلا شرح.\n\n"
+        f"النص:\n{text[:1500]}"
+    )
 
     for model in GEMINI_MODELS:
         try:
@@ -75,10 +97,7 @@ async def _extract_jobs_gemini(text: str) -> list[dict]:
             )
             payload = {
                 "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-                "generationConfig": {
-                    "temperature": 0.1,
-                    "responseMimeType": "application/json",
-                },
+                "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json"},
             }
             async with httpx.AsyncClient(timeout=40) as client:
                 r = await client.post(url, json=payload)
@@ -176,8 +195,13 @@ def _is_tamheer(title: str) -> bool:
 # ── معالجة رسالة جديدة ───────────────────────────────────────────────────
 async def process_message(text: str, channel_title: str, channel_id: str, msg_id: int):
     text = text.strip()
-    if len(text) < 20:
+    if len(text) < 30:
         logger.info("[TG] ⏭️ نص قصير جداً (%d حرف) من %s", len(text), channel_title)
+        return
+
+    # ── فلتر محلي — بدون AI ───────────────────────────────────────────────
+    if not _is_likely_job(text):
+        logger.info("[TG] ⏭️ فلتر محلي: لا تبدو وظيفة من %s", channel_title)
         return
 
     uid_base = f"{channel_id}:{msg_id}:{text[:100]}"

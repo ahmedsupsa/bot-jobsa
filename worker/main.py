@@ -810,7 +810,7 @@ async def _analyze_job_fit(
         'أعد JSON فقط، بلا نص إضافي.'
     )
 
-    models = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash"]
+    models = ["gemini-2.0-flash-lite", "gemini-2.0-flash"]
     for model in models:
         try:
             async with httpx.AsyncClient(timeout=30) as c:
