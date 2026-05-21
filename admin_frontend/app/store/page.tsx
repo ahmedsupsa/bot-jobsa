@@ -785,138 +785,164 @@ export default function StorePage() {
             )}
 
             {step === "bank_details" && bankData && (
-              <div style={{ marginTop: 4 }}>
-                {/* Amount summary */}
-                <div style={s.bankAmountBox}>
-                  {bankData.has_discount && (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13 }}>
-                      <span style={{ color: "var(--text2)" }}>السعر الأصلي</span>
-                      <span style={{ color: "var(--text3)", textDecoration: "line-through" }}>{bankData.original_amount} ر.س</span>
-                    </div>
-                  )}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ color: "var(--text2)", fontSize: 13 }}>
-                      {bankData.has_discount ? "بعد الخصم 15%" : "المبلغ المطلوب"}
+              <div style={{ marginTop: 8 }}>
+
+                {/* ── Amount hero ── */}
+                <div style={s.bankHero}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                    <span style={{ color: "var(--text3)", fontSize: 12 }}>
+                      {bankData.has_discount ? "المبلغ بعد الخصم 15%" : "المبلغ المطلوب"}
                     </span>
-                    <span style={{ color: "var(--text)", fontSize: 22, fontWeight: 900 }}>{bankData.amount} ر.س</span>
-                  </div>
-                  <p style={{ color: "var(--text2)", fontSize: 12, margin: "8px 0 0", lineHeight: 1.7 }}>
-                    بعد إتمام التحويل، أرسل إيصال الدفع إلى الدعم وسيتم تفعيل حسابك خلال 24 ساعة.
-                  </p>
-                </div>
-
-                {/* Bank accounts list */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
-                  {bankData.accounts.map(acc => (
-                    <div key={acc.id} style={s.bankCard}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                        <div style={s.bankIcon}>
-                          {acc.type === "bank" ? <Building2 size={14} color="var(--text)" /> : <Wallet size={14} color="var(--text)" />}
-                        </div>
-                        <span style={{ color: "var(--text)", fontWeight: 700, fontSize: 14 }}>{acc.name}</span>
-                        <span style={s.bankTypeTag}>{acc.type === "bank" ? "بنك" : "محفظة"}</span>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {acc.account_number && (
-                          <BankField label="رقم الحساب" value={acc.account_number} id={`acct-${acc.id}`} copiedId={copiedId} onCopy={copyText} />
-                        )}
-                        {acc.iban && (
-                          <BankField label="الآيبان" value={acc.iban} id={`iban-${acc.id}`} copiedId={copiedId} onCopy={copyText} />
-                        )}
-                        {acc.phone && (
-                          <BankField label="رقم الجوال" value={acc.phone} id={`phone-${acc.id}`} copiedId={copiedId} onCopy={copyText} />
-                        )}
-                      </div>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                      {bankData.has_discount && (
+                        <span style={{ color: "var(--text4)", fontSize: 13, textDecoration: "line-through" }}>{bankData.original_amount}</span>
+                      )}
+                      <span style={{ color: "var(--text)", fontSize: 32, fontWeight: 900, letterSpacing: "-1px" }}>{bankData.amount}</span>
+                      <span style={{ color: "var(--text3)", fontSize: 14, fontWeight: 700 }}>ر.س</span>
                     </div>
-                  ))}
-                  {bankData.accounts.length === 0 && (
-                    <p style={{ color: "var(--text3)", textAlign: "center", fontSize: 13, padding: "16px 0" }}>
-                      لا توجد حسابات بنكية متاحة حالياً. تواصل مع الدعم.
-                    </p>
+                  </div>
+                  {bankData.has_discount && (
+                    <div style={s.bankSavedBadge}>وفّرت {Math.round(bankData.original_amount - bankData.amount)} ر.س</div>
                   )}
                 </div>
 
-                {/* Receipt upload section */}
-                <div style={s.receiptBox}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                    <div style={s.receiptIcon}>
-                      <ShieldCheck size={14} color="var(--text)" />
+                {/* ── Steps ── */}
+                <div style={s.stepsWrap}>
+
+                  {/* Step 1 — Transfer */}
+                  <div style={s.stepRow}>
+                    <div style={s.stepNumDone}>١</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={s.stepTitle}>حوّل المبلغ إلى أحد الحسابات التالية</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+                        {bankData.accounts.map(acc => (
+                          <div key={acc.id} style={s.bankCard}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                              <div style={s.bankIcon}>
+                                {acc.type === "bank" ? <Building2 size={13} color="var(--text)" /> : <Wallet size={13} color="var(--text)" />}
+                              </div>
+                              <span style={{ color: "var(--text)", fontWeight: 700, fontSize: 13 }}>{acc.name}</span>
+                              <span style={s.bankTypeTag}>{acc.type === "bank" ? "بنك" : "محفظة"}</span>
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                              {acc.account_number && (
+                                <BankField label="رقم الحساب" value={acc.account_number} id={`acct-${acc.id}`} copiedId={copiedId} onCopy={copyText} />
+                              )}
+                              {acc.iban && (
+                                <BankField label="الآيبان" value={acc.iban} id={`iban-${acc.id}`} copiedId={copiedId} onCopy={copyText} />
+                              )}
+                              {acc.phone && (
+                                <BankField label="رقم الجوال" value={acc.phone} id={`phone-${acc.id}`} copiedId={copiedId} onCopy={copyText} />
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        {bankData.accounts.length === 0 && (
+                          <p style={{ color: "var(--text3)", fontSize: 13 }}>لا توجد حسابات بنكية حالياً. تواصل مع الدعم.</p>
+                        )}
+                      </div>
                     </div>
-                    <span style={{ color: "var(--text)", fontSize: 13, fontWeight: 700 }}>رفع إيصال التحويل</span>
-                    <span style={{ color: "var(--danger)", fontSize: 12, fontWeight: 700 }}>*</span>
-                    <span style={{ color: "var(--text4)", fontSize: 11, marginRight: 2 }}>(إلزامي)</span>
                   </div>
-                  <p style={{ color: "var(--text3)", fontSize: 12, lineHeight: 1.7, margin: "0 0 12px" }}>
-                    يرجى رفع صورة إيصال التحويل لإتمام طلبك وتفعيل حسابك.
-                  </p>
 
-                  {uploadDone ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                      <div style={s.uploadSuccess}>
-                        <CheckCheck size={16} color="var(--success-fg)" />
-                        <span>تم رفع الإيصال بنجاح!</span>
+                  <div style={s.stepConnector} />
+
+                  {/* Step 2 — Upload receipt */}
+                  <div style={s.stepRow}>
+                    <div style={uploadDone ? s.stepNumDone : s.stepNumActive}>٢</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={s.stepTitle}>ارفع إيصال التحويل هنا مباشرةً</div>
+                      <div style={{ marginTop: 10 }}>
+                        {uploadDone ? (
+                          <div style={s.uploadSuccessCard}>
+                            <CheckCheck size={18} color="var(--success-fg)" />
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>تم رفع الإيصال بنجاح!</div>
+                              <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 2 }}>جاري مراجعته من الفريق</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <label style={{ display: "block", cursor: "pointer" }}>
+                            <input
+                              type="file"
+                              accept="image/*,.pdf"
+                              style={{ display: "none" }}
+                              onChange={e => { setReceiptFile(e.target.files?.[0] || null); setUploadErr(""); }}
+                              disabled={uploading}
+                            />
+                            <div style={{
+                              ...s.fileDropzoneNew,
+                              borderColor: receiptFile ? "var(--accent)" : "var(--border2)",
+                              background: receiptFile ? "var(--surface2)" : "var(--bg)",
+                            }}>
+                              {receiptFile ? (
+                                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                                  <CheckCheck size={22} color="var(--accent)" />
+                                  <span style={{ color: "var(--text)", fontSize: 13, fontWeight: 600, textAlign: "center", wordBreak: "break-all" }}>{receiptFile.name}</span>
+                                  <span style={{ color: "var(--text4)", fontSize: 11 }}>اضغط لتغيير الملف</span>
+                                </div>
+                              ) : (
+                                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                                  <div style={s.uploadIconWrap}>
+                                    <ShieldCheck size={20} color="var(--text3)" />
+                                  </div>
+                                  <div style={{ textAlign: "center" }}>
+                                    <div style={{ color: "var(--text)", fontSize: 13, fontWeight: 600 }}>اضغط لرفع الإيصال</div>
+                                    <div style={{ color: "var(--text4)", fontSize: 11, marginTop: 3 }}>صورة أو PDF — حتى 10 ميغابايت</div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </label>
+                        )}
+                        {uploadErr && (
+                          <div style={{ color: "var(--danger)", fontSize: 12, marginTop: 6 }}>{uploadErr}</div>
+                        )}
+                        {receiptFile && !uploadDone && (
+                          <button
+                            onClick={handleReceiptUpload}
+                            disabled={uploading}
+                            style={{ ...s.uploadBtn, opacity: uploading ? 0.7 : 1 }}
+                          >
+                            {uploading
+                              ? <><RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} /><span>جاري الرفع...</span></>
+                              : <><ShieldCheck size={14} /><span>إرسال الإيصال الآن</span></>}
+                          </button>
+                        )}
                       </div>
-                      <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px", color: "var(--text2)", fontSize: 12.5, lineHeight: 1.8 }}>
-                        ✅ تم استلام طلبك وإيصال التحويل.<br />
-                        سيتم مراجعته وتفعيل حسابك وإرسال كود التفعيل على بريدك الإلكتروني خلال 24 ساعة.
-                      </div>
-                      <button onClick={closeModal} style={{ ...s.payBtn, background: "var(--accent)", color: "var(--accent-fg)", justifyContent: "center", width: "100%", fontWeight: 800 }}>
-                        إغلاق
-                      </button>
                     </div>
-                  ) : (
-                    <>
-                      <label style={s.fileLabel}>
-                        <input
-                          type="file"
-                          accept="image/*,.pdf"
-                          style={{ display: "none" }}
-                          onChange={e => { setReceiptFile(e.target.files?.[0] || null); setUploadErr(""); }}
-                          disabled={uploading}
-                        />
-                        <div style={{ ...s.fileDropzone, borderColor: receiptFile ? "var(--accent)" : "var(--border2)" }}>
-                          {receiptFile ? (
-                            <span style={{ color: "var(--text)", fontSize: 13 }}>{receiptFile.name}</span>
-                          ) : (
-                            <span style={{ color: "var(--text4)", fontSize: 13 }}>اضغط لاختيار صورة الإيصال</span>
-                          )}
-                        </div>
-                      </label>
+                  </div>
 
-                      {uploadErr && (
-                        <div style={{ color: "var(--danger)", fontSize: 12, marginTop: 6 }}>{uploadErr}</div>
-                      )}
+                  <div style={s.stepConnector} />
 
-                      {receiptFile && (
-                        <button
-                          onClick={handleReceiptUpload}
-                          disabled={uploading}
-                          style={{ ...s.payBtn, background: "var(--accent)", color: "var(--text)", width: "100%", justifyContent: "center", marginTop: 10, opacity: uploading ? 0.7 : 1 }}
-                        >
-                          {uploading
-                            ? <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />
-                            : <ShieldCheck size={14} />}
-                          <span>{uploading ? "جاري الرفع..." : "رفع الإيصال"}</span>
-                        </button>
-                      )}
-                    </>
-                  )}
+                  {/* Step 3 — Confirmation */}
+                  <div style={s.stepRow}>
+                    <div style={uploadDone ? s.stepNumDone : s.stepNumPending}>٣</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ ...s.stepTitle, color: uploadDone ? "var(--text)" : "var(--text3)" }}>تفعيل حسابك تلقائياً</div>
+                      <div style={{ color: "var(--text4)", fontSize: 12, marginTop: 4, lineHeight: 1.7 }}>
+                        {uploadDone
+                          ? "✅ سيُفعَّل حسابك ويُرسَل لك رابط الدخول على بريدك خلال 24 ساعة."
+                          : "بعد مراجعة الإيصال، يُفعَّل حسابك ويُرسَل رابط الدخول على بريدك خلال 24 ساعة."}
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
 
-                {/* Back button — hidden after upload */}
-                {!uploadDone && (
+                {/* ── Actions ── */}
+                {uploadDone ? (
+                  <button onClick={closeModal} style={{ ...s.uploadBtn, marginTop: 16, width: "100%", justifyContent: "center", background: "var(--accent)", color: "var(--accent-fg)" }}>
+                    إغلاق ✓
+                  </button>
+                ) : (
                   <button
                     onClick={() => {
-                      if (selected?.id === "__resume__") {
-                        // In resume mode, back = close modal
-                        closeModal();
-                      } else {
-                        setStep("form"); setBankData(null); setReceiptFile(null); setUploadDone(false); setUploadErr("");
-                      }
+                      if (selected?.id === "__resume__") { closeModal(); }
+                      else { setStep("form"); setBankData(null); setReceiptFile(null); setUploadDone(false); setUploadErr(""); }
                     }}
-                    style={{ ...s.payBtn, background: "var(--surface2)", color: "var(--text2)", border: "1px solid var(--border2)", marginTop: 4, width: "100%", justifyContent: "center" }}
+                    style={s.backBankBtn}
                   >
-                    <span>{selected?.id === "__resume__" ? "← إغلاق" : "← العودة لخيارات الدفع"}</span>
+                    {selected?.id === "__resume__" ? "← إغلاق" : "← العودة لخيارات الدفع"}
                   </button>
                 )}
               </div>
@@ -1062,6 +1088,22 @@ const s: Record<string, React.CSSProperties> = {
   fileLabel: { display: "block", cursor: "pointer" },
   fileDropzone: { border: "1.5px dashed var(--border2)", borderRadius: 10, padding: "14px 16px", textAlign: "center" as const, transition: "border-color 0.2s", background: "var(--input-bg)" },
   uploadSuccess: { display: "flex", alignItems: "center", gap: 8, background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: 10, padding: "10px 14px", color: "var(--success-fg)", fontSize: 13, fontWeight: 600 },
+
+  // Bank transfer — new step design
+  bankHero: { display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 14, padding: "14px 18px", marginBottom: 18 },
+  bankSavedBadge: { background: "var(--accent)", color: "var(--accent-fg)", fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 8, whiteSpace: "nowrap" as const },
+  stepsWrap: { display: "flex", flexDirection: "column" as const },
+  stepRow: { display: "flex", alignItems: "flex-start", gap: 14 },
+  stepConnector: { width: 2, height: 16, background: "var(--border2)", marginRight: 13, marginLeft: "auto", flexShrink: 0 },
+  stepNumDone: { width: 28, height: 28, borderRadius: "50%", background: "var(--accent)", color: "var(--accent-fg)", fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  stepNumActive: { width: 28, height: 28, borderRadius: "50%", background: "var(--accent)", color: "var(--accent-fg)", fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  stepNumPending: { width: 28, height: 28, borderRadius: "50%", background: "var(--surface2)", border: "1px solid var(--border2)", color: "var(--text4)", fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  stepTitle: { color: "var(--text)", fontSize: 13, fontWeight: 700, marginTop: 4 },
+  fileDropzoneNew: { border: "2px dashed var(--border2)", borderRadius: 14, padding: "22px 16px", textAlign: "center" as const, transition: "all 0.2s", cursor: "pointer" },
+  uploadIconWrap: { width: 44, height: 44, borderRadius: 12, background: "var(--surface2)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto" },
+  uploadBtn: { width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "var(--accent)", color: "var(--accent-fg)", border: "none", borderRadius: 12, padding: "13px", fontSize: 14, fontWeight: 800, cursor: "pointer", marginTop: 10 },
+  uploadSuccessCard: { display: "flex", alignItems: "center", gap: 12, background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: 12, padding: "12px 14px" },
+  backBankBtn: { display: "flex", alignItems: "center", justifyContent: "center", width: "100%", background: "var(--surface2)", border: "1px solid var(--border2)", borderRadius: 11, padding: "10px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", color: "var(--text3)", marginTop: 12 },
 
   secureNote: { textAlign: "center" as const, color: "var(--text4)", fontSize: 11, margin: 0, position: "relative", zIndex: 1 },
 
