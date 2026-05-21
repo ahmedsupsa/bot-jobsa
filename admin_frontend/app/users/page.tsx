@@ -277,7 +277,7 @@ function UserSidePanel({
   onSaveSubscription: (id: string, days: number) => Promise<void>;
   onDelete: (id: string, name: string) => Promise<void>;
 }) {
-  const [email, setEmail] = useState(user.email || "");
+  const [email, setEmail] = useState(user.smtp_email || user.email || "");
   const [savingEmail, setSavingEmail] = useState(false);
   const [emailSaved, setEmailSaved] = useState(false);
 
