@@ -1,69 +1,85 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import ExcelJS from "exceljs";
 import * as XLSX from "xlsx";
 import Shell from "@/components/shell";
 import {
   Send, Mail, User, FileText, MessageSquare, Reply, CheckCircle, XCircle,
-  Loader2, Users, BarChart2, Eye, EyeOff, Clock, ChevronLeft, Plus,
-  Inbox, AlertCircle, RefreshCw,
+  Loader2, Users, BarChart2, Eye, Clock, ChevronLeft, ChevronRight,
+  Inbox, AlertCircle, RefreshCw, Zap, TrendingUp, ArrowUpRight,
+  Paperclip, AtSign, Sparkles, Radio,
 } from "lucide-react";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 type Campaign = {
   id: string; name: string; subject: string; from_name: string;
   total_sent: number; total_opened: number; created_at: string; sent_at: string | null;
 };
-type Recipient = {
-  id: string; email: string; name: string | null; opened_at: string | null; error: string | null;
-};
 type Tab = "quick" | "campaign" | "history";
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ── helpers ──────────────────────────────────────────────────────────────────
+function buildPreviewHtml(subject: string, body: string, name = "المستلم") {
+  const personalizedBody = body.replace(/\{\{name\}\}/gi, name);
+  const safeBody = personalizedBody.replace(/\n/g, "<br>");
+  return `<div style="font-family:'Segoe UI',Tahoma,sans-serif;max-width:540px;margin:0 auto;background:#fff;border-radius:12px;padding:28px 32px;direction:rtl;text-align:right;">
+    <h2 style="color:#1a1a1a;margin:0 0 14px;font-size:18px;border-bottom:1px solid #f0f0f0;padding-bottom:14px;">${subject || "عنوان الرسالة"}</h2>
+    <div style="color:#444;line-height:1.9;font-size:14px;">${safeBody || '<span style="color:#aaa">نص الرسالة يظهر هنا...</span>'}</div>
+    <hr style="border:none;border-top:1px solid #f0f0f0;margin:20px 0 14px;">
+    <p style="color:#bbb;font-size:11px;margin:0;text-align:center;">Jobbots — منصة التقديم التلقائي للوظائف</p>
+  </div>`;
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 export default function SendEmailPage() {
   const [tab, setTab] = useState<Tab>("quick");
 
+  const TABS: { key: Tab; label: string; icon: React.ElementType; desc: string }[] = [
+    { key: "quick",    label: "إرسال سريع",       icon: Zap,       desc: "رسالة فردية فورية" },
+    { key: "campaign", label: "حملة جماعية",      icon: Radio,     desc: "إرسال لقائمة مستلمين" },
+    { key: "history",  label: "الحملات السابقة",  icon: BarChart2, desc: "إحصائيات ومتابعة" },
+  ];
+
   return (
     <Shell>
-      <div className="max-w-5xl">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-xl font-bold text-ink flex items-center gap-3 m-0">
-            <Mail size={22} className="text-ink" />
-            البريد الإلكتروني
-          </h1>
-          <p className="text-sm text-muted mt-1 m-0">إرسال سريع، حملات جماعية، وتتبع الفتح</p>
+      <div className="max-w-6xl space-y-6">
+        {/* ── Header ── */}
+        <div className="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-accent/15 border border-accent/25">
+                <Mail size={20} className="text-accent" />
+              </div>
+              <h1 className="text-2xl font-bold text-ink">البريد الإلكتروني</h1>
+            </div>
+            <p className="text-sm text-muted mr-14">إرسال سريع، حملات جماعية، وتتبع الفتح</p>
+          </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1 p-1 bg-panel2 rounded-xl border border-line mb-6 w-fit">
-          {([
-            { key: "quick",    label: "إرسال سريع",      icon: Send },
-            { key: "campaign", label: "حملة جماعية",     icon: Users },
-            { key: "history",  label: "الحملات السابقة", icon: BarChart2 },
-          ] as { key: Tab; label: string; icon: any }[]).map(t => (
+        {/* ── Tab Bar ── */}
+        <div className="grid grid-cols-3 gap-3 max-w-2xl">
+          {TABS.map(t => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+              className={`flex flex-col items-start gap-1 rounded-2xl border p-4 text-right transition-all ${
                 tab === t.key
-                  ? "bg-[var(--bg)] text-ink shadow-sm border border-line"
-                  : "text-muted hover:text-ink"
+                  ? "border-accent/50 bg-accent/10 shadow-sm"
+                  : "border-line/70 bg-panel hover:border-accent/30 hover:bg-panel2"
               }`}
             >
-              <t.icon size={15} />
-              {t.label}
+              <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${
+                tab === t.key ? "bg-accent text-white" : "bg-panel2 border border-line text-muted2"
+              }`}>
+                <t.icon size={15} />
+              </div>
+              <span className={`text-sm font-semibold ${tab === t.key ? "text-accent" : "text-ink"}`}>{t.label}</span>
+              <span className="text-[11px] text-muted2">{t.desc}</span>
             </button>
           ))}
         </div>
 
-        {tab === "quick"    && (
-          <>
-            <QuickSend />
-            <SentMessagesTimeline />
-          </>
-        )}
+        {/* ── Content ── */}
+        {tab === "quick"    && <QuickSend />}
         {tab === "campaign" && <CampaignCreate onSent={() => setTab("history")} />}
         {tab === "history"  && <CampaignHistory />}
       </div>
@@ -71,51 +87,7 @@ export default function SendEmailPage() {
   );
 }
 
-// ─── Timeline ──────────────────────────────────────────────────────────────
-function SentMessagesTimeline() {
-  const [messages, setMessages] = useState<any[] | null>(null); // null يعني جاري التحميل
-
-  const load = useCallback(async () => {
-    fetch("/api/admin/sent-private-messages")
-      .then(r => r.json())
-      .then(d => setMessages(Array.isArray(d) ? d : []));
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  return (
-    <div className="mt-8 max-w-2xl">
-      <h3 className="text-sm font-bold text-ink mb-4 flex items-center gap-2">
-        <Clock size={16} /> سجل الرسائل المفرَدة
-      </h3>
-      
-      {messages === null ? (
-        <div className="text-muted text-xs">جاري تحميل السجل...</div>
-      ) : messages.length === 0 ? (
-        <div className="text-muted text-xs bg-panel border border-line p-4 rounded-xl">لا توجد رسائل مرسلة حتى الآن.</div>
-      ) : (
-        <div className="relative border-r border-line pr-6 space-y-8">
-          {messages.map((msg) => (
-            <div key={msg.id} className="relative">
-              <div className="absolute -right-[33px] top-0 h-4 w-4 rounded-full bg-panel border-2 border-accent" />
-              
-              <div className="bg-panel border border-line rounded-2xl p-4 shadow-sm">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs font-bold text-accent truncate ltr">{msg.recipient_email}</span>
-                  <span className="text-[10px] text-muted flex-shrink-0" dir="ltr">{new Date(msg.sent_at).toLocaleString("ar-SA")}</span>
-                </div>
-                <p className="text-sm font-bold text-ink mb-1 truncate">{msg.subject}</p>
-                <p className="text-xs text-muted leading-relaxed truncate">{msg.message}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Quick Send ───────────────────────────────────────────────────────────────
+// ── Quick Send ────────────────────────────────────────────────────────────────
 function QuickSend() {
   const [toEmail, setToEmail]   = useState("");
   const [toName, setToName]     = useState("");
@@ -125,73 +97,167 @@ function QuickSend() {
   const [replyTo, setReplyTo]   = useState("");
   const [sending, setSending]   = useState(false);
   const [status, setStatus]     = useState<{ ok: boolean; msg: string } | null>(null);
+  const [messages, setMessages] = useState<any[] | null>(null);
+
+  const loadHistory = useCallback(() => {
+    fetch("/api/admin/sent-private-messages", { credentials: "include" })
+      .then(r => r.json()).then(d => setMessages(Array.isArray(d) ? d : []));
+  }, []);
+  useEffect(() => { loadHistory(); }, [loadHistory]);
 
   const send = async () => {
     setSending(true); setStatus(null);
     try {
       const r = await fetch("/api/admin/send-email", {
-        method: "POST",
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ to_email: toEmail, to_name: toName || undefined, subject, message, from_name: fromName || undefined, reply_to: replyTo || undefined }),
       });
       const j = await r.json();
       if (!j.ok) { setStatus({ ok: false, msg: j.error || "فشل الإرسال" }); }
-      else { setStatus({ ok: true, msg: "تم إرسال البريد بنجاح ✉️" }); setToEmail(""); setToName(""); setSubject(""); setMessage(""); setReplyTo(""); }
+      else {
+        setStatus({ ok: true, msg: "تم الإرسال بنجاح ✉️" });
+        setToEmail(""); setToName(""); setSubject(""); setMessage(""); setReplyTo("");
+        loadHistory();
+      }
     } catch { setStatus({ ok: false, msg: "خطأ في الاتصال" }); }
     setSending(false);
   };
 
   const canSend = toEmail.trim() && subject.trim() && message.trim() && !sending;
+  const preview = useMemo(() => buildPreviewHtml(subject, message, toName || "المستلم"), [subject, message, toName]);
 
   return (
-    <div className="rounded-2xl border border-line bg-panel p-6 space-y-4 max-w-2xl">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="البريد المرسَل إليه *" icon={<User size={13} />}>
-          <input type="email" dir="ltr" className={inputCls} placeholder="user@example.com"
-            value={toEmail} onChange={e => setToEmail(e.target.value)} disabled={sending} />
-        </Field>
-        <Field label="اسم المستلم — اختياري" icon={<User size={13} />}>
-          <input className={inputCls} placeholder="مثلاً: أحمد"
-            value={toName} onChange={e => setToName(e.target.value)} disabled={sending} />
-        </Field>
-      </div>
-      <Field label="اسم المرسِل — اختياري" icon={<User size={13} />}>
-        <input className={inputCls} placeholder="مثلاً: إدارة Jobbots"
-          value={fromName} onChange={e => setFromName(e.target.value)} disabled={sending} />
-      </Field>
-      <Field label="بريد الرد (Reply-To) — اختياري" icon={<Reply size={13} />}>
-        <input type="email" dir="ltr" className={inputCls} placeholder="manager@yourdomain.com"
-          value={replyTo} onChange={e => setReplyTo(e.target.value)} disabled={sending} />
-      </Field>
-      <Field label="عنوان الرسالة *" icon={<FileText size={13} />}>
-        <input className={inputCls} placeholder="مرحباً، بخصوص حسابك في Jobbots"
-          value={subject} onChange={e => setSubject(e.target.value)} disabled={sending} />
-      </Field>
-      <Field label="نص الرسالة *" icon={<MessageSquare size={13} />}>
-        <textarea rows={8} className={`${inputCls} resize-y leading-relaxed`}
-          placeholder={"السلام عليكم،\n\nنود إعلامكم بأن..."}
-          value={message} onChange={e => setMessage(e.target.value)} disabled={sending} />
-        <p className="text-xs text-muted2 mt-1">
-          اكتب <span dir="ltr" className="font-mono bg-panel2 border border-line rounded px-1">{"{{name}}"}</span> ليُستبدل باسم المستلم. يدعم الأسطر الجديدة، لا تضف HTML.
-        </p>
-      </Field>
-      {status && (
-        <div className={`rounded-xl border px-4 py-3 text-sm flex items-center gap-2 ${status.ok ? "border-line2 bg-panel2 text-ink" : "border-danger-border bg-danger-bg text-danger"}`}>
-          {status.ok ? <CheckCircle size={15} /> : <XCircle size={15} />}
-          {status.msg}
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+      {/* ─ Composer ─ */}
+      <div className="lg:col-span-3 rounded-2xl border border-line/70 bg-panel shadow-card overflow-hidden">
+        {/* Email header bar */}
+        <div className="border-b border-line/60 bg-panel2/50 px-5 py-4 space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted2 w-10 shrink-0 text-left">إلى</span>
+            <div className="flex flex-1 gap-2">
+              <div className="relative flex-1">
+                <AtSign size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted2" />
+                <input type="email" dir="ltr" value={toEmail} onChange={e => setToEmail(e.target.value)}
+                  placeholder="user@example.com" disabled={sending}
+                  className="w-full rounded-xl border border-line/70 bg-panel pr-8 pl-3 py-2 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none" />
+              </div>
+              <div className="relative flex-1">
+                <User size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted2" />
+                <input value={toName} onChange={e => setToName(e.target.value)}
+                  placeholder="اسم المستلم" disabled={sending}
+                  className="w-full rounded-xl border border-line/70 bg-panel pr-8 pl-3 py-2 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none" />
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted2 w-10 shrink-0 text-left">من</span>
+            <input value={fromName} onChange={e => setFromName(e.target.value)}
+              placeholder="Jobbots (اسم المرسِل)" disabled={sending}
+              className="flex-1 rounded-xl border border-line/70 bg-panel px-3 py-2 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none" />
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted2 w-10 shrink-0 text-left">رد</span>
+            <input type="email" dir="ltr" value={replyTo} onChange={e => setReplyTo(e.target.value)}
+              placeholder="reply@domain.com (اختياري)" disabled={sending}
+              className="flex-1 rounded-xl border border-line/70 bg-panel px-3 py-2 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none" />
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted2 w-10 shrink-0 text-left">عنوان</span>
+            <input value={subject} onChange={e => setSubject(e.target.value)}
+              placeholder="موضوع الرسالة..." disabled={sending}
+              className="flex-1 rounded-xl border border-line/70 bg-panel px-3 py-2 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none font-medium" />
+          </div>
         </div>
-      )}
-      <div className="flex justify-end pt-1">
-        <button onClick={send} disabled={!canSend}
-          className="flex items-center gap-2 rounded-xl bg-accent text-accent-fg px-5 py-2.5 text-sm font-bold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-          {sending ? <><Loader2 size={14} className="animate-spin" /> جاري الإرسال...</> : <><Send size={14} /> إرسال</>}
-        </button>
+
+        {/* Body */}
+        <div className="p-5 flex flex-col gap-3">
+          <textarea rows={10} value={message} onChange={e => setMessage(e.target.value)} disabled={sending}
+            placeholder={"السلام عليكم {{name}}،\n\nنود إعلامكم بأن..."}
+            className="w-full rounded-xl border border-line/70 bg-panel2/50 px-4 py-3 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none resize-none leading-relaxed" />
+          <p className="text-[11px] text-muted2 flex items-center gap-1.5">
+            <Sparkles size={11} />
+            اكتب <code className="font-mono bg-panel2 border border-line/60 rounded px-1.5 py-0.5 mx-1">{"{{name}}"}</code> ليُستبدل باسم المستلم تلقائياً
+          </p>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-line/60 px-5 py-3 flex items-center justify-between gap-3">
+          {status ? (
+            <div className={`flex items-center gap-2 text-sm rounded-xl border px-3 py-1.5 ${
+              status.ok ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-danger-border bg-danger-bg text-danger"
+            }`}>
+              {status.ok ? <CheckCircle size={14} /> : <XCircle size={14} />}
+              {status.msg}
+            </div>
+          ) : <div />}
+          <button onClick={send} disabled={!canSend}
+            className="flex items-center gap-2 rounded-xl bg-accent text-white px-5 py-2.5 text-sm font-bold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm">
+            {sending ? <><Loader2 size={14} className="animate-spin" /> جاري الإرسال...</> : <><Send size={14} /> إرسال</>}
+          </button>
+        </div>
+      </div>
+
+      {/* ─ Right panel: Preview + History ─ */}
+      <div className="lg:col-span-2 flex flex-col gap-4">
+        {/* Live Preview */}
+        <div className="rounded-2xl border border-line/70 bg-panel shadow-card overflow-hidden">
+          <div className="border-b border-line/60 px-4 py-3 flex items-center gap-2">
+            <Eye size={13} className="text-muted2" />
+            <span className="text-xs font-semibold text-muted2">معاينة مباشرة</span>
+            {(subject || message) && (
+              <span className="mr-auto text-[10px] rounded-md border border-green-500/30 bg-green-500/10 text-green-400 px-1.5 py-0.5">حي</span>
+            )}
+          </div>
+          <div className="p-3 bg-[#f5f5f5] dark:bg-panel2/30 min-h-[180px]">
+            <div dangerouslySetInnerHTML={{ __html: preview }}
+              className="text-sm rounded-xl overflow-hidden shadow-sm" />
+          </div>
+        </div>
+
+        {/* Sent History */}
+        <div className="rounded-2xl border border-line/70 bg-panel shadow-card flex-1 overflow-hidden">
+          <div className="border-b border-line/60 px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock size={13} className="text-muted2" />
+              <span className="text-xs font-semibold text-muted2">آخر الرسائل المُرسَلة</span>
+            </div>
+            <button onClick={loadHistory} className="text-muted2 hover:text-ink transition-colors">
+              <RefreshCw size={12} />
+            </button>
+          </div>
+          <div className="overflow-y-auto max-h-64 divide-y divide-line/30">
+            {messages === null ? (
+              <div className="flex items-center justify-center py-8 text-muted2 text-xs gap-2">
+                <Loader2 size={13} className="animate-spin" /> جاري التحميل...
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-muted2 text-xs gap-2">
+                <Inbox size={22} className="opacity-30" />
+                لا توجد رسائل مُرسَلة بعد
+              </div>
+            ) : (
+              messages.slice(0, 20).map((msg) => (
+                <div key={msg.id} className="px-4 py-3 hover:bg-panel2/50 transition-colors">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <span className="text-[11px] font-mono text-accent truncate" dir="ltr">{msg.recipient_email}</span>
+                    <span className="text-[10px] text-muted2 shrink-0 whitespace-nowrap">
+                      {new Date(msg.sent_at).toLocaleDateString("ar-SA")}
+                    </span>
+                  </div>
+                  <p className="text-xs text-ink font-medium truncate">{msg.subject}</p>
+                  <p className="text-[11px] text-muted2 truncate mt-0.5">{msg.message}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Campaign Create ──────────────────────────────────────────────────────────
+// ── Campaign Create ────────────────────────────────────────────────────────────
 function CampaignCreate({ onSent }: { onSent: () => void }) {
   const [step, setStep] = useState<"compose" | "recipients" | "sending" | "done">("compose");
   const [campaignId, setCampaignId] = useState<string | null>(null);
@@ -208,11 +274,20 @@ function CampaignCreate({ onSent }: { onSent: () => void }) {
   const [result, setResult]   = useState<{ sent: number; total: number } | null>(null);
   const [err, setErr]         = useState("");
 
+  const lineCount = recipientsRaw.split("\n").filter(l => l.trim()).length;
+  const preview   = useMemo(() => buildPreviewHtml(subject, body), [subject, body]);
+
+  const STEPS = [
+    { key: "compose",    label: "إعداد الرسالة" },
+    { key: "recipients", label: "قائمة المستلمين" },
+  ];
+  const stepIdx = step === "compose" ? 0 : step === "recipients" ? 1 : 1;
+
   const saveAndNext = async () => {
     if (!name || !subject || !body) { setErr("الاسم والعنوان والنص مطلوبة"); return; }
     setSaving(true); setErr("");
     const r = await fetch("/api/admin/campaigns", {
-      method: "POST",
+      method: "POST", credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, subject, body, from_name: fromName, reply_to: replyTo || undefined }),
     });
@@ -229,7 +304,7 @@ function CampaignCreate({ onSent }: { onSent: () => void }) {
     if (lines.length === 0) { setErr("أضف إيميلات للإرسال"); return; }
     setSending(true); setErr(""); setStep("sending");
     const r = await fetch(`/api/admin/campaigns/${campaignId}`, {
-      method: "POST",
+      method: "POST", credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ recipients: lines }),
     });
@@ -240,174 +315,202 @@ function CampaignCreate({ onSent }: { onSent: () => void }) {
     setStep("done");
   };
 
-  const lineCount = recipientsRaw.split("\n").filter(l => l.trim()).length;
-
   const downloadTemplate = async () => {
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Recipients');
-    worksheet.columns = [
-        { header: 'الاسم', key: 'name', width: 20 },
-        { header: 'البريد', key: 'email', width: 30 }
-    ];
-    worksheet.addRow({ name: 'Ahmed', email: 'ahmed@example.com' });
-    worksheet.addRow({ name: 'Sara', email: 'sara@example.com' });
-
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "recipients_template.xlsx";
-    link.click();
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Recipients");
+    ws.columns = [{ header: "الاسم", key: "name", width: 20 }, { header: "البريد", key: "email", width: 30 }];
+    ws.addRow({ name: "Ahmed", email: "ahmed@example.com" });
+    ws.addRow({ name: "Sara", email: "sara@example.com" });
+    const buf = await wb.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    Object.assign(document.createElement("a"), { href: url, download: "recipients_template.xlsx" }).click();
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+    const file = e.target.files?.[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = async (evt) => {
-      const bstr = evt.target?.result as string;
-      const workbook = XLSX.read(bstr, { type: 'binary' });
-      const wsname = workbook.SheetNames[0];
-      const ws = workbook.Sheets[wsname];
-      const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
-
-      // Assuming first row is header, data starts from second row
-      const formatted = data.slice(1).map(row => {
-        const name = row[0] || "";
-        const email = row[1] || "";
-        return name ? `${name} <${email}>` : email;
-      }).filter(Boolean).join("\n");
-
-      setRecipientsRaw(prev => prev + (prev ? "\n" : "") + formatted);
+    reader.onload = (evt) => {
+      const wb = XLSX.read(evt.target?.result as string, { type: "binary" });
+      const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 }) as any[][];
+      const fmt = data.slice(1).map(row => (row[0] ? `${row[0]} <${row[1]}>` : row[1])).filter(Boolean).join("\n");
+      setRecipientsRaw(p => p + (p ? "\n" : "") + fmt);
     };
     reader.readAsBinaryString(file);
   };
 
   if (step === "done" && result) {
     return (
-      <div className="rounded-2xl border border-line bg-panel p-8 text-center max-w-md">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-panel2 border border-line mx-auto mb-4">
-          <CheckCircle size={32} className="text-accent" />
+      <div className="flex items-center justify-center py-10">
+        <div className="rounded-3xl border border-green-500/30 bg-green-500/5 p-10 text-center max-w-sm w-full">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-green-500/15 border border-green-500/30 mx-auto mb-5">
+            <CheckCircle size={32} className="text-green-400" />
+          </div>
+          <h2 className="text-lg font-bold text-ink mb-2">تم إرسال الحملة!</h2>
+          <div className="flex items-center justify-center gap-6 my-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-ink">{result.sent}</div>
+              <div className="text-xs text-muted2">أُرسل</div>
+            </div>
+            <div className="h-8 w-px bg-line/60" />
+            <div className="text-center">
+              <div className="text-2xl font-bold text-ink">{result.total}</div>
+              <div className="text-xs text-muted2">إجمالي</div>
+            </div>
+          </div>
+          <p className="text-muted2 text-xs mb-6">تابع إحصائيات الفتح في «الحملات السابقة»</p>
+          <button onClick={onSent}
+            className="flex items-center gap-2 mx-auto rounded-xl bg-accent text-white px-5 py-2.5 text-sm font-bold hover:opacity-90">
+            <BarChart2 size={15} /> عرض الإحصائيات
+          </button>
         </div>
-        <h2 className="text-lg font-bold text-ink mb-2">تم إرسال الحملة!</h2>
-        <p className="text-muted text-sm mb-1">أُرسل إلى <span className="text-ink font-bold">{result.sent}</span> من أصل <span className="text-ink font-bold">{result.total}</span> مستلم</p>
-        <p className="text-muted2 text-xs mb-6">يمكنك متابعة إحصائيات الفتح في تبويب "الحملات السابقة"</p>
-        <button onClick={onSent} className="flex items-center gap-2 mx-auto rounded-xl bg-accent text-accent-fg px-5 py-2.5 text-sm font-bold hover:opacity-90">
-          <BarChart2 size={15} /> عرض الإحصائيات
-        </button>
       </div>
     );
   }
 
   if (step === "sending") {
     return (
-      <div className="rounded-2xl border border-line bg-panel p-10 text-center max-w-md">
-        <Loader2 size={36} className="animate-spin text-accent mx-auto mb-4" />
-        <p className="text-ink font-semibold">جاري إرسال الحملة…</p>
-        <p className="text-muted text-sm mt-1">يرجى الانتظار، لا تغلق الصفحة</p>
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <div className="relative mx-auto mb-5 w-16 h-16">
+            <div className="absolute inset-0 rounded-full border-2 border-accent/20" />
+            <div className="absolute inset-0 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+            <div className="absolute inset-2 rounded-full bg-accent/10 flex items-center justify-center">
+              <Send size={18} className="text-accent" />
+            </div>
+          </div>
+          <p className="text-ink font-semibold">جاري إرسال الحملة…</p>
+          <p className="text-muted text-sm mt-1">يرجى الانتظار، لا تغلق الصفحة</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5 max-w-2xl">
-      {/* Step indicator */}
-      <div className="flex items-center gap-3 text-sm text-muted">
-        <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${step === "compose" ? "bg-accent text-accent-fg" : "bg-panel2 border border-line text-ink"}`}>1</span>
-        <span className={step === "compose" ? "text-ink font-medium" : ""}>إعداد الرسالة</span>
-        <ChevronLeft size={14} />
-        <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${step === "recipients" ? "bg-accent text-accent-fg" : "bg-panel2 border border-line text-ink"}`}>2</span>
-        <span className={step === "recipients" ? "text-ink font-medium" : ""}>قائمة المستلمين</span>
-      </div>
-
-      {step === "compose" && (
-        <div className="rounded-2xl border border-line bg-panel p-6 space-y-4">
-          <Field label="اسم الحملة (للمرجعية)" icon={<FileText size={13} />}>
-            <input className={inputCls} placeholder="مثلاً: حملة رمضان 2025"
-              value={name} onChange={e => setName(e.target.value)} />
-          </Field>
-          <Field label="اسم المرسِل" icon={<User size={13} />}>
-            <input className={inputCls} placeholder="Jobbots"
-              value={fromName} onChange={e => setFromName(e.target.value)} />
-          </Field>
-          <Field label="بريد الرد (Reply-To) — اختياري" icon={<Reply size={13} />}>
-            <input type="email" dir="ltr" className={inputCls} placeholder="manager@jobbots.org"
-              value={replyTo} onChange={e => setReplyTo(e.target.value)} />
-          </Field>
-          <Field label="عنوان البريد *" icon={<FileText size={13} />}>
-            <input className={inputCls} placeholder="مرحباً من Jobbots"
-              value={subject} onChange={e => setSubject(e.target.value)} />
-          </Field>
-          <Field label="نص الرسالة *" icon={<MessageSquare size={13} />}>
-            <textarea rows={10} className={`${inputCls} resize-y leading-relaxed`}
-              placeholder={"السلام عليكم {{name}}،\n\nنود إعلامكم بأن..."}
-              value={body} onChange={e => setBody(e.target.value)} />
-            <p className="text-xs text-muted2 mt-1">
-              اكتب <span dir="ltr" className="font-mono bg-panel2 border border-line rounded px-1">{"{{name}}"}</span> في أي مكان ليُستبدل باسم كل مستلم تلقائياً. يدعم الأسطر الجديدة، ويُضاف بكسل التتبع آلياً.
-            </p>
-          </Field>
-          {err && <div className="rounded-xl border border-danger-border bg-danger-bg px-3 py-2 text-sm text-danger flex items-center gap-2"><AlertCircle size={14} />{err}</div>}
-          <div className="flex justify-end">
-            <button onClick={saveAndNext} disabled={saving || !name || !subject || !body}
-              className="flex items-center gap-2 rounded-xl bg-accent text-accent-fg px-5 py-2.5 text-sm font-bold hover:opacity-90 disabled:opacity-40">
-              {saving ? <Loader2 size={14} className="animate-spin" /> : <ChevronLeft size={14} />}
-              التالي: قائمة المستلمين
-            </button>
-          </div>
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+      {/* ─ Left: Form ─ */}
+      <div className="lg:col-span-3 space-y-4">
+        {/* Steps */}
+        <div className="flex items-center gap-2">
+          {STEPS.map((s, i) => (
+            <div key={s.key} className="flex items-center gap-2">
+              <div className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition-all ${
+                i < stepIdx ? "bg-green-500 text-white" : i === stepIdx ? "bg-accent text-white" : "bg-panel2 border border-line text-muted2"
+              }`}>
+                {i < stepIdx ? "✓" : i + 1}
+              </div>
+              <span className={`text-sm ${i === stepIdx ? "text-ink font-semibold" : "text-muted2"}`}>{s.label}</span>
+              {i < STEPS.length - 1 && <ChevronLeft size={14} className="text-muted2 mx-1" />}
+            </div>
+          ))}
         </div>
-      )}
 
-        {step === "recipients" && (
-        <div className="rounded-2xl border border-line bg-panel p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-ink mb-1">قائمة المستلمين</h2>
-              <p className="text-xs text-muted">
-                أدخل إيميل واحد في كل سطر.
+        {step === "compose" && (
+          <div className="rounded-2xl border border-line/70 bg-panel shadow-card overflow-hidden">
+            <div className="border-b border-line/60 bg-panel2/50 px-5 py-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted2 w-16 shrink-0 text-left">اسم الحملة</span>
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="مثلاً: حملة رمضان 2026"
+                  className="flex-1 rounded-xl border border-line/70 bg-panel px-3 py-2 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none" />
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted2 w-16 shrink-0 text-left">المرسِل</span>
+                <input value={fromName} onChange={e => setFromName(e.target.value)} placeholder="Jobbots"
+                  className="flex-1 rounded-xl border border-line/70 bg-panel px-3 py-2 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none" />
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted2 w-16 shrink-0 text-left">رد على</span>
+                <input type="email" dir="ltr" value={replyTo} onChange={e => setReplyTo(e.target.value)} placeholder="reply@domain.com"
+                  className="flex-1 rounded-xl border border-line/70 bg-panel px-3 py-2 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none" />
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted2 w-16 shrink-0 text-left">العنوان</span>
+                <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="موضوع الرسالة..."
+                  className="flex-1 rounded-xl border border-line/70 bg-panel px-3 py-2 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none font-medium" />
+              </div>
+            </div>
+            <div className="p-5">
+              <textarea rows={10} value={body} onChange={e => setBody(e.target.value)}
+                placeholder={"السلام عليكم {{name}}،\n\nنود إعلامكم بأن..."}
+                className="w-full rounded-xl border border-line/70 bg-panel2/50 px-4 py-3 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none resize-none leading-relaxed" />
+              <p className="text-[11px] text-muted2 mt-2 flex items-center gap-1.5">
+                <Sparkles size={11} />
+                اكتب <code className="font-mono bg-panel2 border border-line/60 rounded px-1.5 py-0.5 mx-1">{"{{name}}"}</code> ليُستبدل باسم كل مستلم
               </p>
             </div>
-            <div className="flex gap-2">
-              <button onClick={downloadTemplate} className="text-xs font-bold text-accent bg-accent/10 px-3 py-1.5 rounded-lg hover:bg-accent/20 transition-all">
-                📥 تحميل قالب (Excel)
+            <div className="border-t border-line/60 px-5 py-3 flex items-center justify-between">
+              {err && <span className="text-xs text-danger flex items-center gap-1.5"><AlertCircle size={12} />{err}</span>}
+              {!err && <div />}
+              <button onClick={saveAndNext} disabled={saving || !name || !subject || !body}
+                className="flex items-center gap-2 rounded-xl bg-accent text-white px-5 py-2.5 text-sm font-bold hover:opacity-90 disabled:opacity-40 shadow-sm">
+                {saving ? <Loader2 size={14} className="animate-spin" /> : null}
+                التالي <ChevronLeft size={14} />
               </button>
-              <label className="text-xs font-bold text-accent bg-accent/10 px-3 py-1.5 rounded-lg hover:bg-accent/20 transition-all cursor-pointer">
-                📂 رفع ملف Excel
-                <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileUpload} />
-              </label>
             </div>
           </div>
-          <textarea
+        )}
 
-            rows={14}
-            dir="ltr"
-            className={`${inputCls} resize-y font-mono text-xs leading-relaxed`}
-            placeholder={"ahmed@example.com\nSara <sara@example.com>\ninfo@company.com"}
-            value={recipientsRaw}
-            onChange={e => setRecipientsRaw(e.target.value)}
-          />
-          <div className="flex items-center justify-between text-sm text-muted">
-            <span>{lineCount > 0 ? <><span className="text-ink font-bold">{lineCount}</span> إيميل مُضاف</> : "لا توجد إيميلات بعد"}</span>
+        {step === "recipients" && (
+          <div className="rounded-2xl border border-line/70 bg-panel shadow-card overflow-hidden">
+            <div className="border-b border-line/60 px-5 py-4 flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-ink">قائمة المستلمين</h3>
+                <p className="text-xs text-muted2 mt-0.5">إيميل واحد في كل سطر، أو بصيغة <span dir="ltr" className="font-mono">Name &lt;email&gt;</span></p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={downloadTemplate}
+                  className="flex items-center gap-1.5 text-xs border border-line/70 bg-panel2 text-muted2 hover:text-ink px-3 py-1.5 rounded-xl transition-colors">
+                  <FileText size={12} /> قالب Excel
+                </button>
+                <label className="flex items-center gap-1.5 text-xs border border-accent/30 bg-accent/10 text-accent px-3 py-1.5 rounded-xl cursor-pointer hover:bg-accent/20 transition-colors">
+                  <Paperclip size={12} /> رفع Excel
+                  <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileUpload} />
+                </label>
+              </div>
+            </div>
+            <div className="p-5">
+              <textarea rows={12} dir="ltr" value={recipientsRaw} onChange={e => setRecipientsRaw(e.target.value)}
+                placeholder={"ahmed@example.com\nSara <sara@example.com>\ninfo@company.com"}
+                className="w-full rounded-xl border border-line/70 bg-panel2/50 px-4 py-3 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none resize-none font-mono leading-relaxed" />
+            </div>
+            <div className="border-t border-line/60 px-5 py-3 flex items-center justify-between">
+              <button onClick={() => setStep("compose")} className="text-sm text-muted hover:text-ink flex items-center gap-1.5 transition-colors">
+                <ChevronRight size={14} /> رجوع
+              </button>
+              <div className="flex items-center gap-4">
+                {lineCount > 0 && (
+                  <span className="text-xs text-muted2">
+                    <span className="font-bold text-ink">{lineCount}</span> إيميل
+                  </span>
+                )}
+                {err && <span className="text-xs text-danger flex items-center gap-1"><AlertCircle size={12} />{err}</span>}
+                <button onClick={sendCampaign} disabled={sending || lineCount === 0}
+                  className="flex items-center gap-2 rounded-xl bg-accent text-white px-5 py-2.5 text-sm font-bold hover:opacity-90 disabled:opacity-40 shadow-sm">
+                  {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  إرسال ({lineCount})
+                </button>
+              </div>
+            </div>
           </div>
-          {err && <div className="rounded-xl border border-danger-border bg-danger-bg px-3 py-2 text-sm text-danger flex items-center gap-2"><AlertCircle size={14} />{err}</div>}
-          <div className="flex items-center justify-between">
-            <button onClick={() => setStep("compose")} className="text-sm text-muted hover:text-ink flex items-center gap-1">
-              <ChevronLeft size={14} className="rotate-180" /> رجوع
-            </button>
-            <button onClick={sendCampaign} disabled={sending || lineCount === 0}
-              className="flex items-center gap-2 rounded-xl bg-accent text-accent-fg px-5 py-2.5 text-sm font-bold hover:opacity-90 disabled:opacity-40">
-              {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              إرسال الحملة ({lineCount} إيميل)
-            </button>
+        )}
+      </div>
+
+      {/* ─ Right: Preview ─ */}
+      <div className="lg:col-span-2">
+        <div className="rounded-2xl border border-line/70 bg-panel shadow-card overflow-hidden sticky top-4">
+          <div className="border-b border-line/60 px-4 py-3 flex items-center gap-2">
+            <Eye size={13} className="text-muted2" />
+            <span className="text-xs font-semibold text-muted2">معاينة الرسالة</span>
+          </div>
+          <div className="p-3 bg-[#f5f5f5] dark:bg-panel2/30 min-h-[300px]">
+            <div dangerouslySetInnerHTML={{ __html: preview }} className="text-sm rounded-xl overflow-hidden shadow-sm" />
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
-// ─── Campaign History ─────────────────────────────────────────────────────────
+// ── Campaign History ───────────────────────────────────────────────────────────
 function CampaignHistory() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading]     = useState(true);
@@ -415,236 +518,184 @@ function CampaignHistory() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const r = await fetch("/api/admin/campaigns");
+    const r = await fetch("/api/admin/campaigns", { credentials: "include" });
     const j = await r.json();
     setCampaigns(j.campaigns || []);
     setLoading(false);
   }, []);
-
   useEffect(() => { load(); }, [load]);
 
-  if (selected) {
-    return <CampaignDetail id={selected} onBack={() => setSelected(null)} />;
-  }
+  if (selected) return <CampaignDetail id={selected} onBack={() => setSelected(null)} />;
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-muted2">
-        <Loader2 size={22} className="animate-spin" />
-      </div>
-    );
-  }
-
-  if (campaigns.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-muted text-center">
-        <Inbox size={40} className="mb-3 opacity-30" />
-        <p className="text-sm">لا توجد حملات بعد. أنشئ أول حملة من تبويب "حملة جماعية".</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-sm text-muted">{campaigns.length} حملة</span>
-        <button onClick={load} className="flex items-center gap-1.5 text-xs text-muted hover:text-ink">
-          <RefreshCw size={13} /> تحديث
-        </button>
-      </div>
-      {campaigns.map(c => {
-        const openRate = c.total_sent > 0 ? Math.round((c.total_opened / c.total_sent) * 100) : 0;
-        return (
-          <button
-            key={c.id}
-            onClick={() => setSelected(c.id)}
-            className="w-full rounded-2xl border border-line bg-panel p-4 text-right hover:border-line2 transition-all group"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-sm font-bold text-ink truncate">{c.name}</div>
-                <div className="text-xs text-muted mt-0.5 truncate">{c.subject}</div>
-              </div>
-              <div className="flex items-center gap-4 flex-shrink-0 text-xs text-muted">
-                {c.sent_at ? (
-                  <>
-                    <span className="flex items-center gap-1"><Send size={12} />{c.total_sent} أُرسل</span>
-                    <span className={`flex items-center gap-1 font-semibold ${openRate >= 30 ? "text-green-600" : openRate >= 10 ? "text-amber-500" : "text-muted"}`}>
-                      <Eye size={12} />{c.total_opened} فتح ({openRate}%)
-                    </span>
-                  </>
-                ) : (
-                  <span className="flex items-center gap-1 text-amber-500"><Clock size={12} />لم يُرسَل</span>
-                )}
-              </div>
-            </div>
-            <div className="mt-3 flex items-center gap-3">
-              {c.sent_at && c.total_sent > 0 && (
-                <div className="flex-1 h-1.5 rounded-full bg-panel2 border border-line overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-accent transition-all"
-                    style={{ width: `${openRate}%` }}
-                  />
-                </div>
-              )}
-              <span className="text-xs text-muted2 flex items-center gap-1 flex-shrink-0">
-                <Clock size={11} />
-                {new Date(c.created_at).toLocaleDateString("ar-SA")}
-              </span>
-            </div>
-          </button>
-        );
-      })}
+  if (loading) return (
+    <div className="flex items-center justify-center py-20 text-muted2 gap-2">
+      <Loader2 size={22} className="animate-spin" />
     </div>
   );
-}
 
-// ─── Campaign Detail ──────────────────────────────────────────────────────────
-function CampaignDetail({ id, onBack }: { id: string; onBack: () => void }) {
-  const [data, setData] = useState<{ campaign: Campaign; recipients: Recipient[] } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter]   = useState<"all" | "opened" | "not_opened">("all");
-  const [refresh, setRefresh] = useState(0);
+  if (campaigns.length === 0) return (
+    <div className="flex flex-col items-center justify-center py-20 text-muted text-center">
+      <Inbox size={40} className="mb-3 opacity-30" />
+      <p className="text-sm">لا توجد حملات بعد.</p>
+    </div>
+  );
 
-  useEffect(() => {
-    setLoading(true);
-    fetch(`/api/admin/campaigns/${id}`)
-      .then(r => r.json())
-      .then(j => { if (j.ok) setData({ campaign: j.campaign, recipients: j.recipients }); })
-      .finally(() => setLoading(false));
-  }, [id, refresh]);
-
-  if (loading || !data) {
-    return (
-      <div className="flex items-center justify-center py-20 text-muted2">
-        <Loader2 size={22} className="animate-spin" />
-      </div>
-    );
-  }
-
-  const { campaign, recipients } = data;
-  const opened    = recipients.filter(r => r.opened_at);
-  const notOpened = recipients.filter(r => !r.opened_at && !r.error);
-  const errored   = recipients.filter(r => r.error);
-  const openRate  = recipients.length > 0 ? Math.round((opened.length / recipients.length) * 100) : 0;
-
-  const filtered =
-    filter === "opened"     ? opened :
-    filter === "not_opened" ? notOpened :
-    recipients;
+  const totalSent   = campaigns.reduce((s, c) => s + c.total_sent, 0);
+  const totalOpened = campaigns.reduce((s, c) => s + c.total_opened, 0);
+  const avgOpen     = totalSent > 0 ? Math.round((totalOpened / totalSent) * 100) : 0;
 
   return (
     <div className="space-y-5">
-      {/* Back + title */}
-      <div className="flex items-center gap-3">
-        <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted hover:text-ink">
-          <ChevronLeft size={16} className="rotate-180" /> رجوع
-        </button>
-        <span className="text-muted">/</span>
-        <span className="text-sm font-bold text-ink truncate">{campaign.name}</span>
-        <button onClick={() => setRefresh(r => r + 1)} className="mr-auto flex items-center gap-1 text-xs text-muted hover:text-ink">
-          <RefreshCw size={12} /> تحديث
-        </button>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "إجمالي الإرسال", value: recipients.length, icon: Send, color: "text-ink" },
-          { label: "فتحوا الإيميل",  value: opened.length,    icon: Eye,  color: "text-green-600" },
-          { label: "لم يفتحوا",      value: notOpened.length, icon: EyeOff, color: "text-muted" },
-          { label: "نسبة الفتح",     value: `${openRate}%`,   icon: BarChart2, color: openRate >= 30 ? "text-green-600" : openRate >= 10 ? "text-amber-500" : "text-muted" },
+          { label: "إجمالي الحملات", value: campaigns.length, icon: Radio, color: "text-accent" },
+          { label: "إجمالي المُرسَل", value: totalSent.toLocaleString("ar"), icon: Send, color: "text-blue-400" },
+          { label: "متوسط معدل الفتح", value: `${avgOpen}%`, icon: TrendingUp, color: avgOpen >= 30 ? "text-green-400" : "text-yellow-400" },
         ].map(s => (
-          <div key={s.label} className="rounded-2xl border border-line bg-panel p-4 text-right">
-            <s.icon size={18} className={`mb-2 ${s.color}`} />
+          <div key={s.label} className="rounded-2xl border border-line/70 bg-panel shadow-card p-4">
+            <div className={`flex items-center gap-2 mb-2 ${s.color}`}>
+              <s.icon size={15} />
+              <span className="text-xs text-muted2">{s.label}</span>
+            </div>
             <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-            <div className="text-xs text-muted mt-0.5">{s.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Open rate bar */}
-      {recipients.length > 0 && (
-        <div>
-          <div className="flex justify-between text-xs text-muted mb-1.5">
-            <span>نسبة الفتح</span>
-            <span className="font-bold text-ink">{openRate}%</span>
-          </div>
-          <div className="h-2 rounded-full bg-panel2 border border-line overflow-hidden">
-            <div className="h-full rounded-full bg-accent transition-all duration-700" style={{ width: `${openRate}%` }} />
-          </div>
-        </div>
-      )}
-
-      {/* Recipients list */}
-      <div className="rounded-2xl border border-line bg-panel overflow-hidden">
-        {/* Filter tabs */}
-        <div className="flex border-b border-line px-4 pt-3 gap-4">
-          {([
-            { key: "all",        label: `الكل (${recipients.length})` },
-            { key: "opened",     label: `فتحوا (${opened.length})` },
-            { key: "not_opened", label: `لم يفتحوا (${notOpened.length})` },
-          ] as { key: typeof filter; label: string }[]).map(f => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`pb-2.5 text-sm font-medium border-b-2 transition-all ${
-                filter === f.key ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        {filtered.length === 0 ? (
-          <div className="py-12 text-center text-muted text-sm">لا توجد نتائج</div>
-        ) : (
-          <div className="divide-y divide-line max-h-[420px] overflow-y-auto">
-            {filtered.map(r => (
-              <div key={r.id} className="flex items-center gap-3 px-4 py-3">
-                <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${r.error ? "bg-danger-bg border border-danger-border" : r.opened_at ? "bg-panel2 border border-line" : "bg-panel2 border border-line"}`}>
-                  {r.error
-                    ? <XCircle size={14} className="text-danger" />
-                    : r.opened_at
-                    ? <Eye size={14} className="text-green-600" />
-                    : <EyeOff size={14} className="text-muted" />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  {r.name && <div className="text-xs font-medium text-ink truncate">{r.name}</div>}
-                  <div className="text-xs text-muted truncate" dir="ltr">{r.email}</div>
-                  {r.error && <div className="text-[11px] text-danger mt-0.5">{r.error}</div>}
-                </div>
-                <div className="text-[11px] text-muted2 flex-shrink-0 text-left">
-                  {r.opened_at
-                    ? <span className="text-green-600 font-medium">{new Date(r.opened_at).toLocaleString("ar-SA")}</span>
-                    : r.error ? <span className="text-danger">فشل الإرسال</span>
-                    : <span>لم يُفتح</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      {/* List */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-muted2">{campaigns.length} حملة</span>
+        <button onClick={load} className="flex items-center gap-1.5 text-xs text-muted hover:text-ink transition-colors">
+          <RefreshCw size={12} /> تحديث
+        </button>
       </div>
 
-      {errored.length > 0 && (
-        <div className="rounded-xl border border-danger-border bg-danger-bg px-4 py-3 text-sm text-danger flex items-center gap-2">
-          <AlertCircle size={15} />
-          {errored.length} إيميل فشل إرساله
-        </div>
-      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {campaigns.map(c => {
+          const openRate = c.total_sent > 0 ? Math.round((c.total_opened / c.total_sent) * 100) : 0;
+          return (
+            <button key={c.id} onClick={() => setSelected(c.id)}
+              className="rounded-2xl border border-line/70 bg-panel shadow-card p-4 text-right hover:border-accent/40 hover:shadow-md transition-all group">
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10 border border-accent/20 shrink-0">
+                  <Mail size={15} className="text-accent" />
+                </div>
+                <ArrowUpRight size={14} className="text-muted2 group-hover:text-accent transition-colors mt-0.5 shrink-0" />
+              </div>
+              <div className="text-sm font-bold text-ink truncate mb-0.5">{c.name}</div>
+              <div className="text-xs text-muted2 truncate mb-3">{c.subject}</div>
+              {c.sent_at ? (
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="flex items-center gap-1 text-muted2"><Send size={10} />{c.total_sent}</span>
+                  <span className={`flex items-center gap-1 font-semibold ${openRate >= 30 ? "text-green-400" : openRate >= 10 ? "text-yellow-400" : "text-muted2"}`}>
+                    <Eye size={10} />{openRate}% فتح
+                  </span>
+                </div>
+              ) : (
+                <span className="text-[11px] border border-yellow-500/30 bg-yellow-500/10 text-yellow-400 rounded-md px-2 py-0.5">مسودة</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function Field({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
+// ── Campaign Detail ────────────────────────────────────────────────────────────
+function CampaignDetail({ id, onBack }: { id: string; onBack: () => void }) {
+  const [data, setData]       = useState<{ campaign: Campaign; recipients: any[] } | null>(null);
+  const [showAll, setShowAll] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/admin/campaigns/${id}`, { credentials: "include" })
+      .then(r => r.json()).then(setData);
+  }, [id]);
+
+  if (!data) return <div className="flex justify-center py-20"><Loader2 size={22} className="animate-spin text-muted2" /></div>;
+
+  const { campaign: c, recipients } = data;
+  const opened  = recipients.filter(r => r.opened_at).length;
+  const failed  = recipients.filter(r => r.error).length;
+  const pending = recipients.length - opened - failed;
+  const openRate = recipients.length > 0 ? Math.round((opened / recipients.length) * 100) : 0;
+  const list = showAll ? recipients : recipients.slice(0, 10);
+
   return (
-    <label className="block">
-      <div className="flex items-center gap-1.5 text-xs text-muted mb-1.5">{icon}{label}</div>
-      {children}
-    </label>
+    <div className="space-y-5">
+      <button onClick={onBack} className="flex items-center gap-2 text-sm text-muted hover:text-ink transition-colors">
+        <ChevronRight size={15} /> العودة للحملات
+      </button>
+
+      <div className="rounded-2xl border border-line/70 bg-panel shadow-card p-5">
+        <h2 className="text-base font-bold text-ink mb-1">{c.name}</h2>
+        <p className="text-sm text-muted2 mb-4">{c.subject}</p>
+
+        <div className="grid grid-cols-4 gap-3">
+          {[
+            { label: "أُرسل", value: c.total_sent, color: "text-ink" },
+            { label: "فُتح", value: opened, color: "text-green-400" },
+            { label: "معدل الفتح", value: `${openRate}%`, color: openRate >= 30 ? "text-green-400" : "text-yellow-400" },
+            { label: "فشل", value: failed, color: failed > 0 ? "text-danger" : "text-muted2" },
+          ].map(s => (
+            <div key={s.label} className="rounded-xl border border-line/60 bg-panel2/50 p-3 text-center">
+              <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
+              <div className="text-[11px] text-muted2 mt-0.5">{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {openRate > 0 && (
+          <div className="mt-4">
+            <div className="flex justify-between text-xs text-muted2 mb-1.5">
+              <span>معدل الفتح</span><span>{openRate}%</span>
+            </div>
+            <div className="h-2 rounded-full bg-panel2 border border-line/40 overflow-hidden">
+              <div className="h-full rounded-full bg-gradient-to-l from-accent to-accent/50 transition-all"
+                style={{ width: `${openRate}%` }} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-line/70 bg-panel shadow-card overflow-hidden">
+        <div className="border-b border-line/60 px-5 py-3 flex items-center justify-between">
+          <span className="text-sm font-semibold text-ink">المستلمون ({recipients.length})</span>
+          <div className="flex items-center gap-3 text-[11px]">
+            <span className="flex items-center gap-1 text-green-400"><Eye size={11} />{opened} فتح</span>
+            <span className="flex items-center gap-1 text-muted2"><Clock size={11} />{pending} بانتظار</span>
+            {failed > 0 && <span className="flex items-center gap-1 text-danger"><XCircle size={11} />{failed} فشل</span>}
+          </div>
+        </div>
+        <div className="divide-y divide-line/30">
+          {list.map(r => (
+            <div key={r.id} className="flex items-center justify-between px-5 py-3">
+              <span className="text-xs font-mono text-muted2" dir="ltr">{r.email}</span>
+              <div className="flex items-center gap-2">
+                {r.error ? (
+                  <span className="text-[11px] border border-danger-border bg-danger-bg text-danger rounded-md px-2 py-0.5 truncate max-w-32" title={r.error}>خطأ</span>
+                ) : r.opened_at ? (
+                  <span className="text-[11px] border border-green-500/30 bg-green-500/10 text-green-400 rounded-md px-2 py-0.5">
+                    فُتح {new Date(r.opened_at).toLocaleDateString("ar-SA")}
+                  </span>
+                ) : (
+                  <span className="text-[11px] border border-line/50 bg-panel2 text-muted2 rounded-md px-2 py-0.5">بانتظار الفتح</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        {recipients.length > 10 && (
+          <div className="border-t border-line/60 px-5 py-3">
+            <button onClick={() => setShowAll(v => !v)} className="text-xs text-accent hover:underline">
+              {showAll ? "عرض أقل" : `عرض الكل (${recipients.length})`}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
-const inputCls = "w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-line2";
+const inputCls = "w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none";
