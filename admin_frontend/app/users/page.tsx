@@ -491,21 +491,59 @@ function UserSidePanel({
           </Section>
 
           <Section title="الاشتراك">
+            <div className={`rounded-xl border px-3 py-2.5 text-xs mb-3 flex items-center gap-2 ${
+              expired
+                ? "border-danger-border bg-danger-bg text-danger"
+                : expiringSoon
+                ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400"
+                : left !== null
+                ? "border-green-500/30 bg-green-500/10 text-green-400"
+                : "border-line/50 bg-panel2 text-muted2"
+            }`}>
+              <Calendar size={13} className="shrink-0" />
+              <span>
+                {user.subscription_ends_at
+                  ? expired
+                    ? `منتهي منذ ${Math.abs(left!)} يوم — ${fmtDate(user.subscription_ends_at)}`
+                    : left === 0
+                    ? `ينتهي اليوم — ${fmtDate(user.subscription_ends_at)}`
+                    : `ينتهي بعد ${left} يوم — ${fmtDate(user.subscription_ends_at)}`
+                  : "لا يوجد اشتراك نشط"}
+              </span>
+            </div>
+
+            <div className="text-[11px] text-muted2 mb-2">إضافة أيام للاشتراك:</div>
+            <div className="flex gap-2 flex-wrap mb-3">
+              {[30, 60, 90, 180].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setSubDays(String(d))}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
+                    subDays === String(d)
+                      ? "border-blue-500/60 bg-blue-500/20 text-blue-300"
+                      : "border-line/70 bg-panel2 text-muted2 hover:border-blue-500/40 hover:text-blue-300"
+                  }`}
+                >
+                  {d} يوم
+                </button>
+              ))}
+            </div>
+
             <div className="flex gap-2 items-center">
               <input
                 type="number" min="1"
                 value={subDays}
                 onChange={(e) => setSubDays(e.target.value)}
-                placeholder="عدد الأيام المضافة"
-                className="flex-1 rounded-xl border border-line/70 bg-panel2 px-3 py-2 text-sm placeholder:text-muted focus:border-accent/50 focus:outline-none"
+                placeholder="أو أدخل عدداً مخصصاً..."
+                className="flex-1 rounded-xl border border-line/70 bg-panel2 px-3 py-2 text-sm placeholder:text-muted focus:border-blue-500/50 focus:outline-none"
               />
               <button
                 onClick={handleSaveSub}
                 disabled={savingSub || !subDays}
-                className="flex items-center gap-1.5 rounded-xl border border-blue-500/30 bg-blue-950/30 px-3 py-2 text-xs text-blue-300 hover:bg-blue-900/40 transition-colors disabled:opacity-40 whitespace-nowrap"
+                className="flex items-center gap-1.5 rounded-xl border border-blue-500/40 bg-blue-500/15 px-4 py-2 text-xs text-blue-300 font-medium hover:bg-blue-500/25 transition-colors disabled:opacity-40 whitespace-nowrap"
               >
                 {savingSub ? <Loader2 size={12} className="animate-spin" /> : subSaved ? <Check size={12} /> : <Calendar size={12} />}
-                {subSaved ? "تم" : "تعيين"}
+                {subSaved ? "تم ✓" : subDays ? `إضافة ${subDays} يوم` : "تعيين"}
               </button>
             </div>
           </Section>
