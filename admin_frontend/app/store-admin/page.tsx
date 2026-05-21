@@ -8,7 +8,8 @@ import {
   ShoppingBag, Package, ClipboardList, Plus, Pencil, Trash2,
   CheckCircle2, XCircle, Clock, RefreshCw, X, Save, Zap,
   Building2, Wallet, Copy, CheckCheck, Tag, Percent, DollarSign,
-  ImagePlus, Trash,
+  ImagePlus, Trash, ChevronLeft, ArrowUpDown, SortAsc, SortDesc,
+  User, Mail, Phone, CreditCard, Calendar, FileText, ExternalLink,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -48,6 +49,8 @@ type Order = {
   refund_processed_at?: string | null;
   refund_method?: string | null;
   store_products?: { name: string; price: number; duration_days: number };
+  discount_code?: string | null;
+  original_amount?: number | null;
 };
 
 type BankAccount = {
@@ -63,9 +66,7 @@ type BankAccount = {
 };
 
 const EMPTY_PRODUCT = { name: "", description: "", price: "", duration_days: "", is_secret: false, image_url: "" };
-
 const EMPTY_BANK = { type: "bank", name: "", account_number: "", iban: "", phone: "", display_order: "0" };
-
 const EMPTY_DISCOUNT = {
   code: "",
   discount_type: "percent" as "percent" | "fixed",
@@ -124,6 +125,22 @@ function fmt(d: string) {
   return new Date(d).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+function GatewayBadge({ gateway }: { gateway?: string }) {
+  if (!gateway) return null;
+  const map: Record<string, { label: string; color: string }> = {
+    bank_transfer: { label: "تحويل بنكي", color: "border-yellow-500/30 bg-yellow-500/10 text-yellow-400" },
+    tamara:        { label: "تمارا",       color: "border-purple-500/30 bg-purple-500/10 text-purple-400" },
+    streampay:     { label: "بطاقة",       color: "border-blue-500/30 bg-blue-500/10 text-blue-400" },
+  };
+  const g = map[gateway];
+  if (!g) return null;
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${g.color}`}>
+      {g.label}
+    </span>
+  );
+}
+
 export default function StoreAdminPage() {
   const [tab, setTab] = useState<"products" | "orders" | "banks" | "discounts">("products");
 
@@ -143,6 +160,8 @@ export default function StoreAdminPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [oLoading, setOLoading] = useState(false);
   const [oFilter, setOFilter] = useState("all");
+  const [oSort, setOSort] = useState<"newest" | "oldest" | "amount_desc">("newest");
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [remindingId, setRemindingId] = useState<string | null>(null);
   const [showAddOrder, setShowAddOrder] = useState(false);
@@ -297,12 +316,19 @@ export default function StoreAdminPage() {
   useEffect(() => {
     if (tab === "orders") {
       loadOrders();
-      // Mark new-orders badge as seen
       fetch("/api/admin/store/orders/mark-seen", { method: "POST", credentials: "include" }).catch(() => {});
     }
   }, [tab, loadOrders]);
   useEffect(() => { if (tab === "banks") loadBanks(); }, [tab, loadBanks]);
   useEffect(() => { if (tab === "discounts") loadDiscounts(); }, [tab, loadDiscounts]);
+
+  // Sync selectedOrder when orders reload
+  useEffect(() => {
+    if (selectedOrder) {
+      const updated = orders.find(o => o.id === selectedOrder.id);
+      if (updated) setSelectedOrder(updated);
+    }
+  }, [orders]);
 
   const openAddProduct = () => {
     setEditProduct(null);
@@ -364,6 +390,7 @@ export default function StoreAdminPage() {
       image_url: p.image_url || "",
     });
     setImgPreview(p.image_url || null);
+    setPMsg("");
     setShowForm(true);
   };
 
@@ -459,6 +486,7 @@ export default function StoreAdminPage() {
     await fetch(`${API_BASE}/api/admin/store/orders/${id}`, {
       method: "DELETE", credentials: "include",
     });
+    setSelectedOrder(null);
     await loadOrders();
   };
 
@@ -554,6 +582,12 @@ export default function StoreAdminPage() {
   };
 
   const filteredOrders = oFilter === "all" ? orders : orders.filter(o => o.status === oFilter);
+  const sortedOrders = [...filteredOrders].sort((a, b) => {
+    if (oSort === "newest") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    if (oSort === "oldest") return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    if (oSort === "amount_desc") return (b.amount || 0) - (a.amount || 0);
+    return 0;
+  });
 
   return (
     <Shell>
@@ -689,239 +723,72 @@ export default function StoreAdminPage() {
                 ))}
               </div>
             )}
-
-            {/* Add/Edit Product Modal */}
-            <AnimatePresence>
-              {showForm && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--input-bg)]/60 backdrop-blur-sm p-4"
-                  onClick={e => { if (e.target === e.currentTarget) setShowForm(false); }}
-                >
-                  <motion.div
-                    initial={{ scale: 0.95, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.95, opacity: 0 }}
-                    className="w-full max-w-md rounded-2xl border border-line bg-panel p-6 shadow-xl"
-                    dir="rtl"
-                  >
-                    <div className="flex items-center justify-between mb-5">
-                      <h2 className="font-bold text-ink">{editProduct ? "تعديل المنتج" : "إضافة منتج جديد"}</h2>
-                      <button onClick={() => setShowForm(false)} className="rounded-lg p-1.5 text-muted hover:text-ink hover:bg-panel2 transition-all">
-                        <X size={16} />
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-xs text-muted mb-1">اسم المنتج *</label>
-                        <input
-                          value={pForm.name}
-                          onChange={e => setPForm(s => ({ ...s, name: e.target.value }))}
-                          placeholder="مثال: خطة شهرية"
-                          className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted2 focus:border-line2 focus:outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-muted mb-1">الوصف</label>
-                        <textarea
-                          value={pForm.description}
-                          onChange={e => setPForm(s => ({ ...s, description: e.target.value }))}
-                          placeholder="وصف مختصر للخطة..."
-                          rows={2}
-                          className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted2 focus:border-line2 focus:outline-none resize-none"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs text-muted mb-1">السعر (ر.س) *</label>
-                          <input
-                            type="number"
-                            value={pForm.price}
-                            onChange={e => setPForm(s => ({ ...s, price: e.target.value }))}
-                            placeholder="99"
-                            className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted2 focus:border-line2 focus:outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-muted mb-1">المدة (أيام) *</label>
-                          <input
-                            type="number"
-                            value={pForm.duration_days}
-                            onChange={e => setPForm(s => ({ ...s, duration_days: e.target.value }))}
-                            placeholder="30"
-                            className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted2 focus:border-line2 focus:outline-none"
-                          />
-                        </div>
-                      </div>
-                      {/* ── صورة المنتج ── */}
-                      <div>
-                        <label className="block text-xs text-muted mb-1.5">صورة المنتج</label>
-                        {imgPreview ? (
-                          <div className="relative rounded-xl overflow-hidden border border-line bg-bg" style={{ height: 130 }}>
-                            <Image
-                              src={imgPreview}
-                              alt="صورة المنتج"
-                              fill
-                              className="object-cover"
-                              unoptimized
-                            />
-                            <div className="absolute inset-0 bg-black/30 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                              <label className="cursor-pointer rounded-lg bg-white/90 text-gray-800 px-3 py-1.5 text-xs font-semibold flex items-center gap-1 hover:bg-white transition-all">
-                                <ImagePlus size={13} />
-                                تغيير
-                                <input
-                                  type="file"
-                                  accept="image/jpeg,image/png,image/webp"
-                                  className="hidden"
-                                  onChange={e => {
-                                    const f = e.target.files?.[0];
-                                    if (f && editProduct) handleImageUpload(f, editProduct.id);
-                                    e.target.value = "";
-                                  }}
-                                />
-                              </label>
-                              {editProduct && (
-                                <button
-                                  onClick={() => handleRemoveImage(editProduct.id)}
-                                  disabled={imgUploading}
-                                  className="rounded-lg bg-red-500/90 text-white px-3 py-1.5 text-xs font-semibold flex items-center gap-1 hover:bg-red-500 transition-all"
-                                >
-                                  <Trash size={13} />
-                                  حذف
-                                </button>
-                              )}
-                            </div>
-                            {imgUploading && (
-                              <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                <RefreshCw size={20} className="text-white animate-spin" />
-                              </div>
-                            )}
-                          </div>
-                        ) : editProduct ? (
-                          <label className="cursor-pointer flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line hover:border-line2 bg-bg transition-all py-6 text-muted2 hover:text-muted">
-                            {imgUploading ? (
-                              <RefreshCw size={22} className="animate-spin" />
-                            ) : (
-                              <>
-                                <ImagePlus size={22} />
-                                <span className="text-xs">اضغط لرفع صورة</span>
-                                <span className="text-[10px] text-muted2">JPG · PNG · WebP (حد أقصى 5MB)</span>
-                              </>
-                            )}
-                            <input
-                              type="file"
-                              accept="image/jpeg,image/png,image/webp"
-                              className="hidden"
-                              onChange={e => {
-                                const f = e.target.files?.[0];
-                                if (f && editProduct) handleImageUpload(f, editProduct.id);
-                                e.target.value = "";
-                              }}
-                            />
-                          </label>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-line bg-bg py-5 text-muted2">
-                            <ImagePlus size={20} />
-                            <span className="text-xs">احفظ المنتج أولاً ثم ارفع الصورة</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <label className="flex items-center gap-2 cursor-pointer rounded-xl border border-line bg-bg px-3 py-2.5 hover:border-line2 transition-all">
-                        <input
-                          type="checkbox"
-                          checked={!!pForm.is_secret}
-                          onChange={e => setPForm(s => ({ ...s, is_secret: e.target.checked }))}
-                          className="h-4 w-4"
-                        />
-                        <div className="flex-1">
-                          <div className="text-xs font-bold text-ink">منتج سري (admin only)</div>
-                          <div className="text-[10px] text-muted2">يظهر في المتجر فقط عند البحث عن "admin"</div>
-                        </div>
-                      </label>
-                      {editProduct?.streampay_product_id ? (
-                        <div>
-                          <label className="block text-xs text-muted mb-1">StreamPay Product ID</label>
-                          <div className="w-full rounded-xl border border-line2 bg-panel2 px-3 py-2 text-xs text-ink/80 font-mono flex items-center gap-2" dir="ltr">
-                            <CheckCircle2 size={12} className="flex-shrink-0" />
-                            <span className="truncate">{editProduct.streampay_product_id}</span>
-                          </div>
-                        </div>
-                      ) : !editProduct ? (
-                        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-3 py-2.5 text-xs text-blue-300 flex items-center gap-2">
-                          <Zap size={13} className="flex-shrink-0 text-blue-400" />
-                          سيتم إنشاء المنتج تلقائياً في StreamPay عند الحفظ
-                        </div>
-                      ) : null}
-                    </div>
-                    {pMsg && (
-                      <div className={`mt-3 rounded-xl border px-3 py-2 text-xs ${pMsgType === "ok" ? "border-line2 bg-panel2 text-ink" : "border-danger-border bg-danger-bg text-danger"}`}>
-                        {pMsg}
-                      </div>
-                    )}
-                    <div className="mt-5 flex gap-2">
-                      <button
-                        onClick={saveProduct}
-                        disabled={saving}
-                        className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-accent text-accent-fg py-2.5 text-sm font-semibold hover:bg-panel2 disabled:opacity-50 transition-all"
-                      >
-                        {saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                        {editProduct ? "حفظ التغييرات" : "إضافة"}
-                      </button>
-                      <button
-                        onClick={() => setShowForm(false)}
-                        className="rounded-xl border border-line px-4 py-2.5 text-sm text-muted hover:text-ink hover:border-line2 transition-all"
-                      >
-                        إلغاء
-                      </button>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </motion.div>
         )}
 
         {/* ─── ORDERS TAB ─── */}
         {tab === "orders" && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-            {/* Filter bar */}
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex gap-1 rounded-xl border border-line bg-panel p-1">
+            {/* Filter + Sort bar */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                {/* Status filters */}
+                <div className="flex gap-1 rounded-xl border border-line bg-panel p-1 flex-wrap">
+                  {[
+                    { k: "all",              l: "الكل" },
+                    { k: "pending",          l: "بانتظار التأكيد" },
+                    { k: "awaiting_payment", l: "لم يكمل الدفع" },
+                    { k: "paid",             l: "مدفوع" },
+                    { k: "failed",           l: "فشل" },
+                    { k: "cancelled",        l: "ملغى" },
+                  ].map(({ k, l }) => (
+                    <button
+                      key={k}
+                      onClick={() => setOFilter(k)}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${oFilter === k ? "bg-panel2 text-ink border border-line2" : "text-muted hover:text-ink"}`}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={loadOrders}
+                    className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-xs text-muted hover:text-ink transition-all"
+                  >
+                    <RefreshCw size={12} className={oLoading ? "animate-spin" : ""} />
+                    تحديث
+                  </button>
+                  <button
+                    onClick={() => setShowAddOrder(true)}
+                    className="flex items-center gap-2 rounded-xl bg-accent text-accent-fg px-4 py-2 text-sm font-semibold hover:bg-panel2 transition-all"
+                  >
+                    <Plus size={15} />
+                    طلب يدوي
+                  </button>
+                </div>
+              </div>
+
+              {/* Sort buttons */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted2 flex items-center gap-1"><ArrowUpDown size={11} />ترتيب:</span>
                 {[
-                  { k: "all",              l: "الكل" },
-                  { k: "pending",          l: "بانتظار التأكيد" },
-                  { k: "awaiting_payment", l: "لم يكمل الدفع" },
-                  { k: "paid",             l: "مدفوع" },
-                  { k: "failed",           l: "فشل" },
-                  { k: "cancelled",        l: "ملغى" },
-                ].map(({ k, l }) => (
+                  { k: "newest",      l: "الأحدث",      icon: SortDesc },
+                  { k: "oldest",      l: "الأقدم",       icon: SortAsc },
+                  { k: "amount_desc", l: "الأعلى مبلغاً", icon: DollarSign },
+                ].map(({ k, l, icon: Icon }) => (
                   <button
                     key={k}
-                    onClick={() => setOFilter(k)}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${oFilter === k ? "bg-panel2 text-ink border border-line2" : "text-muted hover:text-ink"}`}
+                    onClick={() => setOSort(k as typeof oSort)}
+                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-1 text-xs font-medium transition-all ${
+                      oSort === k ? "border-line2 bg-panel2 text-ink" : "border-line text-muted hover:text-ink hover:border-line2"
+                    }`}
                   >
+                    <Icon size={11} />
                     {l}
                   </button>
                 ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={loadOrders}
-                  className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-xs text-muted hover:text-ink transition-all"
-                >
-                  <RefreshCw size={12} className={oLoading ? "animate-spin" : ""} />
-                  تحديث
-                </button>
-                <button
-                  onClick={() => setShowAddOrder(true)}
-                  className="flex items-center gap-2 rounded-xl bg-accent text-accent-fg px-4 py-2 text-sm font-semibold hover:bg-panel2 transition-all"
-                >
-                  <Plus size={15} />
-                  طلب يدوي
-                </button>
+                <span className="mr-auto text-xs text-muted2">{sortedOrders.length} طلب</span>
               </div>
             </div>
 
@@ -933,188 +800,63 @@ export default function StoreAdminPage() {
 
             {oLoading ? (
               <div className="flex items-center justify-center py-16 text-muted2"><RefreshCw size={18} className="animate-spin ml-2" />جاري التحميل...</div>
-            ) : filteredOrders.length === 0 ? (
+            ) : sortedOrders.length === 0 ? (
               <div className="rounded-2xl border border-line bg-panel p-12 text-center">
                 <ClipboardList size={32} className="mx-auto mb-3 text-muted" />
                 <p className="text-muted2">لا توجد طلبات</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {filteredOrders.map((o, i) => (
-                  <motion.div
+              <div className="space-y-2">
+                {sortedOrders.map((o, i) => (
+                  <motion.button
                     key={o.id}
-                    initial={{ opacity: 0, y: 6 }}
+                    initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    className="rounded-2xl border border-line bg-panel p-4"
+                    transition={{ delay: i * 0.02 }}
+                    onClick={() => setSelectedOrder(o)}
+                    className={`w-full text-right rounded-2xl border bg-panel px-4 py-3.5 transition-all hover:border-line2 hover:bg-panel2 ${
+                      selectedOrder?.id === o.id ? "border-line2 bg-panel2" : "border-line"
+                    }`}
                   >
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      {/* Status badge */}
+                      <Badge status={o.status} />
+
+                      {/* Main info */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                          <Badge status={o.status} />
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {o.user_name && (
+                            <span className="text-sm font-semibold text-ink">{o.user_name}</span>
+                          )}
                           {o.store_products && (
-                            <span className="text-xs font-medium text-ink bg-panel2 border border-line rounded-full px-2 py-0.5">
+                            <span className="text-xs text-muted bg-bg border border-line rounded-full px-2 py-0.5">
                               {o.store_products.name}
                             </span>
                           )}
-                        </div>
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-muted">
-                          {o.user_name && <span>👤 {o.user_name}</span>}
-                          {o.user_email && <span dir="ltr" className="text-right">✉️ {o.user_email}</span>}
-                          {o.user_phone && <span dir="ltr" className="text-right">📞 {o.user_phone}</span>}
-                          {o.amount && <span className="text-ink font-bold">💳 {o.amount} ر.س</span>}
-                          <span>🕒 {fmt(o.created_at)}</span>
-                          {o.paid_at && <span className="text-ink/80">✅ {fmt(o.paid_at)}</span>}
-                          {o.notes && <span className="col-span-2 text-muted2 italic">📝 {o.notes}</span>}
-                          {o.streampay_invoice_id && (
-                            <span className="col-span-2 font-mono text-muted2 truncate">INV: {o.streampay_invoice_id}</span>
-                          )}
-                          {o.payment_gateway === "bank_transfer" && (
-                            <span className="col-span-2 inline-flex w-fit items-center gap-1 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2.5 py-0.5 text-xs font-semibold text-ink">
-                              🏦 طريقة الدفع: تحويل بنكي
-                            </span>
-                          )}
-                          {o.payment_gateway === "tamara" && (
-                            <span className="col-span-2 inline-flex w-fit items-center gap-1 rounded-full border border-pink-500/30 bg-pink-500/10 px-2.5 py-0.5 text-xs font-semibold text-ink">
-                              <img src="/payment-logos/tamara.png" alt="Tamara" className="h-4 w-auto" />
-                              طريقة الدفع: تمارا (تقسيط)
-                            </span>
-                          )}
-                          {o.payment_gateway === "streampay" && (
-                            <span className="col-span-2 inline-flex w-fit items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-ink">
-                              💳 طريقة الدفع: بطاقة (Mada / Visa / Mastercard)
-                            </span>
-                          )}
-                          {!o.payment_gateway && (
-                            <span className="col-span-2 inline-flex w-fit items-center gap-1 rounded-full border border-line bg-panel2 px-2.5 py-0.5 text-xs text-muted">
-                              طريقة الدفع: غير محددة
+                          <GatewayBadge gateway={o.payment_gateway} />
+                          {o.refund_status === "requested" && (
+                            <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-xs text-orange-400 font-bold">
+                              ⚠️ طلب استرجاع
                             </span>
                           )}
                         </div>
-                        {/* Receipt */}
-                        {o.receipt_url && (
-                          <div className="mt-3 flex items-center gap-2">
-                            <span className="text-xs text-muted2">الإيصال:</span>
-                            <a
-                              href={o.receipt_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-line2 bg-accent/8 px-3 py-1 text-xs text-ink hover:bg-accent/15 transition-all"
-                            >
-                              عرض الإيصال ↗
-                            </a>
-                            {/\.(jpe?g|png|webp|gif)$/i.test(o.receipt_url) && (
-                              <a href={o.receipt_url} target="_blank" rel="noopener noreferrer" className="block mt-1 shrink-0">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={o.receipt_url} alt="إيصال" className="h-12 w-16 rounded-lg object-cover border border-line" />
-                              </a>
-                            )}
-                          </div>
-                        )}
-                        {o.payment_gateway === "bank_transfer" && !o.receipt_url && o.status === "pending" && (
-                          <div className="mt-2 rounded-lg border border-yellow-500/15 bg-yellow-500/5 px-3 py-1.5 text-xs text-yellow-500/80">
-                            لم يُرفع إيصال التحويل بعد
-                          </div>
-                        )}
-                        {/* Refund details */}
-                        {o.refund_status && (
-                          <div className="mt-2 rounded-lg border border-line bg-panel2 p-2.5 text-xs">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <span className="font-bold text-ink">طلب استرجاع:</span>
-                              <span className={
-                                o.refund_status === "requested" ? "rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2 py-0.5 text-yellow-400 font-bold" :
-                                o.refund_status === "refunded" ? "rounded-full border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-green-400 font-bold" :
-                                o.refund_status === "rejected" ? "rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-red-400 font-bold" :
-                                "rounded-full border border-line2 bg-bg px-2 py-0.5 text-ink font-bold"
-                              }>
-                                {o.refund_status === "requested" ? "قيد المراجعة" :
-                                 o.refund_status === "refunded" ? `تم الاسترجاع (${o.refund_method === "gateway_auto" ? "تلقائي" : "يدوي"})` :
-                                 o.refund_status === "rejected" ? "مرفوض" : o.refund_status}
-                              </span>
-                              {o.refund_requested_at && <span className="text-muted2">طُلب: {fmt(o.refund_requested_at)}</span>}
-                            </div>
-                            {o.refund_reason && <div className="text-ink/80 mt-1"><b>سبب العميل:</b> {o.refund_reason}</div>}
-                            {o.refund_admin_notes && <div className="text-ink/80 mt-1"><b>ملاحظات الإدارة:</b> {o.refund_admin_notes}</div>}
-                          </div>
+                        {o.user_email && (
+                          <p className="text-xs text-muted2 mt-0.5 truncate" dir="ltr">{o.user_email}</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap">
-                        {o.refund_status === "requested" && (
-                          <>
-                            <button
-                              disabled={updatingId === o.id}
-                              onClick={() => processRefund(o.id, "approve")}
-                              className="rounded-lg border border-green-500/30 px-2.5 py-1.5 text-xs text-green-400 hover:bg-green-500/10 disabled:opacity-50 transition-all"
-                            >
-                              ✓ موافقة استرجاع
-                            </button>
-                            <button
-                              disabled={updatingId === o.id}
-                              onClick={() => processRefund(o.id, "reject")}
-                              className="rounded-lg border border-red-500/30 px-2.5 py-1.5 text-xs text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-all"
-                            >
-                              ✗ رفض
-                            </button>
-                          </>
+
+                      {/* Amount + date */}
+                      <div className="text-left shrink-0 space-y-0.5">
+                        {o.amount && (
+                          <p className="text-sm font-bold text-ink">{o.amount} ر.س</p>
                         )}
-                        {o.status === "paid" && (o.payment_gateway === "tamara" || o.payment_gateway === "streampay") && (
-                          <button
-                            disabled={updatingId === o.id}
-                            onClick={() => verifyPayment(o.id)}
-                            className="rounded-lg border border-blue-500/30 px-2.5 py-1.5 text-xs text-blue-400 hover:bg-blue-500/10 disabled:opacity-50 transition-all"
-                          >
-                            🔍 تحقق من البوابة
-                          </button>
-                        )}
-                        {o.status === "pending" && (
-                          <>
-                            {o.payment_gateway === "bank_transfer" && o.user_email && (
-                              <button
-                                disabled={remindingId === o.id}
-                                onClick={() => sendReminder(o.id, o.user_email!)}
-                                className="rounded-lg border border-yellow-500/30 px-2.5 py-1.5 text-xs text-yellow-400 hover:bg-yellow-500/10 disabled:opacity-50 transition-all"
-                                title="إرسال تذكير بالإيصال"
-                              >
-                                {remindingId === o.id ? "جاري الإرسال..." : "📧 تذكير"}
-                              </button>
-                            )}
-                            <button
-                              disabled={updatingId === o.id}
-                              onClick={() => updateOrderStatus(o.id, "paid")}
-                              className="rounded-lg border border-line2 px-2.5 py-1.5 text-xs text-ink hover:bg-panel2 disabled:opacity-50 transition-all"
-                            >
-                              تأكيد
-                            </button>
-                            <button
-                              disabled={updatingId === o.id}
-                              onClick={() => updateOrderStatus(o.id, "cancelled")}
-                              className="rounded-lg border border-slate-600 px-2.5 py-1.5 text-xs text-muted hover:bg-slate-500/10 disabled:opacity-50 transition-all"
-                            >
-                              إلغاء
-                            </button>
-                          </>
-                        )}
-                        {o.status === "paid" && (
-                          <span className="text-xs text-ink/80 px-2">مكتمل</span>
-                        )}
-                        {(o.status === "failed" || o.status === "cancelled") && (
-                          <button
-                            disabled={updatingId === o.id}
-                            onClick={() => updateOrderStatus(o.id, "pending")}
-                            className="rounded-lg border border-yellow-500/30 px-2.5 py-1.5 text-xs text-yellow-400 hover:bg-yellow-500/10 disabled:opacity-50 transition-all"
-                          >
-                            إعادة
-                          </button>
-                        )}
-                        <button
-                          onClick={() => deleteOrder(o.id)}
-                          className="rounded-lg border border-line p-1.5 text-muted hover:text-danger hover:border-danger-border transition-all"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                        <p className="text-xs text-muted2">{fmt(o.created_at)}</p>
                       </div>
+
+                      {/* Arrow */}
+                      <ChevronLeft size={15} className="text-muted2 shrink-0" />
                     </div>
-                  </motion.div>
+                  </motion.button>
                 ))}
               </div>
             )}
@@ -1260,7 +1002,6 @@ export default function StoreAdminPage() {
                       <button onClick={() => setShowBankForm(false)} className="text-muted2 hover:text-ink"><X size={16} /></button>
                     </div>
 
-                    {/* Type selector */}
                     <div className="flex gap-2">
                       {[{ v: "bank", label: "بنك", icon: Building2 }, { v: "wallet", label: "محفظة", icon: Wallet }].map(({ v, label, icon: Icon }) => (
                         <button
@@ -1406,9 +1147,9 @@ export default function StoreAdminPage() {
                         <button
                           onClick={() => deleteBank(acc.id)}
                           disabled={bDeletingId === acc.id}
-                          className="rounded-lg border border-danger-border px-3 py-1.5 text-xs text-danger hover:bg-danger-bg transition-all disabled:opacity-50"
+                          className="rounded-lg border border-line p-1.5 text-muted hover:text-danger hover:border-danger-border disabled:opacity-50 transition-all"
                         >
-                          {bDeletingId === acc.id ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                          {bDeletingId === acc.id ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
                         </button>
                       </div>
                     </div>
@@ -1419,7 +1160,7 @@ export default function StoreAdminPage() {
           </motion.div>
         )}
 
-        {/* ─── DISCOUNT CODES TAB ─── */}
+        {/* ─── DISCOUNTS TAB ─── */}
         {tab === "discounts" && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
             <div className="flex items-center justify-between">
@@ -1439,7 +1180,7 @@ export default function StoreAdminPage() {
               </div>
             )}
 
-            {/* Add form */}
+            {/* Add Discount Form */}
             <AnimatePresence>
               {showDiscountForm && (
                 <motion.div
@@ -1447,111 +1188,113 @@ export default function StoreAdminPage() {
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                 >
-                  <motion.div className="rounded-2xl border border-line bg-panel p-5 space-y-4">
+                  <div className="rounded-2xl border border-line bg-panel p-5 space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-ink text-sm">إضافة كود خصم</h3>
+                      <h3 className="font-semibold text-ink text-sm">إضافة كود خصم جديد</h3>
                       <button onClick={() => setShowDiscountForm(false)} className="text-muted2 hover:text-ink"><X size={16} /></button>
                     </div>
 
-                    {/* Type selector */}
-                    <div className="flex gap-2">
-                      {[
-                        { v: "percent" as const, label: "نسبة %", icon: Percent },
-                        { v: "fixed"   as const, label: "مبلغ ثابت", icon: DollarSign },
-                      ].map(({ v, label, icon: Icon }) => (
-                        <button
-                          key={v}
-                          onClick={() => setDForm(f => ({ ...f, discount_type: v }))}
-                          className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${dForm.discount_type === v ? "border-line2 bg-panel2 text-ink" : "border-line text-muted hover:text-ink"}`}
-                        >
-                          <Icon size={14} />
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
                         <label className="block text-xs text-muted mb-1.5">الكود *</label>
                         <input
-                          className="w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-line2 uppercase"
-                          placeholder="WELCOME10"
+                          className="w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink font-mono uppercase placeholder:text-muted focus:outline-none focus:border-line2"
+                          placeholder="SAVE20"
                           value={dForm.code}
-                          onChange={e => setDForm(f => ({ ...f, code: e.target.value }))}
+                          onChange={e => setDForm(f => ({ ...f, code: e.target.value.toUpperCase() }))}
                         />
                       </div>
+
                       <div>
-                        <label className="block text-xs text-muted mb-1.5">
-                          {dForm.discount_type === "percent" ? "النسبة (%) *" : "المبلغ (ر.س) *"}
-                        </label>
+                        <label className="block text-xs text-muted mb-1.5">نوع الخصم *</label>
+                        <div className="flex gap-2">
+                          {[{ v: "percent", label: "نسبة %", icon: Percent }, { v: "fixed", label: "مبلغ ثابت", icon: DollarSign }].map(({ v, label, icon: Icon }) => (
+                            <button
+                              key={v}
+                              onClick={() => setDForm(f => ({ ...f, discount_type: v as "percent" | "fixed" }))}
+                              className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-all ${dForm.discount_type === v ? "border-line2 bg-panel2 text-ink" : "border-line text-muted hover:text-ink"}`}
+                            >
+                              <Icon size={12} />
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs text-muted mb-1.5">القيمة *</label>
                         <input
                           type="number"
                           className="w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-line2"
-                          placeholder={dForm.discount_type === "percent" ? "10" : "20"}
+                          placeholder={dForm.discount_type === "percent" ? "20" : "50"}
                           value={dForm.discount_value}
                           onChange={e => setDForm(f => ({ ...f, discount_value: e.target.value }))}
                         />
                       </div>
-                      <div className="sm:col-span-2">
-                        <label className="block text-xs text-muted mb-1.5">المنتجات المسموحة (اتركه فاضي = كل المنتجات)</label>
-                        <div className="flex flex-wrap gap-2">
-                          {products.filter(p => p.is_active).map(p => {
-                            const checked = dForm.product_ids.includes(p.id);
-                            return (
-                              <button type="button" key={p.id}
-                                onClick={() => setDForm(f => ({
-                                  ...f,
-                                  product_ids: checked
-                                    ? f.product_ids.filter(x => x !== p.id)
-                                    : [...f.product_ids, p.id],
-                                }))}
-                                className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition-all ${checked ? "border-line2 bg-panel2 text-ink" : "border-line text-muted hover:text-ink"}`}
-                              >
-                                {checked ? "✓ " : ""}{p.name}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      <div className="sm:col-span-2">
-                        <label className="block text-xs text-muted mb-1.5">طرق الدفع المسموحة (اتركه فاضي = كل الطرق)</label>
-                        <div className="flex flex-wrap gap-2">
-                          {GATEWAY_OPTIONS.map(g => {
-                            const checked = dForm.gateways.includes(g.v);
-                            return (
-                              <button type="button" key={g.v}
-                                onClick={() => setDForm(f => ({
-                                  ...f,
-                                  gateways: checked
-                                    ? f.gateways.filter(x => x !== g.v)
-                                    : [...f.gateways, g.v],
-                                }))}
-                                className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition-all ${checked ? "border-line2 bg-panel2 text-ink" : "border-line text-muted hover:text-ink"}`}
-                              >
-                                {checked ? "✓ " : ""}{g.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
+
                       <div>
-                        <label className="block text-xs text-muted mb-1.5">حد الاستخدام (اختياري)</label>
+                        <label className="block text-xs text-muted mb-1.5">حد الاستخدام (اتركه فارغاً للامحدود)</label>
                         <input
                           type="number"
                           className="w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-line2"
-                          placeholder="بدون حد"
+                          placeholder="100"
                           value={dForm.usage_limit}
                           onChange={e => setDForm(f => ({ ...f, usage_limit: e.target.value }))}
                         />
                       </div>
-                      <div className="sm:col-span-2">
+
+                      <div>
                         <label className="block text-xs text-muted mb-1.5">تاريخ الانتهاء (اختياري)</label>
                         <input
-                          type="datetime-local"
-                          className="w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-line2"
+                          type="date"
+                          className="w-full rounded-xl border border-line bg-[var(--input-bg)] px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-line2"
                           value={dForm.expires_at}
                           onChange={e => setDForm(f => ({ ...f, expires_at: e.target.value }))}
                         />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-muted mb-1.5">المنتجات المشمولة (اتركه فارغاً لجميع المنتجات)</label>
+                      <div className="flex flex-wrap gap-2">
+                        {products.map(p => (
+                          <button
+                            key={p.id}
+                            onClick={() => setDForm(f => ({
+                              ...f,
+                              product_ids: f.product_ids.includes(p.id)
+                                ? f.product_ids.filter(id => id !== p.id)
+                                : [...f.product_ids, p.id],
+                            }))}
+                            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
+                              dForm.product_ids.includes(p.id) ? "border-line2 bg-panel2 text-ink" : "border-line text-muted hover:text-ink"
+                            }`}
+                          >
+                            {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-muted mb-1.5">بوابات الدفع المشمولة (اتركه فارغاً لجميع البوابات)</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {GATEWAY_OPTIONS.map(g => (
+                          <button
+                            key={g.v}
+                            onClick={() => setDForm(f => ({
+                              ...f,
+                              gateways: f.gateways.includes(g.v)
+                                ? f.gateways.filter(x => x !== g.v)
+                                : [...f.gateways, g.v],
+                            }))}
+                            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
+                              dForm.gateways.includes(g.v) ? "border-line2 bg-panel2 text-ink" : "border-line text-muted hover:text-ink"
+                            }`}
+                          >
+                            {g.label}
+                          </button>
+                        ))}
                       </div>
                     </div>
 
@@ -1571,7 +1314,7 @@ export default function StoreAdminPage() {
                         إلغاء
                       </button>
                     </div>
-                  </motion.div>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1587,76 +1330,563 @@ export default function StoreAdminPage() {
               </div>
             ) : (
               <div className="grid gap-3">
-                {discounts.map((d, i) => {
-                  const expired = d.expires_at && new Date(d.expires_at).getTime() < Date.now();
-                  const exhausted = d.usage_limit != null && d.usage_count >= d.usage_limit;
-                  return (
-                    <motion.div
-                      key={d.id}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.04 }}
-                      className="rounded-2xl border border-line bg-panel p-4"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-panel2 shrink-0">
-                            {d.discount_type === "percent" ? <Percent size={15} className="text-ink" /> : <DollarSign size={15} className="text-ink" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                              <span className="font-bold text-ink text-sm font-mono uppercase">{d.code}</span>
-                              <span className="rounded-full border border-line2 bg-panel2 px-2 py-0.5 text-xs text-ink font-bold">
-                                {d.discount_type === "percent" ? `${d.discount_value}%` : `${d.discount_value} ر.س`}
-                              </span>
-                              <span className={`rounded-full border px-2 py-0.5 text-xs ${d.is_active && !expired && !exhausted ? "border-line2 bg-panel2 text-ink" : "border-slate-700 text-muted2"}`}>
-                                {!d.is_active ? "متوقف" : expired ? "منتهي" : exhausted ? "مستنفد" : "نشط"}
-                              </span>
-                            </div>
-                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-                              <span>📦 {(d.products && d.products.length > 0)
-                                ? d.products.map(p => p.name).join("، ")
-                                : "كل المنتجات"}</span>
-                              <span>💳 {(d.gateways && d.gateways.length > 0)
-                                ? d.gateways.map(g => GATEWAY_OPTIONS.find(o => o.v === g)?.label || g).join("، ")
-                                : "كل طرق الدفع"}</span>
-                              <span>
-                                🔢 {d.usage_count}{d.usage_limit != null ? ` / ${d.usage_limit}` : ""} طلب مدفوع
-                              </span>
-                              {d.sales && d.sales.paid_orders > 0 && (
-                                <span>💰 إيرادات {d.sales.revenue.toFixed(2)} ر.س • خصم {d.sales.total_discount.toFixed(2)} ر.س</span>
-                              )}
-                              {d.expires_at && (
-                                <span>⏰ ينتهي {fmt(d.expires_at)}</span>
-                              )}
-                            </div>
-                          </div>
+                {discounts.map((d, i) => (
+                  <motion.div
+                    key={d.id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className="rounded-2xl border border-line bg-panel p-4"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          <span className="font-mono font-bold text-ink text-base tracking-wider">{d.code}</span>
+                          <span className={`rounded-full border px-2 py-0.5 text-xs ${d.is_active ? "border-line2 bg-panel2 text-ink" : "border-slate-600 text-muted"}`}>
+                            {d.is_active ? "نشط" : "متوقف"}
+                          </span>
+                          <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${d.discount_type === "percent" ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-blue-500/30 bg-blue-500/10 text-blue-400"}`}>
+                            {d.discount_type === "percent" ? `${d.discount_value}%` : `${d.discount_value} ر.س`}
+                          </span>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={() => toggleDiscountActive(d)}
-                            className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-ink hover:border-line2 transition-all"
-                          >
-                            {d.is_active ? "إيقاف" : "تفعيل"}
-                          </button>
-                          <button
-                            onClick={() => deleteDiscount(d.id)}
-                            disabled={dDeletingId === d.id}
-                            className="rounded-lg border border-danger-border px-3 py-1.5 text-xs text-danger hover:bg-danger-bg transition-all disabled:opacity-50"
-                          >
-                            {dDeletingId === d.id ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                          </button>
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 text-xs text-muted2">
+                          <span>الاستخدام: {d.usage_count} {d.usage_limit ? `/ ${d.usage_limit}` : "(غير محدود)"}</span>
+                          {d.expires_at && <span>ينتهي: {new Date(d.expires_at).toLocaleDateString("ar-SA")}</span>}
+                          {d.applies_to_all_products ? (
+                            <span>المنتجات: جميعها</span>
+                          ) : d.products && d.products.length > 0 ? (
+                            <span>المنتجات: {d.products.map(p => p.name).join("، ")}</span>
+                          ) : null}
+                          {d.applies_to_all_gateways ? (
+                            <span>البوابات: جميعها</span>
+                          ) : d.gateways && d.gateways.length > 0 ? (
+                            <span>البوابات: {d.gateways.join("، ")}</span>
+                          ) : null}
+                          {d.sales && d.sales.paid_orders > 0 && (
+                            <span className="col-span-2 text-ink/80">
+                              📊 {d.sales.paid_orders} طلب مدفوع — توفير {d.sales.total_discount} ر.س — إيرادات {d.sales.revenue} ر.س
+                            </span>
+                          )}
                         </div>
                       </div>
-                    </motion.div>
-                  );
-                })}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => toggleDiscountActive(d)}
+                          className="rounded-lg border border-line px-2.5 py-1.5 text-xs text-muted hover:text-ink hover:border-line2 transition-all"
+                        >
+                          {d.is_active ? "إيقاف" : "تفعيل"}
+                        </button>
+                        <button
+                          onClick={() => deleteDiscount(d.id)}
+                          disabled={dDeletingId === d.id}
+                          className="rounded-lg border border-line p-1.5 text-muted hover:text-danger hover:border-danger-border disabled:opacity-50 transition-all"
+                        >
+                          {dDeletingId === d.id ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             )}
           </motion.div>
         )}
-
       </div>
+
+      {/* ═══════════════════════════════════════════════════════
+          ORDER SIDE PANEL
+      ═══════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {selectedOrder && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+              onClick={() => setSelectedOrder(null)}
+            />
+            {/* Panel */}
+            <motion.div
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-panel border-r border-line shadow-2xl flex flex-col"
+              dir="rtl"
+            >
+              {/* Panel header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-line shrink-0">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setSelectedOrder(null)}
+                    className="rounded-lg p-1.5 text-muted hover:text-ink hover:bg-panel2 transition-all"
+                  >
+                    <X size={16} />
+                  </button>
+                  <div>
+                    <h2 className="font-bold text-ink text-sm">تفاصيل الطلب</h2>
+                    <p className="text-[10px] text-muted2 font-mono">{selectedOrder.id.slice(0, 16)}…</p>
+                  </div>
+                </div>
+                <Badge status={selectedOrder.status} />
+              </div>
+
+              {/* Panel body */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-5">
+                {/* Customer info */}
+                <div className="rounded-2xl border border-line bg-bg p-4 space-y-2.5">
+                  <h3 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">معلومات العميل</h3>
+                  {selectedOrder.user_name && (
+                    <div className="flex items-center gap-3">
+                      <User size={14} className="text-muted2 shrink-0" />
+                      <span className="text-sm text-ink">{selectedOrder.user_name}</span>
+                    </div>
+                  )}
+                  {selectedOrder.user_email && (
+                    <div className="flex items-center gap-3">
+                      <Mail size={14} className="text-muted2 shrink-0" />
+                      <span className="text-sm text-ink" dir="ltr">{selectedOrder.user_email}</span>
+                    </div>
+                  )}
+                  {selectedOrder.user_phone && (
+                    <div className="flex items-center gap-3">
+                      <Phone size={14} className="text-muted2 shrink-0" />
+                      <span className="text-sm text-ink" dir="ltr">{selectedOrder.user_phone}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Order info */}
+                <div className="rounded-2xl border border-line bg-bg p-4 space-y-2.5">
+                  <h3 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">تفاصيل الطلب</h3>
+                  {selectedOrder.store_products && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted2">المنتج</span>
+                      <span className="text-sm font-semibold text-ink">{selectedOrder.store_products.name}</span>
+                    </div>
+                  )}
+                  {selectedOrder.amount && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted2">المبلغ المدفوع</span>
+                      <span className="text-base font-bold text-ink">{selectedOrder.amount} ر.س</span>
+                    </div>
+                  )}
+                  {selectedOrder.original_amount && selectedOrder.original_amount !== selectedOrder.amount && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted2">المبلغ الأصلي</span>
+                      <span className="text-sm text-muted2 line-through">{selectedOrder.original_amount} ر.س</span>
+                    </div>
+                  )}
+                  {selectedOrder.discount_code && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted2">كود الخصم</span>
+                      <span className="font-mono text-xs text-green-400 bg-green-500/10 border border-green-500/20 rounded-full px-2 py-0.5">{selectedOrder.discount_code}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted2">طريقة الدفع</span>
+                    <GatewayBadge gateway={selectedOrder.payment_gateway} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted2">تاريخ الطلب</span>
+                    <span className="text-xs text-ink">{fmt(selectedOrder.created_at)}</span>
+                  </div>
+                  {selectedOrder.paid_at && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted2">تاريخ الدفع</span>
+                      <span className="text-xs text-ink">{fmt(selectedOrder.paid_at)}</span>
+                    </div>
+                  )}
+                  {selectedOrder.notes && (
+                    <div className="pt-2 border-t border-line">
+                      <p className="text-xs text-muted2 mb-1">ملاحظات</p>
+                      <p className="text-sm text-ink">{selectedOrder.notes}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Invoice IDs */}
+                {(selectedOrder.streampay_invoice_id || selectedOrder.streampay_payment_id || selectedOrder.tamara_order_id) && (
+                  <div className="rounded-2xl border border-line bg-bg p-4 space-y-2">
+                    <h3 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">معرّفات البوابة</h3>
+                    {selectedOrder.streampay_invoice_id && (
+                      <div>
+                        <p className="text-[10px] text-muted2 mb-0.5">Invoice ID</p>
+                        <p className="font-mono text-xs text-ink break-all">{selectedOrder.streampay_invoice_id}</p>
+                      </div>
+                    )}
+                    {selectedOrder.streampay_payment_id && (
+                      <div>
+                        <p className="text-[10px] text-muted2 mb-0.5">Payment ID</p>
+                        <p className="font-mono text-xs text-ink break-all">{selectedOrder.streampay_payment_id}</p>
+                      </div>
+                    )}
+                    {selectedOrder.tamara_order_id && (
+                      <div>
+                        <p className="text-[10px] text-muted2 mb-0.5">Tamara Order ID</p>
+                        <p className="font-mono text-xs text-ink break-all">{selectedOrder.tamara_order_id}</p>
+                      </div>
+                    )}
+                    {selectedOrder.streampay_payment_link_id && (
+                      <div>
+                        <p className="text-[10px] text-muted2 mb-0.5">Payment Link ID</p>
+                        <p className="font-mono text-xs text-ink break-all">{selectedOrder.streampay_payment_link_id}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Receipt */}
+                {selectedOrder.receipt_url && (
+                  <div className="rounded-2xl border border-line bg-bg p-4">
+                    <h3 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">إيصال التحويل</h3>
+                    <a
+                      href={selectedOrder.receipt_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-xs text-blue-400 hover:text-blue-300 transition-colors mb-2"
+                    >
+                      <ExternalLink size={12} />
+                      فتح الإيصال
+                    </a>
+                    {/\.(jpe?g|png|webp|gif)$/i.test(selectedOrder.receipt_url) && (
+                      <a href={selectedOrder.receipt_url} target="_blank" rel="noopener noreferrer">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={selectedOrder.receipt_url}
+                          alt="إيصال"
+                          className="w-full max-h-48 rounded-xl object-cover border border-line hover:opacity-90 transition-opacity"
+                        />
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {selectedOrder.payment_gateway === "bank_transfer" && !selectedOrder.receipt_url && selectedOrder.status === "pending" && (
+                  <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 text-sm text-yellow-400/80">
+                    ⏳ لم يُرفع إيصال التحويل بعد
+                  </div>
+                )}
+
+                {/* Refund section */}
+                {selectedOrder.refund_status && (
+                  <div className="rounded-2xl border border-line bg-bg p-4 space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-semibold text-muted uppercase tracking-wider">طلب استرجاع</span>
+                      <span className={
+                        selectedOrder.refund_status === "requested" ? "rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-400 font-bold" :
+                        selectedOrder.refund_status === "refunded" ? "rounded-full border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-xs text-green-400 font-bold" :
+                        selectedOrder.refund_status === "rejected" ? "rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-xs text-red-400 font-bold" :
+                        "rounded-full border border-line2 bg-bg px-2 py-0.5 text-xs text-ink font-bold"
+                      }>
+                        {selectedOrder.refund_status === "requested" ? "قيد المراجعة" :
+                         selectedOrder.refund_status === "refunded" ? `تم الاسترجاع (${selectedOrder.refund_method === "gateway_auto" ? "تلقائي" : "يدوي"})` :
+                         selectedOrder.refund_status === "rejected" ? "مرفوض" : selectedOrder.refund_status}
+                      </span>
+                    </div>
+                    {selectedOrder.refund_requested_at && (
+                      <p className="text-xs text-muted2">تاريخ الطلب: {fmt(selectedOrder.refund_requested_at)}</p>
+                    )}
+                    {selectedOrder.refund_reason && (
+                      <div className="text-sm text-ink/80"><b className="text-muted2">سبب العميل:</b> {selectedOrder.refund_reason}</div>
+                    )}
+                    {selectedOrder.refund_admin_notes && (
+                      <div className="text-sm text-ink/80"><b className="text-muted2">ملاحظات الإدارة:</b> {selectedOrder.refund_admin_notes}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Panel footer — Action buttons */}
+              <div className="border-t border-line p-4 shrink-0 space-y-2">
+                {/* Refund actions */}
+                {selectedOrder.refund_status === "requested" && (
+                  <div className="flex gap-2">
+                    <button
+                      disabled={updatingId === selectedOrder.id}
+                      onClick={() => processRefund(selectedOrder.id, "approve")}
+                      className="flex-1 rounded-xl border border-green-500/30 py-2.5 text-sm text-green-400 hover:bg-green-500/10 disabled:opacity-50 transition-all font-medium"
+                    >
+                      ✓ موافقة على الاسترجاع
+                    </button>
+                    <button
+                      disabled={updatingId === selectedOrder.id}
+                      onClick={() => processRefund(selectedOrder.id, "reject")}
+                      className="flex-1 rounded-xl border border-red-500/30 py-2.5 text-sm text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-all font-medium"
+                    >
+                      ✗ رفض
+                    </button>
+                  </div>
+                )}
+
+                {/* Gateway verify */}
+                {selectedOrder.status === "paid" && (selectedOrder.payment_gateway === "tamara" || selectedOrder.payment_gateway === "streampay") && (
+                  <button
+                    disabled={updatingId === selectedOrder.id}
+                    onClick={() => verifyPayment(selectedOrder.id)}
+                    className="w-full rounded-xl border border-blue-500/30 py-2.5 text-sm text-blue-400 hover:bg-blue-500/10 disabled:opacity-50 transition-all font-medium"
+                  >
+                    🔍 تحقق من البوابة
+                  </button>
+                )}
+
+                {/* Pending actions */}
+                {selectedOrder.status === "pending" && (
+                  <div className="flex gap-2">
+                    {selectedOrder.payment_gateway === "bank_transfer" && selectedOrder.user_email && (
+                      <button
+                        disabled={remindingId === selectedOrder.id}
+                        onClick={() => sendReminder(selectedOrder.id, selectedOrder.user_email!)}
+                        className="rounded-xl border border-yellow-500/30 px-4 py-2.5 text-sm text-yellow-400 hover:bg-yellow-500/10 disabled:opacity-50 transition-all font-medium"
+                      >
+                        {remindingId === selectedOrder.id ? "جاري الإرسال..." : "📧 تذكير"}
+                      </button>
+                    )}
+                    <button
+                      disabled={updatingId === selectedOrder.id}
+                      onClick={() => updateOrderStatus(selectedOrder.id, "paid")}
+                      className="flex-1 rounded-xl border border-line2 bg-panel2 py-2.5 text-sm text-ink hover:bg-bg disabled:opacity-50 transition-all font-medium"
+                    >
+                      {updatingId === selectedOrder.id ? <RefreshCw size={13} className="animate-spin mx-auto" /> : "✓ تأكيد الدفع"}
+                    </button>
+                    <button
+                      disabled={updatingId === selectedOrder.id}
+                      onClick={() => updateOrderStatus(selectedOrder.id, "cancelled")}
+                      className="rounded-xl border border-line px-4 py-2.5 text-sm text-muted hover:text-ink hover:border-line2 disabled:opacity-50 transition-all font-medium"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+                )}
+
+                {/* Reactivate */}
+                {(selectedOrder.status === "failed" || selectedOrder.status === "cancelled") && (
+                  <button
+                    disabled={updatingId === selectedOrder.id}
+                    onClick={() => updateOrderStatus(selectedOrder.id, "pending")}
+                    className="w-full rounded-xl border border-yellow-500/30 py-2.5 text-sm text-yellow-400 hover:bg-yellow-500/10 disabled:opacity-50 transition-all font-medium"
+                  >
+                    إعادة تفعيل الطلب
+                  </button>
+                )}
+
+                {/* Delete */}
+                <button
+                  onClick={() => deleteOrder(selectedOrder.id)}
+                  className="w-full rounded-xl border border-line py-2.5 text-sm text-danger hover:bg-danger-bg hover:border-danger-border transition-all font-medium"
+                >
+                  حذف الطلب
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ═══════════════════════════════════════════════════════
+          PRODUCT SIDE PANEL (Add / Edit)
+      ═══════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {showForm && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+              onClick={() => setShowForm(false)}
+            />
+            <motion.div
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-panel border-r border-line shadow-2xl flex flex-col"
+              dir="rtl"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-line shrink-0">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setShowForm(false)}
+                    className="rounded-lg p-1.5 text-muted hover:text-ink hover:bg-panel2 transition-all"
+                  >
+                    <X size={16} />
+                  </button>
+                  <h2 className="font-bold text-ink">{editProduct ? "تعديل المنتج" : "إضافة منتج جديد"}</h2>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                <div>
+                  <label className="block text-xs text-muted mb-1.5">اسم المنتج *</label>
+                  <input
+                    value={pForm.name}
+                    onChange={e => setPForm(s => ({ ...s, name: e.target.value }))}
+                    placeholder="مثال: خطة شهرية"
+                    className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-muted2 focus:border-line2 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted mb-1.5">الوصف</label>
+                  <textarea
+                    value={pForm.description}
+                    onChange={e => setPForm(s => ({ ...s, description: e.target.value }))}
+                    placeholder="وصف مختصر للخطة..."
+                    rows={3}
+                    className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-muted2 focus:border-line2 focus:outline-none resize-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-muted mb-1.5">السعر (ر.س) *</label>
+                    <input
+                      type="number"
+                      value={pForm.price}
+                      onChange={e => setPForm(s => ({ ...s, price: e.target.value }))}
+                      placeholder="99"
+                      className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-muted2 focus:border-line2 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-muted mb-1.5">المدة (أيام) *</label>
+                    <input
+                      type="number"
+                      value={pForm.duration_days}
+                      onChange={e => setPForm(s => ({ ...s, duration_days: e.target.value }))}
+                      placeholder="30"
+                      className="w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-muted2 focus:border-line2 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Product Image */}
+                <div>
+                  <label className="block text-xs text-muted mb-1.5">صورة المنتج</label>
+                  {imgPreview ? (
+                    <div className="relative rounded-xl overflow-hidden border border-line bg-bg" style={{ height: 160 }}>
+                      <Image src={imgPreview} alt="صورة المنتج" fill className="object-cover" unoptimized />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <label className="cursor-pointer rounded-lg bg-white/90 text-gray-800 px-3 py-1.5 text-xs font-semibold flex items-center gap-1 hover:bg-white transition-all">
+                          <ImagePlus size={13} />
+                          تغيير
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            onChange={e => {
+                              const f = e.target.files?.[0];
+                              if (f && editProduct) handleImageUpload(f, editProduct.id);
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                        {editProduct && (
+                          <button
+                            onClick={() => handleRemoveImage(editProduct.id)}
+                            disabled={imgUploading}
+                            className="rounded-lg bg-red-500/90 text-white px-3 py-1.5 text-xs font-semibold flex items-center gap-1 hover:bg-red-500 transition-all"
+                          >
+                            <Trash size={13} />
+                            حذف
+                          </button>
+                        )}
+                      </div>
+                      {imgUploading && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <RefreshCw size={20} className="text-white animate-spin" />
+                        </div>
+                      )}
+                    </div>
+                  ) : editProduct ? (
+                    <label className="cursor-pointer flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line hover:border-line2 bg-bg transition-all py-8 text-muted2 hover:text-muted">
+                      {imgUploading ? (
+                        <RefreshCw size={22} className="animate-spin" />
+                      ) : (
+                        <>
+                          <ImagePlus size={22} />
+                          <span className="text-xs">اضغط لرفع صورة</span>
+                          <span className="text-[10px] text-muted2">JPG · PNG · WebP (حد أقصى 5MB)</span>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={e => {
+                          const f = e.target.files?.[0];
+                          if (f && editProduct) handleImageUpload(f, editProduct.id);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-line bg-bg py-6 text-muted2">
+                      <ImagePlus size={20} />
+                      <span className="text-xs">احفظ المنتج أولاً ثم ارفع الصورة</span>
+                    </div>
+                  )}
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer rounded-xl border border-line bg-bg px-3 py-2.5 hover:border-line2 transition-all">
+                  <input
+                    type="checkbox"
+                    checked={!!pForm.is_secret}
+                    onChange={e => setPForm(s => ({ ...s, is_secret: e.target.checked }))}
+                    className="h-4 w-4"
+                  />
+                  <div className="flex-1">
+                    <div className="text-xs font-bold text-ink">منتج سري (admin only)</div>
+                    <div className="text-[10px] text-muted2">يظهر في المتجر فقط عند البحث عن "admin"</div>
+                  </div>
+                </label>
+
+                {editProduct?.streampay_product_id ? (
+                  <div>
+                    <label className="block text-xs text-muted mb-1.5">StreamPay Product ID</label>
+                    <div className="w-full rounded-xl border border-line2 bg-panel2 px-3 py-2.5 text-xs text-ink/80 font-mono flex items-center gap-2" dir="ltr">
+                      <CheckCircle2 size={12} className="flex-shrink-0 text-green-400" />
+                      <span className="truncate">{editProduct.streampay_product_id}</span>
+                    </div>
+                  </div>
+                ) : !editProduct ? (
+                  <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-3 py-2.5 text-xs text-blue-300 flex items-center gap-2">
+                    <Zap size={13} className="flex-shrink-0 text-blue-400" />
+                    سيتم إنشاء المنتج تلقائياً في StreamPay عند الحفظ
+                  </div>
+                ) : null}
+
+                {pMsg && (
+                  <div className={`rounded-xl border px-3 py-2.5 text-sm ${pMsgType === "ok" ? "border-line2 bg-panel2 text-ink" : "border-danger-border bg-danger-bg text-danger"}`}>
+                    {pMsg}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="border-t border-line p-4 shrink-0 flex gap-2">
+                <button
+                  onClick={saveProduct}
+                  disabled={saving}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-accent text-accent-fg py-2.5 text-sm font-semibold hover:bg-panel2 disabled:opacity-50 transition-all"
+                >
+                  {saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                  {editProduct ? "حفظ التغييرات" : "إضافة المنتج"}
+                </button>
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="rounded-xl border border-line px-5 py-2.5 text-sm text-muted hover:text-ink hover:border-line2 transition-all"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </Shell>
   );
 }
