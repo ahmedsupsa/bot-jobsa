@@ -4,54 +4,51 @@ import { useRouter } from "next/navigation";
 import { setToken } from "@/lib/portal-auth";
 import {
   KeyRound, ArrowRight, Loader2,
-  User, Phone, MapPin, Calendar, ChevronLeft, Mail,
+  User, Phone, MapPin, Calendar, ChevronRight,
+  Mail, Sparkles, ShieldCheck, Zap,
 } from "lucide-react";
 
-type Tab = "email" | "code";
-type Step = "tab" | "register";
+type Step = "login" | "register";
 
 export default function PortalLogin() {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("email");
-  const [step, setStep] = useState<Step>("tab");
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
+  const [step, setStep] = useState<Step>("login");
+  const [value, setValue] = useState("");
   const [codeId, setCodeId] = useState("");
   const [subDays, setSubDays] = useState(30);
   const [form, setForm] = useState({ full_name: "", phone: "", age: "", city: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleEmailSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(""); setLoading(true);
-    try {
-      const res = await fetch("/api/portal/login-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "خطأ"); return; }
-      setToken(data.token);
-      router.replace("/portal/dashboard");
-    } catch { setError("خطأ في الاتصال بالخادم"); }
-    finally { setLoading(false); }
-  }
+  const isEmail = value.includes("@");
 
-  async function handleCodeSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(""); setLoading(true);
     try {
-      const res = await fetch("/api/portal/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: code.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "خطأ"); return; }
-      if (data.status === "ok") { setToken(data.token); router.replace("/portal/dashboard"); }
-      else if (data.status === "needs_registration") { setCodeId(data.code_id); setSubDays(data.subscription_days || 30); setStep("register"); }
+      if (isEmail) {
+        const res = await fetch("/api/portal/login-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: value.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) { setError(data.error || "البريد غير مرتبط بأي حساب"); return; }
+        setToken(data.token);
+        router.replace("/portal/dashboard");
+      } else {
+        const res = await fetch("/api/portal/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: value.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) { setError(data.error || "الكود غير صالح أو مستخدم"); return; }
+        if (data.status === "ok") { setToken(data.token); router.replace("/portal/dashboard"); }
+        else if (data.status === "needs_registration") {
+          setCodeId(data.code_id); setSubDays(data.subscription_days || 30); setStep("register");
+        }
+      }
     } catch { setError("خطأ في الاتصال بالخادم"); }
     finally { setLoading(false); }
   }
@@ -73,31 +70,82 @@ export default function PortalLogin() {
   }
 
   const regFields = [
-    { key: "full_name", label: "الاسم الكامل", placeholder: "", icon: <User size={16} strokeWidth={1.5} /> },
-    { key: "phone", label: "رقم الجوال", placeholder: "", icon: <Phone size={16} strokeWidth={1.5} />, dir: "ltr" },
-    { key: "age", label: "العمر", placeholder: "", icon: <Calendar size={16} strokeWidth={1.5} />, type: "number" },
-    { key: "city", label: "المدينة", placeholder: "", icon: <MapPin size={16} strokeWidth={1.5} /> },
+    { key: "full_name", label: "الاسم الكامل", icon: <User size={15} strokeWidth={1.5} /> },
+    { key: "phone", label: "رقم الجوال", icon: <Phone size={15} strokeWidth={1.5} />, dir: "ltr" },
+    { key: "age", label: "العمر", icon: <Calendar size={15} strokeWidth={1.5} />, type: "number" },
+    { key: "city", label: "المدينة", icon: <MapPin size={15} strokeWidth={1.5} /> },
   ];
 
   return (
     <div className="login-split">
-      {/* Right panel */}
+      {/* Left — Branding */}
+      <div className="login-left">
+        <div style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "auto" }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 10,
+              background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.15)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <Zap size={18} color="#fff" strokeWidth={2} />
+            </div>
+            <span style={{ color: "#fff", fontWeight: 700, fontSize: 17, letterSpacing: "-0.3px" }}>Jobbots</span>
+          </div>
+
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingBottom: 40 }}>
+            <h1 style={{
+              color: "#fff", fontSize: 36, fontWeight: 800,
+              lineHeight: 1.3, margin: "0 0 16px", letterSpacing: "-0.5px",
+            }}>
+              التقديم على الوظائف<br />
+              <span style={{ color: "rgba(255,255,255,0.45)" }}>بشكل تلقائي</span>
+            </h1>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 15, lineHeight: 1.7, margin: "0 0 40px", maxWidth: 320 }}>
+              نقدّم نيابةً عنك على أنسب الوظائف يومياً — بدون تعب، بدون فوات فرص.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {[
+                { icon: <Sparkles size={15} strokeWidth={2} />, text: "رسالة تغطية مخصّصة لكل وظيفة" },
+                { icon: <ShieldCheck size={15} strokeWidth={2} />, text: "10 تقديمات يومية تلقائياً" },
+                { icon: <Zap size={15} strokeWidth={2} />, text: "مطابقة ذكية بين سيرتك والوظيفة" },
+              ].map(({ icon, text }) => (
+                <div key={text} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                    background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)",
+                    display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.7)",
+                  }}>{icon}</div>
+                  <span style={{ color: "rgba(255,255,255,0.65)", fontSize: 14 }}>{text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>© 2026 Jobbots — جميع الحقوق محفوظة</p>
+        </div>
+      </div>
+
+      {/* Right — Form */}
       <div className="login-right">
-        <div style={s.formBox}>
+        <div style={{ width: "100%", maxWidth: 400 }}>
+
           {step === "register" ? (
             <>
-              <div style={s.formIcon}><User size={22} strokeWidth={1.5} color="var(--accent-fg)" /></div>
-              <h2 style={s.formTitle}>أكمل التسجيل</h2>
-              <p style={s.formSub}>اشتراك {subDays} يوم — أدخل بياناتك للبدء</p>
+              <div style={s.iconWrap}>
+                <User size={20} strokeWidth={1.5} color="#fff" />
+              </div>
+              <h2 style={s.title}>أكمل بياناتك</h2>
+              <p style={s.sub}>اشتراك <strong>{subDays} يوم</strong> — خطوة أخيرة للبدء</p>
+
               <form onSubmit={handleRegister} style={{ marginTop: 24 }}>
-                {regFields.map(({ key, label, placeholder, icon, dir, type }) => (
-                  <div key={key} style={{ marginBottom: 16 }}>
+                {regFields.map(({ key, label, icon, dir, type }) => (
+                  <div key={key} style={{ marginBottom: 14 }}>
                     <label style={s.label}>{label}</label>
-                    <div style={s.inputWrap}>
+                    <div style={s.inputRow}>
                       <span style={s.inputIcon}>{icon}</span>
                       <input
                         style={s.input} type={type || "text"} dir={dir as any}
-                        placeholder={placeholder}
                         value={form[key as keyof typeof form]}
                         onChange={e => setForm({ ...form, [key]: e.target.value })}
                         inputMode={type === "number" ? "numeric" : undefined}
@@ -105,79 +153,70 @@ export default function PortalLogin() {
                     </div>
                   </div>
                 ))}
+
                 {error && <div style={s.error}>{error}</div>}
-                <button style={s.btn} type="submit" disabled={loading || !form.full_name || !form.phone || !form.city}>
-                  {loading ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> : null}
-                  {loading ? "جاري الإنشاء…" : "إنشاء الحساب"}
-                  {!loading && <ArrowRight size={16} strokeWidth={2} />}
+
+                <button style={s.btn} type="submit"
+                  disabled={loading || !form.full_name || !form.phone || !form.city}>
+                  {loading
+                    ? <><Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> جاري الإنشاء…</>
+                    : <>إنشاء الحساب <ArrowRight size={15} strokeWidth={2} /></>}
                 </button>
-                <button style={s.btnBack} type="button" onClick={() => { setStep("tab"); setError(""); }}>
-                  <ChevronLeft size={16} strokeWidth={2} /> رجوع
+                <button style={s.btnBack} type="button"
+                  onClick={() => { setStep("login"); setError(""); }}>
+                  <ChevronRight size={15} strokeWidth={2} /> رجوع
                 </button>
               </form>
             </>
           ) : (
             <>
-              <div style={s.formIcon}>
-                {tab === "email"
-                  ? <Mail size={22} strokeWidth={1.5} color="var(--accent-fg)" />
-                  : <KeyRound size={22} strokeWidth={1.5} color="var(--accent-fg)" />}
+              <div style={s.iconWrap}>
+                {isEmail
+                  ? <Mail size={20} strokeWidth={1.5} color="#fff" />
+                  : <KeyRound size={20} strokeWidth={1.5} color="#fff" />}
               </div>
-              <h2 style={s.formTitle}>مرحباً بك</h2>
-              <p style={s.formSub}>سجّل دخولك للوصول إلى حسابك</p>
+              <h2 style={s.title}>مرحباً بك</h2>
+              <p style={s.sub}>أدخل كود التفعيل أو بريدك الإلكتروني</p>
 
-              {/* Tabs */}
-              <div style={s.tabs}>
-                <button style={{ ...s.tab, ...(tab === "email" ? s.tabActive : {}) }} onClick={() => { setTab("email"); setError(""); }}>
-                  مسجّل من قبل
-                </button>
-                <button style={{ ...s.tab, ...(tab === "code" ? s.tabActive : {}) }} onClick={() => { setTab("code"); setError(""); }}>
-                  مشترك جديد
-                </button>
-              </div>
+              <form onSubmit={handleSubmit} style={{ marginTop: 28 }}>
+                <div style={s.inputRow}>
+                  <span style={s.inputIcon}>
+                    {isEmail
+                      ? <Mail size={15} strokeWidth={1.5} color="var(--text4)" />
+                      : <KeyRound size={15} strokeWidth={1.5} color="var(--text4)" />}
+                  </span>
+                  <input
+                    style={s.input}
+                    dir={isEmail ? "ltr" : "ltr"}
+                    value={value}
+                    onChange={e => { setValue(e.target.value); setError(""); }}
+                    placeholder="كود التفعيل أو البريد الإلكتروني"
+                    autoFocus
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    autoComplete="email"
+                    inputMode={isEmail ? "email" : "text"}
+                  />
+                </div>
 
-              {tab === "email" ? (
-                <form onSubmit={handleEmailSubmit} style={{ marginTop: 20 }}>
-                  <label style={s.label}>البريد الإلكتروني</label>
-                  <div style={s.inputWrap}>
-                    <Mail size={16} strokeWidth={1.5} color="var(--text4)" style={s.inputIcon} />
-                    <input
-                      style={s.input} type="email" dir="ltr"
-                      value={email} onChange={e => setEmail(e.target.value)}
-                      placeholder="" autoFocus
-                      inputMode="email"
-                      autoComplete="email"
-                    />
-                  </div>
-                  {error && <div style={s.error}>{error}</div>}
-                  <button style={s.btn} type="submit" disabled={loading || !email.trim()}>
-                    {loading ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> : null}
-                    {loading ? "جاري التحقق…" : "دخول"}
-                    {!loading && <ArrowRight size={16} strokeWidth={2} />}
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={handleCodeSubmit} style={{ marginTop: 20 }}>
-                  <label style={s.label}>كود التفعيل</label>
-                  <div style={s.inputWrap}>
-                    <KeyRound size={16} strokeWidth={1.5} color="var(--text4)" style={s.inputIcon} />
-                    <input
-                      style={s.input} dir="ltr"
-                      value={code} onChange={e => setCode(e.target.value)}
-                      placeholder="أدخل كود التفعيل هنا" autoFocus
-                      autoCapitalize="none"
-                      autoCorrect="off"
-                      autoComplete="off"
-                    />
-                  </div>
-                  {error && <div style={s.error}>{error}</div>}
-                  <button style={s.btn} type="submit" disabled={loading || !code.trim()}>
-                    {loading ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> : null}
-                    {loading ? "جاري التحقق…" : "دخول"}
-                    {!loading && <ArrowRight size={16} strokeWidth={2} />}
-                  </button>
-                </form>
-              )}
+                {value && (
+                  <p style={s.hint}>
+                    {isEmail ? "🔐 تسجيل دخول بالبريد الإلكتروني" : "🎟️ تفعيل اشتراك جديد بالكود"}
+                  </p>
+                )}
+
+                {error && <div style={s.error}>{error}</div>}
+
+                <button style={s.btn} type="submit" disabled={loading || !value.trim()}>
+                  {loading
+                    ? <><Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> جاري التحقق…</>
+                    : <>دخول <ArrowRight size={15} strokeWidth={2} /></>}
+                </button>
+              </form>
+
+              <p style={s.footer}>
+                عندك كود تفعيل؟ أدخله مباشرة في الحقل أعلاه
+              </p>
             </>
           )}
         </div>
@@ -187,49 +226,52 @@ export default function PortalLogin() {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  formBox: { width: "100%", maxWidth: 400 },
-  formIcon: {
-    width: 52, height: 52, borderRadius: 14, background: "var(--accent)",
-    display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20,
+  iconWrap: {
+    width: 48, height: 48, borderRadius: 14,
+    background: "var(--accent)", display: "flex",
+    alignItems: "center", justifyContent: "center", marginBottom: 20,
   },
-  formTitle: { color: "var(--text)", fontSize: 26, fontWeight: 700, margin: "0 0 6px" },
-  formSub: { color: "var(--text3)", fontSize: 14, margin: 0 },
-  tabs: {
-    display: "flex", gap: 8, marginTop: 24,
-    background: "var(--surface2)", border: "1px solid var(--border2)", borderRadius: 12, padding: 4,
-  },
-  tab: {
-    flex: 1, padding: "10px 0", border: "none", borderRadius: 10,
-    background: "transparent", color: "var(--text3)", fontSize: 13, fontWeight: 600, cursor: "pointer",
-    transition: "all 0.2s", fontFamily: "inherit",
-  },
-  tabActive: { background: "var(--accent)", color: "var(--accent-fg)" },
-  label: { display: "block", color: "var(--text2)", fontSize: 13, fontWeight: 500, marginBottom: 8, marginTop: 16 },
-  inputWrap: { position: "relative", display: "flex", alignItems: "center" },
-  inputIcon: { position: "absolute", right: 14, color: "var(--text4)", display: "flex", alignItems: "center", zIndex: 1 } as any,
+  title: { color: "var(--text)", fontSize: 26, fontWeight: 800, margin: "0 0 6px", letterSpacing: "-0.3px" },
+  sub: { color: "var(--text3)", fontSize: 14, margin: 0, lineHeight: 1.6 },
+  label: { display: "block", color: "var(--text2)", fontSize: 13, fontWeight: 500, marginBottom: 6 },
+  inputRow: { position: "relative", display: "flex", alignItems: "center" },
+  inputIcon: {
+    position: "absolute", right: 14,
+    display: "flex", alignItems: "center", zIndex: 1, pointerEvents: "none",
+  } as React.CSSProperties,
   input: {
-    width: "100%", padding: "13px 42px 13px 16px",
-    background: "var(--input-bg)", border: "1px solid var(--border2)",
-    borderRadius: 12, color: "var(--text)", fontSize: 16, outline: "none",
+    width: "100%", padding: "13px 44px 13px 16px",
+    background: "var(--input-bg)", border: "1.5px solid var(--border2)",
+    borderRadius: 12, color: "var(--text)", fontSize: 15, outline: "none",
     boxSizing: "border-box", transition: "border-color 0.2s",
-    WebkitAppearance: "none",
+    WebkitAppearance: "none", fontFamily: "inherit",
+  },
+  hint: {
+    margin: "8px 2px 0", fontSize: 12,
+    color: "var(--text4)", fontWeight: 500,
   },
   btn: {
     width: "100%", padding: "14px", marginTop: 20,
-    background: "var(--accent)", color: "var(--accent-fg)", border: "none", borderRadius: 12,
-    fontSize: 15, fontWeight: 700, cursor: "pointer",
-    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-    transition: "opacity 0.2s", fontFamily: "inherit", WebkitAppearance: "none",
+    background: "var(--accent)", color: "var(--accent-fg)",
+    border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700,
+    cursor: "pointer", display: "flex", alignItems: "center",
+    justifyContent: "center", gap: 8, fontFamily: "inherit",
+    transition: "opacity 0.2s", WebkitAppearance: "none",
   },
   btnBack: {
     width: "100%", padding: "12px", marginTop: 10,
-    background: "transparent", border: "1px solid var(--border2)",
-    borderRadius: 12, color: "var(--text3)", fontSize: 14, cursor: "pointer",
-    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-    fontFamily: "inherit",
+    background: "transparent", border: "1.5px solid var(--border2)",
+    borderRadius: 12, color: "var(--text3)", fontSize: 14,
+    cursor: "pointer", display: "flex", alignItems: "center",
+    justifyContent: "center", gap: 6, fontFamily: "inherit",
   },
   error: {
-    background: "var(--danger-bg)", color: "var(--danger)", border: "1px solid var(--danger-border)",
-    borderRadius: 10, padding: "10px 14px", fontSize: 13, margin: "10px 0",
+    background: "var(--danger-bg)", color: "var(--danger)",
+    border: "1px solid var(--danger-border)",
+    borderRadius: 10, padding: "10px 14px", fontSize: 13, margin: "12px 0",
+  },
+  footer: {
+    marginTop: 24, textAlign: "center" as const,
+    color: "var(--text4)", fontSize: 12, lineHeight: 1.6,
   },
 };
