@@ -510,6 +510,12 @@ def _build_email_html(name: str, phone: str, job_title: str, company: str, cover
     subj_lbl  = "طلب توظيف" if is_ar else "Job Application"
     company_row = f'<tr><td style="color:#777;padding:4px 0;">{co_lbl}</td><td style="color:#222;padding:4px 0 4px 12px;" dir="ltr">{company}</td></tr>' if company else ""
 
+    header_line = (
+        f'<p style="margin:0 0 4px;color:#a78bfa;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">{subj_lbl}</p>'
+        f'<h1 style="margin:0;color:#fff;font-size:22px;font-weight:800;">{job_title}</h1>'
+        + (f'<p style="margin:6px 0 0;color:#888;font-size:13px;">{company}</p>' if company else "")
+    )
+
     if template == "modern":
         return f"""<!DOCTYPE html><html dir="{dir_}" lang="{'ar' if is_ar else 'en'}">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -517,9 +523,7 @@ def _build_email_html(name: str, phone: str, job_title: str, company: str, cover
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
   <tr><td style="background:#0d0d0d;border-radius:16px 16px 0 0;padding:28px 32px;direction:{dir_};text-align:{align};">
-    <p style="margin:0 0 4px;color:#a78bfa;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">{subj_lbl}</p>
-    <h1 style="margin:0;color:#fff;font-size:22px;font-weight:800;">{job_title}</h1>
-    {f'<p style="margin:6px 0 0;color:#888;font-size:13px;">{company}</p>' if company else ""}
+    {header_line}
   </td></tr>
   <tr><td style="background:#fff;padding:28px 32px;direction:{dir_};text-align:{align};">
     <p style="margin:0 0 20px;color:#2c2c2c;font-size:15px;line-height:2;">{cover_html}</p>

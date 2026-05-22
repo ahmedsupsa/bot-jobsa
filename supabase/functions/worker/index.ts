@@ -447,9 +447,10 @@ function buildCoverLetterFromSavedBody(
   const jobTrimmed = (jobTitle || "").trim();
   const header = companyTrim
     ? `إلى فريق التوظيف في <strong>${companyTrim}</strong>${jobTrimmed ? ` &mdash; <span style="color:#93c5fd;">${jobTrimmed}</span>` : ""}`
-    : jobTrimmed
-      ? `طلب توظيف: <span style="color:#93c5fd;">${jobTrimmed}</span>`
-      : `إلى فريق التوظيف المختص`;
+    : `طلب توظيف &mdash; <span style="color:#93c5fd;">${jobTrimmed}</span>`;
+  const greeting = companyTrim
+    ? `<p style="font-size:15px;font-weight:600;margin:20px 0 16px;color:#93c5fd;">السلام عليكم ورحمة الله وبركاته،</p>`
+    : "";
 
   const paragraphs = savedBody
     .split(/\n{2,}/)
@@ -467,7 +468,7 @@ function buildCoverLetterFromSavedBody(
   <h2 style="margin-top:0;font-size:20px;font-weight:700;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:16px;">
     ${header}
   </h2>
-  <p style="font-size:15px;font-weight:600;margin:20px 0 16px;color:#93c5fd;">السلام عليكم ورحمة الله وبركاته،</p>
+  ${greeting}
   <div style="color:#e2e8f0;">${paragraphs}</div>
   <p style="margin:24px 0 0;line-height:2;font-size:14px;border-top:1px solid rgba(255,255,255,0.15);padding-top:16px;color:#cbd5e1;">
     مع خالص التحية،<br><strong style="color:#fff;">${name}</strong><br>${phone}<br>${email}
@@ -491,7 +492,7 @@ function buildCoverLetterTemplate(
   const companyTrimmed = (company || "").trim();
   const headerAr = companyTrimmed
     ? `إلى فريق التوظيف في <strong>${companyTrimmed}</strong>`
-    : `إلى فريق التوظيف المختص`;
+    : `طلب توظيف &mdash; <strong>${(jobTitle || "").trim()}</strong>`;
   const spec   = profile?.specialization || profile?.degree || "مجال التخصص";
   const exp    = profile?.experience_years ?? -1;
   const skills = (profile?.skills ?? []).slice(0, 5).join("، ") || "مهارات متنوعة في المجال";
@@ -509,6 +510,10 @@ function buildCoverLetterTemplate(
     certsItem = `الشهادات والرخص: ${certList}`;
   }
 
+  const greetingLine = companyTrimmed
+    ? `<p style="line-height:2;margin:20px 0 8px;font-size:15px;">السلام عليكم ورحمة الله وبركاته،</p>`
+    : "";
+
   return `<!DOCTYPE html><html dir="rtl" lang="ar">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet">
@@ -518,8 +523,8 @@ function buildCoverLetterTemplate(
   <h2 style="margin-top:0;font-size:20px;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:16px;">
     ${headerAr}
   </h2>
-  <p style="line-height:2;margin:20px 0;font-size:15px;">
-    السلام عليكم ورحمة الله وبركاته،<br><br>
+  ${greetingLine}
+  <p style="line-height:2;margin:16px 0;font-size:15px;">
     أنا <strong>${name}</strong>، متخصص في ${spec}،<br>
     وأرغب بالانضمام إلى فريقكم في وظيفة <strong>${jobTitle}</strong>.
   </p>
