@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import {
   Plus, Trash2, Building2, Mail, BriefcaseBusiness, Sparkles,
   CheckCircle2, FileSpreadsheet, Download, Upload, Loader2,
-  Clock, AlertTriangle, CheckSquare, Square, X, Filter,
+  Clock, AlertTriangle, CheckSquare, Square, X, Filter, Search,
 } from "lucide-react";
 
 type Job = {
@@ -42,6 +42,7 @@ export default function JobsPage() {
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<"withEmail" | "all" | "active" | "expired">("withEmail");
+  const [search, setSearch] = useState("");
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [deduping, setDeduping] = useState(false);
@@ -65,11 +66,20 @@ export default function JobsPage() {
   useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => {
-    if (filter === "withEmail") return rows.filter(j => !!j.application_email?.trim());
-    if (filter === "expired")   return rows.filter(j => daysAgo(j.created_at) > 10);
-    if (filter === "active")    return rows.filter(j => daysAgo(j.created_at) <= 10);
-    return rows;
-  }, [rows, filter]);
+    let base = rows;
+    if (filter === "withEmail") base = base.filter(j => !!j.application_email?.trim());
+    else if (filter === "expired") base = base.filter(j => daysAgo(j.created_at) > 10);
+    else if (filter === "active")  base = base.filter(j => daysAgo(j.created_at) <= 10);
+    if (!search.trim()) return base;
+    const q = search.trim().toLowerCase();
+    return base.filter(j =>
+      (j.title_ar || "").toLowerCase().includes(q) ||
+      (j.title_en || "").toLowerCase().includes(q) ||
+      (j.company  || "").toLowerCase().includes(q) ||
+      (j.application_email || "").toLowerCase().includes(q) ||
+      (j.specializations || "").toLowerCase().includes(q)
+    );
+  }, [rows, filter, search]);
 
   const expiredCount  = useMemo(() => rows.filter(j => daysAgo(j.created_at) > 10).length, [rows]);
   const activeCount   = useMemo(() => rows.filter(j => daysAgo(j.created_at) <= 10).length, [rows]);
@@ -413,7 +423,7 @@ export default function JobsPage() {
           <div className="flex items-center justify-between gap-2 border-b border-line/60 px-4 py-3 flex-wrap gap-y-2">
             <div className="flex items-center gap-2">
               <BriefcaseBusiness size={16} className="text-accent" />
-              <h2 className="font-semibold text-ink text-sm">الوظائف ({filtered.length})</h2>
+              <h2 className="font-semibold text-ink text-sm">الوظائف ({filtered.length}{search.trim() ? ` من ${rows.filter(j => filter === "withEmail" ? !!j.application_email?.trim() : filter === "expired" ? daysAgo(j.created_at) > 10 : filter === "active" ? daysAgo(j.created_at) <= 10 : true).length}` : ""})</h2>
             </div>
             {/* Filter tabs */}
             <div className="flex gap-1 rounded-xl border border-line/60 bg-panel2 p-1">
@@ -424,6 +434,23 @@ export default function JobsPage() {
                   {v === "expired" && expiredCount > 0 && <span className="mr-1 text-orange-400">({expiredCount})</span>}
                 </button>
               ))}
+            </div>
+          </div>
+          {/* Search bar */}
+          <div className="border-b border-line/50 px-4 py-2.5">
+            <div className="flex items-center gap-2 rounded-xl border border-line/70 bg-panel2 px-3 py-2">
+              <Search size={14} className="text-muted shrink-0" />
+              <input
+                value={search}
+                onChange={e => { setSearch(e.target.value); setSelected(new Set()); }}
+                placeholder="ابحث بالمسمى أو الشركة أو الإيميل أو التخصص…"
+                className="flex-1 bg-transparent text-xs text-ink placeholder:text-muted2 outline-none"
+              />
+              {search && (
+                <button onClick={() => { setSearch(""); setSelected(new Set()); }} className="text-muted hover:text-ink transition-colors">
+                  <X size={13} />
+                </button>
+              )}
             </div>
           </div>
 
