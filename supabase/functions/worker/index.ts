@@ -436,7 +436,7 @@ function computeLocalScore(
 
 function buildCoverLetterFromSavedBody(
   name: string,
-  _jobTitle: string,
+  jobTitle: string,
   company: string,
   phone: string,
   email: string,
@@ -444,9 +444,12 @@ function buildCoverLetterFromSavedBody(
   savedBody: string,
 ): string {
   const companyTrim = (company || "").trim();
+  const jobTrimmed = (jobTitle || "").trim();
   const header = companyTrim
-    ? `إلى فريق التوظيف في <strong>${companyTrim}</strong>`
-    : `إلى فريق التوظيف المختص`;
+    ? `إلى فريق التوظيف في <strong>${companyTrim}</strong>${jobTrimmed ? ` &mdash; <span style="color:#93c5fd;">${jobTrimmed}</span>` : ""}`
+    : jobTrimmed
+      ? `طلب توظيف: <span style="color:#93c5fd;">${jobTrimmed}</span>`
+      : `إلى فريق التوظيف المختص`;
 
   const paragraphs = savedBody
     .split(/\n{2,}/)
@@ -540,8 +543,9 @@ function buildCoverLetterTemplate(
 }
 
 // ─── نص رسالة التغطية (plain text للحفظ في DB وتعديله من البوابة) ──────────────
+// النص المحفوظ لا يحتوي على اسم الوظيفة أو الشركة — هما يُضافان فقط في الـ wrapper عند الإرسال
 function buildPlainTextBody(
-  jobTitle: string,
+  _jobTitle: string,
   name: string,
   profile: CvProfile | null,
   certs?: Array<{ type: string; name: string; issuer?: string }>,
@@ -559,7 +563,7 @@ function buildPlainTextBody(
     ? "\n- الشهادات: " + certs.map(c => c.name + (c.issuer ? ` (${c.issuer})` : "")).join("، ")
     : "";
 
-  return `أنا ${name}، متخصص في ${spec}، وأرغب بالانضمام إلى فريقكم في وظيفة ${jobTitle}.
+  return `أنا ${name}، متخصص في ${spec}، وأتقدم بهذه الرسالة راغباً في الانضمام إلى فريقكم.
 
 أبرز مؤهلاتي:
 - ${degreeItem}

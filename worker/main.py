@@ -417,6 +417,16 @@ async def _get_or_parse_cv(
     return parsed_text
 
 
+def _build_plain_text_body(name: str, field_names: list[str]) -> str:
+    """قالب ثابت للحفظ في DB — بدون اسم وظيفة أو شركة (يُضافان في الـ wrapper)."""
+    spec = field_names[0] if field_names else "مجال التخصص"
+    return (
+        f"أنا {name}، متخصص في {spec}، وأتقدم بهذه الرسالة راغباً في الانضمام إلى فريقكم.\n\n"
+        f"أرفقت لكم سيرتي الذاتية الكاملة التي تتضمن تفاصيل مؤهلاتي وخبراتي، "
+        f"وأتطلع إلى فرصة للتواصل معكم."
+    )
+
+
 async def _generate_cover_letter(
     job_title: str, name: str, company: str, desc: str, lang: str,
     cv_parsed_text: str | None = None,
@@ -1163,15 +1173,16 @@ async def _run_cycle_smtp() -> None:
                 else:
                     cover = await _generate_cover_letter(job_title, name, company, desc, lang, cv_parsed_text, template)
                     cover = _strip_emojis(cover)
-                    # حفظ للمرات القادمة — المستخدم يقدر يعدّل من البوابة
+                    # حفظ قالب generic للمرات القادمة (بدون اسم وظيفة/شركة — يُضافان في wrapper)
+                    generic_body = _build_plain_text_body(name, field_names)
                     try:
                         async with httpx.AsyncClient(timeout=10) as _sc:
                             await _sc.patch(
                                 f"{SUPABASE_URL}/rest/v1/user_settings?user_id=eq.{uid}",
-                                json={"cover_letter_body": cover},
+                                json={"cover_letter_body": generic_body},
                                 headers=_SB_HEADERS,
                             )
-                        settings["cover_letter_body"] = cover  # تحديث في الذاكرة
+                        settings["cover_letter_body"] = generic_body  # تحديث في الذاكرة
                         logger.info("   💾 تم حفظ cover letter في DB")
                     except Exception as _e:
                         logger.warning("   ⚠️ فشل حفظ cover letter: %s", _e)
