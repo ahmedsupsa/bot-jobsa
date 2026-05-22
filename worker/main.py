@@ -1242,13 +1242,20 @@ async def _run_cycle_smtp() -> None:
 
 
 async def _record_run(client: httpx.AsyncClient) -> None:
-    """يسجّل وقت آخر تشغيل في جدول worker_status."""
+    """يسجّل وقت آخر تشغيل في جدول worker_status — يستخدم service role لتجاوز RLS."""
     now_iso = datetime.now(timezone.utc).isoformat()
     next_iso = (datetime.now(timezone.utc) + timedelta(seconds=CYCLE_INTERVAL)).isoformat()
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "") or SUPABASE_KEY
+    headers = {
+        "apikey": service_key,
+        "Authorization": f"Bearer {service_key}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=minimal",
+    }
     try:
         await client.post(
             f"{SUPABASE_URL}/rest/v1/worker_status",
-            headers={**_SB_HEADERS, "Prefer": "resolution=merge-duplicates"},
+            headers=headers,
             json={"id": "main", "last_ran_at": now_iso, "next_run_at": next_iso},
         )
     except Exception as e:

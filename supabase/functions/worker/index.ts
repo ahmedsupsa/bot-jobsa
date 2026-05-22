@@ -873,14 +873,14 @@ async function runCycle() {
 
   const today = new Date().toISOString().split("T")[0];
 
-  // جمع عدد تقديمات اليوم لكل مستخدم ثم ترتيبهم تصاعدياً (الأقل تقديماً أولاً) لضمان العدالة
-  const usersWithCount: Array<{ user: Record<string, unknown>; countToday: number }> = [];
-  for (const u of usersRaw) {
-    if (!isActiveSubscription(u)) continue;
-    const uid = String(u.id);
-    const countToday = await sbCount("applications", { user_id: `eq.${uid}`, applied_at: `gte.${today}` });
-    usersWithCount.push({ user: u, countToday });
-  }
+  // جمع عدد تقديمات اليوم لكل مستخدم بالتوازي (Promise.all) لتجنّب timeout
+  const activeUsersRaw = usersRaw.filter(u => isActiveSubscription(u));
+  const todayCounts = await Promise.all(
+    activeUsersRaw.map(u => sbCount("applications", { user_id: `eq.${String(u.id)}`, applied_at: `gte.${today}` }))
+  );
+  const usersWithCount: Array<{ user: Record<string, unknown>; countToday: number }> = activeUsersRaw.map(
+    (user, i) => ({ user, countToday: todayCounts[i] })
+  );
   // ترتيب: الأقل تقديماً اليوم أولاً، ثم عشوائي داخل نفس العدد
   usersWithCount.sort((a, b) => a.countToday - b.countToday || (Math.random() - 0.5));
 
