@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Search, Save, User, FileText, Upload, Check, Loader2,
   ChevronDown, ChevronUp, Tags, Calendar, Trash2, KeyRound,
-  Copy, Mail, WifiOff, Eye, X, Phone, MapPin, Clock, Send,
+  Copy, Mail, WifiOff, Eye, X, Phone, MapPin, Clock, Send, Download,
 } from "lucide-react";
 
 type UserRow = {
@@ -44,6 +44,24 @@ export default function UsersPage() {
   const [msg, setMsg] = useState("");
   const [msgType, setMsgType] = useState<"ok" | "err">("ok");
   const [selected, setSelected] = useState<UserRow | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/admin/users/export", { credentials: "include" });
+      if (!res.ok) { setMsg("فشل تصدير الملف"); setMsgType("err"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `jobbots-users-${new Date().toISOString().split("T")[0]}.xlsx`;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch { setMsg("خطأ في الاتصال"); setMsgType("err"); }
+    finally { setExporting(false); }
+  };
 
   const load = async () => {
     const res = await apiGet<{ ok: boolean; users: UserRow[] }>("/api/admin/users");
@@ -111,14 +129,26 @@ export default function UsersPage() {
           <h1 className="text-xl font-bold text-ink">المستخدمون</h1>
           <p className="text-sm text-muted mt-0.5">{rows.length} مشترك مسجّل</p>
         </div>
-        <div className="relative w-full sm:w-72">
-          <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted2" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="بحث بالاسم أو الجوال أو المدينة..."
-            className="w-full rounded-xl border border-line/70 bg-panel pr-9 pl-3 py-2.5 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none"
-          />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-72">
+            <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted2" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="بحث بالاسم أو الجوال أو المدينة..."
+              className="w-full rounded-xl border border-line/70 bg-panel pr-9 pl-3 py-2.5 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none"
+            />
+          </div>
+          <button
+            onClick={handleExport}
+            disabled={exporting || rows.length === 0}
+            className="flex items-center gap-1.5 rounded-xl border border-green-500/40 bg-green-500/10 px-3 py-2.5 text-sm text-green-400 font-medium hover:bg-green-500/20 transition-colors disabled:opacity-40 whitespace-nowrap"
+          >
+            {exporting
+              ? <Loader2 size={14} className="animate-spin" />
+              : <Download size={14} />}
+            {exporting ? "جاري التصدير…" : "Excel"}
+          </button>
         </div>
       </div>
 
