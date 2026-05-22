@@ -1155,8 +1155,26 @@ async def _run_cycle_smtp() -> None:
                 if wait > 0:
                     await asyncio.sleep(wait)
 
-                cover = await _generate_cover_letter(job_title, name, company, desc, lang, cv_parsed_text, template)
-                cover = _strip_emojis(cover)
+                # ── Cover Letter: يولَّد مرة واحدة فقط، ثم يُقرأ من DB ──────────
+                saved_body = (settings.get("cover_letter_body") or "").strip()
+                if saved_body:
+                    cover = _strip_emojis(saved_body)
+                    logger.info("   📄 cover letter من DB (لا استدعاء Gemini)")
+                else:
+                    cover = await _generate_cover_letter(job_title, name, company, desc, lang, cv_parsed_text, template)
+                    cover = _strip_emojis(cover)
+                    # حفظ للمرات القادمة — المستخدم يقدر يعدّل من البوابة
+                    try:
+                        async with httpx.AsyncClient(timeout=10) as _sc:
+                            await _sc.patch(
+                                f"{SUPABASE_URL}/rest/v1/user_settings?user_id=eq.{uid}",
+                                json={"cover_letter_body": cover},
+                                headers=_SB_HEADERS,
+                            )
+                        settings["cover_letter_body"] = cover  # تحديث في الذاكرة
+                        logger.info("   💾 تم حفظ cover letter في DB")
+                    except Exception as _e:
+                        logger.warning("   ⚠️ فشل حفظ cover letter: %s", _e)
                 html = _build_email_html(name, phone, job_title, company, cover, lang, template)
                 subject = f"التقديم على وظيفة: {_strip_emojis(job_title)}" if lang == "ar" else f"Application for: {_strip_emojis(job_title)}"
 

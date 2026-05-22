@@ -539,6 +539,36 @@ function buildCoverLetterTemplate(
 </body></html>`;
 }
 
+// ─── نص رسالة التغطية (plain text للحفظ في DB وتعديله من البوابة) ──────────────
+function buildPlainTextBody(
+  jobTitle: string,
+  name: string,
+  profile: CvProfile | null,
+  certs?: Array<{ type: string; name: string; issuer?: string }>,
+): string {
+  const spec   = profile?.specialization || profile?.degree || "مجال التخصص";
+  const exp    = profile?.experience_years ?? -1;
+  const skills = (profile?.skills ?? []).slice(0, 5).join("، ") || "مهارات متنوعة في المجال";
+  const degreeItem = profile?.degree
+    ? profile.degree + (profile.specialization ? " في " + profile.specialization : "")
+    : "مؤهل علمي مناسب";
+  const expItem = exp > 0
+    ? `خبرة ${exp} ${exp === 1 ? "سنة" : "سنوات"} في المجال`
+    : "حديث التخرج، لديّ رغبة قوية في التطور والتعلم";
+  const certLine = certs && certs.length > 0
+    ? "\n- الشهادات: " + certs.map(c => c.name + (c.issuer ? ` (${c.issuer})` : "")).join("، ")
+    : "";
+
+  return `أنا ${name}، متخصص في ${spec}، وأرغب بالانضمام إلى فريقكم في وظيفة ${jobTitle}.
+
+أبرز مؤهلاتي:
+- ${degreeItem}
+- ${expItem}
+- المهارات: ${skills}${certLine}
+
+أرفقت لكم سيرتي الذاتية، وأتطلع لفرصة للتواصل معكم.`;
+}
+
 // ─── توليد رسالة التقديم (قالب ثابت — بدون استدعاء AI) ───────────────────────
 
 function toBase64(bytes: Uint8Array): string {
@@ -1074,9 +1104,15 @@ async function runCycle() {
         const savedBody = String(settings.cover_letter_body ?? "").trim();
         let cover: string;
         if (savedBody) {
+          // المستخدم عنده رسالة محفوظة (أو عدّل عليها) — استخدمها مباشرة بدون AI
           cover = buildCoverLetterFromSavedBody(name, displayJobTitle, company, phone, smtpEmail, "ar", savedBody);
         } else {
+          // أول مرة: ولّد من القالب واحفظ النص في DB
           cover = generateCoverLetter(displayJobTitle, name, company, desc, "ar", cvParsedText, cvProfile, fit.score, phone, smtpEmail, certifications);
+          const plainBody = buildPlainTextBody(displayJobTitle, name, cvProfile, certifications);
+          await sbPatch("user_settings", { user_id: `eq.${uid}` }, { cover_letter_body: plainBody });
+          settings.cover_letter_body = plainBody; // تحديث في الذاكرة لنفس الدورة
+          console.log(`[worker] 💾 حُفظ cover letter لـ ${name}`);
         }
         cover = stripEmojis(cover);
         const html    = buildEmailHtml(name, phone, displayJobTitle, company, cover, "ar");
