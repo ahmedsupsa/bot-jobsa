@@ -1036,10 +1036,16 @@ async def _run_cycle_smtp() -> None:
 
             prefs_rows = await sb_get(client, "user_job_preferences", {"user_id": f"eq.{uid}"})
             pref_ids = {str(p["job_field_id"]) for p in prefs_rows if p.get("job_field_id")}
-            field_names = [
+            field_names_base = [
                 f.get("name_ar") or f.get("name_en") or ""
                 for f in fields_raw if str(f["id"]) in pref_ids
             ]
+            # دمج taxonomy_keywords من user_settings (تم توسيعها عند الحفظ)
+            taxonomy_kws = settings.get("taxonomy_keywords") or []
+            if isinstance(taxonomy_kws, list):
+                field_names = list(dict.fromkeys(field_names_base + [str(k) for k in taxonomy_kws if k]))
+            else:
+                field_names = field_names_base
 
             cert_rows = await sb_get(client, "user_certifications", {"user_id": f"eq.{uid}"})
             certifications = [

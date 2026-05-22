@@ -909,9 +909,15 @@ async function runCycle() {
     const { parsedText: cvParsedText, profile: cvProfile } = await getOrParseCv(cv);
 
     const prefIds    = new Set(prefsRows.map((p) => String(p.job_field_id)).filter(Boolean));
-    const fieldNames = fieldsRaw
+    const fieldNamesBase = fieldsRaw
       .filter((f) => prefIds.has(String(f.id)))
       .map((f) => String(f.name_ar ?? f.name_en ?? ""));
+
+    // دمج taxonomy_keywords من user_settings (تم توسيعها عند الحفظ)
+    const taxonomyKws = Array.isArray(settings.taxonomy_keywords)
+      ? (settings.taxonomy_keywords as string[]).map(String).filter(Boolean)
+      : [];
+    const fieldNames = [...new Set([...fieldNamesBase, ...taxonomyKws])];
 
     const certifications = certRows.map((c) => ({
       type:   String(c.type   ?? ""),
@@ -923,7 +929,7 @@ async function runCycle() {
     const phone     = String(user.phone ?? "");
     // حد اليوم (10) مع حد الدورة الواحدة (MAX_PER_CYCLE) لضمان العدالة بين المستخدمين
     const remaining = Math.min(MAX_PER_CYCLE, 10 - countToday);
-    // إذا ما في تفضيلات ولا cv_profile → لا يمكن تحديد التخصص → تخطّى
+    // إذا ما في تفضيلات ولا cv_profile ولا taxonomy → لا يمكن تحديد التخصص → تخطّى
     const hasPrefs   = fieldNames.length > 0;
     const hasProfile = !!(cvProfile?.specialization || cvProfile?.degree || cvProfile?.major);
     if (!hasPrefs && !hasProfile) {

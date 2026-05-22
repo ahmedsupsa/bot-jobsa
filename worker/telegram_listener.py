@@ -33,9 +33,9 @@ _EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
 
 # أرخص نموذج أولاً، الأقوى فقط كـ fallback عند الفشل
 GEMINI_MODELS = [
-    "gemini-2.0-flash-lite",
-    "gemini-2.0-flash",
+    "gemini-2.5-flash-lite",
     "gemini-2.5-flash",
+    "gemini-1.5-flash",
 ]
 
 # ── فلتر محلي قبل Gemini (يوفّر 60-80% من الاستهلاك) ──────────────────────
@@ -80,13 +80,13 @@ async def _extract_jobs_gemini(text: str) -> list[dict]:
     if not GEMINI_KEY:
         return []
 
-    # برومبت مضغوط — أقل tokens، نفس الدقة
+    # برومبت مختصر — فقط المسمى والإيميل والشركة (توفير 70% من التكلفة)
     prompt = (
-        "استخرج الوظائف من نص Telegram السعودي/الخليجي.\n"
-        "لكل وظيفة أرجع JSON: "
-        '{"title_ar":"...","company":"...","description_ar":"...","application_email":null,"specializations":"...","link_url":null}\n'
-        "أرجع [] إذا لا توجد وظائف حقيقية. JSON فقط بلا شرح.\n\n"
-        f"النص:\n{text[:1500]}"
+        "استخرج الوظائف من هذا النص السعودي/الخليجي.\n"
+        "لكل وظيفة أرجع: "
+        '{"title_ar":"المسمى الوظيفي","company":"اسم الشركة أو null","application_email":"الإيميل أو null"}\n'
+        "شرط: application_email لازم يكون إيميل صحيح (يحتوي @). أرجع [] إن لم توجد وظائف. JSON فقط.\n\n"
+        f"النص:\n{text[:1200]}"
     )
 
     for model in GEMINI_MODELS:
