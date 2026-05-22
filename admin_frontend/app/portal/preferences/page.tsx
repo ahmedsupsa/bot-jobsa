@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 interface JobField { id: string; name_ar: string; category?: string; }
-interface TaxonomyEntry { m: string; c: string; j: string[]; }
+interface TaxonomyEntry { m: string; m_en: string; c: string; c_en: string; j: string[]; j_en: string[]; }
 type Taxonomy = Record<string, TaxonomyEntry>;
 
 export default function PreferencesPage() {
@@ -90,16 +90,18 @@ export default function PreferencesPage() {
     return cats;
   }, [taxonomy]);
 
-  // Filtered taxonomy search
+  // Filtered taxonomy search (Arabic + English)
   const taxSearchResults = useMemo(() => {
     if (!taxSearch.trim()) return [];
     const q = taxSearch.trim().toLowerCase();
-    const results: { id: number; major: string; cat: string; matchedJobs: string[] }[] = [];
+    const results: { id: number; major: string; major_en: string; cat: string; matchedJobs: string[] }[] = [];
     for (const [id, entry] of Object.entries(taxonomy)) {
-      const majorMatch = entry.m.toLowerCase().includes(q);
-      const matchedJobs = entry.j.filter(j => j.toLowerCase().includes(q));
+      const majorMatch = entry.m.toLowerCase().includes(q) || (entry.m_en || "").toLowerCase().includes(q);
+      const matchedJobsAr = entry.j.filter(j => j.toLowerCase().includes(q));
+      const matchedJobsEn = (entry.j_en || []).filter(j => j.toLowerCase().includes(q));
+      const matchedJobs = [...matchedJobsAr, ...matchedJobsEn.filter(j => !matchedJobsAr.some(a => a.toLowerCase() === j.toLowerCase()))];
       if (majorMatch || matchedJobs.length > 0) {
-        results.push({ id: Number(id), major: entry.m, cat: entry.c, matchedJobs: majorMatch ? [] : matchedJobs.slice(0, 4) });
+        results.push({ id: Number(id), major: entry.m, major_en: entry.m_en || "", cat: entry.c, matchedJobs: majorMatch ? [] : matchedJobs.slice(0, 4) });
       }
     }
     return results.slice(0, 20);
@@ -295,8 +297,11 @@ export default function PreferencesPage() {
                       cursor:"pointer", textAlign:"right", fontFamily:"inherit",
                     }}>
                       <div>
-                        <span style={{ fontSize:14, fontWeight:600, color: sel ? t.purple : t.text }}>{r.major}</span>
-                        <span style={{ fontSize:11, color:t.text3, marginRight:6 }}>{r.cat}</span>
+                        <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
+                          <span style={{ fontSize:14, fontWeight:600, color: sel ? t.purple : t.text }}>{r.major}</span>
+                          {r.major_en && <span style={{ fontSize:11, color:t.text3 }}>{r.major_en}</span>}
+                        </div>
+                        <span style={{ fontSize:11, color:t.text3 }}>{r.cat}</span>
                         {r.matchedJobs.length > 0 && (
                           <div style={{ fontSize:11, color:t.text3, marginTop:3 }}>
                             تتضمن: {r.matchedJobs.join("، ")}
@@ -357,10 +362,15 @@ export default function PreferencesPage() {
                                 cursor:"pointer", textAlign:"right", fontFamily:"inherit",
                               }}>
                                 <div>
-                                  <span style={{ fontSize:13, fontWeight: sel ? 700 : 400, color: sel ? t.purple : t.text }}>
-                                    {m.name}
-                                  </span>
-                                  <span style={{ fontSize:11, color:t.text3, marginRight:6 }}>
+                                  <div style={{ display:"flex", alignItems:"baseline", gap:5 }}>
+                                    <span style={{ fontSize:13, fontWeight: sel ? 700 : 400, color: sel ? t.purple : t.text }}>
+                                      {m.name}
+                                    </span>
+                                    {taxonomy[String(m.id)]?.m_en && (
+                                      <span style={{ fontSize:11, color:t.text3 }}>{taxonomy[String(m.id)].m_en}</span>
+                                    )}
+                                  </div>
+                                  <span style={{ fontSize:11, color:t.text3 }}>
                                     {jobs.length} وظيفة
                                   </span>
                                 </div>

@@ -10,7 +10,7 @@ function freshClient() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-let _taxonomy: Record<string, { m: string; c: string; j: string[] }> | null = null;
+let _taxonomy: Record<string, { m: string; m_en: string; c: string; c_en: string; j: string[]; j_en: string[] }> | null = null;
 function getTaxonomy() {
   if (!_taxonomy) {
     const p = join(process.cwd(), "public", "jobs_taxonomy_compact.json");
@@ -31,13 +31,15 @@ export async function POST(req: Request) {
 
   const taxonomy = getTaxonomy();
 
-  // توسيع المسميات الوظيفية من التخصصات المختارة
+  // توسيع المسميات الوظيفية من التخصصات المختارة (عربي + إنجليزي)
   const keywords = new Set<string>();
   for (const id of majorIds) {
     const entry = taxonomy[String(id)];
     if (!entry) continue;
     keywords.add(entry.m);
+    if (entry.m_en) keywords.add(entry.m_en);
     for (const j of entry.j) keywords.add(j);
+    for (const j of (entry.j_en || [])) keywords.add(j);
   }
 
   const supabase = freshClient();
