@@ -929,6 +929,86 @@ async def _call_edge_function() -> dict:
 
 # ─── الدورة الرئيسية ───
 
+_TEST_ADMIN_EMAIL = "ahmedsupsa@gmail.com"
+_TEST_JOB_TITLE   = "وظيفة تجربة البوت"
+_TEST_JOB_COMPANY = "شركة التجربة"
+
+
+async def _send_test_cycle_emails() -> None:
+    """في نهاية كل دورة: يُرسل إيميل تجريبي لكل مستخدم نشط متصل بـ SMTP إلى ahmedsupsa@gmail.com."""
+    if not SMTP_ENCRYPTION_KEY:
+        logger.warning("🧪 [TEST] SMTP_ENCRYPTION_KEY غير معرّف — تخطي")
+        return
+
+    logger.info("🧪 [TEST] بدء إرسال التجربة إلى %s …", _TEST_ADMIN_EMAIL)
+    sent_count = 0
+    skip_count = 0
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        users = await sb_get(client, "users")
+
+        for user in users:
+            if not _is_subscription_active(user):
+                skip_count += 1
+                continue
+
+            uid      = str(user["id"])
+            name     = (user.get("full_name") or "مستخدم").strip()
+            phone    = (user.get("phone") or "").strip()
+
+            settings_rows = await sb_get(client, "user_settings", {"user_id": f"eq.{uid}"})
+            settings = settings_rows[0] if settings_rows else {}
+
+            smtp_email   = (settings.get("smtp_email") or "").strip()
+            smtp_host    = settings.get("smtp_host") or "smtp.gmail.com"
+            smtp_port    = int(settings.get("smtp_port") or 465)
+            smtp_secure  = settings.get("smtp_secure") if settings.get("smtp_secure") is not None else True
+            encrypted_pw = (settings.get("smtp_app_password_encrypted") or "").strip()
+            has_smtp     = bool(settings.get("email_connected") and smtp_email and encrypted_pw)
+            saved_body   = (settings.get("cover_letter_body") or "").strip()
+
+            if not has_smtp or not saved_body:
+                skip_count += 1
+                continue
+
+            try:
+                app_password = _decrypt_aes(encrypted_pw, SMTP_ENCRYPTION_KEY)
+            except Exception as e:
+                logger.warning("🧪 [TEST] %s — فشل فك التشفير: %s", name, e)
+                skip_count += 1
+                continue
+
+            job_intro = f"أتقدم بهذه الرسالة للتقديم على وظيفة {_TEST_JOB_TITLE} في {_TEST_JOB_COMPANY}.\n\n"
+            cover    = _strip_emojis(job_intro + saved_body)
+            lang     = settings.get("preferred_language") or "ar"
+            template = settings.get("email_template") or "classic"
+            html     = _build_email_html(name, phone, _TEST_JOB_TITLE, _TEST_JOB_COMPANY, cover, lang, template)
+            subject  = f"🧪 تجربة رسالة التغطية — {name}"
+
+            try:
+                await _send_smtp(
+                    smtp_host=smtp_host,
+                    smtp_port=smtp_port,
+                    smtp_secure=smtp_secure,
+                    smtp_email=smtp_email,
+                    app_password=app_password,
+                    to_email=_TEST_ADMIN_EMAIL,
+                    subject=subject,
+                    html=html,
+                    reply_to=smtp_email,
+                    cv_bytes=None,
+                    cv_name=None,
+                    from_name=name,
+                )
+                logger.info("🧪 [TEST] ✅ %s → أُرسلت", name)
+                sent_count += 1
+            except Exception as e:
+                logger.warning("🧪 [TEST] ❌ %s → فشل: %s", name, e)
+                skip_count += 1
+
+    logger.info("🧪 [TEST] اكتملت: %d أُرسل | %d تخطى", sent_count, skip_count)
+
+
 async def run_cycle() -> None:
     logger.info("🚀 استدعاء Supabase Edge Function: %s", EDGE_FUNCTION_URL)
     try:
@@ -946,6 +1026,9 @@ async def run_cycle() -> None:
                      e.response.status_code, e.response.text[:300])
     except Exception as e:
         logger.error("❌ فشل استدعاء Edge Function: %s", e)
+
+    # إرسال إيميلات تجريبية للمشرف
+    await _send_test_cycle_emails()
 
     # تسجيل وقت التشغيل
     async with httpx.AsyncClient(timeout=15) as client:
