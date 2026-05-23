@@ -230,6 +230,65 @@ async function getOrParseCv(cv: Record<string, unknown>): Promise<{
   return { parsedText, profile };
 }
 
+// ─── AI Letter Generator — نفس منطق صفحة المعاينة في البورتال ────────────────
+// يُولّد رسالة احترافية مرة واحدة ويحفظها في cover_letter_body
+
+async function generateLetterBodyAI(
+  name:     string,
+  jobTitle: string,
+  profile:  CvProfile | null,
+  cvText:   string | null,
+): Promise<string | null> {
+  if (!GEMINI_KEY) return null;
+
+  const spec     = profile?.specialization || profile?.degree || "";
+  const degree   = profile?.degree || "";
+  const expYears = profile?.experience_years ?? -1;
+  const skills   = (profile?.skills ?? []).slice(0, 8).join("، ");
+  const prevJobs = (profile?.prev_jobs ?? []).slice(0, 3).join("، ");
+  const expStr   = expYears > 0 ? `${expYears} ${expYears === 1 ? "سنة" : "سنوات"}` : "حديث التخرج";
+
+  const prompt =
+    `أنت خبير في كتابة رسائل التقديم الوظيفي في السوق السعودي.\n` +
+    `اكتب رسالة تقديم احترافية باللغة العربية لهذا المتقدم:\n\n` +
+    `الاسم: ${name}\n` +
+    `المسمى الوظيفي المستهدف: ${jobTitle}\n` +
+    `التخصص: ${spec || "غير محدد"}\n` +
+    `المؤهل العلمي: ${degree || "غير محدد"}\n` +
+    `الخبرة: ${expStr}\n` +
+    `المهارات: ${skills || "—"}\n` +
+    `الوظائف السابقة: ${prevJobs || "—"}\n` +
+    (cvText ? `\nنبذة من السيرة:\n${cvText.slice(0, 1000)}\n` : "") +
+    `\nالقواعد الصارمة:\n` +
+    `- 3 فقرات فقط: افتتاحية، جسم يبرز المهارات والخبرات، خاتمة.\n` +
+    `- أسلوب رسمي ومهني يناسب الشركات السعودية.\n` +
+    `- لا تذكر اسم شركة محددة — استخدم "شركتكم" أو "مؤسستكم".\n` +
+    `- لا تضف تحية افتتاحية (مثل: السلام عليكم) ولا توقيعاً — ستُضافان تلقائياً.\n` +
+    `- لا تتجاوز 220 كلمة.\n` +
+    `- أعد نص الرسالة فقط، بدون أي تنسيق إضافي.`;
+
+  for (const model of ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"]) {
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 600 },
+          }),
+        },
+      );
+      if (!r.ok) continue;
+      const data = await r.json();
+      const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
+      if (text.length > 80) return text;
+    } catch { continue; }
+  }
+  return null;
+}
+
 // ─── Telegram ─────────────────────────────────────────────────────────────────
 
 async function tgSend(text: string) {
@@ -409,7 +468,7 @@ async function runCycle() {
     const smtpSecure  = settings.smtp_secure !== false;
     const encryptedPw = String(settings.smtp_app_password_encrypted ?? "").trim();
     const hasSmtp     = !!(settings.email_connected && smtpEmail && encryptedPw);
-    const savedBody   = String(settings.cover_letter_body ?? "").trim();
+    let savedBody     = String(settings.cover_letter_body ?? "").trim();
     const userCity    = String(user.city ?? "").trim();
     const userGender  = String(user.gender ?? "male");
     const lang        = String(settings.preferred_language ?? "ar");
@@ -438,8 +497,23 @@ async function runCycle() {
     }
 
     // ── جلب وتحليل السيرة الذاتية (مرة واحدة فقط، ثم تُخزَّن) ───────────────
-    const { profile: cvProfile } = await getOrParseCv(cv);
+    const { parsedText: cvText, profile: cvProfile } = await getOrParseCv(cv);
     const cvName = String(cv.file_name ?? "cv.pdf");
+
+    // ── توليد رسالة تغطية تلقائياً إذا لم يكن عند المستخدم واحدة ─────────────
+    // (نفس منطق صفحة معاينة الرسالة في البورتال — Gemini مرة واحدة فقط، ثم تُحفظ)
+    if (!savedBody) {
+      console.log(`[worker] 📝 ${name}: لا توجد رسالة محفوظة → جارٍ توليدها بـ Gemini…`);
+      const firstPrefJobTitle = cvProfile?.specialization || cvProfile?.degree || "وظيفة مناسبة";
+      const aiBody = await generateLetterBodyAI(name, firstPrefJobTitle, cvProfile, cvText);
+      if (aiBody) {
+        savedBody = aiBody;
+        await sbPatch("user_settings", { user_id: `eq.${uid}` }, { cover_letter_body: aiBody });
+        console.log(`[worker] ✅ ${name}: تم توليد وحفظ رسالة التغطية (${aiBody.length} حرف)`);
+      } else {
+        console.log(`[worker] ⚠️ ${name}: فشل توليد الرسالة بـ Gemini → سيُستخدم القالب الافتراضي`);
+      }
+    }
 
     // ── بناء ملف التاكسونومي للمستخدم ─────────────────────────────────────────
     const majorIds: string[] = Array.isArray(settings.taxonomy_major_ids)
