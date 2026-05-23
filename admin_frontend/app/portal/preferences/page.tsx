@@ -12,6 +12,9 @@ import {
 interface JobField { id: string; name_ar: string; category?: string; }
 interface TaxonomyEntry { m: string; m_en: string; c: string; c_en: string; j: string[]; j_en: string[]; }
 type Taxonomy = Record<string, TaxonomyEntry>;
+interface UniMajor { a: string; e: string; d: string; }
+interface UniEntry { id: string; name_ar: string; name_en: string; city_ar: string; majors: UniMajor[]; }
+interface UniData { universities: UniEntry[]; mapping: Record<string, number>; }
 
 export default function PreferencesPage() {
   const router = useRouter();
@@ -54,12 +57,21 @@ export default function PreferencesPage() {
   const [allowCooperative, setAllowCooperative] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // University picker state
+  const [uniData, setUniData] = useState<UniData | null>(null);
+  const [uniOpen, setUniOpen] = useState(false);
+  const [uniSearch, setUniSearch] = useState("");
+  const [selectedUniId, setSelectedUniId] = useState<string | null>(null);
+  const [uniMajorSearch, setUniMajorSearch] = useState("");
+  const [uniPickMsg, setUniPickMsg] = useState<string | null>(null);
+
   async function load() {
     try {
-      const [prefsRes, taxRes, taxDataRes] = await Promise.all([
+      const [prefsRes, taxRes, taxDataRes, uniRes] = await Promise.all([
         portalFetch("/preferences"),
         portalFetch("/preferences/taxonomy"),
         fetch("/jobs_taxonomy_compact.json"),
+        fetch("/saudi_unis_compact.json"),
       ]);
       if (prefsRes.status === 401) { clearToken(); router.replace("/portal/login"); return; }
 
@@ -74,6 +86,11 @@ export default function PreferencesPage() {
 
       const fullTax: Taxonomy = await taxDataRes.json();
       setTaxonomy(fullTax);
+
+      if (uniRes.ok) {
+        const ud: UniData = await uniRes.json();
+        setUniData(ud);
+      }
     } catch { clearToken(); router.replace("/portal/login"); }
     finally { setLoading(false); }
   }
@@ -106,6 +123,47 @@ export default function PreferencesPage() {
     }
     return results.slice(0, 20);
   }, [taxSearch, taxonomy]);
+
+  // University picker computed
+  const filteredUnis = useMemo(() => {
+    if (!uniData) return [];
+    const q = uniSearch.trim();
+    if (!q) return uniData.universities;
+    const ql = q.toLowerCase();
+    return uniData.universities.filter(u =>
+      u.name_ar.includes(q) || u.name_en.toLowerCase().includes(ql) || u.city_ar.includes(q)
+    ).slice(0, 20);
+  }, [uniData, uniSearch]);
+
+  const selectedUni = useMemo(
+    () => uniData?.universities.find(u => u.id === selectedUniId) ?? null,
+    [uniData, selectedUniId]
+  );
+
+  const filteredUniMajors = useMemo(() => {
+    if (!selectedUni) return [];
+    const q = uniMajorSearch.trim();
+    if (!q) return selectedUni.majors;
+    const ql = q.toLowerCase();
+    return selectedUni.majors.filter(m =>
+      m.a.includes(q) || m.e.toLowerCase().includes(ql)
+    );
+  }, [selectedUni, uniMajorSearch]);
+
+  function handleMajorPick(majorNameAr: string) {
+    if (!uniData) return;
+    const taxId = uniData.mapping[majorNameAr];
+    if (taxId !== undefined) {
+      setSelectedMajorIds(prev => { const n = new Set(prev); n.add(taxId); return n; });
+      const taxName = taxonomy[String(taxId)]?.m || "";
+      setUniPickMsg(`✅ تم إضافة "${taxName}" إلى تخصصاتك المختارة`);
+      setTaxMsg(null);
+    } else {
+      setTaxSearch(majorNameAr);
+      setUniOpen(false);
+    }
+    setTimeout(() => setUniPickMsg(null), 4000);
+  }
 
   function toggleMajor(id: number) {
     setSelectedMajorIds(prev => {
@@ -266,6 +324,146 @@ export default function PreferencesPage() {
               </div>
             )}
 
+            {/* ── منتقي الجامعة ── */}
+            {uniData && (
+              <div style={{ background:t.surface, border:`1px solid ${t.border}`, borderRadius:14, marginBottom:12, overflow:"hidden" }}>
+                {/* رأس القسم */}
+                <button onClick={() => { setUniOpen(o => !o); setUniPickMsg(null); }} style={{
+                  display:"flex", alignItems:"center", justifyContent:"space-between",
+                  width:"100%", padding:"13px 16px", background:"transparent",
+                  border:"none", cursor:"pointer", fontFamily:"inherit",
+                }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <GraduationCap size={16} color={dark ? "#a78bfa" : "#7c3aed"}/>
+                    <span style={{ fontSize:13, fontWeight:700, color:t.text }}>اختر بجامعتك</span>
+                    <span style={{ fontSize:11, color:t.text3 }}>57 جامعة سعودية</span>
+                  </div>
+                  {uniOpen ? <ChevronUp size={15} color={t.text3}/> : <ChevronDown size={15} color={t.text3}/>}
+                </button>
+
+                {uniOpen && (
+                  <div style={{ borderTop:`1px solid ${t.border}`, padding:"14px 16px" }}>
+
+                    {/* رسالة نجاح */}
+                    {uniPickMsg && (
+                      <div style={{
+                        fontSize:13, color: dark?"#86efac":"#166534",
+                        background: dark?"#0a1f0a":"#f0fdf4",
+                        border:`1px solid ${dark?"#166534":"#bbf7d0"}`,
+                        borderRadius:10, padding:"10px 14px", marginBottom:12,
+                      }}>
+                        {uniPickMsg}
+                      </div>
+                    )}
+
+                    {!selectedUni ? (
+                      <>
+                        <p style={{ fontSize:12, color:t.text3, margin:"0 0 10px" }}>ابحث عن جامعتك ثم اختر تخصصك</p>
+                        {/* بحث الجامعة */}
+                        <div style={{
+                          display:"flex", alignItems:"center", gap:8,
+                          padding:"10px 12px", borderRadius:10,
+                          background:t.input, border:`1px solid ${t.border}`, marginBottom:10,
+                        }}>
+                          <Search size={14} color={t.text3}/>
+                          <input
+                            value={uniSearch}
+                            onChange={e => setUniSearch(e.target.value)}
+                            placeholder="اسم الجامعة أو المدينة…"
+                            style={{ flex:1, border:"none", background:"transparent", color:t.text, fontSize:13, outline:"none", fontFamily:"inherit" }}
+                            autoFocus
+                          />
+                          {uniSearch && <button onClick={()=>setUniSearch("")} style={{background:"none",border:"none",cursor:"pointer",color:t.text3,padding:0,display:"flex"}}><X size={13}/></button>}
+                        </div>
+                        {/* قائمة الجامعات */}
+                        <div style={{ maxHeight:220, overflowY:"auto", borderRadius:10, border:`1px solid ${t.border}` }}>
+                          {filteredUnis.length === 0 ? (
+                            <p style={{ color:t.text3, fontSize:12, textAlign:"center", padding:16 }}>لا توجد نتائج</p>
+                          ) : filteredUnis.map((u, i) => (
+                            <button key={u.id} onClick={() => { setSelectedUniId(u.id); setUniSearch(""); setUniMajorSearch(""); }} style={{
+                              display:"flex", alignItems:"center", justifyContent:"space-between",
+                              width:"100%", padding:"11px 14px", background:"transparent",
+                              border:"none", borderBottom: i < filteredUnis.length-1 ? `1px solid ${t.border}` : "none",
+                              cursor:"pointer", textAlign:"right", fontFamily:"inherit",
+                            }}>
+                              <span style={{ fontSize:13, color:t.text }}>{u.name_ar}</span>
+                              <span style={{ fontSize:11, color:t.text3 }}>{u.city_ar}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* رأس الجامعة المختارة */}
+                        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+                          <div>
+                            <p style={{ fontSize:13, fontWeight:700, color:dark?"#a78bfa":"#7c3aed", margin:"0 0 2px" }}>{selectedUni.name_ar}</p>
+                            <p style={{ fontSize:11, color:t.text3, margin:0 }}>{selectedUni.majors.length} تخصص</p>
+                          </div>
+                          <button onClick={() => { setSelectedUniId(null); setUniMajorSearch(""); }} style={{
+                            fontSize:12, color:t.text3, background:"transparent",
+                            border:`1px solid ${t.border}`, borderRadius:8, padding:"5px 10px",
+                            cursor:"pointer", fontFamily:"inherit",
+                          }}>تغيير</button>
+                        </div>
+                        {/* بحث التخصص */}
+                        <div style={{
+                          display:"flex", alignItems:"center", gap:8,
+                          padding:"9px 12px", borderRadius:10,
+                          background:t.input, border:`1px solid ${t.border}`, marginBottom:10,
+                        }}>
+                          <Search size={14} color={t.text3}/>
+                          <input
+                            value={uniMajorSearch}
+                            onChange={e => setUniMajorSearch(e.target.value)}
+                            placeholder="ابحث في تخصصات الجامعة…"
+                            style={{ flex:1, border:"none", background:"transparent", color:t.text, fontSize:13, outline:"none", fontFamily:"inherit" }}
+                          />
+                          {uniMajorSearch && <button onClick={()=>setUniMajorSearch("")} style={{background:"none",border:"none",cursor:"pointer",color:t.text3,padding:0,display:"flex"}}><X size={13}/></button>}
+                        </div>
+                        {/* قائمة التخصصات */}
+                        <div style={{ maxHeight:240, overflowY:"auto", borderRadius:10, border:`1px solid ${t.border}` }}>
+                          {filteredUniMajors.map((m, i) => {
+                            const taxId = uniData.mapping[m.a];
+                            const hasTax = taxId !== undefined;
+                            const isSelected = hasTax && selectedMajorIds.has(taxId);
+                            return (
+                              <button key={m.a} onClick={() => handleMajorPick(m.a)} style={{
+                                display:"flex", alignItems:"center", justifyContent:"space-between",
+                                width:"100%", padding:"11px 14px",
+                                background: isSelected ? t.purpleBg : "transparent",
+                                border:"none",
+                                borderBottom: i < filteredUniMajors.length-1 ? `1px solid ${t.border}` : "none",
+                                cursor: hasTax ? "pointer" : "default",
+                                textAlign:"right", fontFamily:"inherit", opacity: hasTax ? 1 : 0.45,
+                              }}>
+                                <div>
+                                  <span style={{ fontSize:13, fontWeight: isSelected?700:400, color: isSelected ? (dark?"#a78bfa":"#7c3aed") : t.text }}>{m.a}</span>
+                                  {m.e && <span style={{ fontSize:11, color:t.text3, marginRight:6 }}>{m.e}</span>}
+                                  {!hasTax && <span style={{ fontSize:10, color:t.text3, marginRight:4 }}>· غير مرتبط</span>}
+                                </div>
+                                <div style={{
+                                  width:20, height:20, borderRadius:6, flexShrink:0,
+                                  border:`1.5px solid ${isSelected ? "#7c3aed" : (hasTax ? t.border : "transparent")}`,
+                                  background: isSelected ? "#7c3aed" : "transparent",
+                                  display:"flex", alignItems:"center", justifyContent:"center",
+                                }}>
+                                  {isSelected && <CheckCircle size={12} strokeWidth={2.5} color="#fff"/>}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p style={{ fontSize:11, color:t.text3, margin:"10px 0 0", lineHeight:1.6 }}>
+                          التخصصات الباهتة غير مرتبطة بالتاكسونومي — اضغط عليها للبحث يدوياً.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* بحث */}
             <div style={{
               display: "flex", alignItems: "center", gap: 10,
@@ -276,7 +474,7 @@ export default function PreferencesPage() {
               <input
                 value={taxSearch}
                 onChange={e => setTaxSearch(e.target.value)}
-                placeholder="ابحث بالتخصص أو المسمى الوظيفي…"
+                placeholder="أو ابحث بالتخصص أو المسمى الوظيفي…"
                 style={{ flex:1, border:"none", background:"transparent", color:t.text, fontSize:14, outline:"none", fontFamily:"inherit" }}
               />
               {taxSearch && <button onClick={()=>setTaxSearch("")} style={{background:"none",border:"none",cursor:"pointer",color:t.text3,display:"flex"}}><X size={14}/></button>}
