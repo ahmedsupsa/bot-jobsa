@@ -140,7 +140,7 @@ function Section({ title, children, last }: { title: string; children: React.Rea
 }
 
 const s: Record<string, React.CSSProperties> = {
-  page: { minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", color: "var(--text)", fontFamily: "'Tajawal', system-ui, sans-serif" },
+  page: { minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", color: "var(--text)", fontFamily: "'Thmanyah Sans', 'Tajawal', system-ui, sans-serif" },
 
   nav: { borderBottom: "1px solid var(--border)", padding: "0 24px", background: "var(--surface)" },
   navInner: { maxWidth: 1100, margin: "0 auto", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" },

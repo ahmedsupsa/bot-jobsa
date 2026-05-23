@@ -182,7 +182,7 @@ const s: Record<string, React.CSSProperties> = {
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
-    fontFamily: "'Tajawal', system-ui, sans-serif",
+    fontFamily: "'Thmanyah Sans', 'Tajawal', system-ui, sans-serif",
   },
   logo: {
     display: "flex",

@@ -339,7 +339,7 @@ export default function LandingPage() {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  page: { background: "var(--bg)", minHeight: "100vh", color: "var(--text)", fontFamily: "'Tajawal', 'Segoe UI', Tahoma, sans-serif" },
+  page: { background: "var(--bg)", minHeight: "100vh", color: "var(--text)", fontFamily: "'Thmanyah Sans', 'Tajawal', 'Segoe UI', Tahoma, sans-serif" },
 
   /* NAV */
   nav: {

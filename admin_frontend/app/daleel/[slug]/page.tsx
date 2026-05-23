@@ -167,7 +167,7 @@ export default async function GuidePage({
 }
 
 const gd: Record<string, React.CSSProperties> = {
-  page: { background: "#fff", minHeight: "100vh", color: "#111", fontFamily: "'Tajawal','Segoe UI',Tahoma,sans-serif" },
+  page: { background: "#fff", minHeight: "100vh", color: "#111", fontFamily: "'Thmanyah Sans', 'Tajawal','Segoe UI',Tahoma,sans-serif" },
   nav: { borderBottom: "1px solid #e5e7eb", padding: "0 20px", height: 56, display: "flex", alignItems: "center" },
   navInner: { maxWidth: 1200, margin: "0 auto", width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between" },
   brand: { display: "flex", alignItems: "center", gap: 8, textDecoration: "none" },

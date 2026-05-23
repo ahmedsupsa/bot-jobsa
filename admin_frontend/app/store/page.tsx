@@ -980,7 +980,7 @@ export default function StorePage() {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  page: { minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", color: "var(--text)", fontFamily: "'Tajawal', system-ui, sans-serif" },
+  page: { minHeight: "100vh", background: "var(--bg)", display: "flex", flexDirection: "column", color: "var(--text)", fontFamily: "'Thmanyah Sans', 'Tajawal', system-ui, sans-serif" },
 
   // NAV
   nav: { borderBottom: "1px solid var(--border)", padding: "0 24px", background: "var(--surface)" },

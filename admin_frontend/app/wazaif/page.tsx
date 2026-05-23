@@ -91,7 +91,7 @@ export default function JobsIndexPage() {
 }
 
 const p: Record<string, React.CSSProperties> = {
-  page: { background: "#fff", minHeight: "100vh", fontFamily: "'Tajawal','Segoe UI',Tahoma,sans-serif" },
+  page: { background: "#fff", minHeight: "100vh", fontFamily: "'Thmanyah Sans', 'Tajawal','Segoe UI',Tahoma,sans-serif" },
   nav: { borderBottom: "1px solid #e5e7eb", padding: "0 20px", height: 56, display: "flex", alignItems: "center" },
   navInner: { maxWidth: 1100, margin: "0 auto", width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" },
   brand: { display: "flex", alignItems: "center", gap: 8, textDecoration: "none" },
