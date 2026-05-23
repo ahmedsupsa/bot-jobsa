@@ -137,6 +137,23 @@ async def _job_exists(uid: str) -> bool:
         return False
 
 
+async def _msg_exists(msg_uid: str) -> bool:
+    """يتحقق هل أي وظيفة من هذه الرسالة محفوظة (uid_0, uid_1, ...)"""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return False
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            r = await client.get(
+                f"{SUPABASE_URL}/rest/v1/admin_jobs",
+                params={"tweet_uid": f"like.{msg_uid}%", "select": "id", "limit": "1"},
+                headers=_SB_HEADERS(),
+            )
+            data = r.json()
+            return isinstance(data, list) and len(data) > 0
+    except:
+        return False
+
+
 # ── Supabase: حفظ وظيفة ──────────────────────────────────────────────────
 async def _save_job(job: dict, uid: str, channel: str) -> str | None:
     if not SUPABASE_URL or not SUPABASE_KEY:
@@ -212,7 +229,7 @@ async def process_message(text: str, channel_title: str, channel_id: str, msg_id
     uid_base = f"{channel_id}:{msg_id}:{text[:100]}"
     uid = hashlib.md5(uid_base.encode()).hexdigest()
 
-    if await _job_exists(uid):
+    if await _msg_exists(uid):
         logger.info("[TG] ⏭️ مكرر — تجاهل من %s", channel_title)
         return
 
