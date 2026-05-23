@@ -59,10 +59,16 @@ export default function CVPage() {
       if (res.ok) {
         const d = await res.json();
         setSavedTitles(d.titles || []);
-        if ((d.titles || []).length > 0) setSuggestedTitles(d.titles);
+        if ((d.titles || []).length > 0) {
+          setSuggestedTitles(d.titles);
+          setTitlesLoading(false);
+          return;
+        }
       }
     } catch {}
-    finally { setTitlesLoading(false); }
+    // لا توجد مسميات محفوظة → استخراج تلقائي من التاكسونومي
+    await handleSuggest(true);
+    setTitlesLoading(false);
   }
 
   useEffect(() => { loadCV(); loadSavedTitles(); }, []);
@@ -91,17 +97,32 @@ export default function CVPage() {
     }
   }
 
-  async function handleSuggest() {
-    setSuggesting(true); setTitlesMsg(null);
+  async function handleSuggest(silent = false) {
+    setSuggesting(true);
+    if (!silent) setTitlesMsg(null);
     try {
       const res = await fetch("/api/portal/preferences/suggest", {
         method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" },
       });
       const d = await res.json();
-      if (!res.ok) { setTitlesMsg({ text: d.error || "فشل الاقتراح", type: "err" }); return; }
+      if (!res.ok) {
+        if (!silent) setTitlesMsg({ text: d.error || "فشل الاستخراج", type: "err" });
+        return;
+      }
       setSuggestedTitles(d.titles || []);
-      setTitlesMsg({ text: `اقترح الذكاء الاصطناعي ${d.titles?.length || 0} مسمى — راجعها وعدّل ثم احفظ`, type: "ok" });
-    } catch { setTitlesMsg({ text: "خطأ في الاتصال", type: "err" }); }
+      const count = d.titles?.length || 0;
+      const fromTax = d.source === "taxonomy";
+      if (!silent || count > 0) {
+        setTitlesMsg({
+          text: fromTax
+            ? `✅ استُخرج ${count} مسمى من تخصصك "${d.matched_major || ""}" — راجعها واحفظ`
+            : `✅ اقترح الذكاء الاصطناعي ${count} مسمى — راجعها وعدّل ثم احفظ`,
+          type: "ok",
+        });
+      }
+    } catch {
+      if (!silent) setTitlesMsg({ text: "خطأ في الاتصال", type: "err" });
+    }
     finally { setSuggesting(false); }
   }
 
@@ -260,7 +281,7 @@ export default function CVPage() {
                           <p style={{ margin: "2px 0 0", color: t.text3, fontSize: 12 }}>
                             {savedTitles.length > 0
                               ? `${savedTitles.length} مسمى محفوظ — البوت يطابق عليها`
-                              : "لم تحدد مسمياتك بعد — الذكاء الاصطناعي سيقترح لك"}
+                              : "تُستخرج تلقائياً من تخصصك الجامعي"}
                           </p>
                         </div>
                       </div>
@@ -278,8 +299,8 @@ export default function CVPage() {
                         }}
                       >
                         {suggesting
-                          ? <><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> جاري التحليل…</>
-                          : <><RefreshCw size={13} /> {savedTitles.length > 0 ? "إعادة الاقتراح" : "اقتراح بالذكاء الاصطناعي"}</>
+                          ? <><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> جاري الاستخراج…</>
+                          : <><RefreshCw size={13} /> {savedTitles.length > 0 ? "إعادة الاستخراج" : "استخراج المسميات"}</>
                         }
                       </button>
                     </div>

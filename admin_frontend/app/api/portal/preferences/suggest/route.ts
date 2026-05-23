@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { extractToken, verifyToken } from "@/lib/auth";
+import fs from "fs";
+import path from "path";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -11,55 +13,96 @@ function freshClient() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-/** استدعاء Gemini مع نص فقط */
-async function suggestFromText(cvText: string, cvProfile: Record<string, unknown> | null): Promise<string[]> {
+type TaxEntry = { m: string; m_en: string; j: string[]; j_en?: string[]; c: string };
+type Taxonomy = Record<string, TaxEntry>;
+type CvProfile = Record<string, unknown>;
+
+// ── تحميل التاكسونومي من الملف مرة واحدة ──────────────────────────────────────
+let _taxonomy: Taxonomy | null = null;
+function getTaxonomy(): Taxonomy {
+  if (_taxonomy) return _taxonomy;
+  try {
+    const filePath = path.join(process.cwd(), "public", "jobs_taxonomy_compact.json");
+    _taxonomy = JSON.parse(fs.readFileSync(filePath, "utf-8")) as Taxonomy;
+  } catch {
+    _taxonomy = {};
+  }
+  return _taxonomy;
+}
+
+// ── تطبيع النص العربي للمقارنة ────────────────────────────────────────────────
+function norm(s: string): string {
+  return String(s || "").trim().toLowerCase()
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/[^\u0600-\u06FFa-z0-9\s]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+// ── استخراج المسميات من التاكسونومي بناءً على cv_profile ──────────────────────
+function suggestFromTaxonomy(profile: CvProfile | null): { titles: string[]; matchedMajor: string } {
+  if (!profile) return { titles: [], matchedMajor: "" };
+
+  const spec   = String(profile.specialization || profile.degree || "").trim();
+  const specEn = String(profile.specialization_en || profile.degree_en || "").toLowerCase().trim();
+  if (!spec && !specEn) return { titles: [], matchedMajor: "" };
+
+  const specNorm = norm(spec);
+  const taxonomy = getTaxonomy();
+
+  const titlesSet = new Set<string>();
+  let bestMatch = "";
+  let bestScore = 0;
+
+  for (const entry of Object.values(taxonomy)) {
+    const mNorm  = norm(entry.m);
+    const mEnNorm = (entry.m_en || "").toLowerCase();
+    let score = 0;
+
+    if (specNorm && mNorm === specNorm)                                       score = 100;
+    else if (specNorm && specNorm.length > 3 && mNorm === specNorm)           score = 100;
+    else if (specNorm && mNorm.includes(specNorm) && specNorm.length > 4)     score = 80;
+    else if (specNorm && specNorm.includes(mNorm) && mNorm.length > 4)        score = 80;
+    else if (specEn && mEnNorm && mEnNorm === specEn)                         score = 90;
+    else if (specEn && mEnNorm && mEnNorm.includes(specEn) && specEn.length > 4) score = 70;
+    else if (specEn && mEnNorm && specEn.includes(mEnNorm) && mEnNorm.length > 4) score = 70;
+
+    if (score > 0) {
+      entry.j.forEach(j => titlesSet.add(j));
+      if (score > bestScore) { bestScore = score; bestMatch = entry.m; }
+    }
+  }
+
+  return { titles: [...titlesSet].slice(0, 20), matchedMajor: bestMatch };
+}
+
+// ── Gemini: اقتراح من النص (fallback فقط) ────────────────────────────────────
+async function suggestFromAI(cvText: string, profile: CvProfile | null): Promise<string[]> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return [];
 
-  const specialization = cvProfile?.specialization ? `التخصص: ${cvProfile.specialization}` : "";
-  const degree = cvProfile?.degree ? `المؤهل: ${cvProfile.degree}` : "";
-  const skills = Array.isArray(cvProfile?.skills)
-    ? `المهارات: ${(cvProfile.skills as string[]).slice(0, 8).join("، ")}` : "";
-  const prevJobs = Array.isArray(cvProfile?.prev_jobs)
-    ? `الخبرات السابقة: ${(cvProfile.prev_jobs as string[]).slice(0, 3).join("، ")}` : "";
+  const spec     = profile?.specialization ? `التخصص: ${profile.specialization}` : "";
+  const degree   = profile?.degree ? `المؤهل: ${profile.degree}` : "";
+  const skills   = Array.isArray(profile?.skills)
+    ? `المهارات: ${(profile.skills as string[]).slice(0, 8).join("، ")}` : "";
+  const prevJobs = Array.isArray(profile?.prev_jobs)
+    ? `الخبرات: ${(profile.prev_jobs as string[]).slice(0, 3).join("، ")}` : "";
 
-  const context = [specialization, degree, skills, prevJobs].filter(Boolean).join("\n");
+  const context = [spec, degree, skills, prevJobs].filter(Boolean).join("\n");
 
-  const prompt = `أنت خبير في سوق العمل السعودي.
-بناءً على المعلومات التالية، اقترح بالضبط 20 مسمى وظيفي مناسبًا لهذا الشخص.
+  const prompt =
+    `أنت خبير في سوق العمل السعودي.\n` +
+    `بناءً على المعلومات التالية، اقترح بالضبط 20 مسمى وظيفي مناسبًا لهذا الشخص.\n\n` +
+    (context ? context + "\n\n" : "") +
+    `نبذة من السيرة الذاتية:\n${cvText.slice(0, 2000)}\n\n` +
+    `القواعد:\n` +
+    `- 20 مسمى بالضبط\n` +
+    `- بالعربية فقط\n` +
+    `- مسميات واقعية ومطلوبة في السوق السعودي\n` +
+    `- لا تشمل تمهير أو تدريب تعاوني\n` +
+    `- أعد JSON فقط: {"titles":["مسمى 1","مسمى 2",...]}`;
 
-${context ? context + "\n\n" : ""}نبذة من السيرة الذاتية:
-${cvText.slice(0, 2000)}
-
-القواعد:
-- 20 مسمى بالضبط
-- بالعربية فقط
-- مسميات واقعية ومطلوبة في السوق السعودي
-- لا تشمل تمهير أو تدريب تعاوني
-- أعد JSON فقط: {"titles":["مسمى 1","مسمى 2",...]}`;
-
-  return callGeminiText(key, prompt);
-}
-
-/** استدعاء Gemini مع ملف PDF/صورة مباشرة */
-async function suggestFromFile(fileBase64: string, mimeType: string): Promise<string[]> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return [];
-
-  const prompt = `أنت خبير في سوق العمل السعودي.
-اقرأ هذه السيرة الذاتية واقترح بالضبط 20 مسمى وظيفي مناسبًا لصاحبها في سوق العمل السعودي.
-
-القواعد:
-- 20 مسمى بالضبط
-- بالعربية فقط
-- مسميات واقعية ومطلوبة في السوق السعودي
-- لا تشمل تمهير أو تدريب تعاوني
-- أعد JSON فقط: {"titles":["مسمى 1","مسمى 2",...]}`;
-
-  return callGeminiMultimodal(key, prompt, fileBase64, mimeType);
-}
-
-async function callGeminiText(key: string, prompt: string): Promise<string[]> {
   const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"];
   for (const model of models) {
     try {
@@ -72,18 +115,25 @@ async function callGeminiText(key: string, prompt: string): Promise<string[]> {
           signal: AbortSignal.timeout(45000),
         }
       );
-      if (!r.ok) { console.warn(`[suggest-text] ${model} HTTP ${r.status}`); continue; }
+      if (!r.ok) continue;
       const data = await r.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-      if (!text) { console.warn(`[suggest-text] ${model} empty response`); continue; }
-      const titles = parseTitles(text);
+      const titles = parseTitles(data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "");
       if (titles.length > 0) return titles;
-    } catch (e) { console.warn(`[suggest-text] ${model} error:`, e); continue; }
+    } catch { continue; }
   }
   return [];
 }
 
-async function callGeminiMultimodal(key: string, prompt: string, fileBase64: string, mimeType: string): Promise<string[]> {
+async function suggestFromFile(fileBase64: string, mimeType: string): Promise<string[]> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return [];
+
+  const prompt =
+    `أنت خبير في سوق العمل السعودي.\n` +
+    `اقرأ هذه السيرة الذاتية واقترح بالضبط 20 مسمى وظيفي مناسبًا لصاحبها في سوق العمل السعودي.\n` +
+    `القواعد:\n- 20 مسمى بالضبط\n- بالعربية فقط\n- مسميات واقعية\n- لا تشمل تمهير أو تدريب تعاوني\n` +
+    `- أعد JSON فقط: {"titles":["مسمى 1","مسمى 2",...]}`;
+
   const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"];
   for (const model of models) {
     try {
@@ -93,20 +143,19 @@ async function callGeminiMultimodal(key: string, prompt: string, fileBase64: str
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{
-              parts: [
-                { inline_data: { mime_type: mimeType, data: fileBase64 } },
-                { text: prompt },
-              ],
-            }],
+            contents: [{ parts: [
+              { inline_data: { mime_type: mimeType, data: fileBase64 } },
+              { text: prompt },
+            ]}],
             generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
           }),
           signal: AbortSignal.timeout(50000),
         }
       );
       if (!r.ok) continue;
-      const data = await r.json();
-      const titles = parseTitles(data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "");
+      const titles = parseTitles(
+        (await r.json())?.candidates?.[0]?.content?.parts?.[0]?.text ?? ""
+      );
       if (titles.length > 0) return titles;
     } catch { continue; }
   }
@@ -126,41 +175,52 @@ function parseTitles(raw: string): string[] {
   } catch { return []; }
 }
 
+// ── Main handler ──────────────────────────────────────────────────────────────
 export async function POST(req: Request) {
   try {
     const token = extractToken(req);
     if (!token) return NextResponse.json({ error: "غير مخوّل" }, { status: 401 });
     const payload = await verifyToken(token);
     if (!payload) return NextResponse.json({ error: "غير مخوّل" }, { status: 401 });
-    const uid = payload.user_id;
-    const supabase = freshClient();
 
+    const supabase = freshClient();
     const { data: cvRows } = await supabase
       .from("user_cvs")
       .select("cv_parsed_text, cv_profile, storage_path, file_name")
-      .eq("user_id", uid)
+      .eq("user_id", payload.user_id)
       .limit(1);
 
     const cv = cvRows?.[0];
-
     if (!cv) {
-      return NextResponse.json({ error: "لم يتم رفع سيرة ذاتية بعد — ارفع سيرتك أولاً" }, { status: 400 });
+      return NextResponse.json(
+        { error: "لم يتم رفع سيرة ذاتية بعد — ارفع سيرتك أولاً" },
+        { status: 400 }
+      );
     }
 
-    const cvText = String(cv.cv_parsed_text ?? "").trim();
-    const cvProfile = (cv.cv_profile ?? null) as Record<string, unknown> | null;
+    const cvText   = String(cv.cv_parsed_text ?? "").trim();
+    const cvProfile = (cv.cv_profile ?? null) as CvProfile | null;
 
-    let titles: string[] = [];
+    // ── المسار الأول: تاكسونومي (فوري، بدون AI) ─────────────────────────────
+    const { titles: taxTitles, matchedMajor } = suggestFromTaxonomy(cvProfile);
+    if (taxTitles.length >= 5) {
+      return NextResponse.json({
+        titles: taxTitles,
+        source: "taxonomy",
+        matched_major: matchedMajor,
+      });
+    }
 
-    // المسار الأول: نص موجود → أسرع
+    // ── المسار الثاني: AI من النص المحلَّل ──────────────────────────────────
     if (cvText.length > 100 || cvProfile) {
-      titles = await suggestFromText(cvText, cvProfile);
+      const aiTitles = await suggestFromAI(cvText, cvProfile);
+      if (aiTitles.length > 0) {
+        return NextResponse.json({ titles: aiTitles, source: "ai" });
+      }
     }
 
-    // المسار الثاني: لا نص → نحمّل الملف من Storage مباشرة
-    if (titles.length === 0 && cv.storage_path) {
-      console.log("[suggest] لا نص محلَّل — يحمّل الملف من Storage…");
-
+    // ── المسار الثالث: AI من ملف PDF مباشرة ─────────────────────────────────
+    if (cv.storage_path) {
       const { data: fileData, error: dlErr } = await supabase.storage
         .from("cvs")
         .download(String(cv.storage_path));
@@ -170,20 +230,18 @@ export async function POST(req: Request) {
         const mimeMap: Record<string, string> = {
           pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
         };
-        const mimeType = mimeMap[ext] || "application/pdf";
-        const arrayBuffer = await fileData.arrayBuffer();
-        const base64 = Buffer.from(arrayBuffer).toString("base64");
-        titles = await suggestFromFile(base64, mimeType);
+        const base64 = Buffer.from(await fileData.arrayBuffer()).toString("base64");
+        const aiTitles = await suggestFromFile(base64, mimeMap[ext] || "application/pdf");
+        if (aiTitles.length > 0) {
+          return NextResponse.json({ titles: aiTitles, source: "ai" });
+        }
       }
     }
 
-    if (titles.length === 0) {
-      return NextResponse.json({
-        error: "لم يتمكن الذكاء الاصطناعي من تحليل السيرة — تأكد أن الملف واضح وأعد المحاولة",
-      }, { status: 422 });
-    }
-
-    return NextResponse.json({ titles });
+    return NextResponse.json(
+      { error: "لم يتمكن النظام من استخراج المسميات — تأكد أن الملف واضح وأعد المحاولة" },
+      { status: 422 }
+    );
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
