@@ -46,7 +46,7 @@ export const viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
-      <body style={{ fontFamily: "'Tajawal', 'Segoe UI', Tahoma, sans-serif" }} suppressHydrationWarning>
+      <body style={{ fontFamily: "'Thmanyah Sans', 'Tajawal', 'Segoe UI', Tahoma, sans-serif" }} suppressHydrationWarning>
         <ThemeProvider>
           {children}
           <PWARegister />

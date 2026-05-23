@@ -1,4 +1,83 @@
-@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
+/* ── Thmanyah Sans ─────────────────────────────────────── */
+@font-face {
+  font-family: 'Thmanyah Sans';
+  src: url('/fonts/thmanyahsans-Light.woff2') format('woff2');
+  font-weight: 300; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Sans';
+  src: url('/fonts/thmanyahsans-Regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Sans';
+  src: url('/fonts/thmanyahsans-Medium.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Sans';
+  src: url('/fonts/thmanyahsans-Bold.woff2') format('woff2');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Sans';
+  src: url('/fonts/thmanyahsans-Black.woff2') format('woff2');
+  font-weight: 900; font-style: normal; font-display: swap;
+}
+
+/* ── Thmanyah Serif Display (للعناوين) ─────────────────── */
+@font-face {
+  font-family: 'Thmanyah Serif Display';
+  src: url('/fonts/thmanyahserifdisplay-Light.woff2') format('woff2');
+  font-weight: 300; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Serif Display';
+  src: url('/fonts/thmanyahserifdisplay-Regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Serif Display';
+  src: url('/fonts/thmanyahserifdisplay-Medium.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Serif Display';
+  src: url('/fonts/thmanyahserifdisplay-Bold.woff2') format('woff2');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Serif Display';
+  src: url('/fonts/thmanyahserifdisplay-Black.woff2') format('woff2');
+  font-weight: 900; font-style: normal; font-display: swap;
+}
+
+/* ── Thmanyah Serif Text (للنصوص) ──────────────────────── */
+@font-face {
+  font-family: 'Thmanyah Serif Text';
+  src: url('/fonts/thmanyahseriftext-Light.woff2') format('woff2');
+  font-weight: 300; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Serif Text';
+  src: url('/fonts/thmanyahseriftext-Regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Serif Text';
+  src: url('/fonts/thmanyahseriftext-Medium.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Serif Text';
+  src: url('/fonts/thmanyahseriftext-Bold.woff2') format('woff2');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Thmanyah Serif Text';
+  src: url('/fonts/thmanyahseriftext-Black.woff2') format('woff2');
+  font-weight: 900; font-style: normal; font-display: swap;
+}
 
 @tailwind base;
 @tailwind components;
@@ -10,6 +89,9 @@
 /* ── الوضع الافتراضي: فاتح (Light) ── */
 :root,
 :root[data-theme="light"] {
+  --font-sans:    'Thmanyah Sans', 'Tajawal', sans-serif;
+  --font-display: 'Thmanyah Serif Display', 'Tajawal', serif;
+  --font-text:    'Thmanyah Serif Text', 'Tajawal', serif;
   --bg:        #f4f4f5;
   --bg2:       #ffffff;
   --bg3:       #f9f9f9;
@@ -363,4 +445,14 @@ input:focus, textarea:focus { border-color: var(--border2) !important; outline: 
 ═══════════════════════════════════════ */
 @media (prefers-contrast: high) {
   :root { --border: #666; --border2: #888; }
+}
+
+/* ═══════════════════════════════════════
+   THMANYAH FONT APPLICATION
+═══════════════════════════════════════ */
+body {
+  font-family: var(--font-sans);
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
 }
