@@ -417,6 +417,15 @@ async def _get_or_parse_cv(
     return parsed_text
 
 
+def _inject_job_title_into_body(body: str, job_title: str) -> str:
+    """يستبدل أي مسمى وظيفي قديم مدمج داخل الرسالة المحفوظة بالمسمى الفعلي الجديد."""
+    body = re.sub(r'لشغل منصب [^،.\n]{1,80}', f'لشغل منصب {job_title}', body)
+    body = re.sub(r'لشغل وظيفة [^،.\n]{1,80}', f'لشغل وظيفة {job_title}', body)
+    body = re.sub(r'على وظيفة [^،.\n]{1,80}', f'على وظيفة {job_title}', body)
+    body = re.sub(r'للانضمام كـ?\s*[^،.\n]{1,80}', f'للانضمام كـ{job_title}', body)
+    return body
+
+
 def _build_plain_text_body(name: str, field_names: list[str]) -> str:
     """قالب ثابت للحفظ في DB — بدون اسم وظيفة أو شركة (يُضافان في الـ wrapper)."""
     spec = field_names[0] if field_names else "مجال التخصص"
@@ -978,8 +987,9 @@ async def _send_test_cycle_emails() -> None:
                 skip_count += 1
                 continue
 
-            job_intro = f"أتقدم بهذه الرسالة للتقديم على وظيفة {_TEST_JOB_TITLE} في {_TEST_JOB_COMPANY}.\n\n"
-            cover    = _strip_emojis(job_intro + saved_body)
+            clean_body = _inject_job_title_into_body(saved_body, _TEST_JOB_TITLE)
+            job_intro  = f"أتقدم بهذه الرسالة للتقديم على وظيفة {_TEST_JOB_TITLE} في {_TEST_JOB_COMPANY}.\n\n"
+            cover      = _strip_emojis(job_intro + clean_body)
             lang     = settings.get("preferred_language") or "ar"
             template = settings.get("email_template") or "classic"
             html     = _build_email_html(name, phone, _TEST_JOB_TITLE, _TEST_JOB_COMPANY, cover, lang, template)
@@ -1255,10 +1265,11 @@ async def _run_cycle_smtp() -> None:
                 # ── Cover Letter: يولَّد مرة واحدة فقط، ثم يُقرأ من DB ──────────
                 saved_body = (settings.get("cover_letter_body") or "").strip()
                 if saved_body:
-                    # أضف جملة ديناميكية بالوظيفة الفعلية في بداية الرسالة
+                    # استبدل المسمى القديم المدمج بالمسمى الفعلي ثم أضف السطر الديناميكي
                     co_str = f" في {company}" if company else ""
+                    clean_body = _inject_job_title_into_body(saved_body, job_title)
                     job_intro = f"أتقدم بهذه الرسالة للتقديم على وظيفة {job_title}{co_str}.\n\n"
-                    cover = _strip_emojis(job_intro + saved_body)
+                    cover = _strip_emojis(job_intro + clean_body)
                     logger.info("   📄 cover letter من DB (لا استدعاء Gemini)")
                 else:
                     cover = await _generate_cover_letter(job_title, name, company, desc, lang, cv_parsed_text, template)

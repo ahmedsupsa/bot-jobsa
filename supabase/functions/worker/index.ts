@@ -434,6 +434,14 @@ function computeLocalScore(
 
 // ─── Cover Letter من القالب المحفوظ للمستخدم ─────────────────────────────────
 
+function replaceJobTitleInBody(body: string, jobTitle: string): string {
+  body = body.replace(/لشغل منصب [^،.\n]{1,80}/g, `لشغل منصب ${jobTitle}`);
+  body = body.replace(/لشغل وظيفة [^،.\n]{1,80}/g, `لشغل وظيفة ${jobTitle}`);
+  body = body.replace(/على وظيفة [^،.\n]{1,80}/g, `على وظيفة ${jobTitle}`);
+  body = body.replace(/للانضمام كـ?\s*[^،.\n]{1,80}/g, `للانضمام كـ${jobTitle}`);
+  return body;
+}
+
 function buildCoverLetterFromSavedBody(
   name: string,
   jobTitle: string,
@@ -457,7 +465,8 @@ function buildCoverLetterFromSavedBody(
   const jobIntroText = `أتقدم بهذه الرسالة للتقديم على وظيفة ${jobTrimmed}${coStr}.`;
   const jobIntroParagraph = `<p style="line-height:2;margin:0 0 16px;font-size:15px;font-weight:600;">${jobIntroText}</p>`;
 
-  const paragraphs = savedBody
+  const cleanBody = replaceJobTitleInBody(savedBody, jobTrimmed);
+  const paragraphs = cleanBody
     .split(/\n{2,}/)
     .map(p => p.trim())
     .filter(Boolean)
