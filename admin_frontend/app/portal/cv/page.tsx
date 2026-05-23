@@ -286,7 +286,7 @@ export default function CVPage() {
                         </div>
                       </div>
                       <button
-                        onClick={handleSuggest}
+                        onClick={() => handleSuggest()}
                         disabled={suggesting}
                         style={{
                           display: "inline-flex", alignItems: "center", gap: 7,

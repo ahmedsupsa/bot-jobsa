@@ -1,0 +1,53 @@
+09:52:38.219 Running build in Washington, D.C., USA (East) – iad1
+09:52:38.219 Build machine configuration: 2 cores, 8 GB
+09:52:38.359 Cloning github.com/ahmedsupsa/bot-jobsa (Branch: main, Commit: 763888f)
+09:52:41.384 Cloning completed: 3.025s
+09:52:41.679 Restored build cache from previous deployment (kVAmCcVRU3JhzBmGX69dkMWVcBYy)
+09:52:41.967 Running "vercel build"
+09:52:42.009 Vercel CLI 54.4.1
+09:52:42.332 Running "install" command: `npm install --legacy-peer-deps`...
+09:52:49.057 
+09:52:49.059 up to date, audited 263 packages in 6s
+09:52:49.059 
+09:52:49.060 37 packages are looking for funding
+09:52:49.060   run `npm fund` for details
+09:52:49.157 
+09:52:49.160 7 vulnerabilities (5 moderate, 2 high)
+09:52:49.160 
+09:52:49.161 To address issues that do not require attention, run:
+09:52:49.161   npm audit fix
+09:52:49.162 
+09:52:49.162 To address all issues possible (including breaking changes), run:
+09:52:49.163   npm audit fix --force
+09:52:49.164 
+09:52:49.164 Some issues need review, and may require choosing
+09:52:49.164 a different dependency.
+09:52:49.165 
+09:52:49.165 Run `npm audit` for details.
+09:52:49.208 Detected Next.js version: 14.2.35
+09:52:49.209 Running "npm run build"
+09:52:49.346 
+09:52:49.347 > admin-frontend@1.0.0 build
+09:52:49.347 > next build
+09:52:49.347 
+09:52:50.202   ▲ Next.js 14.2.35
+09:52:50.203 
+09:52:50.239    Creating an optimized production build ...
+09:53:08.659  ✓ Compiled successfully
+09:53:08.661    Linting and checking validity of types ...
+09:53:30.253 Failed to compile.
+09:53:30.254 
+09:53:30.256 ./app/portal/cv/page.tsx:289:25
+09:53:30.256 Type error: Type '(silent?: boolean) => Promise<void>' is not assignable to type 'MouseEventHandler<HTMLButtonElement>'.
+09:53:30.256   Types of parameters 'silent' and 'event' are incompatible.
+09:53:30.256     Type 'MouseEvent<HTMLButtonElement, MouseEvent>' is not assignable to type 'boolean | undefined'.
+09:53:30.257 
+09:53:30.257   287 |                       </div>
+09:53:30.257   288 |                       <button
+09:53:30.258 > 289 |                         onClick={handleSuggest}
+09:53:30.258       |                         ^
+09:53:30.258   290 |                         disabled={suggesting}
+09:53:30.258   291 |                         style={{
+09:53:30.259   292 |                           display: "inline-flex", alignItems: "center", gap: 7,
+09:53:30.315 Next.js build worker exited with code: 1 and signal: null
+09:53:30.354 Error: Command "npm run build" exited with 1
