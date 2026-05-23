@@ -1024,9 +1024,6 @@ async def run_cycle() -> None:
     except Exception as e:
         logger.error("❌ فشل استدعاء Edge Function: %s", e)
 
-    # إرسال إيميلات تجريبية للمشرف
-    await _send_test_cycle_emails()
-
     # تسجيل وقت التشغيل
     async with httpx.AsyncClient(timeout=15) as client:
         await _record_run(client)
