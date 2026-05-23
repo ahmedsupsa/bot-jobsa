@@ -1172,7 +1172,10 @@ async def _run_cycle_smtp() -> None:
                 # ── Cover Letter: يولَّد مرة واحدة فقط، ثم يُقرأ من DB ──────────
                 saved_body = (settings.get("cover_letter_body") or "").strip()
                 if saved_body:
-                    cover = _strip_emojis(saved_body)
+                    # أضف جملة ديناميكية بالوظيفة الفعلية في بداية الرسالة
+                    co_str = f" في {company}" if company else ""
+                    job_intro = f"أتقدم بهذه الرسالة للتقديم على وظيفة {job_title}{co_str}.\n\n"
+                    cover = _strip_emojis(job_intro + saved_body)
                     logger.info("   📄 cover letter من DB (لا استدعاء Gemini)")
                 else:
                     cover = await _generate_cover_letter(job_title, name, company, desc, lang, cv_parsed_text, template)

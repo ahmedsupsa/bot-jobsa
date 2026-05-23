@@ -452,6 +452,11 @@ function buildCoverLetterFromSavedBody(
     ? `<p style="font-size:15px;font-weight:600;margin:20px 0 16px;color:#93c5fd;">السلام عليكم ورحمة الله وبركاته،</p>`
     : "";
 
+  // أضف جملة ديناميكية بالوظيفة الفعلية في بداية جسم الرسالة
+  const coStr = companyTrim ? ` في ${companyTrim}` : "";
+  const jobIntroText = `أتقدم بهذه الرسالة للتقديم على وظيفة ${jobTrimmed}${coStr}.`;
+  const jobIntroParagraph = `<p style="line-height:2;margin:0 0 16px;font-size:15px;font-weight:600;">${jobIntroText}</p>`;
+
   const paragraphs = savedBody
     .split(/\n{2,}/)
     .map(p => p.trim())
@@ -469,7 +474,7 @@ function buildCoverLetterFromSavedBody(
     ${header}
   </h2>
   ${greeting}
-  <div style="color:#e2e8f0;">${paragraphs}</div>
+  <div style="color:#e2e8f0;">${jobIntroParagraph}${paragraphs}</div>
   <p style="margin:24px 0 0;line-height:2;font-size:14px;border-top:1px solid rgba(255,255,255,0.15);padding-top:16px;color:#cbd5e1;">
     مع خالص التحية،<br><strong style="color:#fff;">${name}</strong><br>${phone}<br>${email}
   </p>
