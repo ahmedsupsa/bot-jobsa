@@ -943,12 +943,25 @@ _TEST_JOB_TITLE   = "وظيفة تجربة البوت"
 _TEST_JOB_COMPANY = "شركة التجربة"
 
 
-async def _send_test_cycle_emails() -> None:
-    """في نهاية كل دورة: يُرسل إيميل تجريبي لكل مستخدم نشط متصل بـ SMTP إلى ahmedsupsa@gmail.com."""
-    if not SMTP_ENCRYPTION_KEY:
-        logger.warning("🧪 [TEST] SMTP_ENCRYPTION_KEY غير معرّف — تخطي")
-        return
+async def _send_via_resend(to_email: str, subject: str, html: str, from_name: str) -> None:
+    """إرسال إيميل عبر Resend API مباشرةً."""
+    resend_key  = os.getenv("RESEND_API_KEY", "")
+    from_email  = os.getenv("RESEND_FROM_EMAIL", "")
+    sender_name = from_name or os.getenv("RESEND_FROM_NAME", "Jobbots")
+    if not resend_key or not from_email:
+        raise RuntimeError("RESEND_API_KEY أو RESEND_FROM_EMAIL غير معرّف")
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
+            json={"from": f"{sender_name} <{from_email}>", "to": [to_email], "subject": subject, "html": html},
+        )
+        if not r.is_success:
+            raise RuntimeError(f"Resend error {r.status_code}: {r.text[:200]}")
 
+
+async def _send_test_cycle_emails() -> None:
+    """في نهاية كل دورة: يُرسل إيميل تجريبي لكل مستخدم نشط عنده cover letter إلى ahmedsupsa@gmail.com عبر Resend."""
     logger.info("🧪 [TEST] بدء إرسال التجربة إلى %s …", _TEST_ADMIN_EMAIL)
     sent_count = 0
     skip_count = 0
@@ -961,55 +974,29 @@ async def _send_test_cycle_emails() -> None:
                 skip_count += 1
                 continue
 
-            uid      = str(user["id"])
-            name     = (user.get("full_name") or "مستخدم").strip()
-            phone    = (user.get("phone") or "").strip()
+            uid   = str(user["id"])
+            name  = (user.get("full_name") or "مستخدم").strip()
+            phone = (user.get("phone") or "").strip()
 
             settings_rows = await sb_get(client, "user_settings", {"user_id": f"eq.{uid}"})
-            settings = settings_rows[0] if settings_rows else {}
+            settings  = settings_rows[0] if settings_rows else {}
+            saved_body = (settings.get("cover_letter_body") or "").strip()
 
-            smtp_email   = (settings.get("smtp_email") or "").strip()
-            smtp_host    = settings.get("smtp_host") or "smtp.gmail.com"
-            smtp_port    = int(settings.get("smtp_port") or 465)
-            smtp_secure  = settings.get("smtp_secure") if settings.get("smtp_secure") is not None else True
-            encrypted_pw = (settings.get("smtp_app_password_encrypted") or "").strip()
-            has_smtp     = bool(settings.get("email_connected") and smtp_email and encrypted_pw)
-            saved_body   = (settings.get("cover_letter_body") or "").strip()
-
-            if not has_smtp or not saved_body:
-                skip_count += 1
-                continue
-
-            try:
-                app_password = _decrypt_aes(encrypted_pw, SMTP_ENCRYPTION_KEY)
-            except Exception as e:
-                logger.warning("🧪 [TEST] %s — فشل فك التشفير: %s", name, e)
+            if not saved_body:
                 skip_count += 1
                 continue
 
             clean_body = _inject_job_title_into_body(saved_body, _TEST_JOB_TITLE)
             job_intro  = f"أتقدم بهذه الرسالة للتقديم على وظيفة {_TEST_JOB_TITLE} في {_TEST_JOB_COMPANY}.\n\n"
             cover      = _strip_emojis(job_intro + clean_body)
-            lang     = settings.get("preferred_language") or "ar"
-            template = settings.get("email_template") or "classic"
-            html     = _build_email_html(name, phone, _TEST_JOB_TITLE, _TEST_JOB_COMPANY, cover, lang, template)
-            subject  = f"🧪 تجربة رسالة التغطية — {name}"
+            smtp_email = (settings.get("smtp_email") or "").strip()
+            lang       = settings.get("preferred_language") or "ar"
+            template   = settings.get("email_template") or "classic"
+            html       = _build_email_html(name, phone, _TEST_JOB_TITLE, _TEST_JOB_COMPANY, cover, lang, template)
+            subject    = f"🧪 تجربة رسالة التغطية — {name}"
 
             try:
-                await _send_smtp(
-                    smtp_host=smtp_host,
-                    smtp_port=smtp_port,
-                    smtp_secure=smtp_secure,
-                    smtp_email=smtp_email,
-                    app_password=app_password,
-                    to_email=_TEST_ADMIN_EMAIL,
-                    subject=subject,
-                    html=html,
-                    reply_to=smtp_email,
-                    cv_bytes=None,
-                    cv_name=None,
-                    from_name=name,
-                )
+                await _send_via_resend(_TEST_ADMIN_EMAIL, subject, html, name)
                 logger.info("🧪 [TEST] ✅ %s → أُرسلت", name)
                 sent_count += 1
             except Exception as e:
