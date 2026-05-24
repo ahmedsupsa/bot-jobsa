@@ -15,31 +15,38 @@ export async function GET(_req: Request, { params }: { params: { code: string } 
 
   if (!code) return NextResponse.json({ ok: false, error: "كود غير صحيح" }, { status: 400 });
 
-  const { data: marketer, error } = await supabase
+  const { data: marketer, error: mErr } = await supabase
     .from("affiliate_marketers")
     .select("id, name, code, commission_type, commission_value, is_active, created_at")
     .eq("code", code)
     .single();
 
-  if (error || !marketer) return NextResponse.json({ ok: false, error: "المسوّق غير موجود" }, { status: 404 });
+  if (mErr || !marketer) return NextResponse.json({ ok: false, error: "المسوّق غير موجود" }, { status: 404 });
   if (!marketer.is_active) return NextResponse.json({ ok: false, error: "هذا الحساب موقوف" }, { status: 403 });
 
-  const { data: sales } = await supabase
+  const { data: sales, error: sErr } = await supabase
     .from("affiliate_sales")
     .select("id, order_amount, commission_earned, status, customer_name, created_at, paid_at")
     .eq("affiliate_id", marketer.id)
     .order("created_at", { ascending: false });
 
+  if (sErr) {
+    console.error("[marketer-api] affiliate_sales error:", sErr.message, "| marketer_id:", marketer.id);
+  }
+
+  const { count: clicks_count, error: cErr } = await supabase
+    .from("affiliate_clicks")
+    .select("id", { count: "exact", head: true })
+    .eq("affiliate_code", code);
+
+  if (cErr) {
+    console.error("[marketer-api] affiliate_clicks error:", cErr.message);
+  }
+
   const allSales = sales || [];
   const total_earned   = allSales.reduce((s, r) => s + Number(r.commission_earned || 0), 0);
   const pending_earned = allSales.filter(r => r.status === "pending").reduce((s, r) => s + Number(r.commission_earned || 0), 0);
   const paid_earned    = allSales.filter(r => r.status === "paid").reduce((s, r) => s + Number(r.commission_earned || 0), 0);
-
-  // عدد الزيارات من الرابط
-  const { count: clicks_count } = await supabase
-    .from("affiliate_clicks")
-    .select("id", { count: "exact", head: true })
-    .eq("affiliate_code", code);
 
   const cc = clicks_count ?? 0;
   const conversion_rate = cc > 0 ? Math.round((allSales.length / cc) * 100) : null;
@@ -70,5 +77,6 @@ export async function GET(_req: Request, { params }: { params: { code: string } 
       created_at: s.created_at,
       paid_at: s.paid_at,
     })),
+    _debug: sErr ? { sales_error: sErr.message } : undefined,
   });
 }
