@@ -77,6 +77,6 @@ export async function GET(_req: Request, { params }: { params: { code: string } 
       created_at: s.created_at,
       paid_at: s.paid_at,
     })),
-    _debug: sErr ? { sales_error: sErr.message } : undefined,
+    _debug: { marketer_id: marketer.id, sales_count_db: allSales.length, sales_error: sErr?.message ?? null },
   });
 }
