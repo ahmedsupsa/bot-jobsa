@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { tg } from "@/lib/telegram";
+import { sendAdminOrderNotification } from "@/lib/admin-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +78,24 @@ export async function POST(req: Request) {
       .eq("id", order_id);
 
     tg.bankReceipt(order_id, receiptUrl || "").catch(() => {});
+
+    // جلب بيانات الطلب لإشعار المسؤول
+    const { data: fullOrder } = await supabase
+      .from("store_orders")
+      .select("user_name, user_email, user_phone, amount")
+      .eq("id", order_id)
+      .maybeSingle();
+
+    sendAdminOrderNotification({
+      order_id:        order_id,
+      user_name:       fullOrder?.user_name  || "عميل",
+      user_email:      fullOrder?.user_email || "",
+      user_phone:      fullOrder?.user_phone || "",
+      amount:          Number(fullOrder?.amount || 0),
+      payment_gateway: "bank_transfer",
+      paid_at:         new Date().toISOString(),
+    }).catch(() => {});
+
     return NextResponse.json({ ok: true, receipt_url: receiptUrl });
   } catch (err) {
     console.error("upload-receipt error:", err);

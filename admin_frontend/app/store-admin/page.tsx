@@ -169,6 +169,28 @@ export default function StoreAdminPage() {
   const [oSaving, setOSaving] = useState(false);
   const [oMsg, setOMsg] = useState("");
   const [oMsgType, setOMsgType] = useState<"ok" | "err">("ok");
+  const [notifyTestGw, setNotifyTestGw] = useState<"tamara" | "streampay" | "bank_transfer">("tamara");
+  const [notifyTesting, setNotifyTesting] = useState(false);
+  const [notifyMsg, setNotifyMsg] = useState("");
+  const [notifyMsgType, setNotifyMsgType] = useState<"ok" | "err">("ok");
+
+  const sendTestNotification = async () => {
+    setNotifyTesting(true); setNotifyMsg("");
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/store/notify-test`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gateway: notifyTestGw }),
+      });
+      const j = await r.json();
+      if (j.ok) { setNotifyMsg(j.message || "تم الإرسال ✅"); setNotifyMsgType("ok"); }
+      else { setNotifyMsg(j.error || "فشل الإرسال"); setNotifyMsgType("err"); }
+    } catch (e) {
+      setNotifyMsg("خطأ في الشبكة"); setNotifyMsgType("err");
+    }
+    setNotifyTesting(false);
+    setTimeout(() => setNotifyMsg(""), 6000);
+  };
 
   const loadProducts = useCallback(async () => {
     setPLoading(true);
@@ -751,7 +773,28 @@ export default function StoreAdminPage() {
                     </button>
                   ))}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* تجربة إشعار البريد */}
+                  <div className="flex items-center gap-1.5 rounded-xl border border-line bg-panel px-2 py-1">
+                    <Mail size={12} className="text-muted shrink-0" />
+                    <select
+                      value={notifyTestGw}
+                      onChange={e => setNotifyTestGw(e.target.value as any)}
+                      className="bg-transparent text-xs text-muted focus:outline-none cursor-pointer"
+                    >
+                      <option value="tamara">تمارا</option>
+                      <option value="streampay">ستريم باي</option>
+                      <option value="bank_transfer">تحويل بنكي</option>
+                    </select>
+                    <button
+                      onClick={sendTestNotification}
+                      disabled={notifyTesting}
+                      className="flex items-center gap-1 rounded-lg border border-line2 bg-panel2 px-2.5 py-1 text-xs font-medium text-ink hover:bg-panel transition-all disabled:opacity-50"
+                    >
+                      {notifyTesting ? <RefreshCw size={11} className="animate-spin" /> : <Zap size={11} />}
+                      اختبار الإشعار
+                    </button>
+                  </div>
                   <button
                     onClick={loadOrders}
                     className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-xs text-muted hover:text-ink transition-all"
@@ -767,6 +810,11 @@ export default function StoreAdminPage() {
                     طلب يدوي
                   </button>
                 </div>
+                {notifyMsg && (
+                  <div className={`text-xs px-3 py-2 rounded-lg border ${notifyMsgType === "ok" ? "bg-green-500/10 border-green-500/20 text-green-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
+                    {notifyMsg}
+                  </div>
+                )}
               </div>
 
               {/* Sort buttons */}

@@ -5,6 +5,7 @@ import { getPayment, getInvoice } from "@/lib/streampay";
 import { makeToken } from "@/lib/auth";
 import { autoActivateOrder, sendActivationEmail } from "@/lib/order-activation";
 import { tg } from "@/lib/telegram";
+import { sendAdminOrderNotification } from "@/lib/admin-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -313,6 +314,17 @@ export async function POST(req: Request) {
     } else {
       tg.renewal(notifyName, notifyEmail, notifyAmount, durationDays).catch(() => {});
     }
+
+    // إشعار المسؤول بالبريد الإلكتروني
+    sendAdminOrderNotification({
+      order_id:        order_id,
+      user_name:       notifyName,
+      user_email:      notifyEmail,
+      user_phone:      order.user_phone || "",
+      amount:          notifyAmount,
+      payment_gateway: notifyGateway as "tamara" | "streampay",
+      paid_at:         new Date().toISOString(),
+    }).catch(() => {});
 
     return NextResponse.json({
       ok: true,

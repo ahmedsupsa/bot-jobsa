@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { captureOrder, verifyWebhookSignature } from "@/lib/tamara";
 import { makeToken } from "@/lib/auth";
 import { activateAndNotify } from "@/lib/order-activation";
+import { sendAdminOrderNotification } from "@/lib/admin-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,17 @@ export async function POST(req: Request) {
         // Create/extend user account + send activation email with code
         const result = await activateAndNotify(order.id);
         console.log(`Tamara webhook activation — order ${order.id}: activated=${result.activated} emailSent=${result.emailSent}`);
+
+        // إشعار المسؤول بالبريد الإلكتروني
+        sendAdminOrderNotification({
+          order_id:        order.id,
+          user_name:       order.user_name  || "عميل",
+          user_email:      order.user_email || "",
+          user_phone:      order.user_phone || "",
+          amount:          Number(order.amount || 0),
+          payment_gateway: "tamara",
+          paid_at:         new Date().toISOString(),
+        }).catch(() => {});
       }
     }
 
