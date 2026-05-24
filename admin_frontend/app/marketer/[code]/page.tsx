@@ -21,6 +21,8 @@ type Stats = {
   total_earned: number;
   pending_earned: number;
   paid_earned: number;
+  clicks_count: number;
+  conversion_rate: number | null;
 };
 
 type Sale = {
@@ -59,7 +61,11 @@ export default function MarketerPortalPage() {
   const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
-    if (!code) return;
+    if (!code) {
+      setError("رابط المسوّق غير صحيح — تحقق من الرابط أو تواصل مع الإدارة");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     fetch(`/api/marketer/${code}`)
       .then(r => r.json())
@@ -224,6 +230,53 @@ export default function MarketerPortalPage() {
             </div>
           ))}
         </div>
+
+        {/* ── Clicks / Conversion stats (تظهر فقط إذا يوجد زيارات) ── */}
+        {stats.clicks_count > 0 && (
+          <div
+            className="rounded-2xl p-5"
+            style={{ background: "var(--surface, #fff)", border: "1px solid var(--border, #e4e4e7)" }}
+          >
+            <h2 className="text-sm font-bold mb-4 flex items-center gap-2" style={{ color: "var(--text, #000)" }}>
+              <TrendingUp size={14} style={{ color: "#6366f1" }} />
+              تحليل رابط الإحالة
+            </h2>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="rounded-xl p-3" style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.18)" }}>
+                <p className="text-lg font-bold" style={{ color: "#6366f1" }}>{stats.clicks_count}</p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--text3, #888)" }}>زيارة</p>
+              </div>
+              <div className="rounded-xl p-3" style={{ background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.18)" }}>
+                <p className="text-lg font-bold" style={{ color: "#3b82f6" }}>{stats.sales_count}</p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--text3, #888)" }}>مبيعة</p>
+              </div>
+              <div
+                className="rounded-xl p-3"
+                style={{
+                  background: (stats.conversion_rate ?? 0) >= 10
+                    ? "rgba(16,185,129,0.06)" : (stats.conversion_rate ?? 0) >= 5
+                    ? "rgba(245,158,11,0.06)" : "rgba(113,113,122,0.06)",
+                  border: (stats.conversion_rate ?? 0) >= 10
+                    ? "1px solid rgba(16,185,129,0.2)" : (stats.conversion_rate ?? 0) >= 5
+                    ? "1px solid rgba(245,158,11,0.2)" : "1px solid rgba(113,113,122,0.15)",
+                }}
+              >
+                <p className="text-lg font-bold" style={{
+                  color: (stats.conversion_rate ?? 0) >= 10 ? "#10b981"
+                    : (stats.conversion_rate ?? 0) >= 5 ? "#f59e0b" : "#71717a",
+                }}>
+                  {stats.conversion_rate !== null ? `${stats.conversion_rate}%` : "—"}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--text3, #888)" }}>تحويل</p>
+              </div>
+            </div>
+            {stats.clicks_count > stats.sales_count && (
+              <p className="text-xs text-center mt-3" style={{ color: "var(--text4, #aaa)" }}>
+                {stats.clicks_count - stats.sales_count} زائر زار رابطك ولم يكمل الشراء بعد
+              </p>
+            )}
+          </div>
+        )}
 
         {/* ── Referral Link ── */}
         <div

@@ -35,6 +35,15 @@ export async function GET(_req: Request, { params }: { params: { code: string } 
   const pending_earned = allSales.filter(r => r.status === "pending").reduce((s, r) => s + Number(r.commission_earned || 0), 0);
   const paid_earned    = allSales.filter(r => r.status === "paid").reduce((s, r) => s + Number(r.commission_earned || 0), 0);
 
+  // عدد الزيارات من الرابط
+  const { count: clicks_count } = await supabase
+    .from("affiliate_clicks")
+    .select("id", { count: "exact", head: true })
+    .eq("affiliate_code", code);
+
+  const cc = clicks_count ?? 0;
+  const conversion_rate = cc > 0 ? Math.round((allSales.length / cc) * 100) : null;
+
   return NextResponse.json({
     ok: true,
     marketer: {
@@ -49,6 +58,8 @@ export async function GET(_req: Request, { params }: { params: { code: string } 
       total_earned,
       pending_earned,
       paid_earned,
+      clicks_count: cc,
+      conversion_rate,
     },
     sales: allSales.map(s => ({
       id: s.id,
