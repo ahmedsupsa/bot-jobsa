@@ -26,10 +26,9 @@ export async function GET() {
     return NextResponse.json({ ok: true, marketers: [] });
   }
 
-  // Get sales stats per marketer
+  // Get sales stats per marketer — use RPC to bypass PostgREST permission issue
   const { data: sales } = await supabase
-    .from("affiliate_sales")
-    .select("affiliate_id, commission_earned, status");
+    .rpc("get_all_affiliate_sales");
 
   // Get click counts per marketer code
   const codes = marketers.map((m) => m.code);

@@ -17,10 +17,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const { id } = params;
 
   const { data: sales, error } = await supabase
-    .from("affiliate_sales")
-    .select("*")
-    .eq("affiliate_id", id)
-    .order("created_at", { ascending: false });
+    .rpc("get_marketer_sales_admin", { p_affiliate_id: id });
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, sales: sales || [] });
