@@ -24,26 +24,20 @@ export async function GET(_req: Request, { params }: { params: { code: string } 
   if (mErr || !marketer) return NextResponse.json({ ok: false, error: "المسوّق غير موجود" }, { status: 404 });
   if (!marketer.is_active) return NextResponse.json({ ok: false, error: "هذا الحساب موقوف" }, { status: 403 });
 
+  // Use RPC to bypass PostgREST table-level permission issues
   const { data: sales, error: sErr } = await supabase
-    .from("affiliate_sales")
-    .select("id, order_amount, commission_earned, status, customer_name, created_at, paid_at")
-    .eq("affiliate_id", marketer.id)
-    .order("created_at", { ascending: false });
+    .rpc("get_marketer_sales", { p_affiliate_id: marketer.id });
 
   if (sErr) {
-    console.error("[marketer-api] affiliate_sales error:", sErr.message, "| marketer_id:", marketer.id);
+    console.error("[marketer-api] get_marketer_sales error:", sErr.message);
   }
 
-  const { count: clicks_count, error: cErr } = await supabase
+  const { count: clicks_count } = await supabase
     .from("affiliate_clicks")
     .select("id", { count: "exact", head: true })
     .eq("affiliate_code", code);
 
-  if (cErr) {
-    console.error("[marketer-api] affiliate_clicks error:", cErr.message);
-  }
-
-  const allSales = sales || [];
+  const allSales = (sales as any[] | null) || [];
   const total_earned   = allSales.reduce((s, r) => s + Number(r.commission_earned || 0), 0);
   const pending_earned = allSales.filter(r => r.status === "pending").reduce((s, r) => s + Number(r.commission_earned || 0), 0);
   const paid_earned    = allSales.filter(r => r.status === "paid").reduce((s, r) => s + Number(r.commission_earned || 0), 0);
@@ -77,6 +71,5 @@ export async function GET(_req: Request, { params }: { params: { code: string } 
       created_at: s.created_at,
       paid_at: s.paid_at,
     })),
-    _debug: { marketer_id: marketer.id, sales_count_db: allSales.length, sales_error: sErr?.message ?? null },
   });
 }
