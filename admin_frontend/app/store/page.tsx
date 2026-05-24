@@ -135,6 +135,25 @@ export default function StorePage() {
         const clean = ref.trim().toUpperCase();
         localStorage.setItem("jobbots_ref", clean);
         setRefCode(clean);
+
+        // تسجيل الزيارة من رابط المسوّق (مرة واحدة فقط لكل جلسة)
+        try {
+          const sessionKey = `jobbots_click_${clean}`;
+          if (!sessionStorage.getItem(sessionKey)) {
+            // session_id ثابت للمتصفح طوال الجلسة
+            let sid = sessionStorage.getItem("jobbots_sid");
+            if (!sid) {
+              sid = Math.random().toString(36).slice(2) + Date.now().toString(36);
+              sessionStorage.setItem("jobbots_sid", sid);
+            }
+            sessionStorage.setItem(sessionKey, "1");
+            fetch("/api/store/track-click", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ code: clean, session_id: sid }),
+            }).catch(() => {});
+          }
+        } catch {}
       } else {
         const stored = localStorage.getItem("jobbots_ref");
         if (stored) setRefCode(stored);

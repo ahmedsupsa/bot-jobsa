@@ -20,6 +20,7 @@ type Marketer = {
   product_id?: string | null; product_name?: string | null; is_active: boolean;
   notes?: string | null; created_at: string;
   sales_count: number; total_earned: number; pending_earned: number; paid_earned: number;
+  clicks_count: number; conversion_rate: number | null;
 };
 
 type Sale = {
@@ -347,9 +348,21 @@ export default function AffiliateAdminPage() {
                         </div>
                         {m.phone && <p className="text-xs text-muted2 mt-0.5" dir="ltr">{m.phone}</p>}
                       </div>
-                      <div className="text-left shrink-0 space-y-0.5">
-                        <p className="text-xs text-muted2">{m.sales_count} مبيعة</p>
-                        {m.pending_earned > 0 && <p className="text-xs font-bold text-yellow-400">{m.pending_earned.toFixed(2)} ر.س معلّق</p>}
+                      <div className="text-left shrink-0 space-y-1">
+                        <div className="flex items-center gap-2 justify-end flex-wrap">
+                          {m.clicks_count > 0 && (
+                            <span className="flex items-center gap-1 text-xs text-muted2">
+                              <Eye size={10} />{m.clicks_count} زيارة
+                            </span>
+                          )}
+                          <span className="text-xs text-muted2">{m.sales_count} مبيعة</span>
+                          {m.conversion_rate !== null && (
+                            <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${m.conversion_rate >= 10 ? "border-green-500/30 bg-green-500/10 text-green-400" : m.conversion_rate >= 5 ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400" : "border-slate-500/30 bg-slate-500/10 text-muted"}`}>
+                              {m.conversion_rate}% تحويل
+                            </span>
+                          )}
+                        </div>
+                        {m.pending_earned > 0 && <p className="text-xs font-bold text-yellow-400 text-left">{m.pending_earned.toFixed(2)} ر.س معلّق</p>}
                       </div>
                       {/* Action icons */}
                       <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
@@ -522,6 +535,44 @@ export default function AffiliateAdminPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-5 space-y-5">
+                {/* إحصائيات الزيارات والتحويل */}
+                {selectedMarketer.clicks_count > 0 && (
+                  <div className="rounded-2xl border border-line bg-bg p-4">
+                    <h3 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <Eye size={11} />تحليل الرابط
+                    </h3>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 text-center">
+                        <p className="text-sm font-bold text-blue-400">{selectedMarketer.clicks_count}</p>
+                        <p className="text-[10px] text-muted2 mt-0.5">زيارة</p>
+                      </div>
+                      <div className="rounded-xl border border-line2 bg-panel2 p-3 text-center">
+                        <p className="text-sm font-bold text-ink">{selectedMarketer.sales_count}</p>
+                        <p className="text-[10px] text-muted2 mt-0.5">مبيعة</p>
+                      </div>
+                      <div className={`rounded-xl border p-3 text-center ${
+                        (selectedMarketer.conversion_rate ?? 0) >= 10
+                          ? "border-green-500/20 bg-green-500/5"
+                          : (selectedMarketer.conversion_rate ?? 0) >= 5
+                          ? "border-yellow-500/20 bg-yellow-500/5"
+                          : "border-line bg-bg"
+                      }`}>
+                        <p className={`text-sm font-bold ${
+                          (selectedMarketer.conversion_rate ?? 0) >= 10 ? "text-green-400"
+                          : (selectedMarketer.conversion_rate ?? 0) >= 5 ? "text-yellow-400"
+                          : "text-muted"
+                        }`}>
+                          {selectedMarketer.conversion_rate !== null ? `${selectedMarketer.conversion_rate}%` : "—"}
+                        </p>
+                        <p className="text-[10px] text-muted2 mt-0.5">معدل التحويل</p>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted2 mt-2.5 text-center">
+                      {selectedMarketer.clicks_count - selectedMarketer.sales_count} زائر لم يكمل الشراء
+                    </p>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     { label: "مبيعات", value: String(selectedMarketer.sales_count), color: "text-blue-400" },

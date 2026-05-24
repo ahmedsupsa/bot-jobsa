@@ -31,6 +31,20 @@ export async function GET() {
     .from("affiliate_sales")
     .select("affiliate_id, commission_earned, status");
 
+  // Get click counts per marketer code
+  const codes = marketers.map((m) => m.code);
+  const { data: clicks } = codes.length
+    ? await supabase
+        .from("affiliate_clicks")
+        .select("affiliate_code")
+        .in("affiliate_code", codes)
+    : { data: [] };
+
+  const clicksByCode = new Map<string, number>();
+  for (const c of clicks || []) {
+    clicksByCode.set(c.affiliate_code, (clicksByCode.get(c.affiliate_code) || 0) + 1);
+  }
+
   const statsByMarketer = new Map<string, { count: number; total: number; pending: number; paid: number }>();
   for (const s of sales || []) {
     const cur = statsByMarketer.get(s.affiliate_id) || { count: 0, total: 0, pending: 0, paid: 0 };
@@ -43,6 +57,10 @@ export async function GET() {
 
   const result = marketers.map((m) => {
     const stats = statsByMarketer.get(m.id) || { count: 0, total: 0, pending: 0, paid: 0 };
+    const clicks_count = clicksByCode.get(m.code) || 0;
+    const conversion_rate = clicks_count > 0
+      ? Math.round((stats.count / clicks_count) * 100)
+      : null;
     return {
       ...m,
       product_name: m.store_products?.name || null,
@@ -50,6 +68,8 @@ export async function GET() {
       total_earned: stats.total,
       pending_earned: stats.pending,
       paid_earned: stats.paid,
+      clicks_count,
+      conversion_rate,
     };
   });
 
