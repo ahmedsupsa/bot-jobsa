@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { enforcePermission } from "@/lib/admin-auth";
 import { makeToken } from "@/lib/auth";
 import { tg } from "@/lib/telegram";
+import { createMarketerCommission } from "@/lib/marketer-commission";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "";
@@ -310,6 +311,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   // Auto-activate account and send email when order is confirmed as paid
   if (body.status === "paid") {
+    // ── عمولة المسوّق الخارجي (التحويل البنكي يُعتمد يدوياً من الأدمن) ──
+    createMarketerCommission(id).catch(e =>
+      console.error("Admin mark-paid marketer commission error:", e)
+    );
+
     try {
       const result = await autoActivateOrder(supabase, id);
       if (result.email) {

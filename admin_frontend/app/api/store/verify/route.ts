@@ -6,6 +6,7 @@ import { makeToken } from "@/lib/auth";
 import { autoActivateOrder, sendActivationEmail } from "@/lib/order-activation";
 import { tg } from "@/lib/telegram";
 import { sendAdminOrderNotification } from "@/lib/admin-notify";
+import { createMarketerCommission } from "@/lib/marketer-commission";
 
 export const dynamic = "force-dynamic";
 
@@ -281,7 +282,16 @@ export async function POST(req: Request) {
       console.error("Verify activation email error:", e);
     }
 
-    // Track affiliate commission
+    // ── عمولة المسوّق الخارجي ──────────────────────────────────────────
+    if (order.affiliate_marketer_id || order.affiliate_code) {
+      try {
+        await createMarketerCommission(order_id, { supabase });
+      } catch (e) {
+        console.error("Marketer commission error:", e);
+      }
+    }
+
+    // ── عمولة إحالة المستخدم ────────────────────────────────────────────
     if (order.ref_code) {
       try {
         const { data: aff } = await supabase

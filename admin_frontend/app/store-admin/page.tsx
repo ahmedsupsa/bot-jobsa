@@ -51,6 +51,10 @@ type Order = {
   store_products?: { name: string; price: number; duration_days: number };
   discount_code?: string | null;
   original_amount?: number | null;
+  affiliate_code?: string | null;
+  affiliate_marketer_id?: string | null;
+  affiliate_commission?: number | null;
+  ref_code?: string | null;
 };
 
 type BankAccount = {
@@ -882,6 +886,17 @@ export default function StoreAdminPage() {
                             </span>
                           )}
                           <GatewayBadge gateway={o.payment_gateway} />
+                          {o.affiliate_code && (
+                            <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-xs text-purple-400 font-bold">
+                              🔗 {o.affiliate_code}
+                              {o.affiliate_commission ? ` · ${o.affiliate_commission} ر.س` : ""}
+                            </span>
+                          )}
+                          {!o.affiliate_code && o.ref_code && (
+                            <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-xs text-blue-400 font-bold">
+                              👤 {o.ref_code}
+                            </span>
+                          )}
                           {o.refund_status === "requested" && (
                             <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-xs text-orange-400 font-bold">
                               ⚠️ طلب استرجاع

@@ -4,6 +4,7 @@ import { captureOrder, verifyWebhookSignature } from "@/lib/tamara";
 import { makeToken } from "@/lib/auth";
 import { activateAndNotify } from "@/lib/order-activation";
 import { sendAdminOrderNotification } from "@/lib/admin-notify";
+import { createMarketerCommission } from "@/lib/marketer-commission";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,13 @@ export async function POST(req: Request) {
         // Create/extend user account + send activation email with code
         const result = await activateAndNotify(order.id);
         console.log(`Tamara webhook activation — order ${order.id}: activated=${result.activated} emailSent=${result.emailSent}`);
+
+        // ── عمولة المسوّق الخارجي ─────────────────────────────────────
+        if (order.affiliate_marketer_id || order.affiliate_code) {
+          createMarketerCommission(order.id).catch(e =>
+            console.error("Tamara webhook marketer commission error:", e)
+          );
+        }
 
         // إشعار المسؤول بالبريد الإلكتروني
         sendAdminOrderNotification({

@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase-server";
 import { createCheckoutSession } from "@/lib/tamara";
 import { findOrCreateConsumer, createPaymentLink, createProduct as createStreamPayProduct } from "@/lib/streampay";
 import { validateDiscount, type Gateway } from "@/lib/discount";
+import { lookupMarketerCode } from "@/lib/marketer-commission";
 import { validateEmail } from "@/lib/email-validation";
 import { validatePhoneSA } from "@/lib/phone-validation";
 import { tg } from "@/lib/telegram";
@@ -50,14 +51,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "المنتج غير متاح" }, { status: 404 });
     }
 
+    // تحقق من كود الإحالة — يدعم نظامين: affiliates (مستخدمون) + affiliate_marketers (مسوّقون خارجيون)
     let validRefCode: string | null = null;
+    let marketerRef: { id: string; code: string } | null = null;
+
     if (ref_code && typeof ref_code === "string") {
-      const { data: aff } = await supabase
-        .from("affiliates")
-        .select("code")
-        .eq("code", ref_code.trim().toUpperCase())
-        .maybeSingle();
-      if (aff) validRefCode = aff.code;
+      const cleanCode = ref_code.trim().toUpperCase();
+
+      // 1) تحقق من المسوّقين الخارجيين أولاً
+      const marketer = await lookupMarketerCode(supabase as any, cleanCode);
+      if (marketer) {
+        marketerRef = { id: marketer.id, code: marketer.code };
+      } else {
+        // 2) تحقق من إحالات المستخدمين
+        const { data: aff } = await supabase
+          .from("affiliates")
+          .select("code")
+          .eq("code", cleanCode)
+          .maybeSingle();
+        if (aff) validRefCode = aff.code;
+      }
     }
 
     let finalAmount = Number(product.price);
@@ -82,6 +95,9 @@ export async function POST(req: Request) {
       status: initialStatus,
       payment_gateway: gateway,
       ref_code: validRefCode,
+      // المسوّق الخارجي
+      affiliate_code: marketerRef?.code || null,
+      affiliate_marketer_id: marketerRef?.id || null,
       discount_code: appliedDiscount?.code || null,
       discount_code_id: appliedDiscount?.id || null,
     };
