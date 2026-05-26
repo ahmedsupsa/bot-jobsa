@@ -3,7 +3,7 @@
 
 import type { TaxonomyProfile } from "./matcher.ts";
 
-export const MINIMUM_SCORE = 80; // حد أدنى للتقديم
+export const MINIMUM_SCORE = 60; // حد أدنى للتقديم
 
 export interface ScoreResult {
   score:   number;        // 0 – 100

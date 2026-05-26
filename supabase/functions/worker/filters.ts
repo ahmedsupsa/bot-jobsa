@@ -104,6 +104,6 @@ export function genderConflict(userGender: string, job: GenderCheckResult): stri
 }
 
 // ── فلتر الحد اليومي ──────────────────────────────────────────────────────────
-export const MAX_PER_DAY    = 10;
-export const MAX_PER_CYCLE  = 3;  // أقصى عدد تقديمات لكل مستخدم في دورة واحدة
-export const MAX_USERS_PER_RUN = 6; // أقصى عدد مستخدمين لكل تشغيل
+export const MAX_PER_DAY    = 15;
+export const MAX_PER_CYCLE  = 8;  // أقصى عدد تقديمات لكل مستخدم في دورة واحدة
+export const MAX_USERS_PER_RUN = 10; // أقصى عدد مستخدمين لكل تشغيل
