@@ -257,6 +257,19 @@ async def process_message(text: str, channel_title: str, channel_id: str, msg_id
             logger.info("[TG] 🚫 مسمى يبدو مؤهلاً تعليمياً — تجاهل: %s", title)
             continue
 
+        # فلتر: مسميات عامة جداً لا تصف وظيفة حقيقية
+        _GENERIC_TITLES = {
+            "موظف تقنية معلومات", "موظفة تقنية معلومات",
+            "وظائف تقنية", "وظيفة تقنية",
+            "وظائف هندسية", "وظيفة هندسية",
+            "وظائف إدارية", "وظيفة إدارية",
+            "وظائف", "وظيفة", "فرصة عمل", "فرص عمل",
+            "موظف", "موظفة",
+        }
+        if title in _GENERIC_TITLES:
+            logger.info("[TG] 🚫 مسمى عام جداً — تجاهل: %s", title)
+            continue
+
         # fallback للإيميل
         if not job.get("application_email"):
             m = _EMAIL_RE.search(text)
