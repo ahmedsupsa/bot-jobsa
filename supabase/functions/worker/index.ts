@@ -1,38 +1,61 @@
-// Supabase Edge Function — Auto Apply Worker (Enhanced)
-// يعمل تلقائياً كل 30 دقيقة عبر pg_cron — مستقل تماماً عن Replit
-// الإرسال عبر SMTP الشخصي لكل مستخدم
+// Auto Apply Worker v3 — إعادة بناء من الصفر
+// المنطق: صنّف مرة واحدة → طابق بدون AI → قدّم
+// أقصى تقديمات: 10 لكل مستخدم يومياً
 
 import nodemailer from "npm:nodemailer@6";
 
-const SUPABASE_URL    = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
-const SUPABASE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const GEMINI_KEY      = Deno.env.get("GEMINI_API_KEY") ?? "";
-const WORKER_SECRET   = Deno.env.get("WORKER_SECRET") ?? "";
-const ENC_KEY_HEX     = Deno.env.get("SMTP_ENCRYPTION_KEY") ?? "";
-const TG_BOT          = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
-const TG_CHAT         = Deno.env.get("TELEGRAM_CHAT_ID") ?? "";
+// ── متغيرات البيئة ────────────────────────────────────────────────────────────
+const SUPABASE_URL  = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
+const SUPABASE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const GEMINI_KEY    = Deno.env.get("GEMINI_API_KEY") ?? "";
+const WORKER_SECRET = Deno.env.get("WORKER_SECRET") ?? "";
+const ENC_KEY_HEX   = Deno.env.get("SMTP_ENCRYPTION_KEY") ?? "";
+const TG_BOT        = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
+const TG_CHAT       = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? Deno.env.get("TELEGRAM_CHAT_ID") ?? "";
 
-const SB = {
-  apikey: SUPABASE_KEY,
-  Authorization: `Bearer ${SUPABASE_KEY}`,
-  "Content-Type": "application/json",
-  Prefer: "return=representation",
+const SB: Record<string, string> = {
+  apikey:          SUPABASE_KEY,
+  Authorization:   `Bearer ${SUPABASE_KEY}`,
+  "Content-Type":  "application/json",
+  Prefer:          "return=representation",
 };
 
+// ── ثوابت ─────────────────────────────────────────────────────────────────────
+const MAX_PER_DAY          = 10;  // أقصى تقديمات لكل مستخدم يومياً
+const MAX_USERS_PER_RUN    = 15;  // أقصى مستخدمين لكل تشغيل
+const MAX_CLASSIFY_PER_RUN = 30;  // أقصى وظائف تُصنَّف في كل تشغيل
+const DEDUP_DAYS           = 30;  // أيام منع التكرار
 const EMAIL_RE = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
 
-// ─── Supabase helpers ──────────────────────────────────────────────────────────
+// ── مساعدات Supabase ──────────────────────────────────────────────────────────
 
-async function sbGet(table: string, params: Record<string, string> = {}) {
+async function sbGet<T = Record<string, unknown>>(
+  table: string,
+  params: Record<string, string> = {},
+  select = "*",
+): Promise<T[]> {
   const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
-  url.searchParams.set("select", "*");
+  url.searchParams.set("select", select);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   const r = await fetch(url.toString(), { headers: SB });
-  if (!r.ok) return [];
-  return r.json() as Promise<Record<string, unknown>[]>;
+  if (!r.ok) { console.error(`sbGet(${table}) ${r.status}: ${await r.text().catch(() => "")}`); return []; }
+  return r.json();
 }
 
-async function sbCount(table: string, params: Record<string, string> = {}): Promise<number> {
+async function sbInsert(table: string, data: Record<string, unknown>): Promise<void> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: "POST", headers: { ...SB, Prefer: "return=minimal" }, body: JSON.stringify(data),
+  });
+  if (!r.ok) console.error(`sbInsert(${table}) ${r.status}: ${await r.text().catch(() => "")}`);
+}
+
+async function sbPatch(table: string, filter: Record<string, string>, data: Record<string, unknown>): Promise<void> {
+  const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
+  for (const [k, v] of Object.entries(filter)) url.searchParams.set(k, v);
+  await fetch(url.toString(), { method: "PATCH", headers: { ...SB, Prefer: "return=minimal" }, body: JSON.stringify(data) });
+}
+
+async function sbCount(table: string, params: Record<string, string>): Promise<number> {
   const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
   url.searchParams.set("select", "id");
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
@@ -41,1575 +64,483 @@ async function sbCount(table: string, params: Record<string, string> = {}): Prom
   return parseInt(range.split("/")[1] ?? "0", 10) || 0;
 }
 
-async function sbInsert(table: string, data: Record<string, unknown>) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method: "POST", headers: SB, body: JSON.stringify(data),
-  });
-  if (!r.ok) {
-    const err = await r.text().catch(() => "");
-    console.error(`[worker] sbInsert(${table}) فشل ${r.status}: ${err.slice(0, 200)}`);
-  }
-}
-
-async function sbUpsert(table: string, data: Record<string, unknown>) {
-  const headers = {
-    ...SB,
-    "Prefer": "resolution=merge-duplicates,return=minimal",
-  };
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method: "POST", headers, body: JSON.stringify(data),
-  });
-  if (!r.ok) {
-    const err = await r.text().catch(() => "");
-    console.error(`[worker] sbUpsert(${table}) فشل ${r.status}: ${err.slice(0, 200)}`);
-  }
-}
-
-async function sbPatch(table: string, filter: Record<string, string>, data: Record<string, unknown>) {
-  const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
-  for (const [k, v] of Object.entries(filter)) url.searchParams.set(k, v);
-  await fetch(url.toString(), {
-    method: "PATCH", headers: SB, body: JSON.stringify(data),
-  });
-}
-
-// ─── Advisory Lock — يمنع تشغيل دورتين متزامنتين ─────────────────────────────
-// يتطلب إنشاء الدالة مرة واحدة في Supabase SQL Editor:
-// CREATE OR REPLACE FUNCTION try_lock_worker(lock_key bigint)
-// RETURNS boolean AS $$ SELECT pg_try_advisory_xact_lock($1); $$ LANGUAGE sql;
-
-async function tryAcquireWorkerLock(): Promise<boolean> {
-  try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/try_lock_worker`, {
-      method: "POST",
-      headers: { ...SB, "Prefer": "return=representation" },
-      body: JSON.stringify({ lock_key: 99001 }),
-    });
-    if (!r.ok) return true; // إذا فشل الـ RPC نكمل بدونه (graceful degradation)
-    const data = await r.json();
-    return data === true || data?.[0] === true;
-  } catch {
-    return true; // graceful degradation — لا نوقف العمل
-  }
-}
-
-// ─── AES-256-GCM فك التشفير (Web Crypto) ─────────────────────────────────────
+// ── AES-256-GCM فك التشفير ───────────────────────────────────────────────────
 
 async function decryptAES(encrypted: string, keyHex: string): Promise<string> {
-  const parts = encrypted.split(":");
-  if (parts.length !== 2) throw new Error("تنسيق التشفير غير صحيح");
-  const keyBytes  = new Uint8Array(keyHex.match(/.{2}/g)!.map((b) => parseInt(b, 16)));
-  const iv        = Uint8Array.from(atob(parts[0]), (c) => c.charCodeAt(0));
-  const rawData   = Uint8Array.from(atob(parts[1]), (c) => c.charCodeAt(0));
-
-  // Node.js يخزّن: [tag(16 بايت) + ciphertext]
-  // Web Crypto يتوقع: [ciphertext + tag(16 بايت)] — نعكس الترتيب
-  const tag        = rawData.slice(0, 16);
-  const ciphertext = rawData.slice(16);
-  const data       = new Uint8Array([...ciphertext, ...tag]);
-
-  const cryptoKey = await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["decrypt"]);
-  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, cryptoKey, data);
+  const [ivB64, dataB64] = encrypted.split(":");
+  if (!ivB64 || !dataB64) throw new Error("تنسيق مشفّر غير صحيح");
+  const keyBytes = new Uint8Array(keyHex.match(/.{2}/g)!.map(b => parseInt(b, 16)));
+  const iv       = Uint8Array.from(atob(ivB64),   c => c.charCodeAt(0));
+  const raw      = Uint8Array.from(atob(dataB64),  c => c.charCodeAt(0));
+  const tag = raw.slice(0, 16);
+  const ct  = raw.slice(16);
+  const key = await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, new Uint8Array([...ct, ...tag]));
   return new TextDecoder().decode(plain);
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ── بصمة الوظيفة (لمنع التكرار) ─────────────────────────────────────────────
 
-function stripEmojis(text: string): string {
-  return (text ?? "")
-    .replace(/[\u{1F300}-\u{1FAFF}\u{1F1E6}-\u{1F1FF}\u2600-\u27BF]+/gu, "")
-    .replace(/\s+/g, " ").trim();
+async function makeFingerprint(title: string, company: string, email: string): Promise<string> {
+  const text  = `${title}|${company}|${email}`.toLowerCase().trim();
+  const bytes = new TextEncoder().encode(text);
+  const hash  = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(hash)).slice(0, 8).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-function isValidEmail(addr: string): boolean {
-  return EMAIL_RE.test((addr ?? "").trim());
+// ── تصنيف الوظيفة بالذكاء الاصطناعي (مرة واحدة لكل وظيفة) ─────────────────
+
+interface ClassifyResult {
+  job_type:      "job" | "tamheer" | "coop" | "internship" | "training";
+  gender_req:    "male" | "female" | "both" | "unknown";
+  mapped_majors: string[];
+  confidence:    number;
 }
 
-function isActiveSubscription(user: Record<string, unknown>): boolean {
-  const ends = String(user.subscription_ends_at ?? "");
-  if (!ends) return false;
-  try { return new Date(ends) > new Date(); } catch { return false; }
-}
+async function classifyJob(title: string, desc: string): Promise<ClassifyResult> {
+  const fallback: ClassifyResult = { job_type: "job", gender_req: "unknown", mapped_majors: [], confidence: 0 };
+  if (!GEMINI_KEY) return fallback;
 
-// ─── تصنيف أخطاء SMTP ────────────────────────────────────────────────────────
-
-interface SmtpErrorInfo {
-  type: "auth" | "quota" | "network" | "recipient" | "unknown";
-  userMessage: string;
-  shouldRetry: boolean;
-  pauseHours: number; // 0 = لا إيقاف
-}
-
-function classifySmtpError(err: string): SmtpErrorInfo {
-  const e = err.toLowerCase();
-  if (e.includes("535") || e.includes("534") || e.includes("auth") || e.includes("password") || e.includes("credentials"))
-    return { type: "auth",      userMessage: "كلمة مرور التطبيق خاطئة أو انتهت صلاحيتها",   shouldRetry: false, pauseHours: 24 };
-  if (e.includes("daily") || e.includes("quota") || e.includes("limit") || e.includes("too many") || e.includes("rate"))
-    return { type: "quota",     userMessage: "تجاوزت حد Gmail اليومي للإرسال",                shouldRetry: false, pauseHours: 6  };
-  if (e.includes("550") || e.includes("551") || e.includes("552") || e.includes("553") || e.includes("reject") || e.includes("does not exist"))
-    return { type: "recipient", userMessage: "إيميل الجهة لا يقبل رسائل أو غير موجود",       shouldRetry: false, pauseHours: 0  };
-  if (e.includes("421") || e.includes("timeout") || e.includes("econnrefused") || e.includes("enotfound") || e.includes("network"))
-    return { type: "network",   userMessage: "مشكلة شبكة مؤقتة — سيُعاد المحاولة لاحقاً",   shouldRetry: true,  pauseHours: 0  };
-  return   { type: "unknown",   userMessage: "خطأ غير معروف في الإرسال",                      shouldRetry: true,  pauseHours: 0  };
-}
-
-// ─── SMTP Backoff — حماية حسابات المستخدمين من الحظر ────────────────────────
-
-async function shouldSkipSmtpAndUpdateFail(
-  uid: string,
-  settings: Record<string, unknown>,
-  smtpErrorInfo?: SmtpErrorInfo,
-): Promise<boolean> {
-  const failCount   = Number(settings.smtp_fail_count    ?? 0);
-  const pausedUntil = settings.smtp_paused_until
-    ? new Date(String(settings.smtp_paused_until))
-    : null;
-
-  // موقوف مؤقتاً؟
-  if (pausedUntil && pausedUntil > new Date()) {
-    const remaining = Math.ceil((pausedUntil.getTime() - Date.now()) / 3600000);
-    console.log(`[worker] ⏸️ SMTP موقوف مؤقتاً لـ ${uid} — متبقي ${remaining} ساعة`);
-    return true;
-  }
-
-  // إذا وصلنا هنا مع smtpErrorInfo → سجّل الفشل وأوقف إذا لزم
-  if (smtpErrorInfo) {
-    const newCount = failCount + 1;
-    const patch: Record<string, unknown> = { smtp_fail_count: newCount };
-    // أوقف إذا: نوع الخطأ يستوجب الإيقاف أو تراكمت 5 أخطاء
-    const pauseHours = smtpErrorInfo.pauseHours > 0
-      ? smtpErrorInfo.pauseHours
-      : newCount >= 5 ? 6 : 0;
-    if (pauseHours > 0) {
-      patch.smtp_paused_until = new Date(Date.now() + pauseHours * 3600000).toISOString();
-      console.warn(`[worker] ⚠️ SMTP موقوف ${pauseHours}ساعة لـ ${uid} — ${smtpErrorInfo.userMessage}`);
-    }
-    await sbPatch("user_settings", { user_id: `eq.${uid}` }, patch);
-    settings.smtp_fail_count = newCount; // تحديث في الذاكرة
-    return false; // لا نوقف الدورة الحالية، هذا للدورة القادمة
-  }
-
-  return false;
-}
-
-// إعادة ضبط عداد الفشل عند النجاح
-async function resetSmtpFailCount(uid: string, settings: Record<string, unknown>) {
-  if (Number(settings.smtp_fail_count ?? 0) > 0) {
-    await sbPatch("user_settings", { user_id: `eq.${uid}` }, {
-      smtp_fail_count: 0,
-      smtp_paused_until: null,
-    });
-    settings.smtp_fail_count = 0;
-  }
-}
-
-// ─── Gender Validation — كشف جنس الوظيفة ─────────────────────────────────────
-
-// كلمات أو عبارات صريحة تدل على وظائف نسائية
-const FEMALE_EXPLICIT = [
-  "للسيدات", "للنساء", "للإناث", "نسائي", "نسائية", "قسم نسائي",
-  "موظفات", "استقبال نسائي", "مبيعات نسائية", "فرع نسائي",
-  "للمرأة", "سيدات فقط", "إناث فقط", "قسم النساء", "أقسام نسائية",
-  "سيدة", "امرأة فقط", "بنات فقط",
-];
-
-// عناوين وظائف مؤنثة — قائمة شاملة
-const FEMALE_JOB_TITLES = [
-  // استقبال وإدارة
-  "سكرتيرة", "سكرتيره", "موظفة استقبال", "موظفه استقبال",
-  "مساعدة إدارية", "مساعده ادارية", "أمينة سر", "امينة سر",
-  // مبيعات وخدمة عملاء
-  "كاشيرة", "كاشيره", "مشرفة مبيعات", "مندوبة مبيعات",
-  "موظفة مبيعات", "بائعة",
-  // صحة وتمريض
-  "ممرضة", "ممرضه", "قابلة", "مولّدة",
-  // تعليم
-  "معلمة", "مدرّسة", "مدرسة", "مشرفة طالبات",
-  // خياطة وتجميل
-  "مصففة", "خياطة", "حلاقة", "مكيّجة", "إخصائية تجميل", "أخصائية تجميل",
-  // رعاية
-  "مربية", "حاضنة", "عاملة منزلية",
-  // تقنية وإدارة (مؤنثة — صيغة تأنيث صريحة فقط، لا أسماء تخصصات)
-  "أخصائية", "إخصائية", "مشرفة", "مديرة",
-  "مستشارة", "مصممة", "مهندسة", "محللة", "منسقة",
-  "مدققة", "مقيّمة", "باحثة", "مطورة",
-  "موظفة", "مسؤولة",
-];
-
-// كلمات صريحة تدل على وظائف رجالية
-const MALE_EXPLICIT = [
-  "للرجال", "رجال فقط", "موظفين رجال", "ذكور فقط", "للذكور",
-  "حارس أمن", "رجل أمن", "أمن رجالي", "نجار", "سباك", "لحام", "بواب",
-];
-
-type GenderCheckResult = {
-  jobGender: "female" | "male" | "neutral";
-  confidence: "explicit" | "implicit" | "none";
-  reason: string;
-};
-
-function detectJobGender(job: Record<string, unknown>): GenderCheckResult {
-  const titleAr = String(job.title_ar ?? "").toLowerCase().trim();
-  const titleEn = String(job.title_en ?? "").toLowerCase().trim();
-  const desc    = (String(job.description_ar ?? "") + " " + String(job.description_en ?? "")).toLowerCase();
-  const spec    = String(job.specializations ?? "").toLowerCase();
-  const allText = `${titleAr} ${titleEn} ${desc} ${spec}`;
-
-  // ── 1. فحص صريح: كلمات دالة مباشرة على الأنثى ──
-  for (const kw of FEMALE_EXPLICIT) {
-    if (allText.includes(kw.toLowerCase())) {
-      return {
-        jobGender: "female", confidence: "explicit",
-        reason: `الوظيفة مخصصة للنساء (كلمة دالة: "${kw}")`,
-      };
-    }
-  }
-
-  // ── 2. فحص صريح: كلمات دالة مباشرة على الذكر ──
-  for (const kw of MALE_EXPLICIT) {
-    if (allText.includes(kw.toLowerCase())) {
-      return {
-        jobGender: "male", confidence: "explicit",
-        reason: `الوظيفة مخصصة للرجال (كلمة دالة: "${kw}")`,
-      };
-    }
-  }
-
-  // ── 3. فحص ضمني: عنوان الوظيفة يطابق عنوان وظيفة نسائي محدد ──
-  for (const femTitle of FEMALE_JOB_TITLES) {
-    if (titleAr.includes(femTitle.toLowerCase())) {
-      return {
-        jobGender: "female", confidence: "implicit",
-        reason: `عنوان الوظيفة يدل على وظيفة نسائية: "${femTitle}"`,
-      };
-    }
-  }
-
-  // ── 4. محايد ──
-  return { jobGender: "neutral", confidence: "none", reason: "الوظيفة محايدة أو غير محدد الجنس" };
-}
-
-// خريطة التخصصات المرتبطة — توسّع بحث المطابقة لتخصصات قريبة
-const RELATED_FIELDS: Record<string, string[]> = {
-  "محاسبة":        ["مالية", "مال", "أعمال", "إدارة", "تدقيق", "ضرائب", "ميزانية"],
-  "مالية":         ["محاسبة", "أعمال", "إدارة", "استثمار", "بنوك", "اقتصاد"],
-  "إدارة أعمال":   ["محاسبة", "مالية", "موارد بشرية", "تسويق", "مبيعات"],
-  "موارد بشرية":   ["إدارة", "أعمال", "تدريب", "توظيف"],
-  "تسويق":         ["مبيعات", "إعلام", "علاقات عامة", "تجارة"],
-  "مبيعات":        ["تسويق", "تجارة", "خدمة عملاء"],
-  "تقنية معلومات": ["حاسب", "برمجة", "شبكات", "أمن معلومات", "software", "it"],
-  "حاسب":          ["تقنية", "برمجة", "software", "it", "شبكات"],
-  "هندسة":         ["تقنية", "صناعة", "ميكانيكا", "كهرباء", "مدني", "كيمياء"],
-  "طب":            ["صحة", "تمريض", "صيدلة", "مختبر"],
-  "تمريض":         ["صحة", "طب", "رعاية"],
-  "تعليم":         ["تدريس", "أكاديمي", "تدريب"],
-  "قانون":         ["محاماة", "شريعة", "قضاء", "legal"],
-};
-
-// خريطة الأسماء البديلة (عربي ↔ إنجليزي) لتحسين دقة المطابقة
-const ALIAS_MAP: Record<string, string[]> = {
-  "محاسبة":         ["accounting", "finance", "cpa", "cfa", "bookkeeping"],
-  "برمجة":          ["software", "developer", "engineer", "coding", "programming", "frontend", "backend", "fullstack"],
-  "تسويق":          ["marketing", "digital marketing", "seo", "growth", "brand"],
-  "موارد بشرية":    ["hr", "human resources", "recruitment", "talent"],
-  "تقنية معلومات":  ["it", "information technology", "tech support", "systems"],
-  "مبيعات":         ["sales", "business development", "account manager"],
-  "تصميم":          ["design", "graphic", "ui", "ux", "creative"],
-  "إدارة أعمال":    ["business", "management", "operations", "admin"],
-  "قانون":          ["legal", "law", "counsel", "compliance"],
-  "لوجستيات":       ["logistics", "supply chain", "warehouse", "procurement"],
-  "طب":             ["medical", "doctor", "physician", "clinical"],
-  "تمريض":          ["nursing", "nurse", "healthcare"],
-  "تعليم":          ["teaching", "education", "trainer", "instructor"],
-};
-
-function jobMatchesUser(
-  job: Record<string, unknown>,
-  fieldNames: string[],
-  cvProfile?: CvProfile | null,
-): boolean {
-  // بناء قائمة الكلمات: تفضيلات المستخدم + تخصص السيرة الذاتية
-  const keywords = new Set<string>();
-  for (const f of fieldNames) if (f.trim()) keywords.add(f.trim().toLowerCase());
-
-  // إضافة كلمات من تخصص السيرة الذاتية
-  if (cvProfile?.specialization) {
-    keywords.add(cvProfile.specialization.toLowerCase());
-    for (const w of cvProfile.specialization.split(/[\s\-،,\/]+/))
-      if (w.trim().length > 2) keywords.add(w.trim().toLowerCase());
-  }
-  if (cvProfile?.degree) {
-    for (const w of cvProfile.degree.split(/[\s\-،,\/]+/))
-      if (w.trim().length > 3) keywords.add(w.trim().toLowerCase());
-  }
-
-  // لا تفضيلات ولا cv_profile → لا يمكن تحديد التخصص، قبول كل الوظائف
-  if (!keywords.size) return true;
-
-  // توسيع الكلمات بالتخصصات المرتبطة
-  const expanded = new Set<string>(keywords);
-  for (const kw of keywords) {
-    for (const [key, related] of Object.entries(RELATED_FIELDS)) {
-      if (kw.includes(key) || key.includes(kw)) {
-        for (const r of related) expanded.add(r.toLowerCase());
-      }
-    }
-    // توسيع بالأسماء البديلة (عربي ↔ إنجليزي)
-    for (const [key, aliases] of Object.entries(ALIAS_MAP)) {
-      if (kw.includes(key) || key.includes(kw)) {
-        for (const a of aliases) expanded.add(a.toLowerCase());
-      }
-      // البحث العكسي: إذا الكلمة إنجليزية تطابق alias
-      if (aliases.some(a => kw.includes(a))) {
-        expanded.add(key.toLowerCase());
-        for (const r of (RELATED_FIELDS[key] ?? [])) expanded.add(r.toLowerCase());
-      }
-    }
-  }
-
-  // مسح الوظيفة كاملاً (تخصص + عنوان + وصف)
-  const blob = [
-    job.specializations, job.title_ar, job.title_en,
-    job.description_ar,  job.description_en,
-  ].map(v => String(v ?? "")).join(" ").toLowerCase();
-
-  // أي كلمة واحدة تتطابق → يُقدَّم
-  return [...expanded].some(k => k && blob.includes(k));
-}
-
-// ─── CV Download ──────────────────────────────────────────────────────────────
-
-async function downloadCv(storagePath: string): Promise<Uint8Array | null> {
-  const url = `${SUPABASE_URL}/storage/v1/object/cvs/${storagePath}`;
-  const r = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
-  if (!r.ok) return null;
-  return new Uint8Array(await r.arrayBuffer());
-}
-
-// ─── Structured CV Profile — يُحلَّل مرة واحدة ويُخزَّن إلى الأبد ─────────────
-
-interface CvProfile {
-  degree: string;           // "بكالوريوس علوم حاسب"
-  specialization: string;   // "هندسة البرمجيات"
-  experience_years: number; // -1=غير محدد، 0=حديث تخرج، N=سنوات
-  skills: string[];
-  languages: string[];
-  prev_jobs: string[];
-  is_fresh_graduate: boolean;
-}
-
-// حساب hash خفيف للملف (أول 512 بايت) لكشف التغيير بدون تنزيل كامل
-async function computeCvHash(cvBytes: Uint8Array): Promise<string> {
-  const sample  = cvBytes.slice(0, 512);
-  const hashBuf = await crypto.subtle.digest("SHA-256", sample);
-  return Array.from(new Uint8Array(hashBuf)).slice(0, 8).map(b => b.toString(16).padStart(2, "0")).join("");
-}
-
-// استخراج نص من PDF (مرة واحدة فقط)
-async function parseCvBytesWithAI(cvBytes: Uint8Array, cvMime: string): Promise<string | null> {
-  if (!GEMINI_KEY || !cvBytes.length) return null;
   const prompt =
-    "استخرج من هذه السيرة الذاتية المعلومات التالية بشكل منظّم ومختصر بالعربية:\n" +
-    "المؤهل العلمي والتخصص:\nسنوات الخبرة الإجمالية:\n" +
-    "الوظائف السابقة (مسمى + جهة + مدة):\nالمهارات التقنية والبرامج:\n" +
-    "الشهادات والرخص المهنية:\nاللغات:\n" +
-    "اكتب فقط المعلومات الموجودة فعلاً. لا تضف تخمينات.";
-  const parts = [
-    { inline_data: { mime_type: cvMime, data: toBase64(cvBytes) } },
-    { text: prompt },
-  ];
-  for (const model of ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"]) {
+    `صنّف هذه الوظيفة وأعد JSON فقط بدون markdown:\n` +
+    `{"job_type":"job","gender_req":"unknown","mapped_majors":["تخصص1"],"confidence":0.9}\n\n` +
+    `قواعد job_type: tamheer=تمهير، coop=تدريب تعاوني/كوب، internship=تدريب طلاب، training=تدريب فقط، وإلا job\n` +
+    `قواعد gender_req: female=للنساء/سيدات/نسائي، male=للرجال/ذكور، unknown=غير محدد، both=للجميع\n` +
+    `mapped_majors: قائمة 1-6 تخصصات جامعية عربية (مثل: محاسبة، إدارة أعمال، تقنية معلومات، تسويق، مالية، موارد بشرية، هندسة، طب، قانون، تعليم، إعلام، لوجستيات، تصميم)\n\n` +
+    `العنوان: ${title}\nالوصف: ${desc.slice(0, 500)}`;
+
+  for (const model of ["gemini-2.5-flash-lite", "gemini-1.5-flash", "gemini-2.5-flash"]) {
     try {
       const r = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts }] }) }
+        { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
       );
       if (!r.ok) continue;
       const data = await r.json();
-      const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
-      if (text) return text;
-    } catch { continue; }
-  }
-  return null;
-}
-
-// تحويل النص → JSON منظّم (Flash Lite = رخيص جداً، prompt قصير)
-async function parseCvProfileFromText(cvText: string): Promise<CvProfile | null> {
-  if (!GEMINI_KEY || !cvText.trim()) return null;
-  const prompt = `استخرج البيانات من السيرة الذاتية التالية. أعد JSON فقط بدون markdown:
-{"degree":"المؤهل","specialization":"التخصص","experience_years":0,"skills":["مهارة1"],"languages":["العربية"],"prev_jobs":["مسمى - جهة - مدة"],"is_fresh_graduate":false}
-القواعد: experience_years: -1 غير محدد | 0 حديث تخرج | رقم موجب سنوات. is_fresh_graduate: true إذا لا وظائف سابقة. skills: حد 15.
-
-السيرة الذاتية:
-${cvText.slice(0, 1800)}`;
-
-  for (const model of ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"]) {
-    try {
-      const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
-      );
-      if (!r.ok) continue;
-      const data = await r.json();
-      const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
-      const m = text.match(/\{[\s\S]*\}/);
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+      const m = text.match(/\{[\s\S]*?\}/);
       if (!m) continue;
       const p = JSON.parse(m[0]);
       return {
-        degree:           String(p.degree || ""),
-        specialization:   String(p.specialization || ""),
-        experience_years: typeof p.experience_years === "number" ? p.experience_years : -1,
-        skills:    Array.isArray(p.skills)    ? p.skills.slice(0, 15).map(String)   : [],
-        languages: Array.isArray(p.languages) ? p.languages.map(String)             : [],
-        prev_jobs: Array.isArray(p.prev_jobs) ? p.prev_jobs.slice(0, 5).map(String) : [],
-        is_fresh_graduate: !!p.is_fresh_graduate,
-      };
-    } catch { continue; }
-  }
-  return null;
-}
-
-// جلب/تحليل السيرة الذاتية — يُخزَّن النص والملف المنظّم مرة واحدة فقط
-// تحسين: يتحقق من hash الملف لكشف التغيير قبل استدعاء Gemini
-async function getOrParseCv(cv: Record<string, unknown>): Promise<{
-  parsedText: string | null;
-  profile: CvProfile | null;
-}> {
-  const cvId        = String(cv.id ?? "");
-  const storagePath = String(cv.storage_path ?? "").trim();
-  const cvName      = String(cv.file_name ?? "cv.pdf");
-  const cvMime      = cvName.toLowerCase().endsWith(".pdf") ? "application/pdf"
-    : cvName.toLowerCase().endsWith(".docx")
-      ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-      : "application/octet-stream";
-
-  const existingText    = String(cv.cv_parsed_text ?? "").trim() || null;
-  const existingProfile = (cv.cv_profile ?? null) as CvProfile | null;
-  const savedHash       = String(cv.cv_file_hash ?? "").trim();
-
-  // ─── فحص hash: إذا الملف لم يتغير والبيانات موجودة → لا استدعاء Gemini ───
-  // نتحقق من الـ hash فقط إذا تغيّر الملف (cv_file_hash مختلف)
-  // هذا يوفر استدعاءات Gemini غير ضرورية في كل دورة
-  if (existingText && existingProfile && savedHash) {
-    // البيانات موجودة والـ hash محفوظ → بدون تنزيل الملف
-    return { parsedText: existingText, profile: existingProfile };
-  }
-
-  // كلاهما محفوظ (بدون hash محفوظ — نظام قديم) → لا استدعاء Gemini
-  if (existingText && existingProfile) {
-    return { parsedText: existingText, profile: existingProfile };
-  }
-
-  // جلب الملف
-  const cvBytes = storagePath ? await downloadCv(storagePath) : null;
-  if (!cvBytes) return { parsedText: null, profile: null };
-
-  // حساب hash الملف
-  const currentHash = await computeCvHash(cvBytes);
-
-  // إذا الـ hash لم يتغير والنص موجود → أعد بناء الـ profile فقط بدون Gemini Vision
-  if (savedHash && savedHash === currentHash && existingText) {
-    const profile = await parseCvProfileFromText(existingText);
-    if (profile && cvId) {
-      await sbPatch("user_cvs", { id: `eq.${cvId}` }, { cv_profile: profile, cv_file_hash: currentHash });
-      console.log(`[worker] 📊 أُعيد بناء الملف المنظّم (hash لم يتغير) — cv_id=${cvId}`);
-    }
-    return { parsedText: existingText, profile };
-  }
-
-  // جلب النص إذا لم يكن محفوظاً أو تغيّر الملف
-  let parsedText = (savedHash && savedHash === currentHash) ? existingText : null;
-  if (!parsedText) {
-    parsedText = await parseCvBytesWithAI(cvBytes, cvMime);
-    if (parsedText && cvId) {
-      await sbPatch("user_cvs", { id: `eq.${cvId}` }, {
-        cv_parsed_text: parsedText,
-        cv_parsed_at:   new Date().toISOString(),
-        cv_file_hash:   currentHash,
-      });
-      console.log(`[worker] 💾 حُفظ نص CV (hash=${currentHash}) — cv_id=${cvId}`);
-    }
-  }
-
-  // بناء الملف المنظّم من النص (Flash Lite — رخيص جداً)
-  let profile: CvProfile | null = existingProfile;
-  if (!profile && parsedText) {
-    profile = await parseCvProfileFromText(parsedText);
-    if (profile && cvId) {
-      await sbPatch("user_cvs", { id: `eq.${cvId}` }, {
-        cv_profile:   profile,
-        cv_file_hash: currentHash,
-      });
-      console.log(`[worker] 📊 حُفظ الملف المنظّم — cv_id=${cvId}`);
-    }
-  }
-
-  return { parsedText, profile };
-}
-
-// ─── Local Keyword Scoring — تقييم بدون Gemini ──────────────────────────────
-
-function computeLocalScore(
-  profile: CvProfile | null,
-  fieldNames: string[],
-  jobTitle: string,
-  jobDesc: string,
-  jobLevel: JobLevel,
-): number {
-  // بدون profile → دع Gemini يقرر دائماً
-  if (!profile) return 55;
-  const haystack = `${jobTitle} ${jobDesc}`.toLowerCase();
-  let score = 50;
-
-  // تأثير الخبرة — خفيف لأن Gemini هو الحَكَم الأساسي
-  const exp = profile.experience_years;
-  if (jobLevel === "senior") {
-    if (exp === 0) score -= 20;
-    else if (exp >= 3) score += 10;
-  } else if (jobLevel === "mid") {
-    if (exp === 0) score -= 10;
-    else if (exp >= 2) score += 10;
-  } else if (jobLevel === "entry") {
-    score += 15;
-  }
-
-  // تطابق المهارات
-  const skillHits = profile.skills.filter(s => s.length > 2 && haystack.includes(s.toLowerCase())).length;
-  score += Math.min(skillHits * 10, 30);
-
-  // تطابق التخصص
-  if (profile.specialization) {
-    const words = profile.specialization.split(/[\s\-،,]+/).filter(w => w.length > 3);
-    if (words.some(w => haystack.includes(w.toLowerCase()))) score += 15;
-  }
-
-  return Math.max(0, Math.min(100, score));
-}
-
-// ─── أولوية الوظائف — تُرتَّب قبل حلقة التقديم ────────────────────────────────
-
-function scoreJobPriority(
-  job: Record<string, unknown>,
-  cvProfile: CvProfile | null,
-): number {
-  let priority = 0;
-
-  // وظيفة جديدة → أولوية أعلى
-  const createdAt = String(job.created_at ?? "");
-  if (createdAt) {
-    const hoursOld = (Date.now() - new Date(createdAt).getTime()) / 3600000;
-    if (hoursOld < 24)  priority += 30;
-    else if (hoursOld < 72) priority += 10;
-  }
-
-  // تطابق عنوان الوظيفة مع الوظائف السابقة للمستخدم
-  if (cvProfile?.prev_jobs?.length) {
-    const titleLow = String(job.title_ar ?? job.title_en ?? "").toLowerCase();
-    if (cvProfile.prev_jobs.some(pj => titleLow && pj.toLowerCase().includes(titleLow.slice(0, 8)))) {
-      priority += 25;
-    }
-  }
-
-  // تطابق المهارات مع وصف الوظيفة
-  if (cvProfile?.skills?.length) {
-    const blob = String(job.description_ar ?? job.description_en ?? "").toLowerCase();
-    const hits  = cvProfile.skills.filter(s => s.length > 2 && blob.includes(s.toLowerCase())).length;
-    priority += Math.min(hits * 5, 20);
-  }
-
-  return priority;
-}
-
-// ─── Cover Letter من القالب المحفوظ للمستخدم ─────────────────────────────────
-
-function buildCoverLetterFromSavedBody(
-  name: string,
-  jobTitle: string,
-  company: string,
-  phone: string,
-  email: string,
-  _lang: string,
-  savedBody: string,
-): string {
-  const companyTrim = (company || "").trim();
-  const jobTrimmed = (jobTitle || "").trim();
-  const header = companyTrim
-    ? `إلى فريق التوظيف في <strong>${companyTrim}</strong>${jobTrimmed ? ` &mdash; <span style="color:#93c5fd;">${jobTrimmed}</span>` : ""}`
-    : `طلب توظيف &mdash; <span style="color:#93c5fd;">${jobTrimmed}</span>`;
-  const greeting = companyTrim
-    ? `<p style="font-size:15px;font-weight:600;margin:20px 0 16px;color:#93c5fd;">السلام عليكم ورحمة الله وبركاته،</p>`
-    : "";
-
-  const paragraphs = savedBody
-    .split(/\n{2,}/)
-    .map(p => p.trim())
-    .filter(Boolean)
-    .map(p => `<p style="line-height:2;margin:0 0 16px;font-size:15px;">${p.replace(/\n/g, "<br>")}</p>`)
-    .join("");
-
-  return `<!DOCTYPE html><html dir="rtl" lang="ar">
-<head><meta charset="UTF-8">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet">
-</head>
-<body style="margin:0;padding:24px;background:#f0f2f5;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;">
-<div dir="rtl" style="background-color:#0a1e36;color:#ffffff;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;padding:40px;border-radius:12px;max-width:600px;margin:0 auto;">
-  <h2 style="margin-top:0;font-size:20px;font-weight:700;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:16px;">
-    ${header}
-  </h2>
-  ${greeting}
-  <div style="color:#e2e8f0;">${paragraphs}</div>
-  <p style="margin:24px 0 0;line-height:2;font-size:14px;border-top:1px solid rgba(255,255,255,0.15);padding-top:16px;color:#cbd5e1;">
-    مع خالص التحية،<br><strong style="color:#fff;">${name}</strong><br>${phone}<br>${email}
-  </p>
-</div>
-</body></html>`;
-}
-
-// ─── Cover Letter — قالب HTML ثابت (بدون AI) ────────────────────────────────
-
-// متغيرات جمل الافتتاح حسب مستوى الوظيفة — تمنع التكرار الروبوتي
-const COVER_OPENERS: Record<string, string[]> = {
-  entry:  [
-    "أتقدم بحماس للانضمام إلى فريقكم، إذ أرى في هذه الفرصة بداية مسيرة مهنية متميزة.",
-    "يسعدني التقدم لهذه الوظيفة، وأنا مؤمن بقدرتي على تقديم قيمة حقيقية منذ اليوم الأول.",
-    "أجد في هذه الفرصة المكان المناسب لتطبيق ما تعلمته وتطوير مهاراتي في بيئة احترافية.",
-  ],
-  junior: [
-    "بخلفيتي الأكاديمية ومهاراتي المتنامية، أتطلع للمساهمة في تحقيق أهداف فريقكم.",
-    "أتقدم بثقة لهذه الوظيفة معتمداً على تخصصي ورغبتي الحقيقية في التطور المهني.",
-    "أرى في هذا المنصب فرصة لتوظيف مهاراتي وإثراء خبراتي ضمن فريق متميز.",
-  ],
-  mid:    [
-    "خبرتي العملية في المجال تؤهلني لتقديم إسهام فعلي يُضاف إلى منجزات فريقكم.",
-    "أتقدم بثقة معتمداً على مسيرتي المهنية التي أكسبتني مهارات عملية متكاملة.",
-    "أجمع بين الخلفية الأكاديمية والخبرة الميدانية التي تجعلني مرشحاً مناسباً لهذا الدور.",
-  ],
-  senior: [
-    "مسيرتي المهنية المتراكمة في المجال أهّلتني لتولي هذا الدور بكفاءة عالية.",
-    "أقدم معي خبرة متعمقة وسجلاً حافلاً من الإنجازات في تخصصي.",
-    "أحمل رؤية واضحة وخبرة عملية راسخة تمكنني من إضافة قيمة استراتيجية لفريقكم.",
-  ],
-};
-
-function getRandomOpener(jobLevel: JobLevel): string {
-  const options = COVER_OPENERS[jobLevel] ?? COVER_OPENERS.junior;
-  return options[Math.floor(Math.random() * options.length)];
-}
-
-function buildCoverLetterTemplate(
-  name: string,
-  jobTitle: string,
-  company: string,
-  profile: CvProfile | null,
-  phone: string,
-  email: string,
-  lang: string,
-  certs?: Array<{ type: string; name: string; issuer?: string }>,
-  jobLevel?: JobLevel,
-): string {
-  const companyTrimmed = (company || "").trim();
-  const headerAr = companyTrimmed
-    ? `إلى فريق التوظيف في <strong>${companyTrimmed}</strong>`
-    : `طلب توظيف &mdash; <strong>${(jobTitle || "").trim()}</strong>`;
-  const spec   = profile?.specialization || profile?.degree || "مجال التخصص";
-  const exp    = profile?.experience_years ?? -1;
-  const skills = (profile?.skills ?? []).slice(0, 5).join("، ") || "مهارات متنوعة في المجال";
-
-  const degreeItem = profile?.degree
-    ? profile.degree + (profile.specialization ? " في " + profile.specialization : "")
-    : "مؤهل علمي مناسب";
-  const expItem = exp > 0
-    ? `خبرة ${exp} ${exp === 1 ? "سنة" : "سنوات"} في المجال`
-    : "حديث التخرج، لديّ رغبة قوية في التطور والتعلم";
-  const skillsItem = skills;
-  let certsItem = "";
-  if (certs && certs.length > 0) {
-    const certList = certs.map(c => c.name + (c.issuer ? ` (${c.issuer})` : "")).join("، ");
-    certsItem = `الشهادات والرخص: ${certList}`;
-  }
-
-  const greetingLine = companyTrimmed
-    ? `<p style="line-height:2;margin:20px 0 8px;font-size:15px;">السلام عليكم ورحمة الله وبركاته،</p>`
-    : "";
-
-  // جملة افتتاح ديناميكية حسب مستوى الوظيفة
-  const openerText = getRandomOpener(jobLevel ?? "junior");
-
-  return `<!DOCTYPE html><html dir="rtl" lang="ar">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet">
-</head>
-<body style="margin:0;padding:24px;background:#f0f2f5;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;">
-<div dir="rtl" style="background-color:#0a1e36;color:#ffffff;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;padding:40px;border-radius:12px;max-width:600px;margin:0 auto;">
-  <h2 style="margin-top:0;font-size:20px;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:16px;">
-    ${headerAr}
-  </h2>
-  ${greetingLine}
-  <p style="line-height:2;margin:16px 0 12px;font-size:15px;">${openerText}</p>
-  <p style="line-height:2;margin:0 0 16px;font-size:15px;">
-    أنا <strong>${name}</strong>، متخصص في ${spec}،<br>
-    وأرغب بالانضمام إلى فريقكم في وظيفة <strong>${jobTitle}</strong>.
-  </p>
-  <ul style="line-height:2.2;padding-right:20px;font-size:15px;margin:0 0 20px;">
-    <li>${degreeItem}</li>
-    <li>${expItem}</li>
-    <li>${skillsItem}</li>
-    ${certsItem ? `<li>${certsItem}</li>` : ""}
-  </ul>
-  <p style="line-height:2;font-size:15px;margin:0 0 24px;">
-    أرفقت لكم سيرتي الذاتية، وأتطلع لفرصة للتواصل معكم.
-  </p>
-  <p style="margin:0;line-height:2;font-size:14px;border-top:1px solid rgba(255,255,255,0.15);padding-top:16px;">
-    مع خالص التحية،<br>
-    <strong>${name}</strong><br>
-    ${phone}<br>
-    ${email}
-  </p>
-</div>
-</body></html>`;
-}
-
-// ─── نص رسالة التغطية (plain text للحفظ في DB وتعديله من البوابة) ──────────────
-function buildPlainTextBody(
-  _jobTitle: string,
-  name: string,
-  profile: CvProfile | null,
-  certs?: Array<{ type: string; name: string; issuer?: string }>,
-): string {
-  const spec   = profile?.specialization || profile?.degree || "مجال التخصص";
-  const exp    = profile?.experience_years ?? -1;
-  const skills = (profile?.skills ?? []).slice(0, 5).join("، ") || "مهارات متنوعة في المجال";
-  const degreeItem = profile?.degree
-    ? profile.degree + (profile.specialization ? " في " + profile.specialization : "")
-    : "مؤهل علمي مناسب";
-  const expItem = exp > 0
-    ? `خبرة ${exp} ${exp === 1 ? "سنة" : "سنوات"} في المجال`
-    : "حديث التخرج، لديّ رغبة قوية في التطور والتعلم";
-  const certLine = certs && certs.length > 0
-    ? "\n- الشهادات: " + certs.map(c => c.name + (c.issuer ? ` (${c.issuer})` : "")).join("، ")
-    : "";
-
-  return `أنا ${name}، متخصص في ${spec}، وأتقدم بهذه الرسالة راغباً في الانضمام إلى فريقكم.
-
-أبرز مؤهلاتي:
-- ${degreeItem}
-- ${expItem}
-- المهارات: ${skills}${certLine}
-
-أرفقت لكم سيرتي الذاتية، وأتطلع لفرصة للتواصل معكم.`;
-}
-
-// ─── توليد رسالة التقديم ───────────────────────────────────────────────────────
-
-function toBase64(bytes: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
-}
-
-function generateCoverLetter(
-  jobTitle: string, name: string, company: string, _desc: string, lang: string,
-  _cvParsedText?: string | null,
-  cvProfile?: CvProfile | null,
-  _aiScore?: number,
-  phone?: string,
-  email?: string,
-  certs?: Array<{ type: string; name: string; issuer?: string }>,
-  jobLevel?: JobLevel,
-): string {
-  console.log(`[worker] 📝 FixedTemplate → ${jobTitle}`);
-  return buildCoverLetterTemplate(name, jobTitle, company, cvProfile ?? null, phone ?? "", email ?? "", lang, certs, jobLevel);
-}
-
-// ─── بناء HTML للإيميل ────────────────────────────────────────────────────────
-
-function buildEmailHtml(_name: string, _phone: string, _jobTitle: string, _company: string, cover: string, _lang: string): string {
-  return cover;
-}
-
-// ─── إرسال عبر SMTP الشخصي ────────────────────────────────────────────────────
-
-async function sendSmtp(opts: {
-  smtpHost: string; smtpPort: number; smtpSecure: boolean;
-  smtpEmail: string; appPassword: string;
-  to: string; subject: string; html: string;
-  fromName: string; cvBytes?: Uint8Array | null; cvName?: string;
-}): Promise<void> {
-  const transporter = nodemailer.createTransport({
-    host: opts.smtpHost,
-    port: opts.smtpPort,
-    secure: opts.smtpSecure,
-    auth: { user: opts.smtpEmail, pass: opts.appPassword },
-    connectionTimeout: 20000,
-    greetingTimeout: 15000,
-  });
-
-  const mailOptions: Record<string, unknown> = {
-    from: `${opts.fromName} <${opts.smtpEmail}>`,
-    to: opts.to,
-    subject: opts.subject,
-    html: opts.html,
-    replyTo: opts.smtpEmail,
-  };
-
-  if (opts.cvBytes && opts.cvName) {
-    mailOptions.attachments = [{
-      filename: opts.cvName,
-      content: opts.cvBytes,
-    }];
-  }
-
-  await transporter.sendMail(mailOptions);
-}
-
-// ─── بصمة بيانات الوظيفة (لكشف التغيير والسماح بإعادة التقديم) ─────────────
-
-async function jobFingerprint(title: string, email: string, desc: string): Promise<string> {
-  const text  = `${title}|${email}|${desc.slice(0, 500)}`;
-  const bytes = new TextEncoder().encode(text);
-  const hash  = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(hash)).slice(0, 8).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-// ─── Job Level Classification & Flexibility Score ─────────────────────────────
-
-type JobLevel = "entry" | "junior" | "mid" | "senior";
-
-const BEGINNER_FRIENDLY_KEYWORDS = [
-  "كاشير", "صندوق", "استقبال", "موظف استقبال", "استقبالية",
-  "خدمة عملاء", "ممثل خدمة", "دعم عملاء", "مركز اتصال", "call center",
-  "مساعد إداري", "مساعد اداري", "سكرتير", "سكرتارية",
-  "بائع", "بائعة", "موظف مبيعات", "مندوب مبيعات", "مندوبة مبيعات",
-  "مسوق", "مسوقة", "تسويق ميداني",
-  "منسق", "منسقة", "مدخل بيانات", "إدخال بيانات", "ادخال بيانات",
-  "دعم فني", "دعم تقني", "helpdesk", "help desk",
-  "مراقب كاميرات", "موظف أمن", "حارس أمن", "أمن", "مراقبة",
-  "موظف موارد بشرية", "مساعد موارد بشرية", "أخصائي توظيف مبتدئ",
-  "موظف تشغيل", "موظف خدمات", "موظف صندوق", "موظف طلبات",
-  "مشرف قاعة", "موظف استعلامات", "متعقب", "سائق توصيل", "توصيل",
-  "موزع", "مستودع", "مخزن", "مخازن", "شحن وتغليف",
-  "خياط", "عامل", "فني صيانة", "صيانة", "تنسيق اجتماعات",
-  "cashier", "receptionist", "customer service", "customer support",
-  "sales representative", "sales rep", "sales associate", "retail associate",
-  "store associate", "admin assistant", "administrative assistant",
-  "data entry", "secretary", "front desk", "operator",
-  "security guard", "security officer", "warehouse", "dispatcher",
-  "hr assistant", "coordinator", "scheduler", "office assistant",
-  "delivery driver", "field sales", "telesales", "telemarketer",
-];
-
-const SENIOR_MARKERS = [
-  "أول", "كبير", "مدير", "رئيس قسم", "رئيس", "مستشار",
-  "محاسب أول", "مهندس أول", "أخصائي أول", "قيادي",
-  "senior", "sr.", "lead", "manager", "director", "head of",
-  "principal", "chief", "vp", "vice president",
-  "architect", "consultant", "cto", "cfo", "coo",
-];
-
-const SPECIALIZED_TITLES = [
-  "محاسب", "accountant", "مدقق", "auditor",
-  "مهندس", "engineer", "طبيب", "doctor", "صيدلاني",
-  "محامي", "lawyer", "مستشار قانوني",
-  "مطور", "developer", "برمجة", "programmer",
-  "مصمم", "designer", "مصور احترافي",
-  "معالج", "therapist", "اخصائي نفسي",
-  "أخصائي أمن", "security analyst", "cybersecurity",
-];
-
-function classifyJobLevel(jobTitle: string, jobDesc: string): JobLevel {
-  const t = jobTitle.toLowerCase();
-  const d = jobDesc.slice(0, 400).toLowerCase();
-  const combined = t + " " + d;
-
-  if (SENIOR_MARKERS.some(m => combined.includes(m.toLowerCase()))) return "senior";
-
-  if (
-    t.includes("مبتدئ") || t.includes("مبتدئة") || t.includes("حديث تخرج") ||
-    t.includes("entry") || t.includes("junior") || t.includes("trainee") ||
-    t.includes("متدرب") || t.includes("متدربة") || t.includes("تدريب")
-  ) return "entry";
-
-  if (SPECIALIZED_TITLES.some(k => t.includes(k.toLowerCase()))) return "mid";
-  if (BEGINNER_FRIENDLY_KEYWORDS.some(k => t.includes(k.toLowerCase()))) return "entry";
-
-  return "junior";
-}
-
-// ─── تحليل مدى ملاءمة المستخدم للوظيفة (Gemini AI) ───────────────────────────
-
-interface JobFitResult {
-  score: number;
-  decision: "apply" | "skip";
-  reasons: string[];
-  missing: string[];
-  matched: string[];
-  job_level: JobLevel;
-}
-
-async function analyzeJobFit(
-  jobTitle: string,
-  company: string,
-  jobDesc: string,
-  cvParsedText: string | null,
-  fieldNames: string[],
-  certifications: Array<{ type: string; name: string; issuer?: string }>,
-  cvProfile?: CvProfile | null,
-): Promise<JobFitResult> {
-  const jobLevel = classifyJobLevel(jobTitle, jobDesc);
-
-  const fallback: JobFitResult = {
-    score: 55, decision: "apply",
-    reasons: ["تعذّر الاتصال بـ Gemini — تم التقديم تلقائياً (لا نفوّت فرصة)"],
-    missing: [], matched: [], job_level: jobLevel,
-  };
-  if (!GEMINI_KEY) return fallback;
-
-  const scoreThreshold = 42;
-
-  const levelRules: Record<string, string> = {
-    entry:  "وظيفة مبتدئين: قيّم بالمؤهل والتخصص. لا ترفض بسبب نقص الخبرة.",
-    junior: "قيّم بالتخصص الجامعي والمهارات. لا تمنع بسبب سنوات الخبرة.",
-    mid:    "قيّم بالتخصص والمهارات. لا تمنع بسبب سنوات الخبرة — المتقدم يريد المحاولة.",
-    senior: "قيّم بالتخصص. لا تمنع فقط بسبب الخبرة — قدّر التطابق بالمجال والمؤهل.",
-  };
-
-  const candidateSection = cvProfile
-    ? [
-        `المؤهل: ${cvProfile.degree || "غير محدد"}`,
-        `التخصص: ${cvProfile.specialization || "غير محدد"}`,
-        `الخبرة: ${cvProfile.experience_years === -1 ? "غير محدد" : cvProfile.experience_years === 0 ? "حديث تخرج" : cvProfile.experience_years + " سنة"}`,
-        `مهارات: ${cvProfile.skills.slice(0, 10).join("، ") || "—"}`,
-        `لغات: ${cvProfile.languages.join("، ") || "—"}`,
-        `وظائف سابقة: ${cvProfile.prev_jobs.slice(0, 3).join(" | ") || "لا يوجد"}`,
-      ].join("\n")
-    : `ملخص السيرة:\n${(cvParsedText ?? "غير متاح").slice(0, 800)}`;
-
-  const certText = certifications.length
-    ? certifications.map(c => `${c.type}: ${c.name}`).join("، ")
-    : "لا يوجد";
-
-  const prompt =
-    `أنت محلل توظيف. قيّم ملاءمة المرشح للوظيفة وأعد JSON فقط.\n\n` +
-    `الوظيفة: ${jobTitle} | ${company || "—"} | مستوى: ${jobLevel.toUpperCase()}\n` +
-    `القاعدة: ${levelRules[jobLevel]}\n` +
-    `الوصف: ${jobDesc.slice(0, 500) || "غير متاح"}\n\n` +
-    `المرشح:\n${candidateSection}\n` +
-    `التفضيلات: ${fieldNames.join("، ") || "—"}\n` +
-    `الشهادات: ${certText}\n\n` +
-    `أعد JSON فقط: {"score":75,"decision":"apply","reasons":["سبب"],"missing":["نقص"],"matched":["مهارة"],"cv_experience_years":2,"job_required_years":1}\n` +
-    `decision: "apply" إذا score≥${scoreThreshold} ولا متطلبات إلزامية ناقصة. أعد JSON فقط بلا نص.`;
-
-  const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"];
-  for (const model of MODELS) {
-    try {
-      const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
-      );
-      if (r.status === 429 || r.status === 503 || r.status === 404) continue;
-      if (!r.ok) continue;
-      const data = await r.json();
-      const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
-      if (!text) continue;
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) continue;
-      const parsed = JSON.parse(jsonMatch[0]) as Partial<JobFitResult> & { cv_experience_years?: number; job_required_years?: number };
-      const score   = Math.max(0, Math.min(100, Number(parsed.score ?? 0)));
-      const missing = Array.isArray(parsed.missing) ? parsed.missing.filter(Boolean).slice(0, 4) : [];
-      const decision: "apply" | "skip" = score >= scoreThreshold ? "apply" : "skip";
-      const matched = Array.isArray((parsed as any).matched) ? (parsed as any).matched.filter(Boolean).slice(0, 6) : [];
-      return {
-        score, decision,
-        reasons: Array.isArray(parsed.reasons) ? parsed.reasons.slice(0, 4) : [],
-        missing, matched, job_level: jobLevel,
+        job_type:      ["job","tamheer","coop","internship","training"].includes(p.job_type) ? p.job_type : "job",
+        gender_req:    ["male","female","both","unknown"].includes(p.gender_req) ? p.gender_req : "unknown",
+        mapped_majors: Array.isArray(p.mapped_majors) ? p.mapped_majors.slice(0, 8).map(String) : [],
+        confidence:    typeof p.confidence === "number" ? Math.min(1, Math.max(0, p.confidence)) : 0.7,
       };
     } catch { continue; }
   }
   return fallback;
 }
 
-// ─── Main Cycle ───────────────────────────────────────────────────────────────
+// ── الخطوة 1: تصنيف الوظائف الجديدة ─────────────────────────────────────────
+
+async function classifyPendingJobs(): Promise<number> {
+  const jobs = await sbGet("admin_jobs", {
+    is_classified: "eq.false",
+    is_active:     "eq.true",
+    order:         "created_at.asc",
+    limit:         String(MAX_CLASSIFY_PER_RUN),
+  });
+
+  let count = 0;
+  for (const job of jobs) {
+    const title = String(job.title_ar ?? job.title_en ?? "");
+    const desc  = String(job.description_ar ?? job.description_en ?? "");
+    try {
+      const result = await classifyJob(title, desc);
+      await sbPatch("admin_jobs", { id: `eq.${job.id}` }, {
+        is_classified:    true,
+        job_type:         result.job_type,
+        gender_req:       result.gender_req,
+        mapped_majors:    result.mapped_majors,
+        confidence_score: result.confidence,
+        classified_at:    new Date().toISOString(),
+      });
+      count++;
+      console.log(`[classify] ✅ "${title}" → ${result.job_type} | ${result.gender_req} | [${result.mapped_majors.join(", ")}]`);
+    } catch (e) {
+      console.error(`[classify] ❌ "${title}": ${e}`);
+    }
+  }
+  return count;
+}
+
+// ── مطابقة التخصص (بدون AI) ──────────────────────────────────────────────────
+
+function majorMatches(userFields: string[], jobMajors: string[]): boolean {
+  if (!userFields.length) return true;  // لا تفضيلات → يُقبل كل شيء
+  if (!jobMajors.length)  return true;  // لم تُصنَّف التخصصات → نقبل
+
+  const userSet = userFields.map(f => f.trim().toLowerCase());
+  const jobSet  = jobMajors.map(m => m.trim().toLowerCase());
+
+  for (const u of userSet) {
+    for (const j of jobSet) {
+      if (u.includes(j) || j.includes(u)) return true;
+    }
+  }
+  return false;
+}
+
+// ── مطابقة الجنس ─────────────────────────────────────────────────────────────
+
+function genderMatches(userGender: string, jobGenderReq: string): boolean {
+  if (jobGenderReq === "both" || jobGenderReq === "unknown") return true;
+  return userGender === jobGenderReq;
+}
+
+// ── تحميل السيرة الذاتية ─────────────────────────────────────────────────────
+
+async function downloadCv(path: string): Promise<Uint8Array | null> {
+  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/cvs/${path}`, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  });
+  return r.ok ? new Uint8Array(await r.arrayBuffer()) : null;
+}
+
+// ── رسالة التغطية ────────────────────────────────────────────────────────────
+
+function buildCoverLetter(
+  name: string, jobTitle: string, company: string,
+  phone: string, email: string, savedBody?: string,
+): string {
+  const companyLine = company
+    ? `إلى فريق التوظيف في <strong>${company}</strong>`
+    : `طلب توظيف — <strong>${jobTitle}</strong>`;
+
+  const bodyHtml = savedBody?.trim()
+    ? savedBody
+        .split(/\n{2,}/)
+        .map(p => `<p style="line-height:2;margin:0 0 14px;font-size:15px;">${p.replace(/\n/g, "<br>")}</p>`)
+        .join("")
+    : `<p style="line-height:2;margin:0 0 14px;font-size:15px;">
+         أتقدم بطلبي للوظيفة المعلنة <strong>${jobTitle}</strong>، وأرفق لكم سيرتي الذاتية للاطلاع عليها والنظر في طلبي.
+       </p>
+       <p style="line-height:2;margin:0 0 14px;font-size:15px;">
+         أتطلع لفرصة التواصل معكم لمناقشة كيف يمكنني المساهمة في فريقكم.
+       </p>`;
+
+  return `<!DOCTYPE html><html dir="rtl" lang="ar">
+<head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:24px;background:#f0f2f5;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;">
+<div style="background:#0a1e36;color:#fff;padding:40px;border-radius:12px;max-width:600px;margin:0 auto;direction:rtl;">
+  <h2 style="margin:0 0 20px;font-size:19px;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:16px;">
+    ${companyLine}
+  </h2>
+  <p style="line-height:2;margin:0 0 16px;font-size:15px;">السلام عليكم ورحمة الله وبركاته،</p>
+  ${bodyHtml}
+  <p style="margin:20px 0 0;font-size:14px;border-top:1px solid rgba(255,255,255,0.15);padding-top:16px;color:#cbd5e1;line-height:2;">
+    مع خالص التحية،<br>
+    <strong style="color:#fff;">${name}</strong><br>
+    ${phone}<br>${email}
+  </p>
+</div>
+</body></html>`;
+}
+
+// ── إرسال عبر SMTP ───────────────────────────────────────────────────────────
+
+async function sendSmtp(opts: {
+  host: string; port: number; secure: boolean;
+  user: string; pass: string; fromName: string;
+  to: string; subject: string; html: string;
+  cvBytes?: Uint8Array | null; cvName?: string;
+}): Promise<void> {
+  const transporter = nodemailer.createTransport({
+    host: opts.host, port: opts.port, secure: opts.secure,
+    auth: { user: opts.user, pass: opts.pass },
+    connectionTimeout: 20000, greetingTimeout: 15000,
+  });
+  const mail: Record<string, unknown> = {
+    from: `${opts.fromName} <${opts.user}>`,
+    to: opts.to, subject: opts.subject, html: opts.html, replyTo: opts.user,
+  };
+  if (opts.cvBytes && opts.cvName) {
+    mail.attachments = [{ filename: opts.cvName, content: opts.cvBytes }];
+  }
+  await transporter.sendMail(mail);
+}
+
+// ── الدورة الرئيسية ───────────────────────────────────────────────────────────
 
 type Detail = { user: string; job: string; status: "sent" | "skipped" | "error"; reason?: string };
 
 async function runCycle() {
-  const errors: string[] = [];
+  const t0      = Date.now();
+  const errors: string[]  = [];
   const details: Detail[] = [];
   let applied = 0, activeUsers = 0;
 
-  // ── Advisory Lock — منع تشغيل دورتين متزامنتين ─────────────────────────────
-  const locked = await tryAcquireWorkerLock();
-  if (!locked) {
-    console.log("[worker] 🔒 دورة أخرى تعمل بالفعل — تخطي هذه الدورة");
-    return { applied: 0, users: 0, errors: [], details: [], skipped_locked: true };
-  }
+  if (!ENC_KEY_HEX) return { applied: 0, users: 0, errors: ["SMTP_ENCRYPTION_KEY غير معرّف"], details: [] };
 
-  // ── التحقق من إيقاف التقديمات ─────────────────────────────────────────────
-  try {
-    const pauseRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/system_settings?key=eq.applications_pause&select=value`,
-      { headers: SB }
-    );
-    if (pauseRes.ok) {
-      const pauseData = await pauseRes.json() as Array<{ value: { paused: boolean; until: string | null; reason: string } }>;
-      const cfg = pauseData?.[0]?.value;
-      if (cfg?.paused) {
-        const until = cfg.until ? new Date(cfg.until) : null;
-        if (!until || until > new Date()) {
-          const msg = until
-            ? `التقديمات موقوفة حتى ${until.toLocaleString("ar-SA")}${cfg.reason ? ` — السبب: ${cfg.reason}` : ""}`
-            : `التقديمات موقوفة${cfg.reason ? ` — السبب: ${cfg.reason}` : ""}`;
-          console.log(`[worker] ⏸️ ${msg}`);
-          await tgSend(`⏸️ <b>Worker — تقديمات موقوفة</b>\n${msg}`);
-          return { applied: 0, users: 0, errors: [], details: [], paused: true };
-        } else {
-          await fetch(`${SUPABASE_URL}/rest/v1/system_settings?key=eq.applications_pause`, {
-            method: "PATCH", headers: SB,
-            body: JSON.stringify({ value: { paused: false, until: null, reason: "", paused_at: null } }),
-          });
-        }
-      }
-    }
-  } catch (e) {
-    console.warn("[worker] تحذير: تعذّر التحقق من إعداد الإيقاف:", e);
-  }
+  // ── الخطوة 1: تصنيف الوظائف الجديدة ─────────────────────────────────────
+  const classified = await classifyPendingJobs();
+  if (classified) console.log(`[worker] 🏷️ صُنِّفت ${classified} وظيفة جديدة`);
 
-  if (!ENC_KEY_HEX) {
-    return { applied: 0, users: 0, errors: ["SMTP_ENCRYPTION_KEY غير معرّف في Supabase Secrets"], details: [] };
-  }
+  // ── الخطوة 2: جلب الوظائف الجاهزة (مصنفة + فعالة + نوع "job") ────────────
+  const allJobs = await sbGet("admin_jobs", {
+    is_active:     "eq.true",
+    is_classified: "eq.true",
+    job_type:      "eq.job",
+    order:         "created_at.desc",
+    limit:         "500",
+  });
 
-  const jobsRaw = await sbGet("admin_jobs", { is_active: "eq.true" });
-  const jobs = jobsRaw.filter((j) => isValidEmail(String(j.application_email ?? "").trim()));
-  if (!jobs.length) return { applied: 0, users: 0, errors: [], details: [] };
+  const validJobs = allJobs.filter(j => EMAIL_RE.test(String(j.application_email ?? "").trim()));
+  console.log(`[worker] 📋 وظائف جاهزة: ${validJobs.length}`);
+  if (!validJobs.length) return { applied: 0, users: 0, errors: [], details: [] };
 
-  const [usersRaw, fieldsRaw] = await Promise.all([sbGet("users"), sbGet("job_fields")]);
+  // ── الخطوة 3: جلب المستخدمين النشطين ─────────────────────────────────────
+  const now   = new Date().toISOString();
+  const today = now.split("T")[0];
+  const users = await sbGet("users", { subscription_ends_at: `gt.${now}` });
 
-  const today = new Date().toISOString().split("T")[0];
-
-  const activeUsersRaw = usersRaw.filter(u => isActiveSubscription(u));
+  // عدد تقديمات اليوم لكل مستخدم
   const todayCounts = await Promise.all(
-    activeUsersRaw.map(u => sbCount("applications", { user_id: `eq.${String(u.id)}`, applied_at: `gte.${today}` }))
+    users.map(u => sbCount("applications", {
+      user_id:    `eq.${u.id}`,
+      applied_at: `gte.${today}`,
+      status:     "eq.sent",
+    }))
   );
-  const usersWithCount: Array<{ user: Record<string, unknown>; countToday: number }> = activeUsersRaw.map(
-    (user, i) => ({ user, countToday: todayCounts[i] })
-  );
-  usersWithCount.sort((a, b) => a.countToday - b.countToday || (Math.random() - 0.5));
 
-  const MAX_PER_CYCLE  = 8;
-  const MAX_USERS_PER_RUN = 10;
-  let processedUsers = 0;
+  // ترتيب: الأقل تقديماً أولاً، تجاهل من وصل للحد
+  const queue = users
+    .map((user, i) => ({ user, today: todayCounts[i] }))
+    .filter(x => x.today < MAX_PER_DAY)
+    .sort((a, b) => a.today - b.today)
+    .slice(0, MAX_USERS_PER_RUN);
 
-  for (const { user, countToday } of usersWithCount) {
-    if (processedUsers >= MAX_USERS_PER_RUN) break;
-    if (countToday >= 15) continue;
-    activeUsers++;
-    processedUsers++;
+  // جلب تخصصات الوظائف مرة واحدة
+  const fieldsRaw = await sbGet("job_fields");
+  const thirtyAgo = new Date(Date.now() - DEDUP_DAYS * 86400000).toISOString();
 
-    const uid = String(user.id);
+  // ── الخطوة 4: معالجة كل مستخدم ──────────────────────────────────────────
+  for (const { user, today: countToday } of queue) {
+    const uid    = String(user.id);
+    const name   = String(user.full_name ?? "المتقدم");
+    const gender = String(user.gender ?? "male");
+    const phone  = String(user.phone ?? "");
 
-    const certRows: Record<string, unknown>[] = [];
-  const [settingsRows, cvRows, prefsRows] = await Promise.all([
+    // جلب بيانات المستخدم
+    const [settingsRows, cvRows, prefsRows] = await Promise.all([
       sbGet("user_settings",        { user_id: `eq.${uid}` }),
       sbGet("user_cvs",             { user_id: `eq.${uid}` }),
       sbGet("user_job_preferences", { user_id: `eq.${uid}` }),
     ]);
 
     const settings = settingsRows[0] ?? {};
+    const cv       = cvRows[0];
+
+    // ── فحص المتطلبات ────────────────────────────────────────────────────
+    if (!cv) {
+      details.push({ user: name, job: "—", status: "skipped", reason: "لا توجد سيرة ذاتية" });
+      continue;
+    }
 
     const smtpEmail   = String(settings.smtp_email ?? "").trim();
-    const smtpHost    = String(settings.smtp_host  ?? "smtp.gmail.com");
-    const smtpPort    = Number(settings.smtp_port  ?? 465);
-    const smtpSecure  = settings.smtp_secure !== false;
     const encryptedPw = String(settings.smtp_app_password_encrypted ?? "").trim();
     const hasSmtp     = !!(settings.email_connected && smtpEmail && encryptedPw);
 
     if (!smtpEmail) {
-      details.push({ user: String(user.full_name ?? uid), job: "—", status: "skipped", reason: "لم يُضف إيميله بعد" });
+      details.push({ user: name, job: "—", status: "skipped", reason: "لم يُضف إيميله" });
       continue;
     }
     if (!hasSmtp) {
-      details.push({ user: String(user.full_name ?? uid), job: "—", status: "skipped", reason: "لم يربط Gmail App Password بعد" });
+      details.push({ user: name, job: "—", status: "skipped", reason: "لم يربط Gmail App Password" });
       continue;
     }
 
-    // ── فحص SMTP Backoff ─────────────────────────────────────────────────────
-    const shouldSkip = await shouldSkipSmtpAndUpdateFail(uid, settings);
-    if (shouldSkip) {
-      details.push({ user: String(user.full_name ?? uid), job: "—", status: "skipped", reason: `SMTP موقوف مؤقتاً — ${String(settings.smtp_paused_until ?? "")}` });
-      continue;
-    }
-
-    let appPassword = "";
+    // فك تشفير كلمة مرور SMTP
+    let appPassword: string;
     try {
       appPassword = await decryptAES(encryptedPw, ENC_KEY_HEX);
-    } catch (e) {
-      errors.push(`${String(user.full_name ?? uid)}: فشل فك التشفير — ${String(e)}`);
+    } catch {
+      errors.push(`${name}: فشل فك التشفير`);
       continue;
     }
 
-    const cv = cvRows[0];
-    if (!cv) {
-      details.push({ user: String(user.full_name ?? uid), job: "—", status: "skipped", reason: "لا توجد سيرة ذاتية" });
-      continue;
-    }
+    // تخصصات المستخدم
+    const prefIds    = new Set(prefsRows.map(p => String(p.job_field_id)));
+    const userFields = fieldsRaw
+      .filter(f => prefIds.has(String(f.id)))
+      .map(f => String(f.name_ar ?? f.name_en ?? ""));
 
-    const cvName = String(cv.file_name ?? "cv.pdf");
-    const { parsedText: cvParsedText, profile: cvProfile } = await getOrParseCv(cv);
-
-    const prefIds    = new Set(prefsRows.map((p) => String(p.job_field_id)).filter(Boolean));
-    const fieldNamesBase = fieldsRaw
-      .filter((f) => prefIds.has(String(f.id)))
-      .map((f) => String(f.name_ar ?? f.name_en ?? ""));
-
-    const taxonomyKws = Array.isArray(settings.taxonomy_keywords)
-      ? (settings.taxonomy_keywords as string[]).map(String).filter(Boolean)
-      : [];
-    const fieldNames = [...new Set([...fieldNamesBase, ...taxonomyKws])];
-
-    const certifications = certRows.map((c) => ({
-      type:   String(c.type   ?? ""),
-      name:   String(c.name   ?? ""),
-      issuer: String(c.issuer ?? "") || undefined,
-    }));
-
-    const name      = String(user.full_name ?? "المتقدم");
-    const phone     = String(user.phone ?? "");
-    const remaining = Math.min(MAX_PER_CYCLE, 15 - countToday);
-    const hasPrefs   = fieldNames.length > 0;
-    const hasProfile = !!(cvProfile?.specialization || cvProfile?.degree || (cvProfile as any)?.major);
-    if (!hasPrefs && !hasProfile) {
-      details.push({
-        user: name, job: "—", status: "skipped",
-        reason: "لا توجد تفضيلات وظيفية ولا ملف سيرة ذاتية محلَّل — يرجى إضافة التفضيلات أو رفع السيرة الذاتية",
-      });
-      continue;
-    }
-
-    let sent = 0;
-
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const recentAppsAll = await sbGet("applications", {
-      user_id:    `eq.${uid}`,
-      applied_at: `gte.${thirtyDaysAgo}`,
-      "select":   "job_id,job_title,job_fingerprint",
-    });
-    const appliedJobIds    = new Set(recentAppsAll.map((a) => String(a.job_id)));
-    const appliedJobTitles = new Set(recentAppsAll.map((a) => String(a.job_title)));
-    const appliedFps       = new Set(recentAppsAll.map((a) => String(a.job_fingerprint ?? "")).filter(Boolean));
-
-    // ── ترتيب الوظائف حسب الأولوية قبل التقديم ────────────────────────────
-    const sortedJobs = [...jobs].sort(
-      (a, b) => scoreJobPriority(b, cvProfile) - scoreJobPriority(a, cvProfile)
+    // التقديمات السابقة (30 يوم) لمنع التكرار
+    const recentApps = await sbGet<{ job_id: string; job_fingerprint: string }>(
+      "applications",
+      { user_id: `eq.${uid}`, applied_at: `gte.${thirtyAgo}` },
+      "job_id,job_fingerprint",
     );
+    const usedIds = new Set(recentApps.map(a => String(a.job_id)));
+    const usedFps = new Set(recentApps.map(a => String(a.job_fingerprint ?? "")).filter(Boolean));
 
-    for (const job of sortedJobs) {
+    // تحميل السيرة الذاتية
+    const cvPath  = String(cv.storage_path ?? "").trim();
+    const cvName  = String(cv.file_name ?? "cv.pdf");
+    const cvBytes = cvPath ? await downloadCv(cvPath) : null;
+
+    const smtpHost   = String(settings.smtp_host   ?? "smtp.gmail.com");
+    const smtpPort   = Number(settings.smtp_port   ?? 465);
+    const smtpSecure = settings.smtp_secure !== false;
+    const savedBody  = String(settings.cover_letter_body ?? "").trim() || undefined;
+
+    const remaining = MAX_PER_DAY - countToday;
+    let sent = 0;
+    activeUsers++;
+
+    // ── الخطوة 5: فلترة وإرسال ───────────────────────────────────────────
+    for (const job of validJobs) {
       if (sent >= remaining) break;
 
       const jobId    = String(job.id);
       const jobTitle = String(job.title_ar ?? job.title_en ?? "وظيفة");
-      const company  = String(job.company ?? "");
-      const desc     = String(job.description_ar ?? job.description_en ?? "").slice(0, 1200);
+      const company  = String(job.company ?? "").trim();
       const toEmail  = String(job.application_email ?? "").trim();
-      const displayJobTitle = jobTitle;
+      const genderReq = String(job.gender_req ?? "unknown");
+      const majors    = Array.isArray(job.mapped_majors) ? (job.mapped_majors as string[]) : [];
 
-      const fingerprint = await jobFingerprint(jobTitle, toEmail, desc);
+      // منع التكرار (job_id + fingerprint)
+      const fp = await makeFingerprint(jobTitle, company, toEmail);
+      if (usedIds.has(jobId) || usedFps.has(fp)) continue;
 
-      if (
-        appliedJobIds.has(jobId) ||
-        appliedFps.has(fingerprint)
-      ) {
-        details.push({ user: name, job: jobTitle, status: "skipped", reason: "قُدِّم مؤخراً (أقل من 30 يوم)" });
-        continue;
-      }
-
-      if (!isValidEmail(toEmail)) {
-        details.push({ user: name, job: jobTitle, status: "skipped", reason: `إيميل غير صالح: ${toEmail}` });
-        continue;
-      }
-
-      // فلتر وظائف التمهير والتدريب التعاوني
-      const TRAINING_KEYWORDS = [
-        "تمهير", "tamheer",
-        "تدريب تعاوني", "cooperative training",
-        "تدريب طلاب", "برنامج تدريبي للطلاب",
-        "internship for students",
-      ];
-      const jobBlob = `${jobTitle} ${desc}`.toLowerCase();
-      if (TRAINING_KEYWORDS.some(kw => jobBlob.includes(kw.toLowerCase()))) {
-        details.push({ user: name, job: jobTitle, status: "skipped", reason: "وظيفة تمهير/تدريب تعاوني — محذوفة تلقائياً" });
-        continue;
-      }
-
-      if (!jobMatchesUser(job, fieldNames, cvProfile)) {
-        details.push({ user: name, job: jobTitle, status: "skipped", reason: "لا يطابق تخصص السيرة الذاتية" });
-        continue;
-      }
-
-      // ── Gender Validation ─────────────────────────────────────────────────
-      const userGender  = String(user.gender ?? "male");
-      const genderCheck = detectJobGender(job);
-
-      if (genderCheck.jobGender !== "neutral") {
-        const conflict =
-          (genderCheck.jobGender === "female" && userGender === "male") ||
-          (genderCheck.jobGender === "male"   && userGender === "female");
-
-        if (conflict) {
-          const genderReason =
-            genderCheck.jobGender === "female"
-              ? `لم يتم التقديم لأن الوظيفة مخصصة للنساء بينما حساب المستخدم ذكر — ${genderCheck.reason}`
-              : `لم يتم التقديم لأن الوظيفة مخصصة للرجال بينما حساب المستخدم أنثى — ${genderCheck.reason}`;
-
-          const missingSkill = genderCheck.jobGender === "female"
-            ? "شرط الجنس: أنثى" : "شرط الجنس: ذكر";
-
-          console.log(`[worker] 🚫 Gender Block: ${name} ← ${jobTitle} | ${genderReason}`);
-          details.push({ user: name, job: jobTitle, status: "skipped", reason: genderReason });
-          await sbUpsert("applications", {
-            user_id: uid, job_id: jobId, job_title: jobTitle,
-            applied_at: new Date().toISOString(),
-            status: "skipped",
-            application_status: "invalid",
-            hidden_from_user: true,
-            invalid_application: true,
-            hidden_reason: "تعارض الجنس — " + genderCheck.reason,
-            skip_reason: genderReason,
-            decision_reasons: [genderCheck.reason, `جنس المستخدم: ${userGender === "male" ? "ذكر" : "أنثى"}`],
-            missing_skills: [missingSkill],
-            matched_skills: [],
-            match_score: 0, job_fingerprint: fingerprint,
-            provider_used: null,
-          });
-          continue;
-        }
-      }
-
-      // ── تحليل AI ──────────────────────────────────────────────────────────
-      const fit = await analyzeJobFit(jobTitle, company, desc, cvParsedText, fieldNames, certifications, cvProfile);
-      const levelLabel = { entry: "مبتدئ", junior: "جونيور", mid: "متوسط", senior: "متخصص" }[fit.job_level];
-      console.log(`[worker] 🤖 ${name} ← ${jobTitle} | level=${fit.job_level}(${levelLabel}) | score=${fit.score} | ${fit.decision} | gender=${genderCheck.jobGender}(${genderCheck.confidence}) | missing=${fit.missing.join(", ") || "لا يوجد"}`);
-
-      if (fit.decision === "skip") {
-        const reason = `AI رفض [${levelLabel}] (${fit.score}/100): ${fit.reasons.slice(0, 2).join("؛ ")}${fit.missing.length ? " | ناقص: " + fit.missing.slice(0, 2).join("، ") : ""}`;
-        details.push({ user: name, job: jobTitle, status: "skipped", reason });
-        await sbUpsert("applications", {
+      // فحص الجنس
+      if (!genderMatches(gender, genderReq)) {
+        // نسجل مرة واحدة حتى لا يتكرر الفحص
+        await sbInsert("applications", {
           user_id: uid, job_id: jobId, job_title: jobTitle,
           applied_at: new Date().toISOString(),
-          status: "skipped",
-          application_status: "rejected",
-          hidden_from_user: false,
-          invalid_application: false,
-          skip_reason: reason,
-          decision_reasons: fit.reasons,
-          missing_skills: fit.missing,
-          matched_skills: fit.matched,
-          match_score: fit.score, job_fingerprint: fingerprint,
-          provider_used: null,
+          status: "skipped", application_status: "invalid",
+          hidden_from_user: true,
+          skip_reason: `تعارض جنس: الوظيفة تطلب ${genderReq}`,
+          job_fingerprint: fp,
         });
+        usedIds.add(jobId);
+        usedFps.add(fp);
         continue;
       }
 
-      const sentAt = new Date().toISOString();
-      let status: "sent" | "error" = "sent";
-      let errorReason: string | null = null;
-      let smtpErrInfo: SmtpErrorInfo | undefined;
+      // فحص التخصص
+      if (!majorMatches(userFields, majors)) continue;
+
+      // ── إرسال التقديم ─────────────────────────────────────────────────
+      const sentAt  = new Date().toISOString();
+      const subject = `التقديم على وظيفة: ${jobTitle}`;
+      const cover   = buildCoverLetter(name, jobTitle, company, phone, smtpEmail, savedBody);
 
       try {
-        const savedBody = String(settings.cover_letter_body ?? "").trim();
-        let cover: string;
-        if (savedBody) {
-          cover = buildCoverLetterFromSavedBody(name, displayJobTitle, company, phone, smtpEmail, "ar", savedBody);
-        } else {
-          // أول مرة: ولّد من القالب مع مستوى الوظيفة لجملة افتتاح مناسبة
-          cover = generateCoverLetter(displayJobTitle, name, company, desc, "ar", cvParsedText, cvProfile, fit.score, phone, smtpEmail, certifications, fit.job_level);
-          const plainBody = buildPlainTextBody(displayJobTitle, name, cvProfile, certifications);
-          await sbPatch("user_settings", { user_id: `eq.${uid}` }, { cover_letter_body: plainBody });
-          settings.cover_letter_body = plainBody;
-          console.log(`[worker] 💾 حُفظ cover letter لـ ${name}`);
-        }
-        cover = stripEmojis(cover);
-        const html    = buildEmailHtml(name, phone, displayJobTitle, company, cover, "ar");
-        const subject = `التقديم على وظيفة: ${stripEmojis(jobTitle)}`;
-
-        const storagePath = String(cv.storage_path ?? "").trim();
-        const sendCvBytes = storagePath ? await downloadCv(storagePath) : null;
-
         await sendSmtp({
-          smtpHost, smtpPort, smtpSecure, smtpEmail, appPassword,
-          to: toEmail, subject, html, fromName: name, cvBytes: sendCvBytes, cvName,
+          host: smtpHost, port: smtpPort, secure: smtpSecure,
+          user: smtpEmail, pass: appPassword, fromName: name,
+          to: toEmail, subject, html: cover,
+          cvBytes: cvBytes ?? undefined, cvName,
         });
 
-        // إعادة ضبط عداد الفشل عند النجاح
-        await resetSmtpFailCount(uid, settings);
+        await sbInsert("applications", {
+          user_id: uid, job_id: jobId, job_title: jobTitle,
+          applied_at: sentAt, status: "sent",
+          application_status: "applied", hidden_from_user: false,
+          sent_at: sentAt, job_fingerprint: fp, provider_used: "smtp",
+        });
 
+        usedIds.add(jobId);
+        usedFps.add(fp);
         sent++; applied++;
-        details.push({ user: name, job: jobTitle, status: "sent", reason: `score=${fit.score}/100 — ${fit.reasons.slice(0, 1).join("")}` });
-        console.log(`[worker] ✅ ${name} → ${jobTitle} (${toEmail}) | score=${fit.score}`);
+        details.push({ user: name, job: jobTitle, status: "sent" });
+        console.log(`[worker] ✅ ${name} → ${jobTitle} (${toEmail})`);
 
-        await new Promise((r) => setTimeout(r, 5000));
+        await new Promise(r => setTimeout(r, 4000));
+
       } catch (e) {
-        status = "error";
-        errorReason = String(e).slice(0, 500);
-        smtpErrInfo = classifySmtpError(errorReason);
-        errors.push(`${name} → ${jobTitle}: [${smtpErrInfo.type}] ${smtpErrInfo.userMessage} | ${errorReason}`);
-        details.push({ user: name, job: jobTitle, status: "error", reason: `[${smtpErrInfo.type}] ${smtpErrInfo.userMessage}` });
-        console.error(`[worker] ❌ ${name} → ${jobTitle}: [${smtpErrInfo.type}] ${smtpErrInfo.userMessage}`);
-
-        // تسجيل الفشل وتفعيل Backoff إذا لزم
-        await shouldSkipSmtpAndUpdateFail(uid, settings, smtpErrInfo);
-
-        // إذا خطأ auth أو quota → لا فائدة من متابعة باقي الوظائف لهذا المستخدم
-        if (smtpErrInfo.type === "auth" || smtpErrInfo.type === "quota") {
-          console.warn(`[worker] ⏩ تخطي باقي وظائف ${name} — ${smtpErrInfo.userMessage}`);
-          await sbUpsert("applications", {
-            user_id: uid, job_id: jobId, job_title: jobTitle,
-            applied_at: sentAt, status, provider_used: "smtp",
-            application_status: "error",
-            hidden_from_user: false,
-            invalid_application: false,
-            error_reason: `[${smtpErrInfo.type}] ${smtpErrInfo.userMessage}`,
-            sent_at: null,
-            match_score: fit.score, job_fingerprint: fingerprint,
-            decision_reasons: fit.reasons,
-            missing_skills: fit.missing,
-            matched_skills: fit.matched,
-            skip_reason: null,
-          });
-          break; // لا نكمل باقي الوظائف — الحساب موقوف
+        const msg = String(e).slice(0, 250);
+        errors.push(`${name} → ${jobTitle}: ${msg}`);
+        details.push({ user: name, job: jobTitle, status: "error", reason: msg });
+        console.error(`[worker] ❌ ${name} → ${jobTitle}: ${msg}`);
+        // خطأ مصادقة → لا فائدة من متابعة هذا المستخدم
+        if (msg.toLowerCase().includes("535") || msg.includes("534") || msg.includes("password") || msg.includes("credentials")) {
+          console.warn(`[worker] ⏩ تخطي ${name} — خطأ مصادقة SMTP`);
+          break;
         }
       }
-
-      await sbUpsert("applications", {
-        user_id: uid, job_id: jobId, job_title: jobTitle,
-        applied_at: sentAt, status, provider_used: "smtp",
-        application_status: status === "sent" ? "applied" : "error",
-        hidden_from_user: false,
-        invalid_application: false,
-        error_reason: errorReason, sent_at: status === "sent" ? sentAt : null,
-        match_score: fit.score, job_fingerprint: fingerprint,
-        decision_reasons: fit.reasons,
-        missing_skills: fit.missing,
-        matched_skills: fit.matched,
-        skip_reason: null,
-      });
     }
+
+    if (sent > 0) console.log(`[worker] 👤 ${name}: ${sent} تقديم`);
   }
 
-  return { applied, users: activeUsers, errors, details };
+  const durationMs = Date.now() - t0;
+  return { applied, users: activeUsers, errors, details, durationMs };
 }
 
-// ─── تنظيف تلقائي ─────────────────────────────────────────────────────────────
-
-async function cleanupInvalidApplications() {
-  try {
-    const url = new URL(`${SUPABASE_URL}/rest/v1/applications`);
-    url.searchParams.set("hidden_from_user", "eq.false");
-    url.searchParams.set("invalid_application", "eq.false");
-    url.searchParams.set("or", "(skip_reason.ilike.*نساء*ذكر*,skip_reason.ilike.*رجال*أنثى*)");
-
-    const r = await fetch(url.toString(), {
-      method: "PATCH",
-      headers: { ...SB, "Prefer": "return=minimal" },
-      body: JSON.stringify({
-        hidden_from_user: true,
-        invalid_application: true,
-        application_status: "invalid",
-        hidden_reason: "تعارض الجنس — كُشف في دورة التنظيف",
-      }),
-    });
-    if (r.ok) console.log("[worker] 🧹 تنظيف: تقديمات خاطئة سابقة أُخفيت");
-  } catch (e) {
-    console.error("[worker] تنظيف فشل:", e);
-  }
-}
-
-// ─── Telegram Notification ────────────────────────────────────────────────────
+// ── Telegram ─────────────────────────────────────────────────────────────────
 
 async function tgSend(text: string) {
   if (!TG_BOT || !TG_CHAT) return;
   try {
     await fetch(`https://api.telegram.org/bot${TG_BOT}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: TG_CHAT, text, parse_mode: "HTML" }),
     });
   } catch { /* silent */ }
 }
 
-function nowAr(): string {
-  return new Date().toLocaleString("ar-SA", {
-    timeZone: "Asia/Riyadh", day: "2-digit", month: "2-digit",
-    hour: "2-digit", minute: "2-digit",
-  });
-}
+// ── HTTP Handler ─────────────────────────────────────────────────────────────
 
-async function tgWorkerResult(
-  applied: number, users: number, durationSec: number,
-  details: Array<{ user: string; job: string; status: string; reason?: string }>
-) {
-  const successLines = details
-    .filter(d => d.status === "sent")
-    .map(d => `  ✅ ${d.user} ← ${d.job}`);
-  const errorLines = details
-    .filter(d => d.status === "error")
-    .map(d => `  ⚠️ ${d.user} → ${d.job}: ${(d.reason ?? "خطأ").slice(0, 80)}`);
-
-  if (applied === 0 && errorLines.length === 0) return;
-
-  let msg =
-    `🤖 <b>Worker اكتمل</b>\n` +
-    `التقديمات: ${applied} | المستفيدون: ${users} | المدة: ${durationSec}ث\n`;
-
-  if (successLines.length) {
-    msg += `\n<b>قُدِّم بنجاح:</b>\n` + successLines.slice(0, 15).join("\n");
-    if (successLines.length > 15) msg += `\n  ... و${successLines.length - 15} أخرى`;
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Authorization" } });
   }
-  if (errorLines.length) {
-    msg += `\n\n<b>أخطاء في الإرسال:</b>\n` + errorLines.slice(0, 8).join("\n");
-  }
-  msg += `\n🕐 ${nowAr()}`;
-  await tgSend(msg);
-}
 
-async function logRun(data: {
-  applied_count: number; active_users: number;
-  errors: string[]; duration_ms: number; status: string;
-}) {
-  try {
-    await fetch(`${SUPABASE_URL}/rest/v1/worker_logs`, {
-      method: "POST", headers: SB,
-      body: JSON.stringify({ ...data, errors: JSON.stringify(data.errors), ran_at: new Date().toISOString() }),
+  const auth = req.headers.get("Authorization") ?? "";
+  if (WORKER_SECRET && auth !== `Bearer ${WORKER_SECRET}`) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { "Content-Type": "application/json" },
     });
-  } catch { /* silent */ }
-}
-
-// ─── التقرير الأسبوعي ─────────────────────────────────────────────────────────
-
-async function maybeSendWeeklyReport() {
-  const APP_URL      = Deno.env.get("APP_URL") ?? "";
-  const workerSecret = WORKER_SECRET;
-  if (!APP_URL || !workerSecret) return;
-
-  const now = new Date();
-  const ksa = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Riyadh" }));
-  const isSunday = ksa.getDay() === 0;
-  const hour     = ksa.getHours();
-  if (!isSunday || hour < 8 || hour >= 9) return;
-
-  try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/worker_status?select=weekly_report_last_sent&limit=1`, { headers: SB });
-    const rows: Array<{ weekly_report_last_sent: string | null }> = await r.json();
-    const lastSent = rows?.[0]?.weekly_report_last_sent;
-    if (lastSent) {
-      const daysSince = (Date.now() - new Date(lastSent).getTime()) / 86400000;
-      if (daysSince < 6) {
-        console.log(`[worker] التقرير الأسبوعي أُرسل منذ ${daysSince.toFixed(1)} يوم — تخطي`);
-        return;
-      }
-    }
-  } catch { /* نتجاهل الخطأ ونكمل */ }
-
-  console.log("[worker] 📊 إرسال التقرير الأسبوعي...");
-  try {
-    const res = await fetch(`${APP_URL}/api/internal/weekly-report`, {
-      method: "POST",
-      headers: { "x-worker-secret": workerSecret, "Content-Type": "application/json" },
-    });
-    const json = await res.json();
-    if (json.ok) {
-      console.log(`[worker] ✅ التقرير الأسبوعي أُرسل إلى ${json.sentTo}`);
-      await tgSend(`📊 <b>التقرير الأسبوعي أُرسل</b>\nإلى: ${json.sentTo}\nالتقديمات: ${json.stats?.totalSent || 0} ✅ | ${json.stats?.totalSkipped || 0} ⏭️ | ${json.stats?.totalError || 0} ❌`);
-    } else {
-      console.error("[worker] ❌ فشل التقرير الأسبوعي:", json.error);
-    }
-  } catch (e) {
-    console.error("[worker] ❌ خطأ في إرسال التقرير الأسبوعي:", e);
-  }
-}
-
-// ─── وضع التجربة ──────────────────────────────────────────────────────────────
-
-async function sendTestEmail(toEmail: string): Promise<{ ok: boolean; from?: string; error?: string }> {
-  if (!ENC_KEY_HEX) return { ok: false, error: "SMTP_ENCRYPTION_KEY غير معرّف" };
-
-  const settingsRows = await sbGet("user_settings", {
-    select: "user_id,smtp_email,smtp_host,smtp_port,smtp_secure,smtp_app_password_encrypted",
-    "email_connected": "eq.true",
-    "smtp_app_password_encrypted": "not.is.null",
-    "limit": "5",
-  });
-
-  if (!Array.isArray(settingsRows) || !settingsRows.length) {
-    return { ok: false, error: "لا يوجد مستخدم مكتمل الإعداد" };
   }
 
-  for (const s of settingsRows) {
-    try {
-      const userRows = await sbGet("users", { select: "full_name,phone", "id": `eq.${s.user_id}`, "limit": "1" });
-      const cvRows   = await sbGet("user_cvs", { select: "cv_profile", "user_id": `eq.${s.user_id}`, "limit": "1" });
-
-      const name    = userRows?.[0]?.full_name ?? "اسم المستخدم";
-      const phone   = userRows?.[0]?.phone ?? "";
-      const profile = (cvRows?.[0]?.cv_profile ?? null) as CvProfile | null;
-      const appPw   = await decryptAES(String(s.smtp_app_password_encrypted), ENC_KEY_HEX);
-
-      const html = buildCoverLetterTemplate(
-        name, "مطوّر برمجيات (تجربة)", "شركة جوببوتس", profile,
-        phone, String(s.smtp_email), "ar", undefined, "mid",
-      );
-
-      await sendSmtp({
-        smtpHost: String(s.smtp_host ?? "smtp.gmail.com"),
-        smtpPort: Number(s.smtp_port ?? 465),
-        smtpSecure: Boolean(s.smtp_secure ?? true),
-        smtpEmail: String(s.smtp_email),
-        appPassword: appPw,
-        to: toEmail,
-        subject: "تجربة — قالب رسالة التقديم",
-        html,
-        fromName: name,
-      });
-
-      return { ok: true, from: String(s.smtp_email) };
-    } catch (e) {
-      console.error("[test-email]", e);
-      continue;
-    }
-  }
-  return { ok: false, error: "فشل الإرسال من جميع الحسابات" };
-}
-
-// ─── Entry Point ──────────────────────────────────────────────────────────────
-
-Deno.serve(async (req: Request) => {
-  let body: Record<string, unknown> = {};
-  try { body = await req.json(); } catch { /* no body */ }
-
-  if (body.test_email && typeof body.test_email === "string") {
-    console.log(`[worker] 📧 وضع التجربة → ${body.test_email}`);
-    const result = await sendTestEmail(body.test_email);
-    return new Response(JSON.stringify(result), { headers: { "Content-Type": "application/json" } });
-  }
-
-  console.log("[worker] بدء دورة التقديم التلقائي عبر SMTP");
   const t0 = Date.now();
+  console.log("[worker] 🚀 بدء الدورة —", new Date().toISOString());
+
   try {
     const result = await runCycle();
-    const duration_ms = Date.now() - t0;
-    const status = result.errors.length === 0 ? "success" : result.applied > 0 ? "partial" : "error";
-    await logRun({ applied_count: result.applied, active_users: result.users, errors: result.errors, duration_ms, status });
-    console.log("[worker] انتهت الدورة:", JSON.stringify({ applied: result.applied, users: result.users, errors: result.errors.length }));
-    await tgWorkerResult(result.applied, result.users, Math.round(duration_ms / 1000), result.details);
-    await cleanupInvalidApplications();
-    await maybeSendWeeklyReport();
-    return new Response(JSON.stringify({ ok: true, ...result, duration_ms }), {
-      headers: { "Content-Type": "application/json" },
+    const dur = Math.round((result.durationMs ?? (Date.now() - t0)) / 1000);
+
+    // ملخص Telegram
+    if (result.applied > 0 || result.errors.length > 0) {
+      const sentLines = (result.details as Detail[])
+        .filter(d => d.status === "sent")
+        .map(d => `  ✅ ${d.user} ← ${d.job}`)
+        .slice(0, 20);
+      const errLines = (result.errors as string[]).slice(0, 5).map(e => `  ⚠️ ${e.slice(0, 80)}`);
+
+      let msg = `🤖 <b>Worker اكتمل</b>\nتقديمات: <b>${result.applied}</b> | مستخدمين: ${result.users} | ${dur}ث`;
+      if (sentLines.length) msg += `\n\n<b>قُدِّم بنجاح:</b>\n${sentLines.join("\n")}`;
+      if (errLines.length)  msg += `\n\n<b>أخطاء:</b>\n${errLines.join("\n")}`;
+      await tgSend(msg);
+    }
+
+    // تسجيل في worker_logs
+    await fetch(`${SUPABASE_URL}/rest/v1/worker_logs`, {
+      method: "POST", headers: { ...SB, Prefer: "return=minimal" },
+      body: JSON.stringify({
+        applied_count: result.applied, active_users: result.users,
+        errors: JSON.stringify(result.errors ?? []),
+        duration_ms: Date.now() - t0,
+        status: (result.errors?.length ?? 0) > 0 ? "partial" : "ok",
+        ran_at: new Date().toISOString(),
+      }),
+    });
+
+    return new Response(JSON.stringify(result), {
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });
   } catch (e) {
-    const duration_ms = Date.now() - t0;
-    await logRun({ applied_count: 0, active_users: 0, errors: [String(e)], duration_ms, status: "error" });
-    console.error("[worker] خطأ:", e);
-    await tgSend(`🚨 <b>Worker — خطأ فادح</b>\nالخطأ: ${String(e).slice(0, 300)}\n🕐 ${nowAr()}`);
-    return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500 });
+    console.error("[worker] 💥 خطأ عام:", e);
+    await tgSend(`💥 <b>Worker — خطأ عام</b>\n${String(e).slice(0, 300)}`);
+    return new Response(JSON.stringify({ error: String(e) }), {
+      status: 500, headers: { "Content-Type": "application/json" },
+    });
   }
 });
