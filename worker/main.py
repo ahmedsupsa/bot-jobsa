@@ -1350,6 +1350,199 @@ async def _record_run(client: httpx.AsyncClient) -> None:
 JOB_FETCH_INTERVAL = int(os.getenv("JOB_FETCH_INTERVAL", str(6 * 3600)))  # 6 ساعات افتراضياً
 _last_job_fetch: float = 0.0
 
+# ── إعدادات جدولة قناة Telegram ───────────────────────────────────────────
+_TG_BOT_TOKEN  = os.getenv("TELEGRAM_BOT_TOKEN", "")
+_TG_JOB_CH     = os.getenv("TELEGRAM_JOB_CHANNEL_ID", "")
+JOB_PUBLISH_INTERVAL = int(os.getenv("JOB_PUBLISH_INTERVAL", "1800"))   # نشر وظيفة كل 30 دقيقة
+PROMO_INTERVAL       = int(os.getenv("PROMO_INTERVAL", "3600"))          # رسالة دعائية كل 60 دقيقة
+PROMO_JOB_GAP        = int(os.getenv("PROMO_JOB_GAP", "300"))            # 5 دقائق مسافة دنيا (قبل/بعد وظيفة)
+
+_last_job_published_at: float = 0.0   # آخر مرة نُشرت فيها وظيفة
+_promo_idx: int = 0                   # دوران الرسائل الدعائية
+
+_PROMO_MESSAGES = [
+    (
+        "💡 <b>هل تعلم؟</b>\n\n"
+        "بوت Jobbots يقدّم عنك على الوظائف كل 30 دقيقة تلقائياً\n"
+        "بدون ما تفتح أي موقع أو تكتب إيميل واحد!\n\n"
+        "🎯 ارفع سيرتك الذاتية مرة واحدة والبوت يتكفّل بالباقي\n\n"
+        "👇 اشترك الآن\nhttps://www.jobbots.org/store"
+    ),
+    (
+        "⏰ <b>وقتك ثمين!</b>\n\n"
+        "بينما أنت تتصفح وظيفة واحدة، بوت Jobbots يُرسل عشرات طلبات التقديم عنك\n\n"
+        "✅ ذكاء اصطناعي يكتب رسالة تغطية مخصصة لكل وظيفة\n"
+        "✅ تقديم تلقائي على مدار اليوم\n"
+        "✅ يراقب وظائف جديدة كل 30 دقيقة\n\n"
+        "👇 ابدأ الآن\nhttps://www.jobbots.org/store"
+    ),
+    (
+        "🏆 <b>لماذا Jobbots؟</b>\n\n"
+        "لأن التقديم اليدوي على الوظائف يأخذ ساعات من يومك\n"
+        "والبوت يفعلها في دقائق — كل يوم، بدون توقف\n\n"
+        "📊 مشتركونا يحصلون على 10 تقديمات يومياً تلقائياً\n\n"
+        "👇 جرّب الآن\nhttps://www.jobbots.org/store"
+    ),
+    (
+        "📢 <b>قناة وظائف Jobbots</b>\n\n"
+        "نجمع أفضل الوظائف من مئات المصادر لحظة بلحظة\n"
+        "وبوتنا يقدّم عليها تلقائياً باسمك\n\n"
+        "🔔 فعّل الإشعارات للقناة لتصلك الوظائف فور نشرها\n\n"
+        "👇 اشترك في الخدمة\nhttps://www.jobbots.org/store"
+    ),
+]
+
+
+async def _publish_next_job_to_channel() -> bool:
+    """ينشر وظيفة واحدة من قائمة الانتظار في قناة Telegram ويحدّث tg_message_id."""
+    global _last_job_published_at
+    if not _TG_BOT_TOKEN or not _TG_JOB_CH:
+        return False
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.get(
+                f"{SUPABASE_URL}/rest/v1/admin_jobs",
+                headers=_SB_HEADERS,
+                params={
+                    "select": "id,title_ar,company,description_ar,application_email,link_url",
+                    "is_active": "eq.true",
+                    "tg_message_id": "is.null",
+                    "application_email": "not.is.null",
+                    "order": "created_at.asc",
+                    "limit": "1",
+                },
+            )
+            jobs = r.json() if r.is_success else []
+            if not jobs:
+                logger.info("[TG-Publish] لا توجد وظائف جديدة غير منشورة")
+                return False
+
+            job    = jobs[0]
+            title  = (job.get("title_ar") or "وظيفة شاغرة").strip()
+            company = (job.get("company") or "").strip()
+            email  = (job.get("application_email") or "").strip()
+            desc   = (job.get("description_ar") or "")[:300].strip()
+            link   = (job.get("link_url") or "").strip()
+            job_id = job["id"]
+
+            lines = [f"🚀 <b>وظيفة جديدة — {title}</b>"]
+            if company:
+                lines.append(f"🏢 <b>الجهة:</b> {company}")
+            lines.append("")
+            if desc:
+                lines.append(desc)
+                lines.append("")
+            if email:
+                lines.append("📧 <b>البريد للتقديم:</b>")
+                lines.append(email)
+                lines.append("")
+            if link:
+                lines.append(f"🔗 <b>رابط التقديم:</b> {link}")
+                lines.append("")
+            lines.append("🤖 <b>قدّم تلقائياً على عشرات الوظائف يومياً بالذكاء الاصطناعي:</b>")
+            lines.append("https://www.jobbots.org/store")
+
+            tg_r = await client.post(
+                f"https://api.telegram.org/bot{_TG_BOT_TOKEN}/sendMessage",
+                json={
+                    "chat_id": _TG_JOB_CH,
+                    "text": "\n".join(lines),
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": True,
+                },
+                timeout=10,
+            )
+            tg_data = tg_r.json()
+            msg_id = tg_data.get("result", {}).get("message_id")
+            if not msg_id:
+                logger.warning("[TG-Publish] فشل النشر: %s", tg_data)
+                return False
+
+            await client.patch(
+                f"{SUPABASE_URL}/rest/v1/admin_jobs?id=eq.{job_id}",
+                headers={**_SB_HEADERS, "Prefer": "return=minimal"},
+                json={"tg_message_id": msg_id},
+            )
+            _last_job_published_at = time.monotonic()
+            logger.info("[TG-Publish] ✅ نُشرت: %s (msg_id=%s)", title, msg_id)
+            return True
+    except Exception as e:
+        logger.warning("[TG-Publish] خطأ: %s", e)
+        return False
+
+
+async def _post_promo_message() -> bool:
+    """ينشر رسالة دعائية دورية — شرط ألا تكون قريبة من وظيفة (±5 دقائق)."""
+    global _promo_idx
+    if not _TG_BOT_TOKEN or not _TG_JOB_CH:
+        return False
+
+    now_mono = time.monotonic()
+    time_since_job = now_mono - _last_job_published_at
+    time_until_next = JOB_PUBLISH_INTERVAL - (time_since_job % JOB_PUBLISH_INTERVAL)
+
+    if time_since_job < PROMO_JOB_GAP:
+        logger.info("[TG-Promo] تأجيل — آخر وظيفة قبل %d ث فقط", int(time_since_job))
+        return False
+    if time_until_next < PROMO_JOB_GAP:
+        logger.info("[TG-Promo] تأجيل — الوظيفة القادمة خلال %d ث", int(time_until_next))
+        return False
+
+    text = _PROMO_MESSAGES[_promo_idx % len(_PROMO_MESSAGES)]
+    _promo_idx += 1
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.post(
+                f"https://api.telegram.org/bot{_TG_BOT_TOKEN}/sendMessage",
+                json={
+                    "chat_id": _TG_JOB_CH,
+                    "text": text,
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": True,
+                },
+            )
+            ok = r.json().get("ok", False)
+            if ok:
+                logger.info("[TG-Promo] ✅ رسالة دعائية #%d نُشرت", _promo_idx)
+            else:
+                logger.warning("[TG-Promo] فشل: %s", r.text[:200])
+            return ok
+    except Exception as e:
+        logger.warning("[TG-Promo] خطأ: %s", e)
+        return False
+
+
+async def _run_channel_scheduler() -> None:
+    """
+    جدولة مستقلة لنشر الوظائف والرسائل الدعائية في القناة.
+      - وظيفة واحدة كل 30 دقيقة
+      - رسالة دعائية كل 60 دقيقة (بشرط عدم القرب من وظيفة ±5 دق)
+    """
+    if not _TG_BOT_TOKEN or not _TG_JOB_CH:
+        logger.info("[TG-Scheduler] TELEGRAM_BOT_TOKEN / TELEGRAM_JOB_CHANNEL_ID غير مضبوطان — الجدولة متوقفة")
+        return
+
+    logger.info("[TG-Scheduler] 🗓️ بدأ — نشر وظيفة كل %d دقيقة، دعاية كل %d دقيقة",
+                JOB_PUBLISH_INTERVAL // 60, PROMO_INTERVAL // 60)
+
+    _last_promo_at: float = time.monotonic() - PROMO_INTERVAL  # يبدأ بالنشر عند أول فرصة
+    _last_publish_check: float = 0.0
+
+    while True:
+        await asyncio.sleep(60)  # فحص كل دقيقة
+        now = time.monotonic()
+
+        # ── نشر وظيفة ──────────────────────────────────────────────────
+        if now - _last_publish_check >= JOB_PUBLISH_INTERVAL:
+            _last_publish_check = now
+            await _publish_next_job_to_channel()
+
+        # ── رسالة دعائية ───────────────────────────────────────────────
+        if now - _last_promo_at >= PROMO_INTERVAL:
+            posted = await _post_promo_message()
+            if posted:
+                _last_promo_at = now
+
 
 async def _run_job_fetcher() -> None:
     """جلب الوظائف من تويتر — معطّل."""
@@ -1373,13 +1566,13 @@ async def main() -> None:
     else:
         logger.info("📡 مستمع Telegram متوقف (TELEGRAM_SESSION_STRING غير مضبوط)")
 
+    # ابدأ جدولة نشر القناة في الخلفية
+    asyncio.create_task(_run_channel_scheduler())
+
     if os.getenv("DISABLE_PYTHON_WORKER", "false").lower() in ("true", "1", "yes"):
         logger.info("⏸️  Python worker موقوف — الـ Edge Function في Supabase هي المسؤولة عن الإرسال")
-        logger.info("🐦 جالب الوظائف من تويتر نشط — يعمل كل %d ساعة", JOB_FETCH_INTERVAL // 3600)
-        await _run_job_fetcher()
         while True:
             await asyncio.sleep(3600)
-            await _run_job_fetcher()
         return
 
     logger.info("🚀 Auto-Apply Worker بدأ (كل %d ثانية) — يستدعي Supabase Edge Function", CYCLE_INTERVAL)
