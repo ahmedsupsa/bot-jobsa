@@ -12,6 +12,7 @@ const WORKER_SECRET = Deno.env.get("WORKER_SECRET") ?? "";
 const ENC_KEY_HEX   = Deno.env.get("SMTP_ENCRYPTION_KEY") ?? "";
 const TG_BOT        = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 const TG_CHAT       = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? Deno.env.get("TELEGRAM_CHAT_ID") ?? "";
+const TG_JOB_CH     = Deno.env.get("TELEGRAM_JOB_CHANNEL_ID") ?? "";
 
 const SB: Record<string, string> = {
   apikey:          SUPABASE_KEY,
@@ -474,7 +475,7 @@ async function runCycle() {
   return { applied, users: activeUsers, errors, details, durationMs };
 }
 
-// ── Telegram ─────────────────────────────────────────────────────────────────
+// ── Telegram (Admin) ──────────────────────────────────────────────────────────
 
 async function tgSend(text: string) {
   if (!TG_BOT || !TG_CHAT) return;
@@ -484,6 +485,99 @@ async function tgSend(text: string) {
       body: JSON.stringify({ chat_id: TG_CHAT, text, parse_mode: "HTML" }),
     });
   } catch { /* silent */ }
+}
+
+// ── نشر القناة ────────────────────────────────────────────────────────────────
+
+const PROMO_MESSAGES = [
+  `💡 <b>هل تعلم؟</b>\n\nبوت Jobbots يقدّم عنك على الوظائف كل 30 دقيقة تلقائياً\nبدون ما تفتح أي موقع أو تكتب إيميل واحد!\n\n🎯 ارفع سيرتك الذاتية مرة واحدة والبوت يتكفّل بالباقي\n\n👇 اشترك الآن\nhttps://www.jobbots.org/store`,
+  `⏰ <b>وقتك ثمين!</b>\n\nبينما أنت تتصفح وظيفة واحدة، بوت Jobbots يُرسل عشرات طلبات التقديم عنك\n\n✅ ذكاء اصطناعي يكتب رسالة تغطية مخصصة لكل وظيفة\n✅ تقديم تلقائي على مدار اليوم\n✅ يراقب وظائف جديدة كل 30 دقيقة\n\n👇 ابدأ الآن\nhttps://www.jobbots.org/store`,
+  `🏆 <b>لماذا Jobbots؟</b>\n\nلأن التقديم اليدوي على الوظائف يأخذ ساعات من يومك\nوالبوت يفعلها في دقائق — كل يوم، بدون توقف\n\n📊 مشتركونا يحصلون على 10 تقديمات يومياً تلقائياً\n\n👇 جرّب الآن\nhttps://www.jobbots.org/store`,
+  `📢 <b>قناة وظائف Jobbots</b>\n\nنجمع أفضل الوظائف من مئات المصادر لحظة بلحظة\nوبوتنا يقدّم عليها تلقائياً باسمك\n\n🔔 فعّل الإشعارات للقناة لتصلك الوظائف فور نشرها\n\n👇 اشترك في الخدمة\nhttps://www.jobbots.org/store`,
+];
+
+async function tgChannelPost(text: string): Promise<number | null> {
+  if (!TG_BOT || !TG_JOB_CH) return null;
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${TG_BOT}/sendMessage`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: TG_JOB_CH, text, parse_mode: "HTML", disable_web_page_preview: true }),
+    });
+    const d = await r.json();
+    return d?.result?.message_id ?? null;
+  } catch { return null; }
+}
+
+async function publishJobToChannel(): Promise<boolean> {
+  if (!TG_BOT || !TG_JOB_CH) return false;
+
+  const jobs = await sbGet("admin_jobs", {
+    is_active:         "eq.true",
+    tg_message_id:     "is.null",
+    application_email: "not.is.null",
+    order:             "created_at.asc",
+    limit:             "1",
+  }, "id,title_ar,company,description_ar,application_email,link_url");
+
+  if (!jobs.length) { console.log("[channel] لا وظائف جديدة لنشرها"); return false; }
+
+  const job     = jobs[0];
+  const title   = String(job.title_ar ?? "وظيفة شاغرة").trim();
+  const company = String(job.company  ?? "").trim();
+  const email   = String(job.application_email ?? "").trim();
+  const desc    = String(job.description_ar    ?? "").slice(0, 300).trim();
+  const link    = String(job.link_url          ?? "").trim();
+
+  const lines: string[] = [`🚀 <b>وظيفة جديدة — ${title}</b>`];
+  if (company) lines.push(`🏢 <b>الجهة:</b> ${company}`);
+  lines.push("");
+  if (desc) { lines.push(desc); lines.push(""); }
+  if (email) { lines.push("📧 <b>البريد للتقديم:</b>"); lines.push(email); lines.push(""); }
+  if (link)  { lines.push(`🔗 ${link}`); lines.push(""); }
+  lines.push("🤖 <b>قدّم تلقائياً على عشرات الوظائف يومياً بالذكاء الاصطناعي:</b>");
+  lines.push("https://www.jobbots.org/store");
+
+  const msgId = await tgChannelPost(lines.join("\n"));
+  if (!msgId) return false;
+
+  await sbPatch("admin_jobs", { id: `eq.${job.id}` }, { tg_message_id: msgId });
+  console.log(`[channel] ✅ نُشرت: "${title}" (msg_id=${msgId})`);
+  return true;
+}
+
+async function publishPromoIfDue(): Promise<void> {
+  if (!TG_BOT || !TG_JOB_CH) return;
+
+  // فحص آخر رسالة دعائية
+  const last = await sbGet("worker_logs", {
+    status: "eq.channel_promo",
+    order:  "ran_at.desc",
+    limit:  "1",
+  }, "ran_at");
+
+  const lastAt  = last[0] ? new Date(String(last[0].ran_at)).getTime() : 0;
+  const minsAgo = (Date.now() - lastAt) / 60000;
+  if (minsAgo < 58) {
+    console.log(`[channel] دعاية: آخر واحدة قبل ${Math.round(minsAgo)} دقيقة — تأجيل`);
+    return;
+  }
+
+  // اختيار رسالة دورية بناءً على العدد الإجمالي
+  const allCount = await sbCount("worker_logs", { status: "eq.channel_promo" });
+  const text     = PROMO_MESSAGES[allCount % PROMO_MESSAGES.length];
+
+  const msgId = await tgChannelPost(text);
+  if (msgId) {
+    await fetch(`${SUPABASE_URL}/rest/v1/worker_logs`, {
+      method: "POST",
+      headers: { ...SB, Prefer: "return=minimal" },
+      body: JSON.stringify({
+        status: "channel_promo", applied_count: 0, active_users: 0,
+        errors: "[]", duration_ms: 0, ran_at: new Date().toISOString(),
+      }),
+    });
+    console.log(`[channel] ✅ دعاية #${allCount + 1} نُشرت`);
+  }
 }
 
 // ── HTTP Handler ─────────────────────────────────────────────────────────────
@@ -504,7 +598,13 @@ Deno.serve(async (req) => {
   console.log("[worker] 🚀 بدء الدورة —", new Date().toISOString());
 
   try {
+    // ── نشر وظيفة في القناة ───────────────────────────────────────────────
+    await publishJobToChannel();
+
     const result = await runCycle();
+
+    // ── نشر دعاية إذا حان وقتها (بعد دورة التقديم = فاصل طبيعي) ──────────
+    await publishPromoIfDue();
     const dur = Math.round((result.durationMs ?? (Date.now() - t0)) / 1000);
 
     // ملخص Telegram
