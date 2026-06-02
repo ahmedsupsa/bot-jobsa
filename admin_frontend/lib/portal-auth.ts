@@ -56,6 +56,7 @@ export async function portalFetch(
     ? {}
     : { "Content-Type": "application/json" };
   const res = await fetch(`/api/portal${path}`, {
+    cache: "no-store",
     ...options,
     headers: {
       ...baseHeaders,
