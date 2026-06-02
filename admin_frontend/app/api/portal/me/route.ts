@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { extractToken, verifyToken, makeToken } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
   const token = extractToken(req);
   if (!token) return NextResponse.json({ error: "غير مخوّل" }, { status: 401 });
