@@ -110,7 +110,7 @@ async function classifyJob(title: string, desc: string): Promise<ClassifyResult>
     `mapped_majors: قائمة 1-6 تخصصات جامعية عربية (مثل: محاسبة، إدارة أعمال، تقنية معلومات، تسويق، مالية، موارد بشرية، هندسة، طب، قانون، تعليم، إعلام، لوجستيات، تصميم)\n\n` +
     `العنوان: ${title}\nالوصف: ${desc.slice(0, 500)}`;
 
-  for (const model of ["gemini-2.5-flash-lite", "gemini-1.5-flash", "gemini-2.5-flash"]) {
+  for (const model of ["gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash"]) {
     try {
       const r = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
