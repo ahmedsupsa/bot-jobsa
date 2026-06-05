@@ -103,7 +103,7 @@ async function suggestFromAI(cvText: string, profile: CvProfile | null): Promise
     `- لا تشمل تمهير أو تدريب تعاوني\n` +
     `- أعد JSON فقط: {"titles":["مسمى 1","مسمى 2",...]}`;
 
-  const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"];
+  const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
   for (const model of models) {
     try {
       const r = await fetch(
@@ -134,7 +134,7 @@ async function suggestFromFile(fileBase64: string, mimeType: string): Promise<st
     `القواعد:\n- 20 مسمى بالضبط\n- بالعربية فقط\n- مسميات واقعية\n- لا تشمل تمهير أو تدريب تعاوني\n` +
     `- أعد JSON فقط: {"titles":["مسمى 1","مسمى 2",...]}`;
 
-  const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"];
+  const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
   for (const model of models) {
     try {
       const r = await fetch(
