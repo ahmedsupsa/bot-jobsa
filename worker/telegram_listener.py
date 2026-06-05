@@ -35,7 +35,8 @@ _EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
 GEMINI_MODELS = [
     "gemini-2.5-flash-lite",
     "gemini-2.5-flash",
-    "gemini-1.5-flash",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
 ]
 
 # ── فلتر محلي قبل Gemini (يوفّر 60-80% من الاستهلاك) ──────────────────────
