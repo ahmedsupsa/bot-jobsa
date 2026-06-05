@@ -55,7 +55,7 @@ ${cvText ? `\nنبذة من السيرة:\n${cvText.slice(0, 1000)}` : ""}
 - لا تتجاوز 220 كلمة.
 - أعد نص الرسالة فقط، بدون أي تنسيق إضافي.`;
 
-  const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"];
+  const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
   for (const model of models) {
     try {
       const r = await fetch(
