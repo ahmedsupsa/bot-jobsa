@@ -7,7 +7,7 @@ import nodemailer from "npm:nodemailer@6";
 // ── متغيرات البيئة ────────────────────────────────────────────────────────────
 const SUPABASE_URL  = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SUPABASE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const GEMINI_KEY    = Deno.env.get("GEMINI_API_KEY") ?? "";
+
 const WORKER_SECRET = Deno.env.get("WORKER_SECRET") ?? "";
 const ENC_KEY_HEX   = Deno.env.get("SMTP_ENCRYPTION_KEY") ?? "";
 const TG_BOT        = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
@@ -89,7 +89,7 @@ async function makeFingerprint(title: string, company: string, email: string): P
   return Array.from(new Uint8Array(hash)).slice(0, 8).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-// ── تصنيف الوظيفة بالذكاء الاصطناعي (مرة واحدة لكل وظيفة) ─────────────────
+// ── تصنيف الوظيفة بالكلمات المفتاحية (بدون أي AI) ────────────────────────
 
 interface ClassifyResult {
   job_type:      "job" | "tamheer" | "coop" | "internship" | "training";
@@ -98,40 +98,67 @@ interface ClassifyResult {
   confidence:    number;
 }
 
+const JOB_TYPE_KW: [string, "tamheer" | "coop" | "internship" | "training"][] = [
+  ["تمهير", "tamheer"], ["tamheer", "tamheer"],
+  ["تدريب تعاوني", "coop"], ["coop training", "coop"],
+  ["internship", "internship"], ["متدرب", "internship"], ["طالب تدريب", "internship"],
+  ["تدريب", "training"], ["training", "training"],
+];
+
+const GENDER_KW: [string, "male" | "female" | "both"][] = [
+  ["للنساء", "female"], ["نسائي", "female"], ["نساء", "female"], ["سيدات", "female"],
+  ["للرجال", "male"], ["رجال", "male"], ["ذكور", "male"],
+  ["للجنسين", "both"], ["للجميع", "both"], ["ذكر/أنثى", "both"],
+];
+
+const MAJOR_RULES: [RegExp, string[]][] = [
+  [/محاسب|محاسبة|audit|ضرائب|زكاة|مالية/i,   ["محاسبة", "مالية"]],
+  [/مهندس|هندسة|هندسي/i,                      ["هندسة"]],
+  [/مبرمج|برمج|developer|programmer|مطور|back.?end|front.?end|full.?stack/i, ["تقنية معلومات", "هندسة"]],
+  [/شبكات|network|dba|قاعدة.?بيانات|أمن سيبراني|cyber|cloud|سحابي|دعم فني|it support/i, ["تقنية معلومات"]],
+  [/تسويق|marketing|digital|رقمي|إعلان|دعاية|سوشل|ميديا|media/i,           ["تسويق", "إعلام"]],
+  [/مبيعات|sales|بائع|مندوب/i,               ["تسويق", "إدارة أعمال"]],
+  [/موارد بشرية|hr|توظيف|recruit|staffing/i,  ["موارد بشرية", "إدارة أعمال"]],
+  [/طب|طبيب|ممرض|صحي|صيدل|علاج|طبي|مستشفى/i, ["طب", "علوم صحية"]],
+  [/قانون|محام|مستشار قانوني|legal/i,          ["قانون"]],
+  [/تعليم|معلم|مدرس|تدريس|محاضر|أكاديمي/i,    ["تعليم"]],
+  [/إعلام|صحافة|إعلامي|صحفي/i,               ["إعلام"]],
+  [/لوجست|نقل|سلسلة توريد|مستودع|شحن|مشتريات|logistics/i, ["لوجستيات", "إدارة أعمال"]],
+  [/تصميم|designer|غرافيك|ui|ux/i,            ["تصميم", "تقنية معلومات"]],
+  [/زراعة|مهندس زراعي/i,                      ["زراعة"]],
+  [/سياحة|فندق|ضيافة/i,                       ["سياحة", "ضيافة"]],
+  [/مدير|manager|إداري/i,                     ["إدارة أعمال"]],
+  [/محلل|تحليل|business|بنوك|استثمار/i,       ["مالية", "إدارة أعمال"]],
+  [/طاقة|كهرباء|بترول|غاز|نفط/i,              ["هندسة", "طاقة"]],
+  [/سكرتار|استقبال|إداري|administrative|مساعد إداري/i, ["إدارة أعمال"]],
+];
+
 async function classifyJob(title: string, desc: string): Promise<ClassifyResult> {
-  const fallback: ClassifyResult = { job_type: "job", gender_req: "unknown", mapped_majors: [], confidence: 0 };
-  if (!GEMINI_KEY) return fallback;
+  const combined = `${title} ${desc}`.toLowerCase();
 
-  const prompt =
-    `صنّف هذه الوظيفة وأعد JSON فقط بدون markdown:\n` +
-    `{"job_type":"job","gender_req":"unknown","mapped_majors":["تخصص1"],"confidence":0.9}\n\n` +
-    `قواعد job_type: tamheer=تمهير، coop=تدريب تعاوني/كوب، internship=تدريب طلاب، training=تدريب فقط، وإلا job\n` +
-    `قواعد gender_req: female=للنساء/سيدات/نسائي، male=للرجال/ذكور، unknown=غير محدد، both=للجميع\n` +
-    `mapped_majors: قائمة 1-6 تخصصات جامعية عربية (مثل: محاسبة، إدارة أعمال، تقنية معلومات، تسويق، مالية، موارد بشرية، هندسة، طب، قانون، تعليم، إعلام، لوجستيات، تصميم)\n\n` +
-    `العنوان: ${title}\nالوصف: ${desc.slice(0, 500)}`;
-
-  for (const model of ["gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash"]) {
-    try {
-      const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`,
-        { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
-      );
-      if (!r.ok) continue;
-      const data = await r.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-      const m = text.match(/\{[\s\S]*?\}/);
-      if (!m) continue;
-      const p = JSON.parse(m[0]);
-      return {
-        job_type:      ["job","tamheer","coop","internship","training"].includes(p.job_type) ? p.job_type : "job",
-        gender_req:    ["male","female","both","unknown"].includes(p.gender_req) ? p.gender_req : "unknown",
-        mapped_majors: Array.isArray(p.mapped_majors) ? p.mapped_majors.slice(0, 8).map(String) : [],
-        confidence:    typeof p.confidence === "number" ? Math.min(1, Math.max(0, p.confidence)) : 0.7,
-      };
-    } catch { continue; }
+  let job_type: ClassifyResult["job_type"] = "job";
+  for (const [kw, t] of JOB_TYPE_KW) {
+    if (combined.includes(kw.toLowerCase())) { job_type = t; break; }
   }
-  return fallback;
+
+  let gender_req: ClassifyResult["gender_req"] = "unknown";
+  for (const [kw, g] of GENDER_KW) {
+    if (combined.includes(kw)) { gender_req = g; break; }
+  }
+
+  const matched = new Set<string>();
+  for (const [pattern, majors] of MAJOR_RULES) {
+    if (pattern.test(combined)) {
+      for (const m of majors) matched.add(m);
+    }
+  }
+
+  return {
+    job_type,
+    gender_req,
+    mapped_majors: Array.from(matched),
+    confidence: 1,
+  };
 }
 
 // ── الخطوة 1: تصنيف الوظائف الجديدة ─────────────────────────────────────────

@@ -63,11 +63,7 @@ async function findExistingUser(
 
   if (!email) return null;
 
-  // 2. Check users.email
-  const { data: byEmail } = await supabase.from("users").select(cols).eq("email", email).maybeSingle();
-  if (byEmail) return byEmail;
-
-  // 3. Fallback: check user_settings.email (older accounts)
+  // 2. Check user_settings.email
   const { data: bySetting } = await supabase
     .from("user_settings").select("user_id").eq("email", email).maybeSingle();
   if (bySetting?.user_id) {
@@ -153,7 +149,6 @@ async function autoActivateOrder(
   const insertData: Record<string, unknown> = {
     full_name: name,
     phone,
-    email,
     subscription_ends_at: ends_at,
     ...(codeEntry ? { activation_code_id: codeEntry.id } : {}),
   };

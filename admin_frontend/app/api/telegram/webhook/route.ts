@@ -150,7 +150,7 @@ async function handleChannelPost(post: Record<string, unknown>) {
   // تحقق من التكرار
   if (await jobExists(tweetUid)) return;
 
-  // استخراج الوظائف بـ Gemini
+  // استخراج الوظائف بالكلمات المفتاحية
   const jobs = await extractJobs(text);
   if (jobs.length === 0) return;
 

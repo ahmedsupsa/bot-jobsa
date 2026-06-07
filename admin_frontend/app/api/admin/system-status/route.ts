@@ -105,7 +105,7 @@ export async function GET() {
     checkGemini(),
 
     supabase.from("users").select("id", { count: "exact", head: true }),
-    supabase.from("users").select("id", { count: "exact", head: true }).eq("is_active", true),
+    supabase.from("users").select("id", { count: "exact", head: true }).gte("subscription_ends_at", now.toISOString()),
     supabase.from("user_cvs").select("user_id", { count: "exact", head: true }),
     supabase.from("user_settings").select("user_id", { count: "exact", head: true }).not("smtp_host", "is", null),
     supabase.from("user_job_preferences").select("user_id", { count: "exact", head: true }),

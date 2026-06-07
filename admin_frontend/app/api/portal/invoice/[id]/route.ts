@@ -46,14 +46,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const payload = await verifyToken(tokenToVerify);
     if (payload) {
       const supabase = freshClient();
-      const { data: userData } = await supabase.from("users").select("id, email").eq("id", payload.user_id).maybeSingle();
+      const { data: userData } = await supabase.from("users").select("id").eq("id", payload.user_id).maybeSingle();
       if (userData) {
         userId = userData.id;
-        if (userData.email) userEmails.push(userData.email.toLowerCase().trim());
         const { data: settings } = await supabase.from("user_settings").select("email").eq("user_id", userData.id).maybeSingle();
         if (settings?.email) {
-          const settingsEmail = (settings.email as string).toLowerCase().trim();
-          if (!userEmails.includes(settingsEmail)) userEmails.push(settingsEmail);
+          userEmails.push((settings.email as string).toLowerCase().trim());
         }
       }
     }

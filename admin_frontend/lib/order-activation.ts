@@ -50,8 +50,6 @@ async function findExistingUser(
     if (data) return data as ExistingUser;
   }
   if (!email) return null;
-  const { data: byEmail } = await supabase.from("users").select(cols).eq("email", email).maybeSingle();
-  if (byEmail) return byEmail as ExistingUser;
   const { data: bySetting } = await supabase
     .from("user_settings").select("user_id").eq("email", email).maybeSingle();
   if (bySetting?.user_id) {
@@ -123,7 +121,7 @@ export async function autoActivateOrder(
   const codeEntry = await createAndReserveCode(supabase, durationDays);
 
   const insertData: Record<string, unknown> = {
-    full_name: name, phone, email, subscription_ends_at: ends_at,
+    full_name: name, phone, subscription_ends_at: ends_at,
     ...(codeEntry ? { activation_code_id: codeEntry.id } : {}),
   };
 

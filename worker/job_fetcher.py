@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 job_fetcher.py — يجلب تغريدات حسابات الوظائف عبر Nitter RSS
-ويستخرج بيانات الوظيفة بـ Gemini ويحفظها في Supabase تلقائياً
+ويستخرج بيانات الوظيفة ويحفظها في Supabase (معطل حالياً — يُستعمل مرة واحدة فقط عند بدء التشغيل)
 """
 import asyncio
 import hashlib
@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 _SB_HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -97,54 +96,62 @@ def _extract_emails(text: str) -> list[str]:
     return _EMAIL_RE.findall(text)
 
 
-async def _extract_job_with_gemini(text: str, link: str) -> dict | None:
-    """يستخدم Gemini لاستخراج بيانات الوظيفة من نص التغريدة."""
-    if not GEMINI_API_KEY:
+async def _extract_job_from_tweet(text: str, link: str) -> dict | None:
+    """يستخرج بيانات الوظيفة من نص التغريدة بالكلمات المفتاحية و regex."""
+    # كلمات تدل على أن التغريدة تحتوي على وظيفة
+    job_indicators = [
+        "وظيفة", "مطلوب", "توظيف", "فوراً", "يوجد شاغر",
+        "job", "vacancy", "hiring", "we are hiring", "open position",
+        "work from home", "remote",
+    ]
+    text_lower = text.lower()
+    if not any(kw in text_lower for kw in job_indicators):
         return None
 
-    prompt = f"""أنت نظام استخراج بيانات وظائف. اقرأ التغريدة التالية وحدّد إذا كانت تحتوي على إعلان وظيفة.
-إذا كانت تحتوي على وظيفة، استخرج البيانات التالية بتنسيق JSON فقط (بدون أي نص آخر):
-{{
-  "is_job": true,
-  "title_ar": "مسمى الوظيفة بالعربي",
-  "company": "اسم الشركة أو المؤسسة إن وجد",
-  "description_ar": "وصف الوظيفة والمتطلبات",
-  "application_email": "البريد الإلكتروني للتقديم إن وجد أو null",
-  "specializations": "5 كلمات مفتاحية مفصولة بفاصلة"
-}}
+    # استخراج المسمى الوظيفي — أول سطر يبدو كمسمى
+    title_ar = ""
+    for line in text.split("\n"):
+        line = line.strip()
+        if any(line.startswith(kw) for kw in ["وظيفة", "مطلوب", "يوجد", "🟢", "🔴", "⚪", "🔵"]):
+            title_ar = line.strip("🟢🔴⚪🔵*#\u200e\u200f :؛,.").strip()
+            break
+    if not title_ar:
+        # أول سطر غير قصير جداً
+        for line in text.split("\n"):
+            line = line.strip()
+            if len(line) > 10 and len(line) < 100 and not line.startswith("http"):
+                title_ar = line.strip("*-#\u200e\u200f :؛,.")
+                break
+    if not title_ar:
+        title_ar = text[:80].strip()
 
-إذا لم تكن تحتوي على وظيفة، أرجع: {{"is_job": false}}
+    # استخراج الإيميل
+    emails = _extract_emails(text)
+    email = emails[0] if emails else None
 
-التغريدة:
-{text[:800]}
+    # استخراج اسم الشركة (غالباً بعد "شركة" أو "في" أو "@")
+    company = ""
+    c_match = re.search(r"(?:شركة|مؤسسة|في|@)\s*([^\n،,]{2,40})", text)
+    if c_match:
+        company = c_match.group(1).strip()
 
-الرابط: {link}
-"""
+    # الوصف: باقي النص بعد المسمى
+    desc = text[:1000].strip()
 
-    try:
-        async with httpx.AsyncClient(timeout=20) as c:
-            r = await c.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
-                json={"contents": [{"parts": [{"text": prompt}]}],
-                      "generationConfig": {"temperature": 0.1}},
-            )
-            data = r.json()
-            raw = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-            # نستخرج JSON من الرد
-            match = re.search(r"\{.*\}", raw, re.DOTALL)
-            if not match:
-                return None
-            result = json.loads(match.group())
-            if not result.get("is_job"):
-                return None
-            # إذا لم يجد Gemini الإيميل، نحاول نستخرجه من النص
-            if not result.get("application_email"):
-                emails = _extract_emails(text)
-                result["application_email"] = emails[0] if emails else None
-            return result
-    except Exception as e:
-        logger.debug("Gemini خطأ: %s", e)
-        return None
+    specializations = ""
+    # استخراج تخصصات من كلمات مفتاحية
+    all_keywords = re.findall(r"[أ-ي\s]{4,}", text)
+    if all_keywords:
+        specializations = ", ".join(set(all_keywords[:5]))
+
+    return {
+        "is_job": True,
+        "title_ar": title_ar[:200],
+        "company": company[:200],
+        "description_ar": desc,
+        "application_email": email,
+        "specializations": specializations[:500],
+    }
 
 
 async def _already_exists(client: httpx.AsyncClient, uid: str) -> bool:
@@ -187,8 +194,7 @@ async def _save_job(client: httpx.AsyncClient, job: dict, uid: str, source_accou
 
 async def fetch_jobs_from_twitter(accounts: list[str] = None) -> dict:
     """
-    الدالة الرئيسية — تجلب الوظائف من تويتر وتحفظها في Supabase.
-    تُرجع إحصائيات العملية.
+    يجلب الوظائف من تويتر عبر Nitter RSS ويحفظها في Supabase (معطل حالياً).
     """
     if not SUPABASE_URL or not SUPABASE_KEY:
         return {"ok": False, "error": "SUPABASE_URL/SUPABASE_KEY غير مضبوطة", "inserted": 0, "skipped": 0, "total": 0}
@@ -210,7 +216,7 @@ async def fetch_jobs_from_twitter(accounts: list[str] = None) -> dict:
                     stats["skipped"] += 1
                     continue
 
-                job = await _extract_job_with_gemini(tweet["text"], tweet["link"])
+                job = await _extract_job_from_tweet(tweet["text"], tweet["link"])
 
                 if not job:
                     stats["no_job"] += 1

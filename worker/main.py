@@ -42,7 +42,6 @@ logger = logging.getLogger(__name__)
 
 SUPABASE_URL        = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY        = os.getenv("SUPABASE_KEY", "")
-GEMINI_API_KEY      = os.getenv("GEMINI_API_KEY", "")
 SMTP_ENCRYPTION_KEY = os.getenv("SMTP_ENCRYPTION_KEY", "")
 CYCLE_INTERVAL      = int(os.getenv("AUTO_APPLY_INTERVAL", "1800"))
 WORKER_SECRET       = os.getenv("WORKER_SECRET", "")
@@ -321,54 +320,6 @@ def _build_prompt(job_title: str, name: str, company: str, desc: str, lang: str,
             )
 
 
-async def _parse_cv_with_ai(cv_text_local: str, cv_bytes: bytes | None, cv_mime: str) -> str | None:
-    """
-    تحليل السيرة الذاتية واستخراج ملخص منظّم — يُستدعى مرة واحدة فقط.
-    يستخدم النص المستخرج محلياً إذا توفّر (أسرع وأوفر)، وإلا يرسل الملف لـ Gemini.
-    """
-    if not GEMINI_API_KEY:
-        return None
-
-    prompt_prefix = (
-        "استخرج من هذه السيرة الذاتية المعلومات التالية بشكل منظّم ومختصر بالعربية:\n"
-        "المؤهل العلمي والتخصص:\n"
-        "سنوات الخبرة الإجمالية (رقم محدد أو 'حديث تخرج' أو 'غير محدد'):\n"
-        "المستوى الوظيفي (fresh/junior/mid/senior/manager):\n"
-        "الوظائف السابقة (مسمى + جهة + مدة):\n"
-        "المهارات التقنية والبرامج:\n"
-        "الشهادات والرخص المهنية:\n"
-        "اللغات:\n"
-        "اكتب فقط المعلومات الموجودة فعلاً. لا تضف تخمينات. "
-        "إذا لم تجد معلومة اكتب (غير محدد). "
-        "سنوات الخبرة مهمة جداً — إذا كان حديث تخرج اكتب 'سنوات الخبرة: 0 (حديث تخرج)'."
-    )
-
-    # إذا استخرجنا نصاً محلياً → نرسله نصاً (أسرع وأرخص)
-    if cv_text_local and len(cv_text_local.strip()) >= 100:
-        prompt = prompt_prefix + f"\n\n--- نص السيرة الذاتية ---\n{cv_text_local[:3000]}"
-        parts: list[dict] = [{"text": prompt}]
-    elif cv_bytes:
-        parts = [
-            {"inline_data": {"mime_type": cv_mime, "data": base64.b64encode(cv_bytes).decode("ascii")}},
-            {"text": prompt_prefix},
-        ]
-    else:
-        return None
-
-    try:
-        async with httpx.AsyncClient(timeout=40) as c:
-            r = await c.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
-                json={"contents": [{"parts": parts}]},
-            )
-            data = r.json()
-            text = (data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text") or "").strip()
-            return text or None
-    except Exception as e:
-        logger.warning("خطأ تحليل السيرة الذاتية: %s", e)
-        return None
-
-
 async def _get_or_parse_cv(
     client: httpx.AsyncClient,
     cv: dict,
@@ -379,8 +330,7 @@ async def _get_or_parse_cv(
     إرجاع النص المحلَّل للسيرة الذاتية.
     الترتيب:
       1. النص المحفوظ مسبقاً في قاعدة البيانات  (أسرع)
-      2. استخراج محلي بـ pdfplumber + تحليل Gemini
-      3. إرسال الملف مباشرة لـ Gemini (fallback)
+      2. استخراج محلي بـ pdfplumber (بدون AI)
     """
     existing_text = (cv.get("cv_parsed_text") or "").strip()
     if existing_text:
@@ -568,76 +518,6 @@ def _build_smart_cover_body(name: str, field_names: list[str], cv_parsed_text: s
     )
 
 
-async def _generate_cover_letter(
-    job_title: str, name: str, company: str, desc: str, lang: str,
-    cv_parsed_text: str | None = None,
-    template: str = "classic",
-) -> str:
-    fallback_ar = f"أتقدم بكل اهتمام لشغل وظيفة {job_title}{' في ' + company if company else ''}. أنا مهتم بهذه الفرصة وأثق في قدرتي على إضافة قيمة حقيقية لفريقكم."
-    fallback_en = f"I am writing to express my interest in the {job_title} position{' at ' + company if company else ''}. I am confident in my ability to contribute effectively to your team."
-    if not GEMINI_API_KEY:
-        return fallback_ar if lang == "ar" else fallback_en
-
-    has_cv = bool(cv_parsed_text and cv_parsed_text.strip())
-    cv_section = (
-        f"\nالسيرة الذاتية:\n{cv_parsed_text}\n"
-        if has_cv else
-        "\nالسيرة الذاتية:\nغير متاحة — اذكر المؤهل والاهتمام بالفرصة فقط.\n"
-    )
-    lang_word = "عربية" if lang == "ar" else "إنجليزية"
-
-    prompt = (
-        f"أنت مساعد توظيف احترافي متخصص في كتابة رسائل التقديم الوظيفي الواقعية اعتمادًا على السيرة الذاتية فقط.\n\n"
-        f"مهمتك:\n"
-        f"قراءة السيرة الذاتية كاملة بدقة شديدة ثم كتابة رسالة تغطية {lang_word} رسمية قصيرة واحترافية للتقديم على الوظيفة المطلوبة بدون أي اختلاق أو مبالغة.\n\n"
-        f"السيرة الذاتية هي المصدر الوحيد للحقيقة، وأي معلومة غير موجودة فيها تعتبر ممنوعة تمامًا.\n\n"
-        f"التعليمات الأساسية:\n"
-        f"* اكتب رسالة احترافية من 3 إلى 5 جمل فقط.\n"
-        f"* ابدأ بالتعريف باسم المتقدم وتخصصه أو مؤهله الحالي.\n"
-        f"* اربط بين السيرة الذاتية ومتطلبات الوظيفة بشكل واقعي فقط.\n"
-        f"* استخدم لغة رسمية واضحة وبشرية.\n"
-        f"* لا تستخدم إيموجي.\n"
-        f"* لا تستخدم أسلوب تسويقي مبالغ فيه.\n"
-        f"* لا تضف معلومات من عندك.\n"
-        f"* لا تكرر وصف الوظيفة بشكل أعمى.\n"
-        f"* لا تكتب مقدمة طويلة أو فلسفة.\n"
-        f"* لا تضف توقيع أو معلومات تواصل.\n"
-        f"* لا تستخدم كلمات توحي بخبرة قوية إذا السيرة الذاتية لا تدعم ذلك.\n\n"
-        f"قيود صارمة جدًا — ممنوع تمامًا اختلاق أو افتراض أي:\n"
-        f"خبرة عملية، سنوات خبرة، وظيفة سابقة، مهارة تقنية، لغة، شهادة، دورة، مشروع، تطوع، "
-        f"مسؤوليات وظيفية، إنجازات، برامج أو أنظمة، أدوات تقنية، شهادات احترافية، عضويات، اعتمادات.\n\n"
-        f"إذا لم يتم ذكر الشيء نصيًا داخل السيرة الذاتية: ممنوع ذكره أو التلميح له أو استنتاجه.\n\n"
-        f"إذا كانت السيرة الذاتية لا تحتوي على خبرة مباشرة في الوظيفة:\n"
-        f"* اذكر المؤهل الدراسي أو التخصص الموجود في السيرة الذاتية.\n"
-        f"* أبدِ استعداداً صادقاً للتعلم والنمو المهني وتطوير المهارات.\n"
-        f"* استخدم عبارات مثل: 'أنا مستعد للتعلم'، 'أسعى لاكتساب الخبرة'، 'لديّ شغف بالمجال'.\n"
-        f"* لا تعتذر عن قلة الخبرة — قدّم الحماس بديلاً مقنعاً.\n"
-        f"* كن صادقًا ومهنيًا بدون تجميل وهمي.\n\n"
-        f"قاعدة إلزامية: عند الشك تجاهل المعلومة. الواقعية أهم من الإقناع.\n\n"
-        f"اسم المتقدم:\n{name}\n\n"
-        f"المسمى الوظيفي:\n{job_title}\n\n"
-        f"الشركة:\n{company or 'غير محددة'}\n\n"
-        f"وصف الوظيفة:\n{desc[:600] or 'غير متاح'}\n"
-        f"{cv_section}\n"
-        f"المطلوب:\n"
-        f"إخراج رسالة تغطية رسمية قصيرة فقط بدون أي شرح إضافي."
-    )
-
-    parts: list[dict] = [{"text": prompt}]
-
-    try:
-        async with httpx.AsyncClient(timeout=40) as client:
-            r = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
-                json={"contents": [{"parts": parts}]},
-            )
-            data = r.json()
-            return data["candidates"][0]["content"]["parts"][0]["text"].strip()
-    except Exception as e:
-        logger.warning("Gemini error: %s", e)
-        return fallback_ar if lang == "ar" else fallback_en
-
-
 # ─── بناء HTML للإيميل ───
 
 def _build_email_html(name: str, phone: str, job_title: str, company: str, cover: str, lang: str, template: str = "classic") -> str:
@@ -817,7 +697,7 @@ def _job_fingerprint(title: str, email: str, desc: str) -> str:
 # ─── استخراج نص PDF محلياً (بدون API) ────────────────────────────────────────
 
 def _extract_pdf_text_local(cv_bytes: bytes) -> str:
-    """استخراج النص من ملف PDF محلياً باستخدام pdfplumber — أسرع وأوفر من Gemini."""
+    """استخراج النص من ملف PDF محلياً باستخدام pdfplumber."""
     if not _PDFPLUMBER_OK or not cv_bytes:
         return ""
     try:
@@ -1028,7 +908,7 @@ def _hard_rules_check(
     return False, ""
 
 
-# ─── تحليل مدى ملاءمة المستخدم للوظيفة (Gemini AI) ───────────────────────────
+# ─── تحليل مدى ملاءمة المستخدم للوظيفة (بدون AI — تقديم افتراضي) ──────────
 
 async def _analyze_job_fit(
     job_title: str,
@@ -1038,108 +918,8 @@ async def _analyze_job_fit(
     field_names: list[str],
     certifications: list[dict],
 ) -> dict:
-    """
-    يحلل مدى ملاءمة المستخدم للوظيفة عبر Gemini.
-    يعيد: {"score": int, "decision": "apply"|"skip", "reasons": list, "missing": list}
-
-    الفلسفة: قدّم بشكل افتراضي — ارفض فقط عند حواجز صارمة وواضحة.
-    """
-    # Fallback = apply دائماً عند فشل الاتصال — لا نمنع التقديم بسبب مشكلة تقنية
-    fallback = {"score": 70, "decision": "apply", "reasons": ["تم التقديم"], "missing": [], "status": "تم التقديم"}
-    if not GEMINI_API_KEY:
-        return fallback
-
-    cert_text = "\n".join(
-        f"- {c.get('type', '')}: {c.get('name', '')}" + (f" ({c['issuer']})" if c.get("issuer") else "")
-        for c in certifications
-    ) or "لا يوجد"
-
-    prefs_text = "، ".join(field_names) if field_names else "غير محدد"
-
-    prompt = (
-        "أنت نظام ترشيح وتقديم وظائف ذكي. مهمتك الأساسية زيادة فرص التقديم للمستخدم.\n"
-        "دورك 'مساعد تقديم' وليس 'لجنة قبول' ولا 'موظف موارد بشرية متشدد'.\n\n"
-
-        "✅ قدّم دائماً إذا كانت الوظيفة قريبة أو ذات صلة — حتى لو:\n"
-        "  - الخبرة المطلوبة أكثر مما لدى المرشح\n"
-        "  - التخصص قريب وليس مطابقاً حرفياً\n"
-        "  - المرشح حديث تخرج أو Senior أو Lead\n"
-        "  - الوصف ناقص أو غير واضح\n"
-        "  - ليست كل المهارات موجودة\n\n"
-
-        "❌ امتنع عن التقديم (skip) فقط في هذه الحالات الواضحة جداً:\n"
-        "  1. الوظيفة مخصصة لجنس معين بشكل صريح (للنساء فقط / للرجال فقط)\n"
-        "  2. الوظيفة تشترط جنسية محددة والمرشح لا يملكها\n"
-        "  3. شرط أساسي مستحيل: رخصة مهنية إلزامية أو شهادة طبية متخصصة غير موجودة\n"
-        "  4. المجال بعيد تماماً ولا علاقة له (مثال: وظيفة طبيب لمرشح في المحاسبة)\n\n"
-
-        "⚠️ لا ترفض أبداً بسبب:\n"
-        "  - نقص سنوات الخبرة مهما كان\n"
-        "  - اختلاف بسيط في التخصص\n"
-        "  - كون الوظيفة Senior أو Lead أو Manager\n"
-        "  - التأنيث اللغوي (كلمات مثل: بشرية، رقمية، سلامة، مراجعة، إدارية — ليست دليلاً على أن الوظيفة للنساء)\n\n"
-
-        "التخصصات المترابطة — قبل التقديم بينها:\n"
-        "  المالية ↔ المحاسبة ↔ إدارة الأعمال ↔ التسويق ↔ المبيعات ↔ خدمة العملاء\n"
-        "  ↔ التحليل ↔ الإدارة ↔ الموارد البشرية ↔ التشغيل ↔ الدعم الإداري\n\n"
-
-        "إذا كنت مترددًا بين التقديم والرفض → اختر التقديم.\n\n"
-
-        f"=== الوظيفة ===\n"
-        f"المسمى: {job_title}\n"
-        f"الشركة: {company or 'غير محدد'}\n"
-        f"الوصف: {job_desc[:800] or 'غير متاح'}\n\n"
-        f"=== المرشح ===\n"
-        f"التخصصات: {prefs_text}\n"
-        f"الشهادات/الرخص: {cert_text}\n"
-        f"السيرة الذاتية:\n{(cv_parsed_text or 'غير متاح')[:900]}\n\n"
-
-        "=== الإجابة المطلوبة ===\n"
-        "أعد JSON فقط بلا markdown أو شرح:\n"
-        '{"decision":"apply","status":"تم التقديم","block":""}\n'
-        "- decision: 'apply' أو 'skip'\n"
-        "- status: نص قصير: 'تم التقديم' أو 'تم التقديم رغم نقص بسيط' أو 'تم التجاوز'\n"
-        "- block: سبب التجاوز فقط إن كان skip (جملة واحدة) وإلا ''\n"
-        "JSON فقط، بلا أي نص إضافي."
-    )
-
-    models = ["gemini-2.0-flash-lite", "gemini-2.0-flash", "gemini-2.5-flash"]
-    for model in models:
-        try:
-            async with httpx.AsyncClient(timeout=30) as c:
-                r = await c.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}",
-                    headers={"Content-Type": "application/json"},
-                    json={"contents": [{"parts": [{"text": prompt}]}]},
-                )
-            if r.status_code in (429, 503, 404):
-                continue
-            if not r.is_success:
-                continue
-            raw_text = (r.json().get("candidates", [{}])[0]
-                            .get("content", {})
-                            .get("parts", [{}])[0]
-                            .get("text", "")).strip()
-            if not raw_text:
-                continue
-            m = re.search(r'\{[\s\S]*\}', raw_text)
-            if not m:
-                continue
-            parsed = json.loads(m.group())
-
-            ai_decision = str(parsed.get("decision", "apply")).strip().lower()
-            status      = str(parsed.get("status", "تم التقديم")).strip()
-            block       = str(parsed.get("block", "")).strip()
-
-            # ارفض فقط إذا قرر AI "skip" وذكر سبباً صارماً
-            if ai_decision == "skip" and block:
-                return {"score": 20, "decision": "skip", "reasons": [block], "missing": [block], "status": "تم التجاوز"}
-
-            # في كل حالة أخرى: قدّم
-            return {"score": 75, "decision": "apply", "reasons": [status or "تم التقديم"], "missing": [], "status": status or "تم التقديم"}
-        except Exception:
-            continue
-    return fallback
+    """دائماً يوافق على التقديم — القواعد الصارمة تُفحص قبل هذه الدالة بـ _hard_rules_check"""
+    return {"score": 70, "decision": "apply", "reasons": ["تم التقديم"], "missing": [], "status": "تم التقديم"}
 
 
 # ─── استدعاء Supabase Edge Function ───
@@ -1220,8 +1000,8 @@ async def _send_test_cycle_emails() -> None:
             job_intro  = f"أتقدم بهذه الرسالة للتقديم على وظيفة {_TEST_JOB_TITLE} في {_TEST_JOB_COMPANY}.\n\n"
             cover      = _strip_emojis(job_intro + clean_body)
             smtp_email = (settings.get("smtp_email") or "").strip()
-            lang       = settings.get("preferred_language") or "ar"
-            template   = settings.get("email_template") or "classic"
+            lang       = settings.get("application_language") or "ar"
+            template   = settings.get("template_type") or "classic"
             html       = _build_email_html(name, phone, _TEST_JOB_TITLE, _TEST_JOB_COMPANY, cover, lang, template)
             subject    = f"🧪 تجربة رسالة التغطية — {name}"
 
@@ -1352,7 +1132,7 @@ async def _run_cycle_smtp() -> None:
             if storage_path:
                 cv_bytes = await _download_cv(client, storage_path)
 
-            # تحليل السيرة الذاتية مرة واحدة وتخزين الملخص — الدورات التالية تستخدم النص المحفوظ بدون Gemini
+            # تحليل السيرة الذاتية مرة واحدة وتخزين الملخص — الدورات التالية تستخدم النص المحفوظ
             cv_parsed_text = await _get_or_parse_cv(client, cv, cv_bytes, cv_mime)
 
             prefs_rows = await sb_get(client, "user_job_preferences", {"user_id": f"eq.{uid}"})
@@ -1484,9 +1264,9 @@ async def _run_cycle_smtp() -> None:
                     clean_body = _inject_job_title_into_body(saved_body, job_title)
                     job_intro = f"أتقدم بهذه الرسالة للتقديم على وظيفة {job_title}{co_str}.\n\n"
                     cover = _strip_emojis(job_intro + clean_body)
-                    logger.info("   📄 cover letter من DB (لا استدعاء Gemini)")
+                    logger.info("   📄 cover letter من DB (محفوظ)")
                 else:
-                    # بناء قالب عام (بدون Gemini) وحفظه في DB للمرات القادمة
+                    # بناء قالب عام وحفظه في DB للمرات القادمة
                     generic_body = _build_smart_cover_body(name, field_names, cv_parsed_text, lang)
                     try:
                         async with httpx.AsyncClient(timeout=10) as _sc:

@@ -35,7 +35,7 @@ export async function GET() {
         ? supabase.from("activation_codes").select("id,code").in("id", codeIds)
         : Promise.resolve({ data: [] as any[] }),
       userIds.length > 0
-        ? supabase.from("user_settings").select("user_id,email,smtp_email,email_connected,city").in("user_id", userIds)
+        ? supabase.from("user_settings").select("user_id,email,smtp_email,email_connected").in("user_id", userIds)
         : Promise.resolve({ data: [] as any[] }),
       userIds.length > 0
         ? supabase.from("user_job_preferences").select("user_id,job_field_id").in("user_id", userIds)
