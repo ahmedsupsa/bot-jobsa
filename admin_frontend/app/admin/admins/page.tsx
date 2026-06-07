@@ -43,7 +43,7 @@ export default function AdminsPage() {
   async function load() {
     setLoading(true);
     const r = await fetch("/api/admin/admins", { credentials: "include" });
-    if (r.status === 401) { window.location.href = "/login"; return; }
+    if (r.status === 401) { window.location.href = "/admin/login"; return; }
     if (r.status === 403) { setForbidden(true); setLoading(false); return; }
     const d = await r.json();
     setAdmins(d.admins || []);

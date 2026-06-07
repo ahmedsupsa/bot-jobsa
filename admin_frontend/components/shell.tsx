@@ -48,8 +48,8 @@ const groups: NavGroup[] = [
     id: "users",
     title: "إدارة المستخدمين",
     links: [
-      { href: "/users",        label: "المستخدمون",      icon: Users,       perm: "users" },
-      { href: "/codes",        label: "أكواد التفعيل",   icon: Key,         perm: "codes" },
+      { href: "/admin/users", label: "المستخدمون",      icon: Users,       perm: "users" },
+      { href: "/admin/codes", label: "أكواد التفعيل",   icon: Key,         perm: "codes" },
       { href: "/admin/admins", label: "إدارة المسؤولين", icon: ShieldCheck, perm: "admins" },
     ],
   },
@@ -57,8 +57,8 @@ const groups: NavGroup[] = [
     id: "jobs",
     title: "الوظائف والتقديم",
     links: [
-      { href: "/jobs",                   label: "الوظائف",           icon: BriefcaseBusiness, perm: "jobs" },
-      { href: "/applications",           label: "مراقبة التقديمات",  icon: BrainCircuit,      perm: "jobs" },
+      { href: "/admin/jobs",                   label: "الوظائف",           icon: BriefcaseBusiness, perm: "jobs" },
+      { href: "/admin/applications",           label: "مراقبة التقديمات",  icon: BrainCircuit,      perm: "jobs" },
       { href: "/admin/telegram-channel", label: "قناة Telegram",     icon: Radio,             perm: "jobs", superOnly: true },
     ],
   },
@@ -67,9 +67,9 @@ const groups: NavGroup[] = [
     title: "التواصل والعملاء",
     links: [
       { href: "/admin/chat",       label: "الدردشة الداخلية", icon: MessagesSquare, perm: null },
-      { href: "/crm",              label: "علاقات العملاء",   icon: Contact,        perm: "crm" },
-      { href: "/support-admin",    label: "الدعم الفني",      icon: MessageCircle,  perm: "support",      badge: "support" },
-      { href: "/notifications",    label: "إشعارات Push",     icon: Bell,           perm: "notifications" },
+      { href: "/admin/crm",              label: "علاقات العملاء",   icon: Contact,        perm: "crm" },
+      { href: "/admin/support",           label: "الدعم الفني",      icon: MessageCircle,  perm: "support",      badge: "support" },
+      { href: "/admin/notifications",     label: "إشعارات Push",     icon: Bell,           perm: "notifications" },
       { href: "/admin/send-email", label: "إرسال بريد",       icon: Send,           perm: "email-test" },
       { href: "/admin/email-test", label: "اختبار الإيميل",   icon: MailCheck,      perm: "email-test" },
     ],
@@ -78,9 +78,9 @@ const groups: NavGroup[] = [
     id: "store",
     title: "المتجر والربح",
     links: [
-      { href: "/store-admin",     label: "المتجر",       icon: ShoppingBag, perm: "store",     badge: "store" },
-      { href: "/affiliate-admin", label: "برنامج الربح", icon: TrendingUp,  perm: "affiliate", badge: "affiliate" },
-      { href: "/finance",         label: "المالية",      icon: TrendingUp,  perm: "finance" },
+      { href: "/admin/store",     label: "المتجر",       icon: ShoppingBag, perm: "store",     badge: "store" },
+      { href: "/admin/affiliate", label: "برنامج الربح", icon: TrendingUp,  perm: "affiliate", badge: "affiliate" },
+      { href: "/admin/finance",   label: "المالية",      icon: TrendingUp,  perm: "finance" },
     ],
   },
 ];
@@ -281,7 +281,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!me) return;
     const firstAllowed = allLinks.find(l => isVisible(l));
-    const fallback = firstAllowed?.href ?? "/login";
+    const fallback = firstAllowed?.href ?? "/admin/login";
     if (path === "/admin" && !me.isSuper) { router.replace(fallback); return; }
     const link = allLinks.find(l => l.href !== "/admin" && path.startsWith(l.href));
     if (link) {
@@ -396,7 +396,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <button
             onClick={async () => {
               await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
-              window.location.href = "/login";
+              window.location.href = "/admin/login";
             }}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-danger hover:bg-danger-bg transition-all border border-transparent hover:border-danger-border"
           >

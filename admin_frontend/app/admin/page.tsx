@@ -11,16 +11,15 @@ export default function AdminPage() {
   useEffect(() => {
     fetch("/api/admin/me", { credentials: "include" })
       .then(async (r) => {
-        if (!r.ok) { window.location.href = "/login"; return; }
+        if (!r.ok) { window.location.href = "/admin/login"; return; }
         const data = await r.json();
-        if (!data.ok) { window.location.href = "/login"; return; }
+        if (!data.ok) { window.location.href = "/admin/login"; return; }
         if (!data.isSuper) {
-          // Redirect non-super admins to their first allowed page
           const permMap: Record<string, string> = {
-            users: "/users", support: "/support-admin", jobs: "/jobs",
-            codes: "/codes", crm: "/crm", store: "/store-admin",
-            affiliate: "/affiliate-admin", finance: "/finance",
-            notifications: "/notifications", admins: "/admin/admins",
+            users: "/admin/users", support: "/admin/support", jobs: "/admin/jobs",
+            codes: "/admin/codes", crm: "/admin/crm", store: "/admin/store",
+            affiliate: "/admin/affiliate", finance: "/admin/finance",
+            notifications: "/admin/notifications", admins: "/admin/admins",
             "email-test": "/admin/email-test",
           };
           const perms: string[] = data.permissions ?? [];
@@ -30,7 +29,7 @@ export default function AdminPage() {
         }
         setAuthed(true);
       })
-      .catch(() => { window.location.href = "/login"; })
+      .catch(() => { window.location.href = "/admin/login"; })
       .finally(() => setChecked(true));
   }, []);
 

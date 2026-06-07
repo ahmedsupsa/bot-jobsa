@@ -123,7 +123,7 @@ export default function ChatPage() {
     fetch("/api/admin/me", { credentials: "include" })
       .then((r) => r.ok ? r.json() : null)
       .then((d) => {
-        if (!d?.ok) { window.location.href = "/login"; return; }
+        if (!d?.ok) { window.location.href = "/admin/login"; return; }
         setMe({ username: d.username, isSuper: d.isSuper });
         setAuthed(true);
       });
