@@ -402,7 +402,18 @@ async def _get_or_parse_cv(
         if local_text:
             logger.info("📄 pdfplumber: استُخرج %d حرف من السيرة الذاتية محلياً", len(local_text))
 
-    parsed_text = await _parse_cv_with_ai(local_text, cv_bytes, cv_mime)
+    # تحليل محلي بدون AI — استخراج المؤهل والتخصص والخبرة عبر patterns
+    parsed_text = _parse_cv_local(local_text or "") if local_text else ""
+    if not parsed_text and cv_bytes:
+        # إذا ملف PDF ما استخرجنا منه نص — نجرب نرسل مباشرة (DOCX إلخ)
+        if cv_mime != "application/pdf":
+            try:
+                import textract
+                local_text = textract.process(io.BytesIO(cv_bytes)).decode("utf-8", errors="replace")
+                parsed_text = _parse_cv_local(local_text)
+            except Exception:
+                pass
+
     if parsed_text and cv.get("id"):
         try:
             await client.patch(
@@ -426,9 +437,130 @@ def _inject_job_title_into_body(body: str, job_title: str) -> str:
     return body
 
 
-def _build_plain_text_body(name: str, field_names: list[str]) -> str:
-    """قالب ثابت للحفظ في DB — بدون اسم وظيفة أو شركة (يُضافان في الـ wrapper)."""
+def _build_smart_cover_body(name: str, field_names: list[str], cv_parsed_text: str | None = None, lang: str = "ar") -> str:
+    """
+    يبني قالب رسالة تغطية ذكي بناءً على معلومات السيرة الذاتية المستخرجة محلياً.
+    يُحفظ القالب في DB ويُحقن فيه المسمى الوظيفي + الشركة لاحقاً.
+    """
     spec = field_names[0] if field_names else "مجال التخصص"
+
+    if lang != "ar":
+        is_fresh_en = False
+        degree_en = ""
+        uni_en = ""
+        years_en = ""
+
+        if cv_parsed_text:
+            lower = cv_parsed_text.lower()
+            if "سنوات الخبرة: 0" in lower or "حديث تخرج" in lower:
+                is_fresh_en = True
+            for line in cv_parsed_text.split("\n"):
+                line = line.strip()
+                if line.startswith("المؤهل العلمي:"):
+                    degree_en = line.replace("المؤهل العلمي: ", "").strip()
+                elif line.startswith("الجهة التعليمية:"):
+                    uni_en = line.replace("الجهة التعليمية: ", "").strip()
+                elif line.startswith("سنوات الخبرة:"):
+                    years_en = line.replace("سنوات الخبرة: ", "").strip()
+
+        if is_fresh_en:
+            intro = f"My name is {name}"
+            if degree_en:
+                intro += f", holding a {degree_en}"
+            if uni_en:
+                intro += f" from {uni_en}"
+            intro += "."
+            return (
+                f"{intro}\n\n"
+                f"I am a fresh graduate eager to begin my career in {spec}. "
+                f"I have a strong academic background and a genuine desire to develop my skills. "
+                f"I am fully prepared to learn, adapt, and contribute positively to your team."
+            )
+
+        if degree_en or years_en:
+            intro = f"My name is {name}"
+            if degree_en:
+                intro += f", holding a {degree_en}"
+            if uni_en:
+                intro += f" from {uni_en}"
+            if years_en:
+                intro += f". I have {years_en} of practical experience"
+            intro += "."
+            return (
+                f"{intro}\n\n"
+                f"I have solid experience in {spec} that enables me to contribute effectively. "
+                f"I am passionate about my field and committed to continuous growth. "
+                f"Please find my CV attached for further details on my qualifications."
+            )
+
+        return (
+            f"My name is {name}, specialized in {spec}. "
+            f"I am writing to express my strong interest in joining your team. "
+            f"Please find my CV attached for a complete overview of my qualifications "
+            f"and experience. I look forward to the opportunity to contribute to your organization."
+        )
+
+    # تحليل نص السيرة الذاتية (إن وُجد) لتخصيص الرسالة
+    is_fresh = False
+    has_degree = False
+    degree_text = ""
+    uni_text = ""
+    years_text = ""
+
+    if cv_parsed_text:
+        lower = cv_parsed_text.lower()
+        if "سنوات الخبرة: 0" in lower or "حديث تخرج" in lower:
+            is_fresh = True
+        for line in cv_parsed_text.split("\n"):
+            line = line.strip()
+            if line.startswith("المؤهل العلمي:"):
+                has_degree = True
+                degree_text = line.replace("المؤهل العلمي: ", "").strip()
+            elif line.startswith("الجهة التعليمية:"):
+                uni_text = line.replace("الجهة التعليمية: ", "").strip()
+            elif line.startswith("سنوات الخبرة:"):
+                years_text = line.replace("سنوات الخبرة: ", "").strip()
+
+    # ── قوالب ذكية حسب حالة المتقدم ──
+    if is_fresh:
+        # حديث تخرج — تركيز على المؤهل والحماس للتعلم
+        intro = f"أنا {name}"
+        if degree_text:
+            intro += f"، حاصل على {degree_text}"
+        if uni_text:
+            intro += f" من {uni_text}"
+        intro += "."
+        return (
+            f"{intro}\n\n"
+            f"أنا حديث التخرج وأتطلع لبدء مسيرتي المهنية في مجال {spec}. "
+            f"أتمتع بمؤهل أكاديمي قوي ورغبة حقيقية في تطوير مهاراتي والمساهمة في نجاح فريقكم. "
+            f"لديّ استعداد تام للتعلم والتكيف مع بيئة العمل، وسأبذل قصارى جهدي لأكون إضافة إيجابية لشركتكم."
+        )
+
+    if has_degree or years_text:
+        # لديه مؤهل أو خبرة — رسالة احترافية
+        intro = f"أنا {name}"
+        if degree_text:
+            intro += f"، حاصل على {degree_text}"
+        if uni_text:
+            intro += f" من {uni_text}"
+        if years_text:
+            years_num = years_text.replace("سنوات", "").replace("سنة", "").strip()
+            try:
+                if int(years_num) > 0:
+                    intro += f". لدي {years_text} من الخبرة العملية"
+            except ValueError:
+                pass
+        intro += "."
+        return (
+            f"{intro}\n\n"
+            f"أمتلك خبرة عملية في مجال {spec} تؤهلني للمساهمة بفعالية في تحقيق أهداف فريقكم. "
+            f"أنا شغوف بمجالي وأسعى دائماً لتطوير مهاراتي والارتقاء بأدائي. "
+            f"أرفقت سيرتي الذاتية للاطلاع على تفاصيل مؤهلاتي وخبراتي السابقة، "
+            f"وأتطلع لفرصة التواصل معكم."
+        )
+
+    # ── قالب عام (بدون معلومات إضافية) ──
     return (
         f"أنا {name}، متخصص في {spec}، وأتقدم بهذه الرسالة راغباً في الانضمام إلى فريقكم.\n\n"
         f"أرفقت لكم سيرتي الذاتية الكاملة التي تتضمن تفاصيل مؤهلاتي وخبراتي، "
@@ -765,6 +897,104 @@ def _extract_required_years(job_desc: str, job_title: str = "") -> int | None:
             if 1 <= y <= 30:
                 candidates.append(y)
     return min(candidates) if candidates else None
+
+
+# ─── استخراج معلومات السيرة الذاتية محلياً (بدون AI) ──────────────────────────
+
+_DEGREE_PATTERNS_AR = [
+    (r"(دكتوراه|دكتوراة)", "دكتوراه"),
+    (r"(ماجستير|ماجستير|ماستر)", "ماجستير"),
+    (r"(بكالوريوس|بكالوريوس|بكالوريس)", "بكالوريوس"),
+    (r"(دبلوم\s+عالي|دبلوم عال)", "دبلوم عالي"),
+    (r"(دبلوم|دبلومة)", "دبلوم"),
+    (r"(ثانوية\s+عامة|ثانوي)", "ثانوية عامة"),
+]
+_DEGREE_PATTERNS_EN = [
+    (r"(ph\.?\s*d\.?|phd|doctorate)", "PhD"),
+    (r"(master['´`]?s?\s+(degree|of)|m\.?\s*s\b|mba)", "Master"),
+    (r"(bachelor['´`]?s?\s+(degree|of)|b\.?\s*s\b|b\.?a\b|bachelor)", "Bachelor"),
+    (r"(higher\s+diploma|post\s*grad)", "Higher Diploma"),
+    (r"(diploma|diplome)", "Diploma"),
+    (r"(high\s+school)", "High School"),
+]
+
+_MAJOR_KW = {
+    "علوم حاسب", "حاسب آلي", "تقنية معلومات", "it", "information technology",
+    "software engineering", "هندسة برمجيات", "برمجيات", "computer science",
+    "computer engineering", "هندسة حاسب", "هندسة الحاسب",
+    "محاسبة", "accounting", "مالية", "finance",
+    "إدارة أعمال", "business administration", "business",
+    "تسويق", "marketing", "مبيعات", "sales",
+    "هندسة مدنية", "civil engineering", "هندسة ميكانيكية", "mechanical engineering",
+    "هندسة كهربائية", "electrical engineering", "هندسة صناعية", "industrial engineering",
+    "هندسة كيميائية", "chemical engineering", "هندسة معمارية", "architecture",
+    "طب", "medicine", "تمريض", "nursing", "صيدلة", "pharmacy",
+    "قانون", "law", "حقوق",
+    "تربية", "education", "لغة عربية", "لغة إنجليزية", "english",
+    "إعلام", "media", "علاقات عامة", "public relations",
+    "موارد بشرية", "human resources", "hr",
+    "أمن سيبراني", "cyber security",
+    "ذكاء اصطناعي", "artificial intelligence", "ai",
+    "data science", "علم بيانات", "تحليل بيانات",
+}
+
+_UNIVERSITY_PATTERNS = [
+    r"(جامعة|University|College|Institute|أكاديمية|معهد|كلية)\s+([^\n,،]{2,60})",
+    r"([^\n,،]{2,60})\s+(University|College|Institute)",
+]
+
+
+def _extract_degree(cv_text: str) -> str:
+    text = cv_text.strip()
+    for pat, label in _DEGREE_PATTERNS_AR + _DEGREE_PATTERNS_EN:
+        if re.search(pat, text, re.IGNORECASE):
+            return label
+    return ""
+
+
+def _extract_major(cv_text: str) -> str:
+    text = cv_text.lower()
+    found = []
+    for kw in _MAJOR_KW:
+        if kw.lower() in text:
+            found.append(kw)
+    return found[0] if found else ""
+
+
+def _extract_university(cv_text: str) -> str:
+    for pat in _UNIVERSITY_PATTERNS:
+        m = re.search(pat, cv_text)
+        if m:
+            name = m.group(1) if not m.group(2) else m.group(2)
+            name = re.sub(r"\s+", " ", name).strip().rstrip("،,.")
+            if len(name) > 3:
+                return name
+    return ""
+
+
+def _parse_cv_local(cv_text: str) -> str:
+    if not cv_text or len(cv_text.strip()) < 50:
+        return ""
+
+    degree = _extract_degree(cv_text)
+    major = _extract_major(cv_text)
+    uni = _extract_university(cv_text)
+    years = _extract_cv_years(cv_text)
+
+    lines = []
+    if degree or major:
+        parts = [degree, major] if degree and major else [degree or major]
+        lines.append(f"المؤهل العلمي: {' في '.join(parts)}")
+    if uni:
+        lines.append(f"الجهة التعليمية: {uni}")
+    if years is not None:
+        label = f"{years} سنوات" if years > 0 else "حديث تخرج"
+        lines.append(f"سنوات الخبرة: {label}")
+
+    if not lines:
+        return ""
+
+    return "\n".join(lines)
 
 
 # ─── نظام القواعد الصارمة (قبل AI) ──────────────────────────────────────────
@@ -1256,10 +1486,8 @@ async def _run_cycle_smtp() -> None:
                     cover = _strip_emojis(job_intro + clean_body)
                     logger.info("   📄 cover letter من DB (لا استدعاء Gemini)")
                 else:
-                    cover = await _generate_cover_letter(job_title, name, company, desc, lang, cv_parsed_text, template)
-                    cover = _strip_emojis(cover)
-                    # حفظ قالب generic للمرات القادمة (بدون اسم وظيفة/شركة — يُضافان في wrapper)
-                    generic_body = _build_plain_text_body(name, field_names)
+                    # بناء قالب عام (بدون Gemini) وحفظه في DB للمرات القادمة
+                    generic_body = _build_smart_cover_body(name, field_names, cv_parsed_text, lang)
                     try:
                         async with httpx.AsyncClient(timeout=10) as _sc:
                             await _sc.patch(
@@ -1267,10 +1495,15 @@ async def _run_cycle_smtp() -> None:
                                 json={"cover_letter_body": generic_body},
                                 headers=_SB_HEADERS,
                             )
-                        settings["cover_letter_body"] = generic_body  # تحديث في الذاكرة
+                        settings["cover_letter_body"] = generic_body
                         logger.info("   💾 تم حفظ cover letter في DB")
                     except Exception as _e:
                         logger.warning("   ⚠️ فشل حفظ cover letter: %s", _e)
+                    # استخدام القالب مع حقن المسمى الوظيفي
+                    co_str = f" في {company}" if company else ""
+                    clean_body = _inject_job_title_into_body(generic_body, job_title)
+                    job_intro = f"أتقدم بهذه الرسالة للتقديم على وظيفة {job_title}{co_str}.\n\n"
+                    cover = _strip_emojis(job_intro + clean_body)
                 html = _build_email_html(name, phone, job_title, company, cover, lang, template)
                 subject = f"التقديم على وظيفة: {_strip_emojis(job_title)}" if lang == "ar" else f"Application for: {_strip_emojis(job_title)}"
 

@@ -2,11 +2,11 @@
 
 import Shell from "@/components/shell";
 import { API_BASE } from "@/lib/api";
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import {
   Plus, Trash2, Building2, Mail, BriefcaseBusiness, Sparkles,
   CheckCircle2, FileSpreadsheet, Download, Upload, Loader2,
-  Clock, AlertTriangle, CheckSquare, Square, X, Filter, Search,
+  Clock, AlertTriangle, CheckSquare, Square, X, Filter, Search, ChevronDown,
 } from "lucide-react";
 
 type Job = {
@@ -18,6 +18,14 @@ type Job = {
   specializations?: string;
   is_active?: boolean;
   created_at?: string;
+};
+
+type TaxonomyItem = {
+  m: string;
+  m_en: string;
+  c: string;
+  c_en: string;
+  j: string[];
 };
 
 const EMPTY = { title_ar: "", description_ar: "", application_email: "", company: "" };
@@ -41,10 +49,11 @@ export default function JobsPage() {
   const [aiSpecs, setAiSpecs] = useState("");
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [filter, setFilter] = useState<"withEmail" | "all" | "active" | "expired">("withEmail");
+  const [filter, setFilter] = useState<"withEmail" | "all" | "active" | "expired" | "pending">("withEmail");
   const [search, setSearch] = useState("");
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
   const [deduping, setDeduping] = useState(false);
   const [dedupeResult, setDedupeResult] = useState<{ deleted: number } | null>(null);
 
@@ -55,6 +64,11 @@ export default function JobsPage() {
   const [fetchResult, setFetchResult] = useState<{ inserted: number; total: number; skipped: number } | null>(null);
   const [pasteText, setPasteText] = useState("");
   const [showPaste, setShowPaste] = useState(false);
+  const [taxonomy, setTaxonomy] = useState<Record<string, TaxonomyItem> | null>(null);
+  const [taxSearch, setTaxSearch] = useState("");
+  const [showTaxDropdown, setShowTaxDropdown] = useState(false);
+  const [taxField, setTaxField] = useState("");
+  const taxRef = useRef<HTMLDivElement>(null);
 
   const load = async () => {
     const r = await fetch(`${API_BASE}/api/admin/jobs`, { credentials: "include" });
@@ -65,11 +79,59 @@ export default function JobsPage() {
 
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    fetch("/jobs_taxonomy_compact.json").then(r => r.json()).then(setTaxonomy).catch(() => {});
+  }, []);
+
+  const getRelatedJobs = useCallback((selectedTitle: string, fieldName?: string): { all: string; field: string; category: string; count: number } | null => {
+    if (!taxonomy) return null;
+    const words = selectedTitle.replace(/[،,]/g, "").split(/\s+/).filter(w => w.length > 2);
+    for (const key of Object.keys(taxonomy)) {
+      const item = taxonomy[key];
+      if (!item.j.some(j => j === selectedTitle)) continue;
+      if (fieldName && item.m !== fieldName) continue;
+      const related = item.j.filter(j => {
+        if (j === selectedTitle) return true;
+        const jWords = j.replace(/[،,]/g, "").split(/\s+/).filter(w => w.length > 2);
+        return jWords.some(w => words.includes(w)) || words.some(w => jWords.includes(w));
+      });
+      return { all: related.join("، "), field: item.m, category: item.c, count: related.length };
+    }
+    return null;
+  }, [taxonomy]);
+
+  const taxSuggestions = useMemo(() => {
+    if (!taxonomy || !taxSearch.trim()) return [];
+    const q = taxSearch.trim().toLowerCase();
+    const results: { title: string; field: string; category: string }[] = [];
+    for (const key of Object.keys(taxonomy)) {
+      const item = taxonomy[key];
+      for (const job of item.j) {
+        if (job.toLowerCase().includes(q)) {
+          results.push({ title: job, field: item.m, category: item.c });
+          if (results.length >= 50) break;
+        }
+      }
+      if (results.length >= 50) break;
+    }
+    return results;
+  }, [taxonomy, taxSearch]);
+
+  useEffect(() => {
+    if (!showTaxDropdown) return;
+    const handler = (e: MouseEvent) => {
+      if (taxRef.current && !taxRef.current.contains(e.target as Node)) setShowTaxDropdown(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showTaxDropdown]);
+
   const filtered = useMemo(() => {
     let base = rows;
     if (filter === "withEmail") base = base.filter(j => !!j.application_email?.trim());
     else if (filter === "expired") base = base.filter(j => daysAgo(j.created_at) > 10);
     else if (filter === "active")  base = base.filter(j => daysAgo(j.created_at) <= 10);
+    else if (filter === "pending") base = base.filter(j => !j.is_active);
     if (!search.trim()) return base;
     const q = search.trim().toLowerCase();
     return base.filter(j =>
@@ -84,6 +146,7 @@ export default function JobsPage() {
   const expiredCount  = useMemo(() => rows.filter(j => daysAgo(j.created_at) > 10).length, [rows]);
   const activeCount   = useMemo(() => rows.filter(j => daysAgo(j.created_at) <= 10).length, [rows]);
   const noEmailCount  = useMemo(() => rows.filter(j => !j.application_email?.trim()).length, [rows]);
+  const pendingCount  = useMemo(() => rows.filter(j => !j.is_active).length, [rows]);
 
   const allSelected = filtered.length > 0 && filtered.every(j => selected.has(j.id));
   const someSelected = filtered.some(j => selected.has(j.id));
@@ -115,17 +178,18 @@ export default function JobsPage() {
       setMsg("عنوان الوظيفة والبريد الإلكتروني مطلوبان"); setMsgType("err"); return;
     }
     setAdding(true); setMsg(""); setAiSpecs("");
+    const payload = { ...form, specializations: taxField || form.title_ar };
     try {
       const r = await fetch(`${API_BASE}/api/admin/jobs`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || "فشل الإضافة");
-      setAiSpecs(j.specializations || "");
+      setAiSpecs(payload.specializations);
       setMsg("تمت إضافة الوظيفة بنجاح ✓"); setMsgType("ok");
-      setForm(EMPTY); await load();
+      setForm(EMPTY); setTaxField(""); await load();
     } catch (e: any) { setMsg(String(e)); setMsgType("err"); }
     finally { setAdding(false); }
   };
@@ -146,6 +210,22 @@ export default function JobsPage() {
       await load();
     } catch (e: any) { setMsg(String(e)); setMsgType("err"); }
     finally { setDeletingIds(s => { const n = new Set(s); n.delete(job.id); return n; }); }
+  };
+
+  const approveOne = async (id: string) => {
+    setApprovingIds(s => new Set(s).add(id));
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/jobs/approve`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || "فشلت الموافقة");
+      setMsg("تم نشر الوظيفة في القناة ✓"); setMsgType("ok");
+      await load();
+    } catch (e: any) { setMsg(String(e)); setMsgType("err"); }
+    finally { setApprovingIds(s => { const n = new Set(s); n.delete(id); return n; }); }
   };
 
   const bulkDelete = async () => {
@@ -285,12 +365,7 @@ export default function JobsPage() {
           >
             {importing ? <><Loader2 size={13} className="animate-spin" /> استيراد...</> : <><Upload size={13} /> رفع ملف Excel</>}
           </button>
-          <button
-            onClick={() => setShowPaste(s => !s)}
-            className="flex items-center gap-1.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3.5 py-2 text-xs text-sky-400 font-semibold hover:bg-sky-500/20 transition-colors"
-          >
-            <Sparkles size={13} /> استخراج بالذكاء الاصطناعي
-          </button>
+
           <button
             onClick={dedupeDuplicates}
             disabled={deduping}
@@ -377,10 +452,63 @@ export default function JobsPage() {
             <Plus size={17} className="text-accent" />
             <h2 className="font-semibold text-ink">إضافة وظيفة جديدة</h2>
           </div>
-          <div>
+          <div ref={taxRef} className="relative">
             <label className="mb-1.5 block text-xs text-muted">عنوان الوظيفة <span className="text-danger">*</span></label>
-            <input value={form.title_ar} onChange={set("title_ar")} placeholder="مصمم جرافيك"
-              className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm text-ink placeholder:text-muted2 focus:border-accent/50 focus:outline-none" />
+            <div className="relative">
+              <input value={form.title_ar}
+                onChange={e => { setForm(s => ({ ...s, title_ar: e.target.value })); setTaxSearch(e.target.value); setShowTaxDropdown(true); }}
+                onFocus={() => { setTaxSearch(form.title_ar); setShowTaxDropdown(true); }}
+                placeholder="ابحث عن مسمى وظيفي..."
+                className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm text-ink placeholder:text-muted2 focus:border-accent/50 focus:outline-none" />
+              <button type="button" onClick={() => setShowTaxDropdown(v => !v)}
+                className="absolute left-2 top-1/2 -translate-y-1/2 text-muted hover:text-ink transition-colors">
+                <ChevronDown size={16} />
+              </button>
+            </div>
+            {showTaxDropdown && taxonomy && (
+              <div className="absolute z-50 mt-1 w-full rounded-xl border border-line/70 bg-panel shadow-lg max-h-64 overflow-y-auto">
+                {taxSearch.trim() && taxSuggestions.length > 0 ? (
+                  taxSuggestions.map((s, i) => (
+                    <button key={i} type="button"
+                      onClick={() => {
+                        setForm(prev => ({ ...prev, title_ar: s.title }));
+                        const r = getRelatedJobs(s.title, s.field);
+                        setTaxField(r ? r.all : `${s.field}، ${s.category}`);
+                        setShowTaxDropdown(false);
+                      }}
+                      className="flex w-full items-start gap-2 px-3 py-2 text-right text-sm hover:bg-accent/10 transition-colors border-b border-line/30 last:border-0"
+                    >
+                      <span className="text-ink font-medium">{s.title}</span>
+                      <span className="text-[10px] text-muted mt-0.5 shrink-0">{s.field} · {s.category}</span>
+                    </button>
+                  ))
+                ) : Object.keys(taxonomy).map(key => {
+                  const item = taxonomy[key];
+                  return (
+                    <div key={key}>
+                      <div className="px-3 py-1.5 text-[11px] font-bold text-muted bg-panel2/50 sticky top-0">{item.m} <span className="font-normal text-muted2">· {item.c}</span></div>
+                      {item.j.slice(0, 20).map((job, i) => (
+                        <button key={i} type="button"
+                          onClick={() => {
+                            setForm(prev => ({ ...prev, title_ar: job }));
+                            const r = getRelatedJobs(job);
+                            setTaxField(r ? r.all : `${item.m}، ${item.c}`);
+                            setShowTaxDropdown(false);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-1.5 text-right text-xs text-ink hover:bg-accent/10 transition-colors border-b border-line/20 last:border-0"
+                        >
+                          <BriefcaseBusiness size={11} className="text-muted shrink-0" />
+                          {job}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
+                {taxSearch.trim() && taxSuggestions.length === 0 && (
+                  <div className="px-3 py-4 text-center text-xs text-muted">لا توجد نتائج</div>
+                )}
+              </div>
+            )}
           </div>
           <div>
             <label className="mb-1.5 block text-xs text-muted">الوصف الوظيفي</label>
@@ -399,14 +527,14 @@ export default function JobsPage() {
               className="w-full rounded-xl border border-line/70 bg-panel2 px-3 py-2.5 text-sm text-ink placeholder:text-muted2 focus:border-accent/50 focus:outline-none" />
           </div>
           <div className="flex items-start gap-2 rounded-xl border border-violet-500/20 bg-violet-950/20 px-3 py-2.5">
-            <Sparkles size={14} className="text-violet-400 mt-0.5 shrink-0" />
-            <p className="text-xs text-violet-300/80">الذكاء الاصطناعي يستخرج التخصصات ويطابقها مع المستخدمين تلقائياً</p>
+            <CheckCircle2 size={14} className="text-violet-400 mt-0.5 shrink-0" />
+            <p className="text-xs text-violet-300/80">{taxField ? `التخصصات (${taxField.split("، ").length}): ${taxField.slice(0, 150)}${taxField.length > 150 ? "..." : ""}` : "اختر مسمى وظيفي من القائمة لتطابقه مع جميع التخصصات القريبة"}</p>
           </div>
           {aiSpecs && (
             <div className="flex items-start gap-2 rounded-xl border border-line2 bg-panel2 px-3 py-2.5">
               <CheckCircle2 size={14} className="text-ink/80 mt-0.5 shrink-0" />
               <div>
-                <div className="text-xs font-medium text-ink mb-1">تخصصات مُولَّدة:</div>
+                <div className="text-xs font-medium text-ink mb-1">التخصصات المستخرجة ({aiSpecs.split("، ").length}):</div>
                 <div className="text-xs text-muted">{aiSpecs}</div>
               </div>
             </div>
@@ -427,10 +555,11 @@ export default function JobsPage() {
             </div>
             {/* Filter tabs */}
             <div className="flex gap-1 rounded-xl border border-line/60 bg-panel2 p-1">
-              {([["withEmail","مع إيميل"], ["all","الكل"], ["active","نشطة"], ["expired","منتهية"]] as const).map(([v, label]) => (
+              {([["pending","معلّقة"], ["withEmail","مع إيميل"], ["all","الكل"], ["active","نشطة"], ["expired","منتهية"]] as const).map(([v, label]) => (
                 <button key={v} onClick={() => { setFilter(v); setSelected(new Set()); }}
                   className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${filter === v ? "bg-accent text-accent-fg" : "text-muted hover:text-ink"}`}>
                   {label}
+                  {v === "pending" && pendingCount > 0 && <span className="mr-1 text-amber-400">({pendingCount})</span>}
                   {v === "expired" && expiredCount > 0 && <span className="mr-1 text-orange-400">({expiredCount})</span>}
                 </button>
               ))}
@@ -536,6 +665,15 @@ export default function JobsPage() {
                       )}
                     </div>
 
+                    {/* Approve (للحالات المعلّقة فقط) */}
+                    {!j.is_active && (
+                      <button onClick={() => approveOne(j.id)} disabled={approvingIds.has(j.id)}
+                        className="shrink-0 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-1.5 text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-40">
+                        {approvingIds.has(j.id)
+                          ? <span className="block h-3.5 w-3.5 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
+                          : <CheckCircle2 size={13} />}
+                      </button>
+                    )}
                     {/* Delete */}
                     <button onClick={() => delOne(j)} disabled={deletingIds.has(j.id)}
                       className="shrink-0 rounded-lg border border-danger-border bg-danger-bg p-1.5 text-danger hover:bg-danger/15 transition-colors disabled:opacity-40">

@@ -1,38 +1,8 @@
-# بيئة بايثون
-venv/
-.venv/
-env/
+node_modules/
+.next/
+.env
 *.pyc
 __pycache__/
-*.pyo
-.Python
-*.egg-info/
-.eggs/
+.venv/
 dist/
-build/
-
-# ملفات البيئة والأسرار (مهم: لا ترفعها أبداً)
-.env
-*.env
-!.env.example
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# نظام التشغيل
-.DS_Store
-Thumbs.db
-
-# سجلات
-*.log
-logs/
-
-# مؤقت
-*.tmp
-.cache/
-
-# أرشيفات النشر
-*.zip
+.next/

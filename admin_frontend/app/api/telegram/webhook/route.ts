@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { geminiText } from "@/lib/gemini";
 import { sendTelegram, postJobToChannel } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
@@ -11,40 +10,67 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABA
 
 const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
 
-// ── استخراج الوظائف بـ Gemini ──────────────────────────────────────────────
-async function extractJobs(text: string): Promise<Record<string, string>[]> {
-  if (!process.env.GEMINI_API_KEY) return [];
+const JOB_KEYWORDS = [
+  "مطلوب", "وظيفة", "وظائف", "توظيف", "نبحث عن", "نرحب بـ",
+  "التقديم", "أرسل سيرتك", "السيرة الذاتية", "للتوظيف", "فرصة",
+  "فرص", "شاغر", "شاغرة", "تعيين", " hiring", "job", "vacancy",
+];
 
-  const prompt = `أنت نظام استخراج وظائف محترف متخصص في السوق السعودي.
+const JOB_TITLES = [
+  "محاسب", "مهندس", "مبرمج", "مصمم", "محامي", "مدير", "أخصائي",
+  "مشرف", "مسؤول", "منسق", "مندوب", "سكرتير", "موظف", "كاتب",
+  "مطور", "فني", "طبيب", "ممرض", "معلم", "مدرس", "محاضر",
+  "باحث", "محلل", "مستشار", "مراجع", "مدقق", "مفتش", "مراقب",
+  "رئيس", "نائب", "مساعد", "أمين", "حارس", "سائق", "عامل",
+];
 
-النص التالي جاء من قناة Telegram للوظائف. 
-حلّل النص وأرجع **فقط** إعلانات الوظائف الموجودة فيه كـ JSON array.
+const COMPANY_PREFIXES = ["شركة", "مؤسسة", "مجموعة", "بنك", "مكتب", "مستشفى", "جامعة"];
 
-لكل وظيفة:
-{
-  "title_ar": "المسمى الوظيفي بالعربية",
-  "company": "اسم الشركة أو المؤسسة (فارغ إن لم يُذكر)",
-  "description_ar": "وصف الوظيفة والمتطلبات كاملاً",
-  "application_email": "البريد الإلكتروني للتقديم أو null",
-  "specializations": "5 كلمات مفتاحية مفصولة بفاصلة",
-  "link_url": "رابط التقديم أو null"
-}
+// ── استخراج الوظائف بدون ذكاء اصطناعي ──────────────────────────────────────
+function extractJobs(text: string): Record<string, string | null>[] {
+  const results: Record<string, string | null>[] = [];
+  const lines = text.split(/\n+/).filter(l => l.trim());
+  const emails = [...new Set(text.match(EMAIL_RE) || [])];
 
-إذا لم يكن النص يحتوي على إعلان وظيفة حقيقية أرجع: []
-أرجع JSON فقط بدون أي نص إضافي.
+  for (const line of lines) {
+    const lower = line.trim().toLowerCase();
+    const hasKeyword = JOB_KEYWORDS.some(k => lower.includes(k));
+    if (!hasKeyword) continue;
 
-النص:
-${text.slice(0, 3000)}`;
+    let title = "";
+    for (const t of JOB_TITLES) {
+      const idx = lower.indexOf(t);
+      if (idx !== -1) {
+        // استخرج الجملة التي تحتوي المسمى
+        const start = Math.max(0, idx - 15);
+        const end = Math.min(text.length, idx + t.length + 30);
+        const snippet = text.slice(start, end).trim();
+        title = snippet.replace(/[،,].*$/, "").trim();
+        break;
+      }
+    }
+    if (!title) continue;
 
-  try {
-    const raw = await geminiText(prompt, { temperature: 0.1 });
-    const match = raw.match(/\[[\s\S]*\]/);
-    if (!match) return [];
-    const jobs = JSON.parse(match[0]);
-    return Array.isArray(jobs) ? jobs : [];
-  } catch {
-    return [];
+    let company = "";
+    const lineWords = line.split(/\s+/);
+    for (let i = 0; i < lineWords.length; i++) {
+      const w = lineWords[i].replace(/[،,]/g, "");
+      if (COMPANY_PREFIXES.includes(w) && i + 1 < lineWords.length) {
+        company = `${w} ${lineWords[i + 1].replace(/[،,]/g, "").replace(/[.].*$/, "")}`;
+        break;
+      }
+    }
+
+    const email = emails[0] || null;
+
+    // تحقق من عدم التكرار
+    const dup = results.some(j => j.title_ar === title);
+    if (!dup) {
+      results.push({ title_ar: title, company, application_email: email, description_ar: line.trim() });
+    }
   }
+
+  return results;
 }
 
 // ── التحقق من التكرار ──────────────────────────────────────────────────────
@@ -63,7 +89,7 @@ async function jobExists(tweetUid: string): Promise<boolean> {
 }
 
 // ── حفظ وظيفة ─────────────────────────────────────────────────────────────
-async function saveJob(job: Record<string, string>, tweetUid: string, channelName: string): Promise<string | null> {
+async function saveJob(job: Record<string, string | null>, tweetUid: string, channelName: string): Promise<string | null> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return null;
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/admin_jobs`, {
@@ -81,7 +107,7 @@ async function saveJob(job: Record<string, string>, tweetUid: string, channelNam
         application_email: job.application_email?.trim() || null,
         specializations: job.specializations?.trim() || null,
         link_url: job.link_url?.trim() || null,
-        is_active: true,
+        is_active: false,
         tweet_uid: tweetUid,
         source_account: channelName,
       }),
@@ -141,24 +167,9 @@ async function handleChannelPost(post: Record<string, unknown>) {
     const id = await saveJob(job, tweetUid + `_${saved}`, channelTitle);
     if (id) {
       saved++;
-      // نشر في قناة الوظائف وحفظ message_id
-      postJobToChannel({
-        title_ar: job.title_ar,
-        description_ar: job.description_ar || null,
-        application_email: job.application_email || null,
-        link_url: job.link_url || null,
-      }).then(async (msgId) => {
-        if (msgId && SUPABASE_URL && SUPABASE_KEY) {
-          await fetch(`${SUPABASE_URL}/rest/v1/admin_jobs?id=eq.${id}`, {
-            method: "PATCH",
-            headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ tg_message_id: msgId }),
-          }).catch(() => {});
-        }
-      }).catch(() => {});
-      // إشعار الأدمن
+      // إشعار الأدمن بانتظار المراجعة
       sendTelegram(
-        `💼 <b>وظيفة جديدة من Telegram</b>\n` +
+        `⏳ <b>وظيفة جديدة تنتظر المراجعة</b>\n` +
         `📢 القناة: ${channelTitle}\n` +
         `🏷️ المسمى: ${job.title_ar}\n` +
         `🏢 الشركة: ${job.company || "—"}\n` +
