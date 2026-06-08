@@ -27,26 +27,42 @@ function NextRunCard({ active }: { active: boolean }) {
   const [secs, setSecs] = useState(0);
   const [label, setLabel] = useState("");
 
-  function computeNextRun() {
-    const now = new Date();
-    const next = new Date(now);
-    next.setSeconds(0); next.setMilliseconds(0);
-    if (now.getMinutes() < 30) { next.setMinutes(30); }
-    else { next.setMinutes(0); next.setHours(next.getHours() + 1); }
-    return next.getTime();
-  }
-
   useEffect(() => {
-    const nextRunMs = computeNextRun();
-    function tick() {
-      const remaining = Math.max(0, Math.floor((nextRunMs - Date.now()) / 1000));
-      setSecs(remaining);
-      const next = new Date(nextRunMs);
-      setLabel(next.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
-    }
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
+    let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    (async () => {
+      let nextRunMs: number;
+      try {
+        const r = await fetch("/api/portal/worker-status", { cache: "no-store" });
+        const data = await r.json();
+        const now = Date.now();
+
+        if (data.next_run_at) {
+          const t = new Date(data.next_run_at).getTime();
+          nextRunMs = t > now ? t : now + 1800_000;
+        } else if (data.last_ran_at) {
+          const t = new Date(data.last_ran_at).getTime() + 1800_000;
+          nextRunMs = t > now ? t : now + 1800_000;
+        } else {
+          nextRunMs = now + 1800_000;
+        }
+      } catch {
+        nextRunMs = Date.now() + 1800_000;
+      }
+
+      if (cancelled) return;
+
+      function tick() {
+        const remaining = Math.max(0, Math.floor((nextRunMs - Date.now()) / 1000));
+        setSecs(remaining);
+        setLabel(new Date(nextRunMs).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
+      }
+      tick();
+      intervalId = setInterval(tick, 1000);
+    })();
+
+    return () => { cancelled = true; if (intervalId !== null) clearInterval(intervalId); };
   }, []);
 
   const pct = Math.max(0, Math.min(100, ((1800 - secs) / 1800) * 100));
