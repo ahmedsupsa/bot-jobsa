@@ -3,8 +3,6 @@ import { enforcePermission } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
-import { geminiText } from "@/lib/gemini";
-
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_KEY = process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
@@ -14,36 +12,101 @@ function extractEmails(text: string): string[] {
   return text.match(EMAIL_RE) || [];
 }
 
-async function extractJobsWithGemini(text: string): Promise<Record<string, string>[]> {
-  if (!process.env.GEMINI_API_KEY) return [];
+// Regex-based job extraction from Arabic text
+const JOB_TITLE_PATTERNS = [
+  /مطلوب\s+(.+?)(?:\n|\.|،|ـ)/i,
+  /وظيفة\s+(.+?)(?:\n|\.|،|ـ)/i,
+  /يطلب\s+(.+?)(?:\n|\.|،|ـ)/i,
+  /بحاجة\s+(.+?)(?:\n|\.|،|ـ)/i,
+  /فرصة\s+(?:عمل|وظيفية)\s+(.+?)(?:\n|\.|،|ـ)/i,
+  /(?:مهندس|محاسب|ممرض|فني|مدير|مشرف|مسؤول|مساعد|سائق|محامي|مستشار|أخصائي|اخصائي)\s+.+?(?:\n|\.|،|ـ)/i,
+];
 
-  const prompt = `أنت نظام استخراج وظائف محترف. النص التالي يحتوي على تغريدات من حسابات وظائف سعودية.
+const COMPANY_PATTERNS = [
+  /(?:شركة|مؤسسة|مجموعة)\s+([^\n\.،]+)/i,
+  /لصالح\s+(?:عمل\s+)?([^\n\.،]+)/i,
+  /(?:في|بـ|لـ)\s*(?:شركة|مؤسسة)\s+([^\n\.،]+)/i,
+];
 
-استخرج **كل** إعلانات الوظائف الموجودة في النص وأرجعها كـ JSON array.
-لكل وظيفة:
-{
-  "title_ar": "المسمى الوظيفي بالعربي",
-  "company": "اسم الشركة أو المؤسسة (فارغ إن لم يُذكر)",
-  "description_ar": "وصف الوظيفة والمتطلبات",
-  "application_email": "البريد الإلكتروني للتقديم (null إن لم يوجد)",
-  "specializations": "5 كلمات مفتاحية مفصولة بفاصلة"
+function extractJobsFromText(text: string): Record<string, string>[] {
+  const jobs: Record<string, string>[] = [];
+  const lines = text.split("\n").filter(l => l.trim());
+  const emails = extractEmails(text);
+
+  let currentJob: Partial<Record<string, string>> = {};
+  let inJob = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Check if this line starts a new job
+    let match: RegExpMatchArray | null;
+    let title = "";
+    for (const pat of JOB_TITLE_PATTERNS) {
+      match = trimmed.match(pat);
+      if (match) {
+        title = match[1] || match[0];
+        break;
+      }
+    }
+
+    if (title) {
+      if (inJob && currentJob.title_ar) {
+        jobs.push({
+          title_ar: currentJob.title_ar,
+          company: currentJob.company || "",
+          description_ar: currentJob.description_ar || "",
+          application_email: currentJob.application_email || (emails.length > 0 ? emails[0] : ""),
+          specializations: currentJob.title_ar,
+        });
+      }
+      currentJob = { title_ar: title.trim(), description_ar: trimmed, company: "" };
+      inJob = true;
+
+      // Try to extract company
+      for (const cpat of COMPANY_PATTERNS) {
+        const cmatch = trimmed.match(cpat);
+        if (cmatch) {
+          currentJob.company = cmatch[1].trim();
+          break;
+        }
+      }
+    } else if (inJob) {
+      currentJob.description_ar = (currentJob.description_ar || "") + "\n" + trimmed;
+
+      // Try to extract company from additional lines
+      if (!currentJob.company) {
+        for (const cpat of COMPANY_PATTERNS) {
+          const cmatch = trimmed.match(cpat);
+          if (cmatch) {
+            currentJob.company = cmatch[1].trim();
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Push last job
+  if (inJob && currentJob.title_ar) {
+    jobs.push({
+      title_ar: currentJob.title_ar,
+      company: currentJob.company || "",
+      description_ar: currentJob.description_ar || "",
+      application_email: currentJob.application_email || (emails.length > 0 ? emails[0] : ""),
+      specializations: currentJob.title_ar,
+    });
+  }
+
+  return jobs;
 }
 
-إذا لم تجد أي وظيفة أرجع: []
-أرجع JSON فقط بدون أي نص إضافي.
-
-النص:
-${text.slice(0, 4000)}`;
-
-  try {
-    const raw = await geminiText(prompt, { temperature: 0.1 });
-    const match = raw.match(/\[[\s\S]*\]/);
-    if (!match) return [];
-    const jobs = JSON.parse(match[0]);
-    return Array.isArray(jobs) ? jobs : [];
-  } catch {
-    return [];
+function extractCompany(text: string): string {
+  for (const pat of COMPANY_PATTERNS) {
+    const match = text.match(pat);
+    if (match) return match[1].trim();
   }
+  return "";
 }
 
 async function jobExists(title: string): Promise<boolean> {
@@ -73,10 +136,10 @@ async function saveJob(job: Record<string, string>): Promise<boolean> {
       },
       body: JSON.stringify({
         title_ar: (job.title_ar || "").slice(0, 255),
-        company: (job.company || "").slice(0, 200),
+        company: (job.company || extractCompany(job.description_ar || "")).slice(0, 200),
         description_ar: (job.description_ar || "").slice(0, 3000),
         application_email: job.application_email || null,
-        specializations: (job.specializations || "").slice(0, 500),
+        specializations: job.title_ar?.slice(0, 500) || "",
         is_active: true,
         created_at: new Date().toISOString(),
       }),
@@ -102,11 +165,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "إعدادات Supabase غير مضبوطة" }, { status: 500 });
   }
 
-  // استخراج الوظائف بـ Gemini
-  const jobs = await extractJobsWithGemini(text);
+  // استخراج الوظائف محلياً بالـ Regex
+  const jobs = extractJobsFromText(text);
 
   if (jobs.length === 0) {
-    return NextResponse.json({ ok: true, inserted: 0, skipped: 0, total: 0, message: "لم يجد الذكاء الاصطناعي أي وظائف في النص" });
+    return NextResponse.json({ ok: true, inserted: 0, skipped: 0, total: 0, message: "لم يتم العثور على وظائف في النص" });
   }
 
   let inserted = 0;
@@ -114,12 +177,6 @@ export async function POST(req: Request) {
 
   for (const job of jobs) {
     if (!job.title_ar?.trim()) continue;
-
-    // إذا لم يجد Gemini إيميل، نحاول نستخرجه من النص الأصلي
-    if (!job.application_email) {
-      const emails = extractEmails(text);
-      if (emails.length > 0) job.application_email = emails[0];
-    }
 
     const exists = await jobExists(job.title_ar.trim());
     if (exists) { skipped++; continue; }

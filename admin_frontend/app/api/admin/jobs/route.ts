@@ -2,20 +2,6 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { enforcePermission } from "@/lib/admin-auth";
 import { tg, postJobToChannel } from "@/lib/telegram";
-import { geminiText } from "@/lib/gemini";
-
-async function generateSpecializations(titleAr: string, descAr: string): Promise<string> {
-  try {
-    const prompt = `استخرج قائمة من 5-10 تخصصات ومسميات وظيفية مناسبة لهذه الوظيفة:
-العنوان: ${titleAr}
-الوصف: ${descAr.slice(0, 500)}
-أرجع فقط الكلمات مفصولة بفاصلة، بدون شرح. مثال: تصميم جرافيك، تصميم بصري، فوتوشوب`;
-    const text = await geminiText(prompt);
-    return text || titleAr;
-  } catch {
-    return titleAr;
-  }
-}
 
 export async function GET() {
   const _denied_ = enforcePermission("jobs"); if (_denied_) return _denied_;
@@ -40,7 +26,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "عنوان الوظيفة والبريد مطلوبان" }, { status: 400 });
   }
 
-  const specializations = await generateSpecializations(titleAr, descAr);
+  const specializations = body.specializations || titleAr;
 
   const { error, data } = await supabase.from("admin_jobs").insert({
     title_ar: titleAr,

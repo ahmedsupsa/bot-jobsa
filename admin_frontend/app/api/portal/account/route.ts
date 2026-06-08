@@ -22,7 +22,7 @@ export async function DELETE(req: Request) {
   // Best-effort cleanup of related data (safe even if FK cascades exist)
   await Promise.allSettled([
     supabase.from("user_cvs").delete().eq("user_id", uid),
-    supabase.from("user_preferences").delete().eq("user_id", uid),
+    supabase.from("user_job_preferences").delete().eq("user_id", uid),
     supabase.from("applications").delete().eq("user_id", uid),
     supabase.from("support_messages").delete().eq("user_id", uid),
     supabase.from("affiliates").delete().eq("user_id", uid),

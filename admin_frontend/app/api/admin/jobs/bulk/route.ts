@@ -2,24 +2,9 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { enforcePermission } from "@/lib/admin-auth";
 import ExcelJS from "exceljs";
-import { geminiText } from "@/lib/gemini";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
-
-async function generateSpecializations(titleAr: string, descAr: string): Promise<string> {
-  if (!titleAr) return "";
-  try {
-    const prompt = `استخرج قائمة من 5-10 تخصصات ومسميات وظيفية مناسبة لهذه الوظيفة:
-العنوان: ${titleAr}
-الوصف: ${(descAr || "").slice(0, 500)}
-أرجع فقط الكلمات مفصولة بفاصلة، بدون شرح. مثال: تصميم جرافيك، تصميم بصري، فوتوشوب`;
-    const text = await geminiText(prompt);
-    return text || titleAr;
-  } catch {
-    return titleAr;
-  }
-}
 
 const HEADER_MAP: Record<string, string> = {
   "عنوان الوظيفة": "title_ar",
@@ -131,17 +116,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: errors.slice(0, 8).join(" • ") + (errors.length > 8 ? ` (+${errors.length - 8} أخطاء)` : "") }, { status: 400 });
   }
 
-  // Generate specs in parallel batches
-  const CONCURRENCY = 5;
-  const enriched: Row[] = [];
-  for (let i = 0; i < rows.length; i += CONCURRENCY) {
-    const chunk = rows.slice(i, i + CONCURRENCY);
-    const out = await Promise.all(chunk.map(async (r) => {
-      const spec = r.specializations ? r.specializations : await generateSpecializations(r.title_ar, r.description_ar);
-      return { ...r, specializations: spec };
-    }));
-    enriched.push(...out);
-  }
+  // Use provided specializations or fall back to title
+  const enriched: Row[] = rows.map(r => ({
+    ...r,
+    specializations: r.specializations || r.title_ar,
+  }));
 
   const now = new Date().toISOString();
   const payload = enriched.map(r => ({
