@@ -67,8 +67,8 @@ export async function POST(req: Request) {
 
     // حذف الملف المخزَّن إذا فشل التحقق
     async function rejectCv(code: string, msg: string) {
-      await supabase.storage.from("cvs").remove([storagePath]).catch(() => {});
-      await supabase.from("user_settings").update({ cv_rejected: true }).eq("user_id", uid).catch(() => {});
+      try { await supabase.storage.from("cvs").remove([storagePath]); } catch {}
+      try { await supabase.from("user_settings").update({ cv_rejected: true }).eq("user_id", uid); } catch {}
       return NextResponse.json({ error: msg, code }, { status: 422 });
     }
 
@@ -130,7 +130,7 @@ export async function POST(req: Request) {
     }
 
     // سيرة صالحة — إلغاء رفض السيرة إن كان موجوداً
-    await supabase.from("user_settings").update({ cv_rejected: false }).eq("user_id", uid).catch(() => {});
+    try { await supabase.from("user_settings").update({ cv_rejected: false }).eq("user_id", uid); } catch {};
 
     tg.cvUploaded(uid, uid, file.name).catch(() => {});
 
