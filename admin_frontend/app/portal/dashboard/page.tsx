@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { PortalShell } from "@/components/portal-shell";
 import { portalFetch, clearToken } from "@/lib/portal-auth";
@@ -27,43 +27,37 @@ function fmt(secs: number) {
 function NextRunCard({ active }: { active: boolean }) {
   const [secs, setSecs] = useState(0);
   const [label, setLabel] = useState("");
+  const targetRef = useRef<number>(0);
+
+  async function fetchTarget() {
+    try {
+      const r = await fetch("/api/portal/worker-status", { cache: "no-store" });
+      const data = await r.json();
+      const now = Date.now();
+      let t: number;
+      if (data.next_run_at) {
+        t = new Date(data.next_run_at).getTime();
+        t = t > now ? t : now + 1800_000;
+      } else if (data.last_ran_at) {
+        t = new Date(data.last_ran_at).getTime() + 1800_000;
+        t = t > now ? t : now + 1800_000;
+      } else {
+        t = now + 1800_000;
+      }
+      targetRef.current = t;
+      setLabel(new Date(t).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
+    } catch { /* keep current */ }
+  }
 
   useEffect(() => {
-    let cancelled = false;
-    let intervalId: ReturnType<typeof setInterval> | null = null;
-
-    (async () => {
-      let nextRunMs: number;
-      try {
-        const r = await fetch("/api/portal/worker-status", { cache: "no-store" });
-        const data = await r.json();
-        const now = Date.now();
-
-        if (data.next_run_at) {
-          const t = new Date(data.next_run_at).getTime();
-          nextRunMs = t > now ? t : now + 1800_000;
-        } else if (data.last_ran_at) {
-          const t = new Date(data.last_ran_at).getTime() + 1800_000;
-          nextRunMs = t > now ? t : now + 1800_000;
-        } else {
-          nextRunMs = now + 1800_000;
-        }
-      } catch {
-        nextRunMs = Date.now() + 1800_000;
-      }
-
-      if (cancelled) return;
-
-      function tick() {
-        const remaining = Math.max(0, Math.floor((nextRunMs - Date.now()) / 1000));
-        setSecs(remaining);
-        setLabel(new Date(nextRunMs).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
-      }
-      tick();
-      intervalId = setInterval(tick, 1000);
-    })();
-
-    return () => { cancelled = true; if (intervalId !== null) clearInterval(intervalId); };
+    fetchTarget();
+    const tick = setInterval(() => {
+      const remaining = targetRef.current - Date.now();
+      setSecs(Math.max(0, Math.floor(remaining / 1000)));
+      if (remaining <= 0) fetchTarget();
+    }, 1000);
+    const refresh = setInterval(fetchTarget, 30_000);
+    return () => { clearInterval(tick); clearInterval(refresh); };
   }, []);
 
   const pct = Math.max(0, Math.min(100, ((1800 - secs) / 1800) * 100));
