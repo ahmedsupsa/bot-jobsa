@@ -898,7 +898,7 @@ export default function AccountPage() {
                       </button>
                       <button
                         onClick={() => loadPreview(true)}
-                        title="إعادة إنشاء بالذكاء الاصطناعي"
+                        title="إعادة إنشاء الرسالة"
                         style={{
                           display: "flex", alignItems: "center", gap: 5,
                           padding: "6px 12px", borderRadius: 8, cursor: "pointer",

@@ -243,10 +243,10 @@ function buildCoverLetter(
         .map(p => `<p style="line-height:2;margin:0 0 14px;font-size:15px;">${p.replace(/\n/g, "<br>")}</p>`)
         .join("")
     : `<p style="line-height:2;margin:0 0 14px;font-size:15px;">
-         أتقدم بطلبي للوظيفة المعلنة <strong>${jobTitle}</strong>، وأرفق لكم سيرتي الذاتية للاطلاع عليها والنظر في طلبي.
+         أتشرف بتقديم طلبي لوظيفة <strong>${jobTitle}</strong> في شركتكم، حيث أمتلك المؤهلات والخبرات التي تؤهلني للمساهمة بفعالية في فريق العمل.
        </p>
        <p style="line-height:2;margin:0 0 14px;font-size:15px;">
-         أتطلع لفرصة التواصل معكم لمناقشة كيف يمكنني المساهمة في فريقكم.
+         أرفقت لكم سيرتي الذاتية، وأتطلع لفرصة التواصل لمناقشة كيف يمكنني إضافة قيمة لمؤسستكم.
        </p>`;
 
   return `<!DOCTYPE html><html dir="rtl" lang="ar">
@@ -379,6 +379,12 @@ async function runCycle() {
     }
     if (!hasSmtp) {
       details.push({ user: name, job: "—", status: "skipped", reason: "لم يربط Gmail App Password" });
+      continue;
+    }
+
+    const coverViewed = settings.cover_letter_viewed === true;
+    if (!coverViewed) {
+      details.push({ user: name, job: "—", status: "skipped", reason: "لم يعاين رسالة التقديم — راجع صفحة الملف الشخصي" });
       continue;
     }
 

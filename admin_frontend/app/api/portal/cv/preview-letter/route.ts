@@ -11,72 +11,72 @@ function freshClient() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-type Cert = { type: string; name: string; issuer: string | null };
 type CvProfile = {
   degree?: string; specialization?: string; experience_years?: number;
   skills?: string[]; prev_jobs?: string[]; languages?: string[];
 };
 
-// ── Gemini: توليد نص الرسالة ─────────────────────────────────────────────────
+// ── 5 قوالب إبداعية مختلفة لرسالة التقديم ─────────────────────────────────────
+const TEMPLATES = [
+  // القالب 1: أسلوب الإنجاز
+  (name: string, spec: string, degree: string, expStr: string, skills: string, prevJobs: string, certs: string, cvText: string, jobTitle: string) =>
+    `أتشرف بتقديم طلبي لشغل وظيفة ${jobTitle} في شركتكم الموقرة، حيث أمتلك خلفية أكاديمية ومهنية في ${spec} تؤهلني للمساهمة بفعالية في فريق العمل.
 
-async function generateLetterBody(
+${degree}، ${expStr}.${skills ? ` أمتلك مهارات بارزة في ${skills}، وهو ما مكّنني من تحقيق نتائج إيجابية في تجاربي السابقة.` : ""}${prevJobs ? `\n\nمن أبرز محطاتي المهنية: ${prevJobs}، حيث اكتسبت خبرة عملية في بيئات عمل متنوعة.` : ""}${certs ? `\n\nكما أحمل شهادات مهنية في: ${certs}.` : ""}
+
+أرفق لكم سيرتي الذاتية، وأتطلّع لفرصة مناقشة كيف يمكنني إضافة قيمة لشركتكم.`,
+
+  // القالب 2: أسلوب المهارات والتخصص
+  (name: string, spec: string, degree: string, expStr: string, skills: string, prevJobs: string, certs: string, cvText: string, jobTitle: string) =>
+    `يسعدني التقدم لوظيفة ${jobTitle}، انطلاقاً من شغفي في مجال ${spec} ورغبتي في تطوير مساري المهني ضمن فريقكم المتميز.
+
+حاصل على ${degree}، ${expStr}.${skills ? ` أجيد ${skills} وأسعى لتوظيف هذه المهارات في خدمة أهداف مؤسستكم.` : ""}${prevJobs ? `\n\nسبق لي العمل في: ${prevJobs}، مما أكسبني خبرة عملية في التعامل مع المهام المختلفة.` : ""}${certs ? `\n\nأمتلك ${certs}، والتي تعزز قدراتي في المجال.` : ""}
+
+أرفقت سيرتي الذاتية، وآمل أن أكون إضافة نوعية لفريقكم.`,
+
+  // القالب 3: أسلوب الحماس والتطوير
+  (name: string, spec: string, degree: string, expStr: string, skills: string, prevJobs: string, certs: string, cvText: string, jobTitle: string) =>
+    `أتقدّم بطلب التوظيف لوظيفة ${jobTitle}، وأنا على يقين بأن خبرتي في ${spec} وشغفي بالتطوير المستمر سيسهمان في نجاح شركتكم.
+
+أحمل ${degree}، ${expStr}.${skills ? ` أتمتّع بمهارات قوية في ${skills}، وأحرص على تطويرها باستمرار.` : ""}${prevJobs ? `\n\nعملت سابقاً في ${prevJobs}، مما صقل مهاراتي وأكسبني خبرات عملية قيّمة.` : ""}${certs ? `\n\nأحرص على التطوير المهني المستمر، وأحمل: ${certs}.` : ""}
+
+أرفقت سيرتي الذاتية، وأتطلع لفرصة لقاءكم لإقناعكم بما أملك من مؤهلات.`,
+
+  // القالب 4: أسلوب مختصر وقوي
+  (name: string, spec: string, degree: string, expStr: string, skills: string, prevJobs: string, certs: string, cvText: string, jobTitle: string) =>
+    `أرغب في الانضمام إلى فريقكم في وظيفة ${jobTitle}، حيث أنا متخصص في ${spec} وأسعى لتقديم أفضل ما لدي.
+
+${degree} — ${expStr}.${skills ? `\nمهاراتي الأساسية: ${skills}.` : ""}${certs ? `\nالشهادات: ${certs}.` : ""}
+
+أرفقت سيرتي الذاتية، وأتطلع إلى تواصل معكم.`,
+
+  // القالب 5: أسلوب احترافي مع لمسة شخصية
+  (name: string, spec: string, degree: string, expStr: string, skills: string, prevJobs: string, certs: string, cvText: string, jobTitle: string) =>
+    `يسرّني التقدّم للانضمام إلى شركتكم في وظيفة ${jobTitle}، فأنا متخصص في ${spec} وأؤمن بقدرتي على تقديم إضافة حقيقية.
+
+${degree}، ${expStr}.${skills ? `\nأتميز في ${skills}، وأعمل دائماً على تطويرها لتحقيق أفضل النتائج.` : ""}${prevJobs ? `\n\nخبراتي السابقة في ${prevJobs} أكسبتني فهماً عميقاً لسوق العمل وقدرة على التكيف مع مختلف التحديات.` : ""}${certs ? `\n\nأحمل ${certs}، وأسعى دائماً للتميز والتطوير.` : ""}
+
+أرفقت لكم سيرتي الذاتية، وأتطلع للقاء بكم.`,
+];
+
+function generateTemplateBody(
   name: string, jobTitle: string,
-  profile: CvProfile | null, certs: Cert[], cvText: string,
-): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return "";
+  profile: CvProfile | null, certs: { name: string; issuer: string | null }[], cvText: string,
+): string {
+  const spec   = profile?.specialization || profile?.degree || "مجال التخصص";
+  const degree = profile?.degree || "مؤهل علمي مناسب";
+  const exp    = profile?.experience_years ?? -1;
+  const skills = (profile?.skills ?? []).slice(0, 5).join("، ");
+  const prevJobs = (profile?.prev_jobs ?? []).slice(0, 2).join("، ");
+  const certList = certs.slice(0, 3).map(c => c.name).join("، ");
+  const expStr = exp > 0 ? `خبرة ${exp} ${exp === 1 ? "سنة" : "سنوات"}` : "حديث التخرج";
 
-  const spec     = profile?.specialization || profile?.degree || "";
-  const degree   = profile?.degree || "";
-  const expYears = profile?.experience_years ?? -1;
-  const skills   = (profile?.skills ?? []).slice(0, 8).join("، ");
-  const prevJobs = (profile?.prev_jobs ?? []).slice(0, 3).join("، ");
-  const certList = certs.map(c => c.name + (c.issuer ? ` (${c.issuer})` : "")).join("، ");
-  const expStr   = expYears > 0 ? `${expYears} ${expYears === 1 ? "سنة" : "سنوات"}` : "حديث التخرج";
+  // اختيار قالب بناءً على أول حرف من الاسم (تنويع ثابت لكل مستخدم)
+  const idx = name.charCodeAt(0) % TEMPLATES.length;
+  const body = TEMPLATES[idx](name, spec, degree, expStr, skills, prevJobs, certList, cvText, jobTitle);
 
-  const prompt = `أنت خبير في كتابة رسائل التقديم الوظيفي في السوق السعودي.
-اكتب رسالة تقديم احترافية باللغة العربية لهذا المتقدم:
-
-الاسم: ${name}
-المسمى الوظيفي المستهدف: ${jobTitle}
-التخصص: ${spec || "غير محدد"}
-المؤهل العلمي: ${degree || "غير محدد"}
-الخبرة: ${expStr}
-المهارات: ${skills || "—"}
-الشهادات والرخص: ${certList || "—"}
-الوظائف السابقة: ${prevJobs || "—"}
-${cvText ? `\nنبذة من السيرة:\n${cvText.slice(0, 1000)}` : ""}
-
-القواعد الصارمة:
-- 3 فقرات فقط: افتتاحية، جسم يبرز المهارات والخبرات، خاتمة.
-- أسلوب رسمي ومهني يناسب الشركات السعودية.
-- لا تذكر اسم شركة محددة — استخدم "شركتكم" أو "مؤسستكم".
-- لا تضف تحية افتتاحية (مثل: السلام عليكم) ولا توقيعاً — ستُضافان تلقائياً.
-- لا تتجاوز 220 كلمة.
-- أعد نص الرسالة فقط، بدون أي تنسيق إضافي.`;
-
-  const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
-  for (const model of models) {
-    try {
-      const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 600 },
-          }),
-          signal: AbortSignal.timeout(30000),
-        }
-      );
-      if (!r.ok) continue;
-      const data = await r.json();
-      const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
-      if (text.length > 80) return text;
-    } catch { continue; }
-  }
-  return "";
+  // إزالة الأسطر الفارغة المتعددة
+  return body.replace(/\n{3,}/g, "\n\n").trim();
 }
 
 // ── بناء HTML النهائي للعرض ──────────────────────────────────────────────────
@@ -126,20 +126,21 @@ export async function GET(req: Request) {
     const { data } = await db.from("user_settings").select("cover_letter_body").eq("user_id", uid).single();
     return NextResponse.json({ body: data?.cover_letter_body || "" });
   }
+
   const db = freshClient();
 
   const [userRes, cvRes, settingsRes, certsRes, prefsRes] = await Promise.all([
     db.from("users").select("full_name, phone").eq("id", uid).single(),
     db.from("user_cvs").select("cv_profile, cv_parsed_text").eq("user_id", uid).limit(1),
     db.from("user_settings").select("smtp_email, email, cover_letter_body").eq("user_id", uid).single(),
-    db.from("user_certifications").select("type, name, issuer").eq("user_id", uid),
+    db.from("user_certifications").select("name, issuer").eq("user_id", uid),
     db.from("user_job_preferences").select("job_fields(name_ar)").eq("user_id", uid).limit(5),
   ]);
 
   const user     = userRes.data;
   const cvRow    = cvRes.data?.[0];
   const settings = settingsRes.data;
-  const certs    = (certsRes.data ?? []) as Cert[];
+  const certs    = (certsRes.data ?? []) as { name: string; issuer: string | null }[];
   const profile  = (cvRow?.cv_profile ?? null) as CvProfile | null;
   const cvText   = String(cvRow?.cv_parsed_text ?? "").trim();
   const name     = user?.full_name || "المتقدم";
@@ -150,6 +151,8 @@ export async function GET(req: Request) {
   // إذا في قالب محفوظ ومش طلب إعادة إنشاء → أعده فوراً
   if (savedBody) {
     const html = wrapInEmailHtml(name, phone, email, savedBody);
+    // تسجيل المعاينة
+    await db.from("user_settings").update({ cover_letter_viewed: true }).eq("user_id", uid);
     return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
   }
 
@@ -160,23 +163,12 @@ export async function GET(req: Request) {
   const firstPref = Array.isArray(rawField) ? rawField[0] : rawField;
   const jobTitle = firstPref?.name_ar || profile?.specialization || "وظيفة مناسبة";
 
-  // توليد بالذكاء الاصطناعي
-  const aiBody = await generateLetterBody(name, jobTitle, profile, certs, cvText);
+  // توليد الرسالة من القوالب (بدون AI)
+  const body = generateTemplateBody(name, jobTitle, profile, certs, cvText);
 
-  if (aiBody) {
-    await db.from("user_settings").update({ cover_letter_body: aiBody }).eq("user_id", uid);
-    const html = wrapInEmailHtml(name, phone, email, aiBody);
-    return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
-  }
+  // حفظ القالب وتحديث cover_letter_viewed
+  await db.from("user_settings").update({ cover_letter_body: body, cover_letter_viewed: true }).eq("user_id", uid);
 
-  // Fallback: قالب ثابت إذا فشل الذكاء الاصطناعي
-  const spec   = profile?.specialization || profile?.degree || "مجال التخصص";
-  const exp    = profile?.experience_years ?? -1;
-  const skills = (profile?.skills ?? []).slice(0, 5).join("، ") || "";
-  const degree = profile?.degree || "مؤهل علمي مناسب";
-  const expStr = exp > 0 ? `خبرة ${exp} ${exp === 1 ? "سنة" : "سنوات"} في المجال` : "حديث التخرج";
-  const fallbackBody = `أنا ${name}، متخصص في ${spec}، وأرغب بالانضمام إلى فريقكم.\n\n${degree}. ${expStr}${skills ? `\nأبرز مهاراتي: ${skills}.` : ""}\n\nأرفقت سيرتي الذاتية وأتطلع للتواصل معكم.`;
-
-  const html = wrapInEmailHtml(name, phone, email, fallbackBody);
+  const html = wrapInEmailHtml(name, phone, email, body);
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
