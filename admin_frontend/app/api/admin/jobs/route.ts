@@ -8,7 +8,6 @@ export async function GET() {
   const { data: jobs, error } = await supabase
     .from("admin_jobs")
     .select("*")
-    .or("is_active.eq.true,is_active.is.null")
     .order("created_at", { ascending: false });
   if (error) console.error("jobs GET error:", error.message);
   return NextResponse.json({ ok: true, jobs: jobs || [] });
