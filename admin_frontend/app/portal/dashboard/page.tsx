@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { PortalShell } from "@/components/portal-shell";
 import { portalFetch, clearToken } from "@/lib/portal-auth";
 import {
-  Send, CalendarDays, Mail, AlertCircle, ArrowRight,
+  Send, CalendarDays, Mail, AlertCircle, AlertTriangle, ArrowRight,
   FileText, User, ClipboardList, Clock, Zap, PauseCircle,
 } from "lucide-react";
 
@@ -14,6 +14,7 @@ interface UserData {
   subscription_ends_at: string; email: string;
   smtp_email: string; applications_count: number;
   email_connected: boolean;
+  cv_rejected: boolean;
 }
 interface Application { id: string; job_title: string; applied_at: string; }
 
@@ -220,6 +221,18 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
+
+        {/* Alert: CV rejected */}
+        {user.cv_rejected && (
+          <div style={{ ...s.alert, borderColor: "#dc2626", background: "#fef2f2" }} onClick={() => router.push("/portal/cv")}>
+            <AlertTriangle size={20} color="#dc2626" strokeWidth={1.5} />
+            <div>
+              <p style={{ ...s.alertTitle, color: "#dc2626" }}>السيرة الذاتية غير صالحة — أعد رفعها</p>
+              <p style={{ ...s.alertSub, color: "#991b1b" }}>الملف السابق لا يحتوي على بيانات سيرة ذاتية حقيقية. ارجع لصفحة السيرة وارفع ملف CV صحيح لتتمكن من التقديم</p>
+            </div>
+            <ArrowRight size={16} color="#991b1b" style={{ marginRight: "auto" }} />
+          </div>
+        )}
 
         {/* Alert: email not connected */}
         {!user.email_connected && (

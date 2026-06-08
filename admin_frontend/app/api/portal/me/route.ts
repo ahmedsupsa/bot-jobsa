@@ -55,6 +55,7 @@ export async function GET(req: Request) {
     applications_count: apps_count || 0,
     email_connected: settings.email_connected ?? false,
     smtp_email: settings.smtp_email || "",
+    cv_rejected: settings.cv_rejected === true,
   });
   if (refreshedToken) res.headers.set("X-Refresh-Token", refreshedToken);
   return res;
