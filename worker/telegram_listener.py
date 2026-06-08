@@ -9,6 +9,8 @@ import logging
 import os
 import re
 from datetime import datetime, timedelta, timezone as tz
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "admin_frontend", ".env"))
 
 import httpx
 
