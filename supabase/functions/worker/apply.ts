@@ -8,6 +8,7 @@ import type { QueueItem } from "./queue.ts";
 
 function replaceJobTitleInBody(body: string, jobTitle: string): string {
   return body
+    .replace(/\{\{job_title\}\}/g, jobTitle)
     .replace(/لشغل منصب [^،.\n]{1,80}/g,      `لشغل منصب ${jobTitle}`)
     .replace(/لشغل وظيفة [^،.\n]{1,80}/g,     `لشغل وظيفة ${jobTitle}`)
     .replace(/على وظيفة [^،.\n]{1,80}/g,       `على وظيفة ${jobTitle}`)

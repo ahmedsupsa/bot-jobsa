@@ -91,6 +91,10 @@ export async function POST(req: Request) {
         if (txt.length < 100) return rejectCv("too_short", "الملف لا يحتوي على نص كافٍ — تأكد أن الملف سيرة ذاتية بصيغة PDF نصية (غير مصورة)");
         if (lineCount < 5) return rejectCv("too_few_lines", "الملف يبدو فارغاً أو غير قابل للقراءة — تأكد أن السيرة الذاتية PDF نصية وليست صورة ممسوحة ضوئياً");
         if (!hasCvKeywords && !hasPersonalInfo) return rejectCv("not_a_cv", "هذا الملف لا يبدو سيرة ذاتية — يرجى رفع سيرتك الذاتية الحقيقية (CV) بصيغة PDF");
+        // كشف السير اللي محتواها "لا يوجد" أو غير مفيد
+        const emptyPattern = /لا يوجد/g;
+        const emptyCount = (txt.match(emptyPattern) || []).length;
+        if (emptyCount > 3) return rejectCv("empty_cv", "السيرة الذاتية لا تحتوي على بيانات حقيقية — يرجى رفع سيرة ذاتية مكتملة");
       }
     }
 

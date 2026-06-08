@@ -16,55 +16,55 @@ type CvProfile = {
   skills?: string[]; prev_jobs?: string[]; languages?: string[];
 };
 
-// ── 5 قوالب إبداعية مختلفة لرسالة التقديم ─────────────────────────────────────
+// ── 5 قوالب إبداعية لرسالة التقديم — تستخدم {{job_title}} كعنصر نائب ────────────
 const TEMPLATES = [
   // القالب 1: أسلوب الإنجاز
-  (name: string, spec: string, degree: string, expStr: string, skills: string, prevJobs: string, certs: string, cvText: string, jobTitle: string) =>
-    `أتشرف بتقديم طلبي لشغل وظيفة ${jobTitle} في شركتكم الموقرة، حيث أمتلك خلفية أكاديمية ومهنية في ${spec} تؤهلني للمساهمة بفعالية في فريق العمل.
+  (name: string, spec: string, degree: string, expStr: string, skills: string, prevJobs: string, certs: string) =>
+    `أتشرف بتقديم طلبي لشغل وظيفة {{job_title}} في شركتكم الموقرة، حيث أمتلك خلفية أكاديمية ومهنية${spec ? ` في ${spec}` : ""} تؤهلني للمساهمة بفعالية في فريق العمل.
 
-${degree}، ${expStr}.${skills ? ` أمتلك مهارات بارزة في ${skills}، وهو ما مكّنني من تحقيق نتائج إيجابية في تجاربي السابقة.` : ""}${prevJobs ? `\n\nمن أبرز محطاتي المهنية: ${prevJobs}، حيث اكتسبت خبرة عملية في بيئات عمل متنوعة.` : ""}${certs ? `\n\nكما أحمل شهادات مهنية في: ${certs}.` : ""}
+${degree || "مؤهل علمي مناسب"}، ${expStr}.${skills ? `\nأمتلك مهارات بارزة في ${skills}، وهو ما مكّنني من تحقيق نتائج إيجابية في تجاربي السابقة.` : ""}${prevJobs ? `\n\nمن أبرز محطاتي المهنية: ${prevJobs}، حيث اكتسبت خبرة عملية في بيئات عمل متنوعة.` : ""}${certs ? `\n\nكما أحمل شهادات مهنية في: ${certs}.` : ""}
 
 أرفق لكم سيرتي الذاتية، وأتطلّع لفرصة مناقشة كيف يمكنني إضافة قيمة لشركتكم.`,
 
   // القالب 2: أسلوب المهارات والتخصص
-  (name: string, spec: string, degree: string, expStr: string, skills: string, prevJobs: string, certs: string, cvText: string, jobTitle: string) =>
-    `يسعدني التقدم لوظيفة ${jobTitle}، انطلاقاً من شغفي في مجال ${spec} ورغبتي في تطوير مساري المهني ضمن فريقكم المتميز.
+  (name: string, spec: string, degree: string, expStr: string, skills: string, prevJobs: string, certs: string) =>
+    `يسعدني التقدم لوظيفة {{job_title}}، انطلاقاً من شغفي${spec ? ` في مجال ${spec}` : ""} ورغبتي في تطوير مساري المهني ضمن فريقكم المتميز.
 
-حاصل على ${degree}، ${expStr}.${skills ? ` أجيد ${skills} وأسعى لتوظيف هذه المهارات في خدمة أهداف مؤسستكم.` : ""}${prevJobs ? `\n\nسبق لي العمل في: ${prevJobs}، مما أكسبني خبرة عملية في التعامل مع المهام المختلفة.` : ""}${certs ? `\n\nأمتلك ${certs}، والتي تعزز قدراتي في المجال.` : ""}
+حاصل على ${degree || "مؤهل علمي"}، ${expStr}.${skills ? `\nأجيد ${skills} وأسعى لتوظيف هذه المهارات في خدمة أهداف مؤسستكم.` : ""}${prevJobs ? `\n\nسبق لي العمل في: ${prevJobs}، مما أكسبني خبرة عملية في التعامل مع المهام المختلفة.` : ""}${certs ? `\n\nأمتلك ${certs}، والتي تعزز قدراتي في المجال.` : ""}
 
 أرفقت سيرتي الذاتية، وآمل أن أكون إضافة نوعية لفريقكم.`,
 
   // القالب 3: أسلوب الحماس والتطوير
-  (name: string, spec: string, degree: string, expStr: string, skills: string, prevJobs: string, certs: string, cvText: string, jobTitle: string) =>
-    `أتقدّم بطلب التوظيف لوظيفة ${jobTitle}، وأنا على يقين بأن خبرتي في ${spec} وشغفي بالتطوير المستمر سيسهمان في نجاح شركتكم.
+  (name: string, spec: string, degree: string, expStr: string, skills: string, prevJobs: string, certs: string) =>
+    `أتقدّم بطلب التوظيف لوظيفة {{job_title}}، وأنا على يقين${spec ? ` بأن خبرتي في ${spec}` : ""} وشغفي بالتطوير المستمر سيسهمان في نجاح شركتكم.
 
-أحمل ${degree}، ${expStr}.${skills ? ` أتمتّع بمهارات قوية في ${skills}، وأحرص على تطويرها باستمرار.` : ""}${prevJobs ? `\n\nعملت سابقاً في ${prevJobs}، مما صقل مهاراتي وأكسبني خبرات عملية قيّمة.` : ""}${certs ? `\n\nأحرص على التطوير المهني المستمر، وأحمل: ${certs}.` : ""}
+أحمل ${degree || "مؤهل علمي"}، ${expStr}.${skills ? `\nأتمتّع بمهارات قوية في ${skills}، وأحرص على تطويرها باستمرار.` : ""}${prevJobs ? `\n\nعملت سابقاً في ${prevJobs}، مما صقل مهاراتي وأكسبني خبرات عملية قيّمة.` : ""}${certs ? `\n\nأحرص على التطوير المهني المستمر، وأحمل: ${certs}.` : ""}
 
 أرفقت سيرتي الذاتية، وأتطلع لفرصة لقاءكم لإقناعكم بما أملك من مؤهلات.`,
 
   // القالب 4: أسلوب مختصر وقوي
-  (name: string, spec: string, degree: string, expStr: string, skills: string, prevJobs: string, certs: string, cvText: string, jobTitle: string) =>
-    `أرغب في الانضمام إلى فريقكم في وظيفة ${jobTitle}، حيث أنا متخصص في ${spec} وأسعى لتقديم أفضل ما لدي.
+  (name: string, spec: string, degree: string, expStr: string, skills: string, prevJobs: string, certs: string) =>
+    `أرغب في الانضمام إلى فريقكم في وظيفة {{job_title}}${spec ? `، حيث أنا متخصص في ${spec}` : ""} وأسعى لتقديم أفضل ما لدي.
 
-${degree} — ${expStr}.${skills ? `\nمهاراتي الأساسية: ${skills}.` : ""}${certs ? `\nالشهادات: ${certs}.` : ""}
+${degree || "مؤهل علمي"} — ${expStr}.${skills ? `\nمهاراتي الأساسية: ${skills}.` : ""}${certs ? `\nالشهادات: ${certs}.` : ""}
 
-أرفقت سيرتي الذاتية، وأتطلع إلى تواصل معكم.`,
+أرفقت سيرتي الذاتية، وأتطلع للتواصل معكم.`,
 
   // القالب 5: أسلوب احترافي مع لمسة شخصية
-  (name: string, spec: string, degree: string, expStr: string, skills: string, prevJobs: string, certs: string, cvText: string, jobTitle: string) =>
-    `يسرّني التقدّم للانضمام إلى شركتكم في وظيفة ${jobTitle}، فأنا متخصص في ${spec} وأؤمن بقدرتي على تقديم إضافة حقيقية.
+  (name: string, spec: string, degree: string, expStr: string, skills: string, prevJobs: string, certs: string) =>
+    `يسرّني التقدّم للانضمام إلى شركتكم في وظيفة {{job_title}}${spec ? `، فأنا متخصص في ${spec}` : ""} وأؤمن بقدرتي على تقديم إضافة حقيقية.
 
-${degree}، ${expStr}.${skills ? `\nأتميز في ${skills}، وأعمل دائماً على تطويرها لتحقيق أفضل النتائج.` : ""}${prevJobs ? `\n\nخبراتي السابقة في ${prevJobs} أكسبتني فهماً عميقاً لسوق العمل وقدرة على التكيف مع مختلف التحديات.` : ""}${certs ? `\n\nأحمل ${certs}، وأسعى دائماً للتميز والتطوير.` : ""}
+${degree || "مؤهل علمي"}، ${expStr}.${skills ? `\nأتميز في ${skills}، وأعمل دائماً على تطويرها لتحقيق أفضل النتائج.` : ""}${prevJobs ? `\n\nخبراتي السابقة في ${prevJobs} أكسبتني فهماً عميقاً لسوق العمل وقدرة على التكيف مع مختلف التحديات.` : ""}${certs ? `\n\nأحمل ${certs}، وأسعى دائماً للتميز والتطوير.` : ""}
 
 أرفقت لكم سيرتي الذاتية، وأتطلع للقاء بكم.`,
 ];
 
 function generateTemplateBody(
-  name: string, jobTitle: string,
+  name: string,
   profile: CvProfile | null, certs: { name: string; issuer: string | null }[], cvText: string,
 ): string {
-  const spec   = profile?.specialization || profile?.degree || "مجال التخصص";
-  const degree = profile?.degree || "مؤهل علمي مناسب";
+  const spec   = profile?.specialization || profile?.degree || "";
+  const degree = profile?.degree || "";
   const exp    = profile?.experience_years ?? -1;
   const skills = (profile?.skills ?? []).slice(0, 5).join("، ");
   const prevJobs = (profile?.prev_jobs ?? []).slice(0, 2).join("، ");
@@ -73,7 +73,7 @@ function generateTemplateBody(
 
   // اختيار قالب بناءً على أول حرف من الاسم (تنويع ثابت لكل مستخدم)
   const idx = name.charCodeAt(0) % TEMPLATES.length;
-  const body = TEMPLATES[idx](name, spec, degree, expStr, skills, prevJobs, certList, cvText, jobTitle);
+  const body = TEMPLATES[idx](name, spec, degree, expStr, skills, prevJobs, certList);
 
   // إزالة الأسطر الفارغة المتعددة
   return body.replace(/\n{3,}/g, "\n\n").trim();
@@ -156,15 +156,8 @@ export async function GET(req: Request) {
     return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
   }
 
-  // أفضل مسمى وظيفي من تفضيلات المستخدم
-  type PrefRow = { job_fields: { name_ar: string } | { name_ar: string }[] | null };
-  const prefs = (prefsRes.data ?? []) as unknown as PrefRow[];
-  const rawField = prefs[0]?.job_fields;
-  const firstPref = Array.isArray(rawField) ? rawField[0] : rawField;
-  const jobTitle = firstPref?.name_ar || profile?.specialization || "وظيفة مناسبة";
-
-  // توليد الرسالة من القوالب (بدون AI)
-  const body = generateTemplateBody(name, jobTitle, profile, certs, cvText);
+  // توليد الرسالة من القوالب (بدون AI) — تستخدم {{job_title}} كعنصر نائب
+  const body = generateTemplateBody(name, profile, certs, cvText);
 
   // حفظ القالب وتحديث cover_letter_viewed
   await db.from("user_settings").update({ cover_letter_body: body, cover_letter_viewed: true }).eq("user_id", uid);

@@ -239,6 +239,7 @@ function buildCoverLetter(
 
   const bodyHtml = savedBody?.trim()
     ? savedBody
+        .replace(/\{\{job_title\}\}/g, jobTitle)
         .split(/\n{2,}/)
         .map(p => `<p style="line-height:2;margin:0 0 14px;font-size:15px;">${p.replace(/\n/g, "<br>")}</p>`)
         .join("")
