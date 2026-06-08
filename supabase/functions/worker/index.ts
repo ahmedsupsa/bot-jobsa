@@ -611,11 +611,11 @@ async function publishPromoIfDue(): Promise<void> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Authorization" } });
+    return new Response("ok", { headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Authorization, x-worker-secret" } });
   }
 
-  const auth = req.headers.get("Authorization") ?? "";
-  if (WORKER_SECRET && auth !== `Bearer ${WORKER_SECRET}`) {
+  const secret = req.headers.get("x-worker-secret") ?? "";
+  if (WORKER_SECRET && secret !== WORKER_SECRET) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { "Content-Type": "application/json" },
     });

@@ -13,12 +13,17 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :5000 ^| findstr LISTEN') do 
 )
 timeout /t 2 /nobreak >nul
 
+:: إعداد جدولة الـ Worker (كل 30 دقيقة) — تشغيل أول دورة فوراً
+echo [1/3] إعداد جدولة الـ Worker...
+powershell -NoProfile -ExecutionPolicy Bypass -File "setup_worker_cron.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "trigger_worker.ps1"
+
 :: تشغيل مستمع تليجرام (نافذة مصغّرة بالخلفية)
-echo [1/2] تشغيل مستمع تليجرام...
+echo [2/3] تشغيل مستمع تليجرام...
 start /min "Telegram Listener" cmd /c "python worker/telegram_listener.py"
 
 :: تشغيل سيرفر الإدارة
-echo [2/2] تشغيل سيرفر الإدارة...
+echo [3/3] تشغيل سيرفر الإدارة...
 start "Admin Server" cmd /c "cd /d admin_frontend && node server.js"
 
 echo.

@@ -20,7 +20,7 @@ export async function POST() {
     const r = await fetch(workerUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${workerSecret}`,
+        "x-worker-secret": workerSecret,
         "Content-Type": "application/json",
       },
       signal: AbortSignal.timeout(290_000),
