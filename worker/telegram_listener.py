@@ -433,14 +433,12 @@ async def run_listener():
     except Exception as _e:
         logger.warning("[TG-Listener] خطأ اشتراك القنوات: %s", _e)
 
-    # ── قائمة القنوات + جلب الرسائل التاريخية ────────────────────
+    # ── قائمة القنوات فقط (بدون جلب تاريخي) ────────────────────
     try:
         from telethon.tl.types import Channel
-        from datetime import timezone as tz
         channels_entities = []
         async for dialog in client.iter_dialogs():
             if isinstance(dialog.entity, Channel) and not dialog.entity.megagroup:
-                # تجاهل قناة البوت نفسها
                 if _job_channel_norm and _norm_cid(str(dialog.entity.id)) == _job_channel_norm:
                     continue
                 channels_entities.append(dialog.entity)
@@ -448,30 +446,12 @@ async def run_listener():
         channel_names = [c.title for c in channels_entities]
         channel_list  = "\n".join(f"  • {c}" for c in channel_names) or "  (لا توجد قنوات)"
         summary = (
-            f"📡 <b>مستمع Telegram متصل</b>\n"
-            f"يراقب <b>{len(channel_names)}</b> قناة:\n"
+            f"Telegram Listener connected\n"
+            f"Watching {len(channel_names)} channels:\n"
             f"{channel_list}"
         )
         logger.info("[TG-Listener] ✅ متصل — يراقب %d قناة", len(channel_names))
         await _send_tg(ADMIN_CHAT_ID, summary)
-
-        # جلب آخر 10 أيام من كل قناة
-        cutoff = datetime.now(tz.utc) - timedelta(days=30)
-        for entity in channels_entities:
-            try:
-                logger.info("[TG-Listener] جلب رسائل قديمة: %s", entity.title)
-                async for msg in client.iter_messages(entity, limit=200, offset_date=None, reverse=False):
-                    if msg.date and msg.date < cutoff:
-                        break
-                    text = getattr(msg, "text", "") or getattr(msg, "message", "") or ""
-                    if text.strip():
-                        asyncio.create_task(
-                            process_message(text, entity.title, str(entity.id), msg.id)
-                        )
-                await asyncio.sleep(1)  # تجنب rate limit
-            except Exception as e:
-                logger.warning("[TG-Listener] خطأ جلب %s: %s", entity.title, e)
-
     except Exception as e:
         logger.warning("[TG-Listener] تعذّر جلب القنوات: %s", e)
 
