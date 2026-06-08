@@ -27,9 +27,9 @@ function fmt(secs: number) {
 function NextRunCard({ active }: { active: boolean }) {
   const [secs, setSecs] = useState(0);
   const [label, setLabel] = useState("");
-  const targetRef = useRef<number>(0);
+  const targetRef = useRef(0);
 
-  async function fetchTarget() {
+  async function refetch() {
     try {
       const r = await fetch("/api/portal/worker-status", { cache: "no-store" });
       const data = await r.json();
@@ -46,18 +46,30 @@ function NextRunCard({ active }: { active: boolean }) {
       }
       targetRef.current = t;
       setLabel(new Date(t).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
-    } catch { /* keep current */ }
+    } catch { targetRef.current = Date.now() + 1800_000; }
   }
 
   useEffect(() => {
-    fetchTarget();
-    const tick = setInterval(() => {
-      const remaining = targetRef.current - Date.now();
-      setSecs(Math.max(0, Math.floor(remaining / 1000)));
-      if (remaining <= 0) fetchTarget();
-    }, 1000);
-    const refresh = setInterval(fetchTarget, 30_000);
-    return () => { clearInterval(tick); clearInterval(refresh); };
+    let cancelled = false;
+    let tick: ReturnType<typeof setInterval>;
+    let refetching = false;
+
+    (async () => {
+      await refetch();
+      if (cancelled) return;
+
+      tick = setInterval(() => {
+        const remaining = targetRef.current - Date.now();
+        if (remaining <= 0 && !refetching) {
+          refetching = true;
+          refetch().finally(() => { refetching = false; });
+          return;
+        }
+        if (!cancelled) setSecs(Math.max(0, Math.floor(remaining / 1000)));
+      }, 1000);
+    })();
+
+    return () => { cancelled = true; if (tick) clearInterval(tick); };
   }, []);
 
   const pct = Math.max(0, Math.min(100, ((1800 - secs) / 1800) * 100));
