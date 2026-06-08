@@ -73,6 +73,36 @@ export async function POST(req: Request) {
         ? `[cv-upload] ✅ استُخرج النص: ${cv_parsed_text.length} حرف`
         : "[cv-upload] ⚠️ pdf-parse لم يستخرج نصاً"
       );
+
+      // التحقق من أن الملف سيرة ذاتية حقيقية
+      if (cv_parsed_text) {
+        const txt = cv_parsed_text.trim();
+        const cvKeywords = /(سيرة|خبرة|مؤهل|مهارات|جامعة|تخرج|بكالوريوس|ماجستير|دبلوم|خبرة|درجة|شهادة|عمل|تدريب|Curriculum|Vitae|CV|Resume|experience|education|skills|degree)/i;
+        const hasCvKeywords = cvKeywords.test(txt);
+        const hasPersonalInfo = /([\u0600-\u06FF]{4,}\s[\u0600-\u06FF]{4,})|(\+?[\d\s\-]{7,})/.test(txt) || /@/.test(txt);
+        const lineCount = txt.split("\n").filter(l => l.trim().length > 3).length;
+
+        if (txt.length < 100) {
+          return NextResponse.json({
+            error: "الملف لا يحتوي على نص كافٍ — تأكد أن الملف سيرة ذاتية بصيغة PDF نصية (غير مصورة)",
+            code: "too_short",
+          }, { status: 422 });
+        }
+
+        if (lineCount < 5) {
+          return NextResponse.json({
+            error: "الملف يبدو فارغاً أو غير قابل للقراءة — تأكد أن السيرة الذاتية PDF نصية وليست صورة ممسوحة ضوئياً",
+            code: "too_few_lines",
+          }, { status: 422 });
+        }
+
+        if (!hasCvKeywords && !hasPersonalInfo) {
+          return NextResponse.json({
+            error: "هذا الملف لا يبدو سيرة ذاتية — يرجى رفع سيرتك الذاتية الحقيقية (CV) بصيغة PDF",
+            code: "not_a_cv",
+          }, { status: 422 });
+        }
+      }
     }
 
     // تحقق إذا كان المستخدم لديه سيرة مسبقاً
