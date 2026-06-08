@@ -29,6 +29,14 @@ function NextRunCard({ active }: { active: boolean }) {
   const [label, setLabel] = useState("");
   const targetRef = useRef(0);
 
+  function nextHalf(n: number) {
+    const d = new Date(n);
+    d.setSeconds(0, 0);
+    if (d.getMinutes() < 30) d.setMinutes(30);
+    else { d.setMinutes(0); d.setHours(d.getHours() + 1); }
+    return d.getTime();
+  }
+
   async function refetch() {
     try {
       const r = await fetch("/api/portal/worker-status", { cache: "no-store" });
@@ -37,16 +45,16 @@ function NextRunCard({ active }: { active: boolean }) {
       let t: number;
       if (data.next_run_at) {
         t = new Date(data.next_run_at).getTime();
-        t = t > now ? t : now + 1800_000;
+        t = t > now ? t : nextHalf(now);
       } else if (data.last_ran_at) {
         t = new Date(data.last_ran_at).getTime() + 1800_000;
-        t = t > now ? t : now + 1800_000;
+        t = t > now ? t : nextHalf(now);
       } else {
-        t = now + 1800_000;
+        t = nextHalf(now);
       }
       targetRef.current = t;
       setLabel(new Date(t).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
-    } catch { targetRef.current = Date.now() + 1800_000; }
+    } catch { targetRef.current = nextHalf(Date.now()); }
   }
 
   useEffect(() => {

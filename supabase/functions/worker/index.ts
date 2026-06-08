@@ -672,9 +672,12 @@ Deno.serve(async (req) => {
       }),
     });
 
-    // تحديث worker_status للعداد (countdown)
+    // تحديث worker_status — next_run_at = ربع الساعة القادم (:00 أو :30)
     const now = new Date();
-    const next = new Date(now.getTime() + 30 * 60 * 1000);
+    const next = new Date(now);
+    next.setSeconds(0, 0);
+    if (next.getMinutes() < 30) { next.setMinutes(30); }
+    else { next.setMinutes(0); next.setHours(next.getHours() + 1); }
     await fetch(`${SUPABASE_URL}/rest/v1/worker_status?id=eq.main`, {
       method: "PATCH", headers: { ...SB, Prefer: "return=minimal" },
       body: JSON.stringify({
