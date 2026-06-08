@@ -101,7 +101,7 @@ export async function POST(req: Request) {
     // تحقق إذا كان المستخدم لديه سيرة مسبقاً
     const { data: existing, error: selectErr } = await supabase
       .from("user_cvs")
-      .select("id")
+      .select("id, storage_path")
       .eq("user_id", uid)
       .limit(1);
 
@@ -113,24 +113,28 @@ export async function POST(req: Request) {
     const now = new Date().toISOString();
 
     if (existing?.[0]) {
-      return NextResponse.json({
-        error: "لا يمكن تغيير السيرة الذاتية بعد رفعها. تواصل مع الدعم لتغييرها.",
-        locked: true,
-      }, { status: 403 });
+      // سيرة موجودة — حذف القديمة وتحديث
+      const oldPath = existing[0].storage_path;
+      if (oldPath) await supabase.storage.from("cvs").remove([oldPath]).catch(() => {});
     }
 
-    const { error: insertErr } = await supabase.from("user_cvs").insert({
+    const upsertPayload = {
       user_id: uid,
       file_name: file.name,
       file_id: "web_upload",
       storage_path: storagePath,
+      cv_parsed_text: cv_parsed_text || null,
+      cv_parsed_at: cv_parsed_text ? now : null,
       created_at: now,
-      ...(cv_parsed_text ? { cv_parsed_text, cv_parsed_at: now } : {}),
-    });
+      cv_profile: null,
+    };
 
-    if (insertErr) {
-      console.error("[cv-upload] insert error:", JSON.stringify(insertErr));
-      return NextResponse.json({ error: `فشل حفظ البيانات: ${insertErr.message}` }, { status: 500 });
+    if (existing?.[0]) {
+      const { error: updErr } = await supabase.from("user_cvs").update(upsertPayload).eq("user_id", uid);
+      if (updErr) return NextResponse.json({ error: `فشل تحديث السيرة: ${updErr.message}` }, { status: 500 });
+    } else {
+      const { error: insErr } = await supabase.from("user_cvs").insert(upsertPayload);
+      if (insErr) return NextResponse.json({ error: `فشل حفظ السيرة: ${insErr.message}` }, { status: 500 });
     }
 
     // سيرة صالحة — إلغاء رفض السيرة إن كان موجوداً
