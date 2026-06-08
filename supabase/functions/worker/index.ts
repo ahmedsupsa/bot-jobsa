@@ -660,6 +660,17 @@ Deno.serve(async (req) => {
       }),
     });
 
+    // تحديث worker_status للعداد (countdown)
+    const now = new Date();
+    const next = new Date(now.getTime() + 30 * 60 * 1000);
+    await fetch(`${SUPABASE_URL}/rest/v1/worker_status?id=eq.main`, {
+      method: "PATCH", headers: { ...SB, Prefer: "return=minimal" },
+      body: JSON.stringify({
+        last_ran_at: now.toISOString(),
+        next_run_at: next.toISOString(),
+      }),
+    });
+
     return new Response(JSON.stringify(result), {
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });
