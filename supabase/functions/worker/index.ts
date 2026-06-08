@@ -364,6 +364,11 @@ async function runCycle() {
     const cv       = cvRows[0];
 
     // ── فحص المتطلبات ────────────────────────────────────────────────────
+    if (settings.cv_rejected === true) {
+      details.push({ user: name, job: "—", status: "skipped", reason: "السيرة المرفوعة غير صالحة — ارفع سيرة ذاتية حقيقية من الملف الشخصي" });
+      continue;
+    }
+
     if (!cv) {
       details.push({ user: name, job: "—", status: "skipped", reason: "لا توجد سيرة ذاتية" });
       continue;
