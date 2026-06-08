@@ -26,58 +26,28 @@ function fmt(secs: number) {
 function NextRunCard({ active }: { active: boolean }) {
   const [secs, setSecs] = useState(0);
   const [label, setLabel] = useState("");
-  const [nextRunMs, setNextRunMs] = useState<number | null>(null);
 
-  // جلب وقت التشغيل القادم الحقيقي من قاعدة البيانات
-  useEffect(() => {
-    async function fetchStatus() {
-      try {
-        const r = await fetch("/api/portal/worker-status", { cache: "no-store" });
-        const data = await r.json();
-
-        // استخدم next_run_at مباشرة إذا توفّر
-        if (data.next_run_at) {
-          const next = new Date(data.next_run_at).getTime();
-          setNextRunMs(next < Date.now() ? Date.now() + 30 * 60 * 1000 : next);
-          return;
-        }
-
-        // وإلا احسب من last_ran_at + 30 دقيقة
-        if (data.last_ran_at) {
-          const lastRan = new Date(data.last_ran_at).getTime();
-          const next = lastRan + 30 * 60 * 1000;
-          setNextRunMs(next < Date.now() ? Date.now() + 30 * 60 * 1000 : next);
-          return;
-        }
-
-        // لا يوجد سجل — أقرب :00 أو :30
-        const now = new Date();
-        const next = new Date(now);
-        next.setSeconds(0); next.setMilliseconds(0);
-        if (now.getMinutes() < 30) { next.setMinutes(30); }
-        else { next.setMinutes(0); next.setHours(next.getHours() + 1); }
-        setNextRunMs(next.getTime());
-      } catch {
-        setNextRunMs(Date.now() + 30 * 60 * 1000);
-      }
-    }
-    fetchStatus();
-    const refresh = setInterval(fetchStatus, 60_000);
-    return () => clearInterval(refresh);
-  }, []);
+  function computeNextRun() {
+    const now = new Date();
+    const next = new Date(now);
+    next.setSeconds(0); next.setMilliseconds(0);
+    if (now.getMinutes() < 30) { next.setMinutes(30); }
+    else { next.setMinutes(0); next.setHours(next.getHours() + 1); }
+    return next.getTime();
+  }
 
   useEffect(() => {
-    if (nextRunMs === null) return;
+    const nextRunMs = computeNextRun();
     function tick() {
-      const remaining = Math.max(0, Math.floor((nextRunMs! - Date.now()) / 1000));
+      const remaining = Math.max(0, Math.floor((nextRunMs - Date.now()) / 1000));
       setSecs(remaining);
-      const next = new Date(nextRunMs!);
+      const next = new Date(nextRunMs);
       setLabel(next.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }));
     }
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [nextRunMs]);
+  }, []);
 
   const pct = Math.max(0, Math.min(100, ((1800 - secs) / 1800) * 100));
 
