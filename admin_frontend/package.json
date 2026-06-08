@@ -27,6 +27,9 @@
     "web-push": "^3.6.7",
     "xlsx": "^0.18.5"
   },
+  "overrides": {
+    "@napi-rs/canvas": "0.1.79"
+  },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.12",
