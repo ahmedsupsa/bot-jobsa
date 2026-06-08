@@ -7,7 +7,7 @@ import { portalFetch, clearToken, authHeaders } from "@/lib/portal-auth";
 import {
   Upload, FileText, CheckCircle, XCircle,
   Bot, Search, Send, Eye, Calendar, Mail,
-  Lock, MessageCircle, Sparkles, Loader2, X, Save, RefreshCw,
+  Sparkles, Loader2, X, Save, RefreshCw,
 } from "lucide-react";
 
 interface CVInfo { has_cv: boolean; file_name?: string; updated_at?: string; preview_url?: string; }
@@ -213,7 +213,7 @@ export default function CVPage() {
                   </div>
                 </div>
 
-                {/* معاينة */}
+                {/* معاينة + استبدال */}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
                   {cv.preview_url && (
                     <a href={cv.preview_url} target="_blank" rel="noopener noreferrer" style={{
@@ -225,36 +225,14 @@ export default function CVPage() {
                       <Eye size={14} /> معاينة السيرة
                     </a>
                   )}
-                </div>
-
-                {/* قفل */}
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 12,
-                  background: dark ? "#14100a" : "#fffbeb",
-                  border: `1px solid ${dark ? "#78350f" : "#fde68a"}`, borderRadius: 14,
-                  padding: "14px 16px", marginBottom: 20,
-                }}>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 10,
-                    background: dark ? "#1f1500" : "#fef3c7",
-                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                  <button onClick={() => fileRef.current?.click()} style={{
+                    display: "inline-flex", alignItems: "center", gap: 7,
+                    padding: "10px 18px", borderRadius: 12,
+                    border: `1px solid ${t.border2}`, background: "transparent",
+                    color: t.text2, fontSize: 13, fontWeight: 700, cursor: "pointer",
                   }}>
-                    <Lock size={16} strokeWidth={1.8} color="var(--alert-fg2)" />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ margin: 0, color: dark ? "#fcd34d" : "#92400e", fontSize: 13, fontWeight: 700 }}>السيرة الذاتية مقفلة</p>
-                    <p style={{ margin: "3px 0 0", color: dark ? "#a78054" : "#b45309", fontSize: 12, lineHeight: 1.5 }}>
-                      لتغيير السيرة الذاتية تواصل مع فريق الدعم
-                    </p>
-                  </div>
-                  <a href="/portal/support" style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    padding: "8px 14px", borderRadius: 10,
-                    background: "var(--accent)", color: "var(--accent-fg)",
-                    fontSize: 12, fontWeight: 700, textDecoration: "none",
-                  }}>
-                    <MessageCircle size={13} /> الدعم
-                  </a>
+                    <Upload size={14} /> استبدال السيرة
+                  </button>
                 </div>
 
                 {/* ── بطاقة المسميات الوظيفية ── */}
@@ -417,14 +395,14 @@ export default function CVPage() {
               </>
             )}
 
-            {/* كيف يعمل الذكاء الاصطناعي */}
+            {/* كيف يعمل النظام */}
             <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 16, padding: "20px 18px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
                 <Bot size={17} strokeWidth={1.5} color={t.text} />
-                <span style={{ color: t.text, fontSize: 14, fontWeight: 600 }}>كيف يعمل الذكاء الاصطناعي؟</span>
+                <span style={{ color: t.text, fontSize: 14, fontWeight: 600 }}>كيف يعمل النظام؟</span>
               </div>
               {[
-                { icon: <Search size={15} strokeWidth={1.5} />, text: "يقرأ الذكاء الاصطناعي سيرتك ويستخرج مجالاتك ومهاراتك" },
+                { icon: <Search size={15} strokeWidth={1.5} />, text: "يقرأ النظام سيرتك ويستخرج مجالاتك ومهاراتك" },
                 { icon: <Bot size={15} strokeWidth={1.5} />, text: "كل 30 دقيقة يبحث عن وظائف جديدة تناسب مسمياتك" },
                 { icon: <Send size={15} strokeWidth={1.5} />, text: "يكتب رسالة تغطية مخصصة ويرسلها باسمك للشركة" },
               ].map((step, i) => (
