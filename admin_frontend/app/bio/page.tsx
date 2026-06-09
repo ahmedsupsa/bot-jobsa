@@ -36,7 +36,7 @@ export default function BioPage() {
             التقديم التلقائي على الوظائف{" "}
             <span style={{ color: "var(--accent)", display: "block" }}>بالذكاء الاصطناعي</span>
           </h1>
-          <p style={{ fontSize: 16, color: "var(--text2)", margin: "0 0 28px", lineHeight: 1.7, maxWidth: 580, margin: "0 auto 28px" }}>
+          <p style={{ fontSize: 16, color: "var(--text2)", margin: "0 auto 28px", lineHeight: 1.7, maxWidth: 580 }}>
             تعبت من التقديم اليدوي؟ خلّ البوت يقدّم عنك على الوظائف في السعودية تلقائياً كل 30 دقيقة — رسالة مخصصة لكل وظيفة.
           </p>
 
