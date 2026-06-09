@@ -30,9 +30,7 @@ export default function BioPage() {
 
         {/* بطاقة السعر */}
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 20, padding: "28px 24px", marginBottom: 16, textAlign: "center" }}>
-          <div style={{ display: "inline-block", background: "var(--surface2)", border: "1px solid var(--border2)", color: "var(--text2)", fontSize: 11, fontWeight: 700, padding: "4px 14px", borderRadius: 100, marginBottom: 12 }}>
-            🔥 عرض لفترة محدودة
-          </div>
+
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 4, marginBottom: 4 }}>
             <span style={{ fontSize: 48, fontWeight: 900, color: "var(--text)", lineHeight: 1, fontFamily: "var(--font-display)" }}>٩٠</span>
             <span style={{ fontSize: 16, color: "var(--text3)", fontWeight: 600 }}>ريال</span>
