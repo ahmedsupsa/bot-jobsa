@@ -17,27 +17,28 @@ export async function POST(req: Request) {
 
   const cv = rows?.[0];
   if (!cv?.cv_parsed_text) {
-    return NextResponse.json({ error: "لا يوجد نص مستخرج من السيرة" }, { status: 400 });
+    return NextResponse.json({ error: "لا يوجد نص مستخرج من السيرة — السيرة قد تكون صورة وليس PDF نصياً. ارفع PDF نصي (غير مصور)" }, { status: 400 });
   }
 
-  // Generate a simple summary from the parsed text
   const text = cv.cv_parsed_text;
-
-  // Extract key sections
   const summary: Record<string, string> = {};
 
-  // Try to find contact info
   const emailMatch = text.match(/[\w.+-]+@[\w-]+\.[\w.]+/);
   if (emailMatch) summary.email = emailMatch[0];
 
-  const phoneMatch = text.match(/(\+?[\d\-\(\)\s]{7,})/);
-  if (phoneMatch) summary.phone = phoneMatch[0].trim();
+  const phoneMatch = text.match(/(?:05|5|\+9665|9665|٠٥)(?:\d[\s\-]?){8}/);
+  if (!phoneMatch) {
+    const fallback = text.match(/(\+?[\d\-\(\)\s]{7,})/);
+    if (fallback) summary.phone = fallback[0].trim();
+  } else {
+    summary.phone = phoneMatch[0].trim();
+  }
 
-  // Take first 300 chars as a summary
   const cleanText = text.replace(/\s+/g, " ").trim();
-  summary.overview = cleanText.slice(0, 300) + (cleanText.length > 300 ? "..." : "");
+  if (cleanText) {
+    summary.overview = cleanText.slice(0, 500) + (cleanText.length > 500 ? "..." : "");
+  }
 
-  // Save to cv_profile
   await supabase.from("user_cvs").update({ cv_profile: summary }).eq("user_id", uid);
 
   return NextResponse.json({ ok: true, summary });

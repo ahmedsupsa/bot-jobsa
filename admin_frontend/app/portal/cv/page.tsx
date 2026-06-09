@@ -192,29 +192,27 @@ export default function CVPage() {
                           ملخص السيرة الذاتية
                         </p>
                         <p style={{ margin: "2px 0 0", color: t.text3, fontSize: 12 }}>
-                          {summary ? "ملخص مستخرج من سيرتك" : "استخرج ملخصاً من سيرتك الذاتية"}
+                          {summary?.overview ? "ملخص مستخرج من سيرتك" : "اضغط استخراج للحصول على ملخص سيرتك"}
                         </p>
                       </div>
                     </div>
-                    {!summary && (
-                      <button
-                        onClick={handleExtractSummary}
-                        disabled={summarizing}
-                        style={{
-                          display: "inline-flex", alignItems: "center", gap: 7,
-                          padding: "9px 16px", borderRadius: 10, border: "none",
-                          background: dark ? "#7c3aed" : "#7c3aed",
-                          color: "#fff", fontSize: 12, fontWeight: 700,
-                          cursor: summarizing ? "not-allowed" : "pointer",
-                          opacity: summarizing ? 0.7 : 1, fontFamily: "inherit",
-                        }}
-                      >
-                        {summarizing
-                          ? <><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> جاري الاستخراج…</>
-                          : <><Sparkles size={13} /> استخراج الملخص</>
-                        }
-                      </button>
-                    )}
+                    <button
+                      onClick={handleExtractSummary}
+                      disabled={summarizing}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 7,
+                        padding: "9px 16px", borderRadius: 10, border: "none",
+                        background: dark ? "#7c3aed" : "#7c3aed",
+                        color: "#fff", fontSize: 12, fontWeight: 700,
+                        cursor: summarizing ? "not-allowed" : "pointer",
+                        opacity: summarizing ? 0.7 : 1, fontFamily: "inherit",
+                      }}
+                    >
+                      {summarizing
+                        ? <><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> جاري الاستخراج…</>
+                        : <><Sparkles size={13} /> {summary ? "تحديث الملخص" : "استخراج الملخص"}</>
+                      }
+                    </button>
                   </div>
 
                   {summaryMsg && (
@@ -222,21 +220,23 @@ export default function CVPage() {
                       display: "flex", alignItems: "center", gap: 8,
                       padding: "10px 14px", borderRadius: 10, marginTop: 12,
                       fontSize: 12, fontWeight: 500,
-                      background: dark ? "#0a1f0a" : "#f0fdf4",
-                      color: dark ? "#86efac" : "#166534",
-                      border: `1px solid ${dark ? "#2a2a2a" : "#bbf7d0"}`,
+                      background: summaryMsg.includes("خطأ")||summaryMsg.includes("فشل")||summaryMsg.includes("لا يوجد") ? (dark ? "#1a0a0a" : "#fef2f2") : (dark ? "#0a1f0a" : "#f0fdf4"),
+                      color: summaryMsg.includes("خطأ")||summaryMsg.includes("فشل")||summaryMsg.includes("لا يوجد") ? (dark ? "#f87171" : "#dc2626") : (dark ? "#86efac" : "#166534"),
+                      border: `1px solid ${summaryMsg.includes("خطأ")||summaryMsg.includes("فشل")||summaryMsg.includes("لا يوجد") ? (dark ? "#7f1d1d" : "#fecaca") : (dark ? "#2a2a2a" : "#bbf7d0")}`,
                     }}>
-                      <CheckCircle size={13} /> {summaryMsg}
+                      {summaryMsg.includes("خطأ")||summaryMsg.includes("فشل")||summaryMsg.includes("لا يوجد") ? <XCircle size={13} /> : <CheckCircle size={13} />} {summaryMsg}
                     </div>
                   )}
 
                   {summary && (
                     <div style={{ marginTop: 14, background: dark ? "#111" : "#fff", borderRadius: 12, padding: 16, border: `1px solid ${t.border}` }}>
-                      {summary.overview && (
+                      {summary.overview ? (
                         <div style={{ marginBottom: 12 }}>
                           <p style={{ color: t.text2, fontSize: 12, fontWeight: 600, margin: "0 0 6px" }}>نبذة عامة</p>
                           <p style={{ color: t.text, fontSize: 13, margin: 0, lineHeight: 1.7 }}>{summary.overview}</p>
                         </div>
+                      ) : (
+                        <p style={{ color: t.text3, fontSize: 12, margin: "0 0 12px" }}>لم يتم العثور على ملخص — السيرة قد لا تحتوي على نص واضح</p>
                       )}
                       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                         {summary.email && (
