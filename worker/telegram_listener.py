@@ -287,13 +287,6 @@ async def process_message(text: str, channel_title: str, channel_id: str, msg_id
         logger.info("[TG] ⏭️ نص قصير جداً (%d حرف) من %s", len(text), channel_title)
         return
 
-    # ── فلتر محلي — بدون AI ───────────────────────────────────────────────
-    # قنوات الوظائف المتخصصة: لا نحتاج فلتراً لأن القناة كلها وظائف
-    _is_job_channel = any(kw in channel_title for kw in ["وظائف", "توظيف", "وظيف", "تعيين", "شواغر", "jobs", "careers", "hiring"])
-    if not _is_job_channel and not _is_likely_job(text):
-        logger.info("[TG] ⏭️ فلتر محلي: لا تبدو وظيفة من %s", channel_title)
-        return
-
     uid_base = f"{channel_id}:{msg_id}:{text[:100]}"
     uid = hashlib.md5(uid_base.encode()).hexdigest()
 
