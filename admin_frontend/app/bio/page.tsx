@@ -1,138 +1,125 @@
 import Image from "next/image";
 import type { Metadata } from "next";
-import { Footer } from "@/components/footer";
-import { ShoppingBag, CheckCircle, Clock, Bot, BarChart3, Shield, TrendingUp, Sparkles, Zap } from "lucide-react";
+import { ShoppingBag, Check,CreditCard, Building2, Sparkles, Timer, Zap, ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "بوت التقديم على الوظائف بالذكاء الاصطناعي — روابط سريعة",
-  description: "وفّر وقتك وخل الذكاء الاصطناعي يقدّم عنك على الوظائف في السعودية تلقائياً كل 30 دقيقة.",
+  title: "بوت التقديم على الوظائف | 7 ريال فقط بالشهر",
+  description: "وفّر وقتك وقدّم على الوظائف تلقائياً بذكاء اصطناعي. اقل من 7 ريال بالشهر.",
 };
 
 export default function BioPage() {
-  const features = [
-    { icon: <Bot size={22} strokeWidth={1.5} />, title: "يقدّم عنك وانت نايم", desc: "كل 30 دقيقة البوت يدور على الوظائف ويقدّم عنك تلقائياً" },
-    { icon: <Sparkles size={22} strokeWidth={1.5} />, title: "رسالة مخصصة لكل وظيفة", desc: "ذكاء اصطناعي يكتب رسالة تغطية تناسب كل وظيفة بشكل منفصل" },
-    { icon: <BarChart3 size={22} strokeWidth={1.5} />, title: "لوحة تحكم كاملة", desc: "شوف كل الوظائف اللي قدّم عليها البوت باسمك و حالتها بالتفصيل" },
-    { icon: <Shield size={22} strokeWidth={1.5} />, title: "بياناتك آمنة ومشفّرة", desc: "CV وبياناتك الشخصية محفوظة بأمان — ما تطلع لأي جهة ثانية" },
-    { icon: <TrendingUp size={22} strokeWidth={1.5} />, title: "زد فرصك أضعاف", desc: "اللي يقدّم على وظائف أكثر يحصل على مقابلات أكثر — البوت يشتغل عنك" },
-    { icon: <Clock size={22} strokeWidth={1.5} />, title: "وقتك لأهم الأشياء", desc: "ركّز على تحضير مقابلاتك والبوت يتكفل بالباقي" },
-  ];
-
-  const steps = [
-    { num: "٠١", title: "اشترك واحصل على كود التفعيل", desc: "تواصل معنا واختار الباقة المناسبة — تحصل على كود تفعيل فوري" },
-    { num: "٠٢", title: "ارفع CV وحدد تفضيلاتك", desc: "قول للبوت وش مجالك وأي منطقة تبي تشتغل فيها" },
-    { num: "٠٣", title: "استنّى والوظيفة جاية لك", desc: "البوت يقدّم عنك كل 30 دقيقة — وانت تجلس وتنتظر المقابلات تجيك" },
-  ];
-
   return (
-    <div dir="rtl" className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
-      <main className="flex-1">
-        {/* HERO */}
-        <section style={{ maxWidth: 900, margin: "0 auto", padding: "52px 20px 40px", textAlign: "center" }}>
-          <div style={{ width: 72, height: 72, margin: "0 auto 20px", borderRadius: 16, background: "#000", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Image src="/logo-transparent.png" alt="شعار" width={40} height={40} style={{ display: "block" }} />
+    <div dir="rtl" style={{ minHeight: "100vh", background: "linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)", display: "flex", flexDirection: "column" }}>
+      <main style={{ flex: 1, maxWidth: 520, margin: "0 auto", padding: "32px 16px", width: "100%" }}>
+        
+        {/* رأس */}
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <div style={{ width: 64, height: 64, margin: "0 auto 14px", borderRadius: 16, background: "linear-gradient(135deg, #3b82f6, #8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 24px rgba(59,130,246,0.3)" }}>
+            <Image src="/logo-transparent.png" alt="" width={36} height={36} style={{ display: "block" }} />
           </div>
-          <h1 style={{ fontSize: "clamp(26px,6vw,40px)", fontWeight: 900, color: "var(--text)", margin: "0 0 12px", lineHeight: 1.2 }}>
-            التقديم التلقائي على الوظائف{" "}
-            <span style={{ color: "var(--accent)", display: "block" }}>بالذكاء الاصطناعي</span>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: "#fff", margin: "0 0 6px" }}>
+            التقديم التلقائي على الوظائف
           </h1>
-          <p style={{ fontSize: 16, color: "var(--text2)", margin: "0 auto 28px", lineHeight: 1.7, maxWidth: 580 }}>
-            تعبت من التقديم اليدوي؟ خلّ البوت يقدّم عنك على الوظائف في السعودية تلقائياً كل 30 دقيقة — رسالة مخصصة لكل وظيفة.
+          <p style={{ fontSize: 13, color: "#94a3b8", margin: 0, lineHeight: 1.7 }}>
+            قدّم على مئات الوظائف في السعودية بدون تعب —<br />
+            البوت يشتغل عنك 24 ساعة
           </p>
+        </div>
 
-          {/* أزرار CTA */}
-          <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+        {/* بطاقة السعر */}
+        <div style={{ background: "linear-gradient(135deg, #1e3a5f, #1a1a2e)", borderRadius: 20, padding: "28px 24px", marginBottom: 16, border: "1px solid rgba(59,130,246,0.2)", textAlign: "center", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: -40, right: -40, width: 120, height: 120, borderRadius: "50%", background: "rgba(59,130,246,0.08)" }} />
+          <div style={{ position: "relative", zIndex: 1 }}>
+            <div style={{ display: "inline-block", background: "rgba(59,130,246,0.15)", color: "#60a5fa", fontSize: 11, fontWeight: 700, padding: "4px 14px", borderRadius: 20, marginBottom: 12 }}>
+              🔥 عرض رمضان — لفترة محدودة
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 4, marginBottom: 4 }}>
+              <span style={{ fontSize: 48, fontWeight: 900, color: "#fff", lineHeight: 1 }}>٩٠</span>
+              <span style={{ fontSize: 16, color: "#94a3b8", fontWeight: 600 }}>ريال</span>
+            </div>
+            <p style={{ fontSize: 13, color: "#94a3b8", margin: "0 0 6px" }}>
+              <span style={{ color: "#4ade80", fontWeight: 700 }}>سنوياً</span> — أقل من <strong style={{ color: "#fff" }}>٧ ريال</strong> بالشهر
+            </p>
+            <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 20px" }}>
+              قيمة اشتراك كامل لمدة سنة — ولا يمديك تدفعها كلها
+            </p>
+
+            {/* طرق الدفع */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.05)", padding: "10px 14px", borderRadius: 10 }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 8, color: "#cbd5e1", fontSize: 13 }}><CreditCard size={16} /> تمارا</span>
+                <span style={{ color: "#a78bfa", fontSize: 12, fontWeight: 600 }}>٦ دفعات ١٥ ريال</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.05)", padding: "10px 14px", borderRadius: 10 }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 8, color: "#cbd5e1", fontSize: 13 }}><Building2 size={16} /> حوالة بنكية</span>
+                <span style={{ color: "#4ade80", fontSize: 12, fontWeight: 600 }}>خصم ١٥٪ = ٧٦.٥ ريال</span>
+              </div>
+            </div>
+
             <a
               href="https://www.jobbots.org/store"
-              style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--accent)", color: "var(--accent-fg)", padding: "14px 32px", borderRadius: 12, fontWeight: 700, fontSize: 15, textDecoration: "none" }}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: "linear-gradient(135deg, #3b82f6, #2563eb)", color: "#fff", padding: "14px 0", borderRadius: 12, fontWeight: 700, fontSize: 15, textDecoration: "none", boxShadow: "0 4px 16px rgba(59,130,246,0.4)" }}
             >
-              <ShoppingBag size={18} /> اشترك وابدأ التقديم
-            </a>
-            <a
-              href="https://www.jobbots.org/store"
-              style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", color: "var(--text2)", padding: "14px 28px", borderRadius: 12, fontWeight: 600, fontSize: 15, textDecoration: "none", border: "1px solid var(--border2)" }}
-            >
-              شوف الباقات
+              <ShoppingBag size={18} /> اشترك الآن — اقل من ٧ ريال بالشهر
             </a>
           </div>
-        </section>
+        </div>
 
-        {/* المميزات */}
-        <section style={{ maxWidth: 1000, margin: "0 auto", padding: "40px 20px 60px" }}>
-          <h2 style={{ fontSize: "clamp(20px,4vw,28px)", fontWeight: 800, color: "var(--text)", textAlign: "center", margin: "0 0 32px" }}>
-            ليش تختار البوت؟
-          </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
-            {features.map((f, i) => (
-              <div key={i} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "20px 18px", display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--accent)/10", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}>
-                  {f.icon}
+        {/* مميزات سريعة */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+          {[
+            { icon: <Timer size={16} />, text: "تقديم كل ٣٠ دقيقة" },
+            { icon: <Sparkles size={16} />, text: "رسالة مخصصة لكل وظيفة" },
+            { icon: <Zap size={16} />, text: "شغال ٢٤ ساعة" },
+            { icon: <Check size={16} />, text: "لوحة تحكم كاملة" },
+          ].map((item, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "10px 12px" }}>
+              <span style={{ color: "#60a5fa", display: "flex" }}>{item.icon}</span>
+              <span style={{ color: "#cbd5e1", fontSize: 12, fontWeight: 600 }}>{item.text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* كيف يشتغل — بشكل سريع */}
+        <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 16, padding: "20px 18px", marginBottom: 16, border: "1px solid rgba(255,255,255,0.06)" }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: "0 0 14px", textAlign: "center" }}>
+            وش يضبطك بالضبط؟
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {[
+              { num: "١", text: "ترفع سيرتك الذاتية مرة وحدة" },
+              { num: "٢", text: "تحدد مجالك والمناطق اللي تبيها" },
+              { num: "٣", text: "تربط إيميلك — والبوت يقدّم عنك كل ٣٠ دقيقة" },
+            ].map((s, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(59,130,246,0.15)", color: "#60a5fa", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                  {s.num}
                 </div>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: 0 }}>{f.title}</h3>
-                <p style={{ fontSize: 13, color: "var(--text2)", margin: 0, lineHeight: 1.6 }}>{f.desc}</p>
+                <span style={{ color: "#cbd5e1", fontSize: 13 }}>{s.text}</span>
               </div>
             ))}
           </div>
-        </section>
+        </div>
 
-        {/* كيف يشتغل */}
-        <section style={{ background: "var(--surface)", padding: "52px 20px 60px", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
-          <div style={{ maxWidth: 800, margin: "0 auto" }}>
-            <h2 style={{ fontSize: "clamp(20px,4vw,28px)", fontWeight: 800, color: "var(--text)", textAlign: "center", margin: "0 0 36px" }}>
-              كيف يشتغل؟
-            </h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              {steps.map((s, i) => (
-                <div key={i} style={{ display: "flex", gap: 16, alignItems: "flex-start", background: "var(--bg)", padding: "18px 20px", borderRadius: 12 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--accent)", color: "var(--accent-fg)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, flexShrink: 0 }}>
-                    {s.num}
-                  </div>
-                  <div>
-                    <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: "0 0 4px" }}>{s.title}</h3>
-                    <p style={{ fontSize: 13, color: "var(--text2)", margin: 0, lineHeight: 1.6 }}>{s.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* دليل اجتماعي */}
-        <section style={{ maxWidth: 700, margin: "0 auto", padding: "36px 20px 40px", textAlign: "center" }}>
-          <div style={{ display: "flex", justifyContent: "center", gap: 40, flexWrap: "wrap" }}>
-            <div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: "var(--accent)" }}>+500</div>
-              <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 2 }}>تقديم يومي</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: "var(--accent)" }}>30</div>
-              <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 2 }}>دقيقة لكل دورة</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: "var(--accent)" }}>٪100</div>
-              <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 2 }}>تلقائي بالكامل</div>
-            </div>
-          </div>
-        </section>
+        {/* كلام تحفيزي */}
+        <div style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.08), rgba(139,92,246,0.08))", borderRadius: 16, padding: "20px 18px", marginBottom: 12, textAlign: "center", border: "1px solid rgba(59,130,246,0.1)" }}>
+          <p style={{ color: "#e2e8f0", fontSize: 13, lineHeight: 1.8, margin: 0 }}>
+            <strong style={{ color: "#60a5fa" }}>تخيل</strong> بدال ما تقضي ساعات كل يوم في التقديم على وظايف وانت تدور وتكرر نفس المعلومات —
+            <strong style={{ color: "#fff" }}> البوت يقدم عنك وأنت نايم أو مشغول أو حتى في المقابلة</strong>.
+            فقط ارفع سيرتك مرة وحدة وخل الذكاء الاصطناعي يشتغل.
+          </p>
+        </div>
 
         {/* CTA أخير */}
-        <section style={{ background: "var(--text)", padding: "48px 20px", textAlign: "center" }}>
-          <h2 style={{ fontSize: "clamp(20px,4vw,26px)", fontWeight: 800, color: "#fff", margin: "0 0 12px" }}>
-            جرب البوت الآن
-          </h2>
-          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.7)", margin: "0 0 24px" }}>
-            اشترك وخلّ البوت يشتغل عنك — ما بتندم
-          </p>
+        <div style={{ textAlign: "center", padding: "8px 0 0" }}>
           <a
             href="https://www.jobbots.org/store"
-            style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#fff", color: "var(--text)", padding: "12px 28px", borderRadius: 12, fontWeight: 700, fontSize: 14, textDecoration: "none" }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#94a3b8", fontSize: 13, fontWeight: 600, textDecoration: "none" }}
           >
-            <Zap size={18} /> ابدأ الآن
+            شوف الباقات والمتجر <ArrowLeft size={14} />
           </a>
-        </section>
+        </div>
       </main>
-
-      <Footer />
     </div>
   );
 }
