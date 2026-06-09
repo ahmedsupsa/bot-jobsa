@@ -7,7 +7,7 @@ import { PushPermissionBanner } from "@/components/PushPermissionBanner";
 import Image from "next/image";
 import {
   Home, ClipboardList, FileText, User, LogOut,
-  MessageCircle, TrendingUp, Sun, Moon, Mail, Sliders,
+  MessageCircle, TrendingUp, Sun, Moon, Mail, Sliders, BookOpen,
 } from "lucide-react";
 
 const SIDEBAR_NAV = [
@@ -19,6 +19,7 @@ const SIDEBAR_NAV = [
   { href: "/portal/profile",      icon: User,          label: "حسابي"        },
   { href: "/portal/affiliate",    icon: TrendingUp,    label: "برنامج الربح" },
   { href: "/portal/support",      icon: MessageCircle, label: "الدعم"        },
+  { href: "/portal/guide",        icon: BookOpen,      label: "الشروحات"     },
 ];
 
 // All tabs shown in the floating bottom bar
@@ -31,6 +32,7 @@ const BOTTOM_NAV = [
   { href: "/portal/affiliate",    icon: TrendingUp,    label: "الربح"     },
   { href: "/portal/support",      icon: MessageCircle, label: "الدعم"     },
   { href: "/portal/profile",      icon: User,          label: "حسابي"     },
+  { href: "/portal/guide",        icon: BookOpen,      label: "الشروحات"  },
 ];
 
 export function PortalShell({ children }: { children: React.ReactNode }) {
