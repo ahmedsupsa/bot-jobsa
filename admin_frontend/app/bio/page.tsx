@@ -3,7 +3,7 @@ import { MessageCircle, ShoppingBag } from "lucide-react";
 import { Footer } from "@/components/footer";
 
 export const metadata = {
-  title: "روابط Jobbots",
+  title: "روابط بوت التقديم على الوظائف بالذكاء الاصطناعي",
   description: "التقديم التلقائي على الوظائف",
 };
 
@@ -14,10 +14,10 @@ export default function BioPage() {
         {/* الهوية والقيمة المضافة */}
         <div className="space-y-4">
           <div className="w-20 h-20 mx-auto bg-ink rounded-full flex items-center justify-center">
-            <Image src="/logo-transparent.png" alt="Jobbots" width={36} height={36} className="block" />
+            <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={36} height={36} className="block" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-ink">Jobbots</h1>
+            <h1 className="text-2xl font-bold text-ink">بوت التقديم على الوظائف بالذكاء الاصطناعي</h1>
             <p className="text-accent text-sm font-semibold mt-1">وفّر وقتك، واترك الذكاء الاصطناعي يقدّم عنك!</p>
           </div>
         </div>

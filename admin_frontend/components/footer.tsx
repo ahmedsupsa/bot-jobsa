@@ -26,9 +26,9 @@ export function Footer() {
         <div style={s.brand}>
           <div style={s.logo}>
             <div style={s.logoBox}>
-              <Image src="/logo-transparent.png" alt="Jobbots" width={22} height={22} style={{ display: "block" }} />
+              <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={22} height={22} style={{ display: "block" }} />
             </div>
-            <span style={s.logoText}>Jobbots</span>
+            <span style={s.logoText}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
           </div>
           <p style={s.tagline}>بوت التقديم على الوظائف بالذكاء الاصطناعي — يقدّم عنك تلقائياً كل 30 دقيقة.</p>
           <div style={s.social}>
@@ -62,7 +62,7 @@ export function Footer() {
       </div>
 
       <div style={s.bottom}>
-        <span style={s.copy}>© 2026 Jobbots. جميع الحقوق محفوظة.</span>
+        <span style={s.copy}>© 2026 بوت التقديم على الوظائف بالذكاء الاصطناعي. جميع الحقوق محفوظة.</span>
         <span style={s.copy}>صُنع بالسعودية 🇸🇦</span>
       </div>
     </footer>

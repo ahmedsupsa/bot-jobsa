@@ -78,7 +78,7 @@ const SEGMENTS: SegmentInfo[] = [
     icon: <Zap size={16} />,
     color: "#a78bfa",
     templateTitle: "مرحباً يا {name} 👋",
-    templateBody: "لديك تحديثات جديدة على Jobbots",
+    templateBody: "لديك تحديثات جديدة على بوت التقديم على الوظائف بالذكاء الاصطناعي",
     templateUrl: "/portal/dashboard",
   },
 ];

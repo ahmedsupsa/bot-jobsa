@@ -139,7 +139,7 @@ export default function MarketerPortalPage() {
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,255,255,0.15)" }}>
               <TrendingUp size={16} style={{ color: "#fff" }} />
             </div>
-            <span className="text-sm font-bold" style={{ color: "rgba(255,255,255,0.7)" }}>Jobbots</span>
+            <span className="text-sm font-bold" style={{ color: "rgba(255,255,255,0.7)" }}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
           </div>
 
           {/* Avatar + name */}
@@ -416,7 +416,7 @@ export default function MarketerPortalPage() {
 
         {/* ── Footer note ── */}
         <p className="text-center text-xs pb-4" style={{ color: "var(--text4, #aaa)" }}>
-          للاستفسار عن عمولاتك تواصل مع فريق Jobbots
+          للاستفسار عن عمولاتك تواصل مع فريق بوت التقديم على الوظائف بالذكاء الاصطناعي
         </p>
       </div>
     </div>

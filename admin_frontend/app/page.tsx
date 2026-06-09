@@ -7,8 +7,8 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Jobbots — خل البوت يقدم عنك على الوظائف بالذكاء الاصطناعي",
-  description: "تعبت من التقديم اليدوي؟ Jobbots يقدّم عنك تلقائياً على الوظائف في السعودية كل 30 دقيقة. وفّر وقتك وزد فرصك.",
+  title: "بوت التقديم على الوظائف بالذكاء الاصطناعي — خل البوت يقدم عنك على الوظائف بالذكاء الاصطناعي",
+  description: "تعبت من التقديم اليدوي؟ بوت التقديم على الوظائف بالذكاء الاصطناعي يقدّم عنك تلقائياً على الوظائف في السعودية كل 30 دقيقة. وفّر وقتك وزد فرصك.",
   alternates: { canonical: "https://jobbots.org" },
 };
 
@@ -42,7 +42,7 @@ export default function LandingPage() {
     {
       icon: <Clock size={22} strokeWidth={1.5} />,
       title: "وقتك لأهم الأشياء",
-      desc: "بدل ما تقضي ساعات وأنت تبحث وتقدّم، ركّز على تحضير مقابلاتك وJobbots يتكفل بالباقي",
+      desc: "بدل ما تقضي ساعات وأنت تبحث وتقدّم، ركّز على تحضير مقابلاتك وبوت التقديم على الوظائف بالذكاء الاصطناعي يتكفل بالباقي",
     },
   ];
 
@@ -53,7 +53,7 @@ export default function LandingPage() {
   ];
 
   const faqs = [
-    { q: "كيف يشتغل Jobbots؟", a: "البوت يقرأ سيرتك الذاتية وتفضيلاتك، يدور على الوظائف المناسبة، ويكتب رسالة مخصصة ويرسلها بالإيميل مباشرة لكل شركة — وهذا يصير كل 30 دقيقة تلقائياً." },
+    { q: "كيف يشتغل بوت التقديم على الوظائف بالذكاء الاصطناعي؟", a: "البوت يقرأ سيرتك الذاتية وتفضيلاتك، يدور على الوظائف المناسبة، ويكتب رسالة مخصصة ويرسلها بالإيميل مباشرة لكل شركة — وهذا يصير كل 30 دقيقة تلقائياً." },
     { q: "بياناتي آمنة؟", a: "إي والله، بياناتك مشفّرة ومحفوظة على خوادم آمنة. ما تطلع لأي جهة خارجية أبداً." },
     { q: "على أي وظائف يقدّم؟", a: "يقدّم على الوظائف في المجالات اللي تحددها أنت بالضبط، في المناطق اللي تفضّلها داخل المملكة." },
     { q: "إيش أحتاج أجهّز؟", a: "بس تحتاج كود التفعيل، ترفع CV، وتربط إيميلك. بعدها البوت يشتغل لوحده." },
@@ -62,10 +62,10 @@ export default function LandingPage() {
   const jsonLdOrganization = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "Jobbots",
+    name: "بوت التقديم على الوظائف بالذكاء الاصطناعي",
     url: "https://jobbots.org",
     logo: "https://jobbots.org/logo.png",
-    description: "منصة Jobbots تقدّم عنك على الوظائف تلقائياً بالذكاء الاصطناعي في المملكة العربية السعودية",
+    description: "منصة بوت التقديم على الوظائف بالذكاء الاصطناعي تقدّم عنك على الوظائف تلقائياً بالذكاء الاصطناعي في المملكة العربية السعودية",
     foundingLocation: { "@type": "Place", addressCountry: "SA" },
     sameAs: [],
   };
@@ -83,7 +83,7 @@ export default function LandingPage() {
   const jsonLdWebsite = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "Jobbots",
+    name: "بوت التقديم على الوظائف بالذكاء الاصطناعي",
     url: "https://jobbots.org",
     potentialAction: {
       "@type": "SearchAction",
@@ -105,7 +105,7 @@ export default function LandingPage() {
         <div style={s.navInner}>
           <div style={s.logo}>
             <div style={{ width: 34, height: 34, borderRadius: 9, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: 5, flexShrink: 0 }}>
-              <Image src="/logo-transparent.png" alt="Jobbots" width={24} height={24} style={{ display: "block" }} />
+              <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={24} height={24} style={{ display: "block" }} />
             </div>
             <span style={{ fontSize: 14, color: "var(--text)", fontWeight: 700, lineHeight: 1 }}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
           </div>
@@ -131,7 +131,7 @@ export default function LandingPage() {
           <span style={s.heroAccent}>خل البوت يشتغل عنك</span>
         </h1>
         <p style={s.heroSub} className="hero-sub">
-          Jobbots يقدّم عنك على الوظائف تلقائياً كل 30 دقيقة بالذكاء الاصطناعي —{" "}
+          بوت التقديم على الوظائف بالذكاء الاصطناعي يقدّم عنك على الوظائف تلقائياً كل 30 دقيقة بالذكاء الاصطناعي —{" "}
           وانت مرتاح وبدون ما تحرك إصبع
         </p>
         <div style={s.heroCtas}>
@@ -160,7 +160,7 @@ export default function LandingPage() {
       {/* ── FEATURES ── */}
       <section style={s.section}>
         <div style={s.sectionInner}>
-          <div style={s.sectionTag}>ليش Jobbots؟</div>
+          <div style={s.sectionTag}>ليش بوت التقديم على الوظائف بالذكاء الاصطناعي؟</div>
           <h2 style={s.sectionTitle}>كل اللي تحتاجه عشان توصل للوظيفة</h2>
           <p style={s.sectionDesc}>
             مصمّم خصيصاً لسوق العمل السعودي — يشتغل عنك وانت مرتاح
@@ -251,7 +251,7 @@ export default function LandingPage() {
           <CheckCircle2 size={40} strokeWidth={1} color="var(--text)" style={{ marginBottom: 20 }} />
           <h2 style={s.ctaBannerTitle}>لا تجلس تقدّم يدوي وانت تقدر تنام</h2>
           <p style={s.ctaBannerSub}>
-            اشترك الحين وخلّ Jobbots يشتغل عنك — البوت ما يتعب ولا يمل
+            اشترك الحين وخلّ بوت التقديم على الوظائف بالذكاء الاصطناعي يشتغل عنك — البوت ما يتعب ولا يمل
           </p>
           <Link href="/portal/login" style={s.ctaBannerBtn}>
             ابدأ الحين
@@ -267,9 +267,9 @@ export default function LandingPage() {
           <div style={s.footerBrand}>
             <div style={s.logo}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: 5, flexShrink: 0 }}>
-                <Image src="/logo-transparent.png" alt="Jobbots" width={22} height={22} style={{ display: "block" }} />
+                <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={22} height={22} style={{ display: "block" }} />
               </div>
-              <span style={{ ...s.logoText, fontSize: 17 }}>Jobbots</span>
+              <span style={{ ...s.logoText, fontSize: 17 }}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
             </div>
             <p style={s.footerTagline}>بوت التقديم على الوظائف بالذكاء الاصطناعي — يقدّم عنك تلقائياً كل 30 دقيقة.</p>
             <div style={s.footerSocial}>
@@ -305,7 +305,7 @@ export default function LandingPage() {
 
         {/* شريط الحقوق */}
         <div style={s.footerBottom}>
-          <span style={s.footerCopy}>© 2026 Jobbots. جميع الحقوق محفوظة.</span>
+          <span style={s.footerCopy}>© 2026 بوت التقديم على الوظائف بالذكاء الاصطناعي. جميع الحقوق محفوظة.</span>
           <span style={s.footerCopy}>صُنع بالسعودية 🇸🇦</span>
         </div>
       </footer>

@@ -5,14 +5,14 @@ import { Footer } from "@/components/footer";
 import { GUIDES } from "./data";
 
 export const metadata: Metadata = {
-  title: "أدلة البحث عن وظيفة في السعودية 2026 | Jobbots",
+  title: "أدلة البحث عن وظيفة في السعودية 2026 | بوت التقديم على الوظائف بالذكاء الاصطناعي",
   description: "أدلة عملية شاملة للباحثين عن عمل في السعودية 2026. نصائح من سوق العمل السعودي، كيف تكتب CV احترافي، كيف تجتاز المقابلة، وكيف تستخدم التقديم التلقائي.",
   alternates: { canonical: "https://jobbots.org/daleel" },
   openGraph: {
-    title: "أدلة البحث عن وظيفة في السعودية 2026 | Jobbots",
+    title: "أدلة البحث عن وظيفة في السعودية 2026 | بوت التقديم على الوظائف بالذكاء الاصطناعي",
     description: "أدلة عملية للباحثين عن عمل في السعودية — نصائح حقيقية من سوق العمل.",
     url: "https://jobbots.org/daleel",
-    siteName: "Jobbots",
+    siteName: "بوت التقديم على الوظائف بالذكاء الاصطناعي",
     locale: "ar_SA",
     type: "website",
   },
@@ -24,8 +24,8 @@ export default function GuidesIndexPage() {
       <nav style={p.nav}>
         <div style={p.navInner}>
           <Link href="/" style={p.brand}>
-            <Image src="/logo-transparent.png" alt="Jobbots" width={22} height={22} style={{ borderRadius: 5 }} />
-            <span style={p.brandName}>Jobbots</span>
+            <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={22} height={22} style={{ borderRadius: 5 }} />
+            <span style={p.brandName}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
           </Link>
           <Link href="/portal/login" style={p.navCta}>دخول المشترك</Link>
         </div>
@@ -53,7 +53,7 @@ export default function GuidesIndexPage() {
       </div>
 
       <div style={p.ctaBanner}>
-        <h2 style={p.ctaTitle}>وفّر الوقت — Jobbots يقدّم عنك تلقائياً</h2>
+        <h2 style={p.ctaTitle}>وفّر الوقت — بوت التقديم على الوظائف بالذكاء الاصطناعي يقدّم عنك تلقائياً</h2>
         <p style={p.ctaSub}>بدلاً من ساعات يومية في التقديم اليدوي، البوت يتكفل بكل شيء</p>
         <Link href="/store" style={p.ctaBtn}>اشترك وابدأ الآن</Link>
       </div>

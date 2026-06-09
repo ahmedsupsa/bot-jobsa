@@ -18,14 +18,14 @@ export async function generateMetadata({
   const spec = getSpecBySlug(slug);
   if (!spec) return {};
   return {
-    title: spec.title + " | Jobbots",
+    title: spec.title + " | بوت التقديم على الوظائف بالذكاء الاصطناعي",
     description: spec.metaDesc,
     alternates: { canonical: `https://jobbots.org/wazaif/${spec.slug}` },
     openGraph: {
-      title: spec.title + " | Jobbots",
+      title: spec.title + " | بوت التقديم على الوظائف بالذكاء الاصطناعي",
       description: spec.metaDesc,
       url: `https://jobbots.org/wazaif/${spec.slug}`,
-      siteName: "Jobbots",
+      siteName: "بوت التقديم على الوظائف بالذكاء الاصطناعي",
       locale: "ar_SA",
       type: "website",
     },
@@ -77,8 +77,8 @@ export default async function SpecPage({
       <nav style={pg.nav}>
         <div style={pg.navInner}>
           <Link href="/" style={pg.brand}>
-            <Image src="/logo-transparent.png" alt="Jobbots" width={22} height={22} style={{ borderRadius: 5 }} />
-            <span style={pg.brandName}>Jobbots</span>
+            <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={22} height={22} style={{ borderRadius: 5 }} />
+            <span style={pg.brandName}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
           </Link>
           <Link href="/portal/login" style={pg.navCta}>دخول المشترك</Link>
         </div>
@@ -136,11 +136,11 @@ export default async function SpecPage({
       {/* WHY JOBBOTS */}
       <section style={{ ...pg.section, background: "var(--surface, #f8f8f8)" }}>
         <div style={pg.inner}>
-          <h2 style={pg.h2}>لماذا Jobbots لوظائف {spec.nameAr}؟</h2>
+          <h2 style={pg.h2}>لماذا بوت التقديم على الوظائف بالذكاء الاصطناعي لوظائف {spec.nameAr}؟</h2>
           <p style={pg.body}>{spec.why}</p>
           <div style={pg.howGrid}>
             {[
-              { n: "01", t: "ارفع سيرتك الذاتية", d: "Jobbots يستخرج تخصصك ومهاراتك تلقائياً" },
+              { n: "01", t: "ارفع سيرتك الذاتية", d: "بوت التقديم على الوظائف بالذكاء الاصطناعي يستخرج تخصصك ومهاراتك تلقائياً" },
               { n: "02", t: "حدد التخصصات", d: `اختر "${spec.nameAr}" ضمن المجالات المفضّلة` },
               { n: "03", t: "البوت يعمل", d: "كل 30 دقيقة يُقدّم عنك برسالة مخصصة لكل شركة" },
             ].map((s) => (
@@ -173,7 +173,7 @@ export default async function SpecPage({
       <section style={pg.ctaSection}>
         <div style={pg.ctaInner}>
           <h2 style={pg.ctaTitle}>جاهز تبدأ البحث عن وظيفة {spec.nameAr}؟</h2>
-          <p style={pg.ctaSub}>Jobbots يقدّم عنك تلقائياً على وظائف {spec.nameAr} كل 30 دقيقة — بدون جهد وبنتائج حقيقية</p>
+          <p style={pg.ctaSub}>بوت التقديم على الوظائف بالذكاء الاصطناعي يقدّم عنك تلقائياً على وظائف {spec.nameAr} كل 30 دقيقة — بدون جهد وبنتائج حقيقية</p>
           <Link href="/store" style={pg.ctaBtn}>اشترك الآن</Link>
         </div>
       </section>

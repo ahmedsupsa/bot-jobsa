@@ -25,7 +25,7 @@ function buildPreviewHtml(subject: string, body: string, name = "المستلم"
     <h2 style="color:#1a1a1a;margin:0 0 14px;font-size:18px;border-bottom:1px solid #f0f0f0;padding-bottom:14px;">${subject || "عنوان الرسالة"}</h2>
     <div style="color:#444;line-height:1.9;font-size:14px;">${safeBody || '<span style="color:#aaa">نص الرسالة يظهر هنا...</span>'}</div>
     <hr style="border:none;border-top:1px solid #f0f0f0;margin:20px 0 14px;">
-    <p style="color:#bbb;font-size:11px;margin:0;text-align:center;">Jobbots — منصة التقديم التلقائي للوظائف</p>
+    <p style="color:#bbb;font-size:11px;margin:0;text-align:center;">بوت التقديم على الوظائف بالذكاء الاصطناعي — منصة التقديم التلقائي للوظائف</p>
   </div>`;
 }
 
@@ -153,7 +153,7 @@ function QuickSend() {
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted2 w-10 shrink-0 text-left">من</span>
             <input value={fromName} onChange={e => setFromName(e.target.value)}
-              placeholder="Jobbots (اسم المرسِل)" disabled={sending}
+              placeholder="بوت التقديم على الوظائف بالذكاء الاصطناعي (اسم المرسِل)" disabled={sending}
               className="flex-1 rounded-xl border border-line/70 bg-panel px-3 py-2 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none" />
           </div>
           <div className="flex items-center gap-3">
@@ -265,7 +265,7 @@ function CampaignCreate({ onSent }: { onSent: () => void }) {
   const [name, setName]         = useState("");
   const [subject, setSubject]   = useState("");
   const [body, setBody]         = useState("");
-  const [fromName, setFromName] = useState("Jobbots");
+  const [fromName, setFromName] = useState("بوت التقديم على الوظائف بالذكاء الاصطناعي");
   const [replyTo, setReplyTo]   = useState("");
   const [recipientsRaw, setRecipientsRaw] = useState("");
 
@@ -414,7 +414,7 @@ function CampaignCreate({ onSent }: { onSent: () => void }) {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-muted2 w-16 shrink-0 text-left">المرسِل</span>
-                <input value={fromName} onChange={e => setFromName(e.target.value)} placeholder="Jobbots"
+                <input value={fromName} onChange={e => setFromName(e.target.value)} placeholder="بوت التقديم على الوظائف بالذكاء الاصطناعي"
                   className="flex-1 rounded-xl border border-line/70 bg-panel px-3 py-2 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none" />
               </div>
               <div className="flex items-center gap-3">

@@ -4,20 +4,20 @@ import { PWARegister } from "@/components/pwa-register";
 import { ThemeProvider } from "@/contexts/theme-context";
 
 export const metadata: Metadata = {
-  title: "Jobbots — بوت التقديم التلقائي على الوظائف بالذكاء الاصطناعي",
-  description: "Jobbots يقدّم عنك على الوظائف تلقائياً باستخدام الذكاء الاصطناعي. وفّر وقتك، زد فرصك، واحصل على وظيفتك المثالية بدون جهد.",
+  title: "بوت التقديم على الوظائف بالذكاء الاصطناعي — بوت التقديم التلقائي على الوظائف بالذكاء الاصطناعي",
+  description: "بوت التقديم على الوظائف بالذكاء الاصطناعي يقدّم عنك على الوظائف تلقائياً باستخدام الذكاء الاصطناعي. وفّر وقتك، زد فرصك، واحصل على وظيفتك المثالية بدون جهد.",
   keywords: "تقديم تلقائي على الوظائف, بوت وظائف, ذكاء اصطناعي, jobbots, وظائف السعودية, بوت تقديم وظائف السعودية, أداة تقديم وظائف, بحث عن وظيفة تلقائي, وظائف 2026, ذكاء اصطناعي وظائف, AI وظائف, عاطل يبحث عن وظيفة, كيف أبحث عن وظيفة في السعودية, وظائف محاسب مهندس مبرمج السعودية",
   openGraph: {
-    title: "Jobbots — بوت التقديم التلقائي على الوظائف",
-    description: "Jobbots يقدّم عنك على المئات من الوظائف كل يوم تلقائياً.",
+    title: "بوت التقديم على الوظائف بالذكاء الاصطناعي — بوت التقديم التلقائي على الوظائف",
+    description: "بوت التقديم على الوظائف بالذكاء الاصطناعي يقدّم عنك على المئات من الوظائف كل يوم تلقائياً.",
     url: "https://jobbots.org",
-    siteName: "Jobbots",
+    siteName: "بوت التقديم على الوظائف بالذكاء الاصطناعي",
     locale: "ar_SA",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Jobbots — بوت التقديم التلقائي على الوظائف",
+    title: "بوت التقديم على الوظائف بالذكاء الاصطناعي — بوت التقديم التلقائي على الوظائف",
     description: "يقدّم عنك تلقائياً باستخدام الذكاء الاصطناعي",
   },
   alternates: { canonical: "https://jobbots.org" },
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
     shortcut: "/favicon.png",
   },
-  applicationName: "Jobbots",
+  applicationName: "بوت التقديم على الوظائف بالذكاء الاصطناعي",
   formatDetection: { telephone: false },
 };
 

@@ -4,8 +4,8 @@ import type { Metadata } from "next";
 import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
-  title: "الشروط والأحكام — Jobbots",
-  description: "اقرأ شروط وأحكام استخدام منصة Jobbots للتقديم التلقائي على الوظائف.",
+  title: "الشروط والأحكام — بوت التقديم على الوظائف بالذكاء الاصطناعي",
+  description: "اقرأ شروط وأحكام استخدام منصة بوت التقديم على الوظائف بالذكاء الاصطناعي للتقديم التلقائي على الوظائف.",
 };
 
 export default function TermsPage() {
@@ -16,9 +16,9 @@ export default function TermsPage() {
         <div style={s.navInner}>
           <Link href="/" style={s.logo}>
             <div style={{ width: 34, height: 34, borderRadius: 9, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: 5, flexShrink: 0 }}>
-              <Image src="/logo-transparent.png" alt="Jobbots" width={24} height={24} style={{ display: "block" }} />
+              <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={24} height={24} style={{ display: "block" }} />
             </div>
-            <span style={s.logoText}>Jobbots</span>
+            <span style={s.logoText}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
           </Link>
           <Link href="/portal/login" style={s.navBtn}>دخول المشترك</Link>
         </div>
@@ -37,11 +37,11 @@ export default function TermsPage() {
           {/* Sections */}
           <div style={s.sections}>
             <Section title="القبول بالشروط">
-              باستخدامك لمنصة Jobbots، فإنك توافق على الالتزام بهذه الشروط والأحكام. إذا كنت لا توافق على أي من هذه الشروط، يُرجى التوقف عن استخدام المنصة.
+              باستخدامك لمنصة بوت التقديم على الوظائف بالذكاء الاصطناعي، فإنك توافق على الالتزام بهذه الشروط والأحكام. إذا كنت لا توافق على أي من هذه الشروط، يُرجى التوقف عن استخدام المنصة.
             </Section>
 
             <Section title="وصف الخدمة">
-              Jobbots منصة إلكترونية تقدّم خدمة التقديم التلقائي على الوظائف باستخدام الذكاء الاصطناعي. تعمل المنصة على:
+              بوت التقديم على الوظائف بالذكاء الاصطناعي منصة إلكترونية تقدّم خدمة التقديم التلقائي على الوظائف باستخدام الذكاء الاصطناعي. تعمل المنصة على:
               <ul style={s.list}>
                 <li>إرسال طلبات التوظيف بالبريد الإلكتروني لأصحاب العمل نيابةً عنك.</li>
                 <li>توليد رسائل تغطية مخصصة لكل وظيفة باستخدام الذكاء الاصطناعي.</li>
@@ -71,7 +71,7 @@ export default function TermsPage() {
 
             <Section title="حدود المسؤولية">
               <ul style={s.list}>
-                <li>Jobbots وسيط تقني يرسل طلبات التوظيف نيابةً عنك — لا نضمن الحصول على وظيفة أو الرد من أصحاب العمل.</li>
+                <li>بوت التقديم على الوظائف بالذكاء الاصطناعي وسيط تقني يرسل طلبات التوظيف نيابةً عنك — لا نضمن الحصول على وظيفة أو الرد من أصحاب العمل.</li>
                 <li>لسنا مسؤولين عن قرارات التوظيف التي يتخذها أصحاب العمل.</li>
                 <li>في حالات الأعطال التقنية، نسعى لإصلاحها بأسرع وقت ممكن ولكن لا نضمن الاستمرارية الكاملة.</li>
                 <li>لا نتحمل مسؤولية أي ضرر ناتج عن معلومات خاطئة قدّمها المستخدم.</li>
@@ -79,7 +79,7 @@ export default function TermsPage() {
             </Section>
 
             <Section title="الملكية الفكرية">
-              جميع محتويات المنصة من تصميم وكود وعلامة تجارية هي ملك حصري لـ Jobbots. يُمنع نسخ أو إعادة استخدام أي جزء من المنصة دون إذن كتابي مسبق.
+              جميع محتويات المنصة من تصميم وكود وعلامة تجارية هي ملك حصري لـ بوت التقديم على الوظائف بالذكاء الاصطناعي. يُمنع نسخ أو إعادة استخدام أي جزء من المنصة دون إذن كتابي مسبق.
             </Section>
 
             <Section title="إنهاء الحساب">

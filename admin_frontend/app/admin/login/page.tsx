@@ -38,8 +38,8 @@ function LoginForm() {
   return (
     <div style={s.formBox}>
       <div style={s.brand}>
-        <Image src="/logo-transparent.png" alt="Jobbots" width={28} height={28} style={{ borderRadius: 6 }} />
-        <span style={s.brandName}>Jobbots</span>
+        <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={28} height={28} style={{ borderRadius: 6 }} />
+        <span style={s.brandName}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
       </div>
 
       <h2 style={s.formTitle}>مرحباً بعودتك</h2>
@@ -113,8 +113,8 @@ export default function AdminLogin() {
         <div className="login-left">
           <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100%" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "auto" }}>
-              <Image src="/logo-transparent.png" alt="Jobbots" width={36} height={36} style={{ borderRadius: 8 }} />
-              <span style={{ color: "white", fontWeight: 800, fontSize: 18, letterSpacing: "-0.3px" }}>Jobbots</span>
+              <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={36} height={36} style={{ borderRadius: 8 }} />
+              <span style={{ color: "white", fontWeight: 800, fontSize: 18, letterSpacing: "-0.3px" }}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
             </div>
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
@@ -139,7 +139,7 @@ export default function AdminLogin() {
             </div>
 
             <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, marginTop: "auto", paddingTop: 32 }}>
-              © 2026 Jobbots — جميع الحقوق محفوظة
+              © 2026 بوت التقديم على الوظائف بالذكاء الاصطناعي — جميع الحقوق محفوظة
             </div>
           </div>
         </div>
@@ -155,7 +155,7 @@ export default function AdminLogin() {
         background: "#0a0a0a", color: "rgba(255,255,255,0.25)",
         fontSize: 12, borderTop: "1px solid rgba(255,255,255,0.06)",
       }}>
-        © {new Date().getFullYear()} Jobbots — جميع الحقوق محفوظة
+        © {new Date().getFullYear()} بوت التقديم على الوظائف بالذكاء الاصطناعي — جميع الحقوق محفوظة
       </footer>
     </>
   );

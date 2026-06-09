@@ -394,9 +394,9 @@ export default function StorePage() {
         <div style={s.navInner}>
           <Link href="/" style={s.logo}>
             <div style={{ width: 34, height: 34, borderRadius: 9, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: 5, flexShrink: 0 }}>
-              <Image src="/logo-transparent.png" alt="Jobbots" width={24} height={24} style={{ display: "block" }} />
+              <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={24} height={24} style={{ display: "block" }} />
             </div>
-            <span style={s.logoText}>Jobbots</span>
+            <span style={s.logoText}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
           </Link>
           <Link href="/portal/login" style={s.navBtn}>دخول المشترك</Link>
         </div>

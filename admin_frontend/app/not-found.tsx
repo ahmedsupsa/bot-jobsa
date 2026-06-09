@@ -9,8 +9,8 @@ export default function NotFound() {
       <nav style={s.nav}>
         <div style={s.navInner}>
           <Link href="/" style={s.logo}>
-            <Image src="/logo-transparent.png" alt="Jobbots" width={24} height={24} style={{ borderRadius: 5 }} />
-            <span style={s.logoText}>Jobbots</span>
+            <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={24} height={24} style={{ borderRadius: 5 }} />
+            <span style={s.logoText}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
           </Link>
         </div>
       </nav>

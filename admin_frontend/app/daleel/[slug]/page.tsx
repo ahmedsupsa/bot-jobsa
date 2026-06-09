@@ -18,14 +18,14 @@ export async function generateMetadata({
   const guide = getGuideBySlug(slug);
   if (!guide) return {};
   return {
-    title: guide.title + " | Jobbots",
+    title: guide.title + " | بوت التقديم على الوظائف بالذكاء الاصطناعي",
     description: guide.metaDesc,
     alternates: { canonical: `https://jobbots.org/daleel/${guide.slug}` },
     openGraph: {
-      title: guide.title + " | Jobbots",
+      title: guide.title + " | بوت التقديم على الوظائف بالذكاء الاصطناعي",
       description: guide.metaDesc,
       url: `https://jobbots.org/daleel/${guide.slug}`,
-      siteName: "Jobbots",
+      siteName: "بوت التقديم على الوظائف بالذكاء الاصطناعي",
       locale: "ar_SA",
       type: "article",
     },
@@ -49,7 +49,7 @@ export default async function GuidePage({
     inLanguage: "ar",
     publisher: {
       "@type": "Organization",
-      name: "Jobbots",
+      name: "بوت التقديم على الوظائف بالذكاء الاصطناعي",
       url: "https://jobbots.org",
     },
     mainEntityOfPage: { "@type": "WebPage", "@id": `https://jobbots.org/daleel/${guide.slug}` },
@@ -74,8 +74,8 @@ export default async function GuidePage({
       <nav style={gd.nav}>
         <div style={gd.navInner}>
           <Link href="/" style={gd.brand}>
-            <Image src="/logo-transparent.png" alt="Jobbots" width={22} height={22} style={{ borderRadius: 5 }} />
-            <span style={gd.brandName}>Jobbots</span>
+            <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={22} height={22} style={{ borderRadius: 5 }} />
+            <span style={gd.brandName}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
           </Link>
           <div style={{ display: "flex", gap: 10 }}>
             <Link href="/daleel" style={gd.navLink}>الأدلة</Link>
@@ -117,7 +117,7 @@ export default async function GuidePage({
             <div style={gd.ctaBoxIcon}>🚀</div>
             <h3 style={gd.ctaBoxTitle}>{guide.cta}</h3>
             <p style={gd.ctaBoxDesc}>
-              Jobbots يقدّم عنك تلقائياً على مئات الوظائف كل يوم بالذكاء الاصطناعي — بدون جهد يدوي
+              بوت التقديم على الوظائف بالذكاء الاصطناعي يقدّم عنك تلقائياً على مئات الوظائف كل يوم بالذكاء الاصطناعي — بدون جهد يدوي
             </p>
             <Link href="/store" style={gd.ctaBoxBtn}>اشترك وابدأ الآن</Link>
           </div>

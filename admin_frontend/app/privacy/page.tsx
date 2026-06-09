@@ -4,8 +4,8 @@ import type { Metadata } from "next";
 import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
-  title: "سياسة الخصوصية — Jobbots",
-  description: "سياسة الخصوصية لمنصة Jobbots وكيفية تعاملنا مع بياناتك الشخصية.",
+  title: "سياسة الخصوصية — بوت التقديم على الوظائف بالذكاء الاصطناعي",
+  description: "سياسة الخصوصية لمنصة بوت التقديم على الوظائف بالذكاء الاصطناعي وكيفية تعاملنا مع بياناتك الشخصية.",
 };
 
 export default function PrivacyPage() {
@@ -16,9 +16,9 @@ export default function PrivacyPage() {
         <div style={s.navInner}>
           <Link href="/" style={s.logo}>
             <div style={{ width: 34, height: 34, borderRadius: 9, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: 5, flexShrink: 0 }}>
-              <Image src="/logo-transparent.png" alt="Jobbots" width={24} height={24} style={{ display: "block" }} />
+              <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={24} height={24} style={{ display: "block" }} />
             </div>
-            <span style={s.logoText}>Jobbots</span>
+            <span style={s.logoText}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
           </Link>
           <Link href="/portal/login" style={s.navBtn}>دخول المشترك</Link>
         </div>
@@ -37,7 +37,7 @@ export default function PrivacyPage() {
           {/* Sections */}
           <div style={s.sections}>
             <Section title="مقدمة">
-              تلتزم منصة Jobbots بحماية خصوصية مستخدميها والحفاظ على سرية معلوماتهم الشخصية. تشرح هذه السياسة كيفية جمع بياناتك واستخدامها وحمايتها.
+              تلتزم منصة بوت التقديم على الوظائف بالذكاء الاصطناعي بحماية خصوصية مستخدميها والحفاظ على سرية معلوماتهم الشخصية. تشرح هذه السياسة كيفية جمع بياناتك واستخدامها وحمايتها.
             </Section>
 
             <Section title="البيانات التي نجمعها">

@@ -5,14 +5,14 @@ import { Footer } from "@/components/footer";
 import { SPECIALIZATIONS } from "./data";
 
 export const metadata: Metadata = {
-  title: "وظائف حسب التخصص في السعودية 2026 | Jobbots",
-  description: "استعرض أكثر التخصصات الوظيفية طلباً في السعودية 2026. Jobbots يقدّم عنك تلقائياً على وظائف محاسب ومهندس ومبرمج ومسوق رقمي وغيرها.",
+  title: "وظائف حسب التخصص في السعودية 2026 | بوت التقديم على الوظائف بالذكاء الاصطناعي",
+  description: "استعرض أكثر التخصصات الوظيفية طلباً في السعودية 2026. بوت التقديم على الوظائف بالذكاء الاصطناعي يقدّم عنك تلقائياً على وظائف محاسب ومهندس ومبرمج ومسوق رقمي وغيرها.",
   alternates: { canonical: "https://jobbots.org/wazaif" },
   openGraph: {
-    title: "وظائف حسب التخصص في السعودية 2026 | Jobbots",
+    title: "وظائف حسب التخصص في السعودية 2026 | بوت التقديم على الوظائف بالذكاء الاصطناعي",
     description: "استعرض أكثر التخصصات الوظيفية طلباً في السعودية 2026.",
     url: "https://jobbots.org/wazaif",
-    siteName: "Jobbots",
+    siteName: "بوت التقديم على الوظائف بالذكاء الاصطناعي",
     locale: "ar_SA",
     type: "website",
   },
@@ -35,8 +35,8 @@ export default function JobsIndexPage() {
       <nav style={p.nav}>
         <div style={p.navInner}>
           <Link href="/" style={p.brand}>
-            <Image src="/logo-transparent.png" alt="Jobbots" width={22} height={22} style={{ borderRadius: 5 }} />
-            <span style={p.brandName}>Jobbots</span>
+            <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={22} height={22} style={{ borderRadius: 5 }} />
+            <span style={p.brandName}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
           </Link>
           <Link href="/portal/login" style={p.navCta}>دخول المشترك</Link>
         </div>
@@ -45,7 +45,7 @@ export default function JobsIndexPage() {
       <div style={p.hero}>
         <h1 style={p.h1}>وظائف حسب التخصص في السعودية</h1>
         <p style={p.desc}>
-          اختر تخصصك وتعرّف على سوق العمل — Jobbots يقدّم عنك تلقائياً على الوظائف المناسبة
+          اختر تخصصك وتعرّف على سوق العمل — بوت التقديم على الوظائف بالذكاء الاصطناعي يقدّم عنك تلقائياً على الوظائف المناسبة
         </p>
       </div>
 
@@ -73,7 +73,7 @@ export default function JobsIndexPage() {
       </div>
 
       <div style={p.ctaBanner}>
-        <h2 style={p.ctaTitle}>Jobbots يقدّم عنك على كل هذه الوظائف تلقائياً</h2>
+        <h2 style={p.ctaTitle}>بوت التقديم على الوظائف بالذكاء الاصطناعي يقدّم عنك على كل هذه الوظائف تلقائياً</h2>
         <p style={p.ctaSub}>لا تحتاج تقديم يدوي — البوت يعمل كل 30 دقيقة</p>
         <Link href="/store" style={p.ctaBtn}>اشترك وابدأ الآن</Link>
       </div>

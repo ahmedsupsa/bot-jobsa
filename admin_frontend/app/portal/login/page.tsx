@@ -86,8 +86,8 @@ export default function PortalLogin() {
       <div className="login-left">
         <div style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "auto" }}>
-            <Image src="/logo-transparent.png" alt="Jobbots" width={34} height={34} style={{ borderRadius: 8 }} />
-            <span style={{ color: "#fff", fontWeight: 700, fontSize: 17, letterSpacing: "-0.3px" }}>Jobbots</span>
+            <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={34} height={34} style={{ borderRadius: 8 }} />
+            <span style={{ color: "#fff", fontWeight: 700, fontSize: 17, letterSpacing: "-0.3px" }}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
           </div>
 
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingBottom: 40 }}>
@@ -120,7 +120,7 @@ export default function PortalLogin() {
             </div>
           </div>
 
-          <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>© 2026 Jobbots — جميع الحقوق محفوظة</p>
+          <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>© 2026 بوت التقديم على الوظائف بالذكاء الاصطناعي — جميع الحقوق محفوظة</p>
         </div>
       </div>
 
@@ -225,7 +225,7 @@ export default function PortalLogin() {
         background: "#0a0a0a", color: "rgba(255,255,255,0.25)",
         fontSize: 12, borderTop: "1px solid rgba(255,255,255,0.06)",
       }}>
-        © {yr} Jobbots — جميع الحقوق محفوظة
+        © {yr} بوت التقديم على الوظائف بالذكاء الاصطناعي — جميع الحقوق محفوظة
       </footer>
     </>
   );

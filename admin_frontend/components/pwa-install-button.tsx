@@ -75,7 +75,7 @@ export function PWAInstallButton() {
         <div style={iconBox}><Download size={18} style={{ color: "var(--accent)" }} /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ color: "var(--text)", fontSize: 13.5, fontWeight: 700, lineHeight: 1.3 }}>
-            ثبّت تطبيق Jobbots
+            ثبّت تطبيق بوت التقديم على الوظائف بالذكاء الاصطناعي
           </div>
           <div style={{ color: "var(--text3)", fontSize: 11.5, marginTop: 2, lineHeight: 1.4 }}>
             للوصول السريع من شاشتك الرئيسية
@@ -93,7 +93,7 @@ export function PWAInstallButton() {
         <div style={iconBox}><Share size={18} style={{ color: "var(--accent)" }} /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ color: "var(--text)", fontSize: 13.5, fontWeight: 700, lineHeight: 1.3 }}>
-            أضِف Jobbots لشاشتك
+            أضِف بوت التقديم على الوظائف بالذكاء الاصطناعي لشاشتك
           </div>
           <div style={{ color: "var(--text3)", fontSize: 11.5, marginTop: 2, lineHeight: 1.4 }}>
             اضغط مشاركة <Share size={11} style={{ display: "inline", verticalAlign: "middle" }} /> ثم "إضافة إلى الشاشة الرئيسية"

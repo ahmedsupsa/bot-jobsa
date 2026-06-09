@@ -330,10 +330,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-line shrink-0">
         <div style={{ width: 38, height: 38, borderRadius: 11, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 5 }}>
-          <Image src="/logo-transparent.png" alt="Jobbots" width={28} height={28} style={{ display: "block" }} />
+          <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={28} height={28} style={{ display: "block" }} />
         </div>
         <div className="min-w-0">
-          <div className="text-sm font-bold text-ink truncate">Jobbots</div>
+          <div className="text-sm font-bold text-ink truncate">بوت التقديم على الوظائف بالذكاء الاصطناعي</div>
           <div className="text-xs text-muted truncate">
             {me ? (me.isSuper ? "مدير عام" : `أهلاً، ${me.username}`) : "لوحة الإدارة"}
           </div>
@@ -423,9 +423,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         <header className="flex items-center justify-between border-b border-line bg-sidebar px-4 py-3 md:hidden">
           <div className="flex items-center gap-2">
             <div style={{ width: 30, height: 30, borderRadius: 9, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: 4 }}>
-              <Image src="/logo-transparent.png" alt="Jobbots" width={22} height={22} style={{ display: "block" }} />
+              <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={22} height={22} style={{ display: "block" }} />
             </div>
-            <span className="text-sm font-semibold text-ink">Jobbots</span>
+            <span className="text-sm font-semibold text-ink">بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -452,7 +452,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             borderTop: "1px solid var(--border)",
             textAlign: "center", color: "var(--text4)", fontSize: 12,
           }}>
-            © {new Date().getFullYear()} Jobbots — جميع الحقوق محفوظة
+            © {new Date().getFullYear()} بوت التقديم على الوظائف بالذكاء الاصطناعي — جميع الحقوق محفوظة
           </footer>
         </main>
       </div>

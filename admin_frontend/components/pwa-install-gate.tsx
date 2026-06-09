@@ -72,7 +72,7 @@ export function PWAInstallGate({ children }: { children: React.ReactNode }) {
           <div style={styles.content}>
             <span style={styles.icon}>📱</span>
             <div style={styles.text}>
-              <strong style={styles.title}>ثبّت تطبيق Jobbots</strong>
+              <strong style={styles.title}>ثبّت تطبيق بوت التقديم على الوظائف بالذكاء الاصطناعي</strong>
               <span style={styles.sub}>
                 {isIOS
                   ? <>اضغط <Share size={12} style={{ verticalAlign: "middle" }} /> ثم "إضافة للشاشة الرئيسية"</>

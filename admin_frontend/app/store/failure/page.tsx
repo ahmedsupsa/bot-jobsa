@@ -25,9 +25,9 @@ function FailureContent() {
     <div dir="rtl" style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", marginBottom: 48 }}>
         <div style={{ width: 36, height: 36, borderRadius: 10, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: 5, flexShrink: 0 }}>
-          <Image src="/logo-transparent.png" alt="Jobbots" width={26} height={26} style={{ display: "block" }} />
+          <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={26} height={26} style={{ display: "block" }} />
         </div>
-        <span style={{ color: "#fff", fontSize: 18, fontWeight: 800 }}>Jobbots</span>
+        <span style={{ color: "#fff", fontSize: 18, fontWeight: 800 }}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
       </Link>
 
       <div style={{ background: "#111", border: "1px solid #2a2a2a", borderRadius: 24, padding: "48px 40px", maxWidth: 420, width: "100%", textAlign: "center" }}>

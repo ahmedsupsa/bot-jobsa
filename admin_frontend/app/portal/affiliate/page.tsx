@@ -140,8 +140,8 @@ export default function AffiliatePage() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "Jobbots — التقديم التلقائي على الوظائف",
-          text: "وفّر وقتك في البحث عن وظيفة! Jobbots يقدّم لك تلقائياً.",
+          title: "بوت التقديم على الوظائف بالذكاء الاصطناعي — التقديم التلقائي على الوظائف",
+          text: "وفّر وقتك في البحث عن وظيفة! بوت التقديم على الوظائف بالذكاء الاصطناعي يقدّم لك تلقائياً.",
           url: link,
         });
       } catch {}

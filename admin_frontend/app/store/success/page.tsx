@@ -66,9 +66,9 @@ function SuccessContent() {
     <div dir="rtl" style={s.page}>
       <Link href="/" style={s.logo}>
         <div style={{ width: 36, height: 36, borderRadius: 10, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", padding: 5, flexShrink: 0 }}>
-          <Image src="/logo-transparent.png" alt="Jobbots" width={26} height={26} style={{ display: "block" }} />
+          <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={26} height={26} style={{ display: "block" }} />
         </div>
-        <span style={s.logoText}>Jobbots</span>
+        <span style={s.logoText}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
       </Link>
 
       <div style={s.card}>
@@ -86,7 +86,7 @@ function SuccessContent() {
             </div>
             <h1 style={s.title}>تم إنشاء حسابك بنجاح! 🎉</h1>
             <p style={s.desc}>
-              اشتراكك فعّال — حسابك جاهز الآن. اضغط على الزر أدناه لتدخل بوابتك وتبدأ رحلتك مع Jobbots.
+              اشتراكك فعّال — حسابك جاهز الآن. اضغط على الزر أدناه لتدخل بوابتك وتبدأ رحلتك مع بوت التقديم على الوظائف بالذكاء الاصطناعي.
             </p>
 
             <div style={s.infoBox}>

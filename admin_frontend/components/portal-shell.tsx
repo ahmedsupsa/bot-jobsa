@@ -94,10 +94,10 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
           marginBottom: 10, flexShrink: 0,
         }}>
           <div style={{ width: 40, height: 40, borderRadius: 12, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 6 }}>
-            <Image src="/logo-transparent.png" alt="Jobbots" width={28} height={28} style={{ display: "block" }} />
+            <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={28} height={28} style={{ display: "block" }} />
           </div>
           <div>
-            <p style={{ color: t.text, fontSize: 15, fontWeight: 800, margin: 0 }}>Jobbots</p>
+            <p style={{ color: t.text, fontSize: 15, fontWeight: 800, margin: 0 }}>بوت التقديم على الوظائف بالذكاء الاصطناعي</p>
             <p style={{ color: t.text3, fontSize: 11, margin: "2px 0 0" }}>بوابة المستخدمين</p>
           </div>
         </div>
@@ -192,9 +192,9 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 36, height: 36, borderRadius: 11, background: "#000", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 5 }}>
-                <Image src="/logo-transparent.png" alt="Jobbots" width={26} height={26} style={{ display: "block" }} />
+                <Image src="/logo-transparent.png" alt="بوت التقديم على الوظائف بالذكاء الاصطناعي" width={26} height={26} style={{ display: "block" }} />
               </div>
-              <span style={{ color: t.text, fontSize: 15, fontWeight: 800 }}>Jobbots</span>
+              <span style={{ color: t.text, fontSize: 15, fontWeight: 800 }}>بوت التقديم على الوظائف بالذكاء الاصطناعي</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <button onClick={toggle} aria-label="تبديل الوضع" style={{
@@ -226,7 +226,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
             borderTop: `1px solid ${t.border}`,
             textAlign: "center", color: t.text3, fontSize: 12,
           }}>
-            © {new Date().getFullYear()} Jobbots — جميع الحقوق محفوظة
+            © {new Date().getFullYear()} بوت التقديم على الوظائف بالذكاء الاصطناعي — جميع الحقوق محفوظة
           </footer>
         </div>
       </main>

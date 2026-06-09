@@ -782,7 +782,7 @@ export default function AccountPage() {
               ) : (
                 <div style={{ padding: "8px 0" }}>
                   {invoices.map((o, i) => {
-                    const productName = o.store_products?.name || "اشتراك Jobbots";
+                    const productName = o.store_products?.name || "اشتراك بوت التقديم على الوظائف بالذكاء الاصطناعي";
                     const dateStr = o.paid_at ? new Date(o.paid_at).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" }) : "—";
                     const year = o.paid_at ? new Date(o.paid_at).getFullYear() : new Date().getFullYear();
                     const invNum = `JBT-${year}-${o.id.slice(0, 8).toUpperCase()}`;
