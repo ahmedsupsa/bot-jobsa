@@ -6,7 +6,7 @@ import {
   CheckCircle2, XCircle, AlertCircle, RefreshCw, Clock,
   Database, Bot, Mail, Cpu, Users, Briefcase, Send,
   ShoppingCart, MessageCircle, Bell, Key, Zap, Activity,
-  TrendingUp, AlertTriangle, Sparkles, BrainCircuit, Link,
+  TrendingUp, AlertTriangle, Link, FileText, FileSearch, GitBranch,
 } from "lucide-react";
 
 /* ── Telegram Webhook Panel ────────────────────────────────────────── */
@@ -132,7 +132,7 @@ interface StatusData {
     supabase: ServiceStatus;
     telegram: ServiceStatus;
     resend: ServiceStatus;
-    gemini: ServiceStatus;
+    smart_system: ServiceStatus;
   };
   users: { total: number; active: number; with_cv: number; with_smtp: number; with_prefs: number };
   jobs: { total: number; active: number };
@@ -156,16 +156,16 @@ interface StatusData {
   };
 }
 
-interface ModelResult {
-  id: string; label: string; priority: number;
-  ok: boolean; latencyMs?: number; status?: number; error?: string; quota?: boolean;
+interface SmartSystemInfo {
+  ok: boolean; note?: string;
 }
 interface AiStatusData {
-  ok: boolean; key_set: boolean;
-  active_model: string | null; active_model_label: string | null; active_latency_ms: number | null;
-  models: ModelResult[];
+  ok: boolean;
+  systems: Record<string, SmartSystemInfo>;
   features: Array<{ key: string; label: string; route: string }>;
   features_ok: boolean;
+  worker_active_24h: boolean;
+  cv_count: number;
   checked_at: string;
 }
 
@@ -262,135 +262,90 @@ function ServiceCard({ icon: Icon, label, status, extra }: { icon: any; label: s
   );
 }
 
-/* ── Gemini AI Panel ──────────────────────────────────────────── */
-function ModelRow({ m, isActive }: { m: ModelResult; isActive: boolean }) {
-  let badge: React.ReactNode;
-  if (m.ok) {
-    badge = (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
-        <CheckCircle2 size={10} /> يعمل {m.latencyMs ? `(${m.latencyMs}ms)` : ""}
-      </span>
-    );
-  } else if (m.quota) {
-    badge = (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
-        <AlertCircle size={10} /> تجاوز الحصة (429)
-      </span>
-    );
-  } else if (m.status === 404) {
-    badge = (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-700 dark:text-gray-400 px-2 py-0.5 rounded-full">
-        <XCircle size={10} /> غير متاح
-      </span>
-    );
-  } else {
-    badge = (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full" title={m.error}>
-        <XCircle size={10} /> خطأ
-      </span>
-    );
-  }
+/* ── Smart Systems Panel (non-AI replacement) ─────────────────── */
+const SYSTEM_LABELS: Record<string, { title: string; desc: string; icon: any }> = {
+  cover_letter:  { title: "قوالب رسائل التقديم", desc: "5 قوالب إبداعية مكتوبة مسبقاً", icon: FileText },
+  cv_validation: { title: "تدقيق السيرة الذاتية", desc: "كلمات مفتاحية + أنماط (بدون AI)", icon: FileSearch },
+  job_matching:  { title: "مطابقة الوظائف", desc: "Taxonomy + كلمات مفتاحية", icon: GitBranch },
+};
 
-  return (
-    <div className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isActive ? "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800" : "bg-gray-50 dark:bg-gray-700/40"}`}>
-      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${m.ok ? "bg-emerald-500" : m.quota ? "bg-amber-400" : "bg-gray-300 dark:bg-gray-600"}`} />
-      <div className="flex-1 min-w-0">
-        <span className="text-xs font-medium text-gray-800 dark:text-gray-100">{m.label}</span>
-        {isActive && <span className="mr-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">← نشط</span>}
-      </div>
-      {badge}
-    </div>
-  );
-}
-
-function AiPanel({ ai, loading }: { ai: AiStatusData | null; loading: boolean }) {
+function SmartSystemsPanel({ ai, loading }: { ai: AiStatusData | null; loading: boolean }) {
   if (loading && !ai) {
     return (
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 flex items-center justify-center gap-2 text-gray-400 text-sm">
-        <RefreshCw size={14} className="animate-spin" /> جاري فحص الذكاء الاصطناعي...
+        <RefreshCw size={14} className="animate-spin" /> جاري فحص الأنظمة...
       </div>
     );
   }
   if (!ai) return null;
 
-  const FEATURES_AR: Record<string, string> = {
-    cv_parse:    "تحليل السيرة الذاتية",
-    cover_letter:"رسالة التغطية (Worker)",
-    job_spec:    "تخصصات الوظائف",
-    job_bulk:    "رفع وظائف Excel",
-    job_fetch:   "استيراد وظائف تلقائي",
-  };
-
   return (
-    <div className={`rounded-xl border p-4 ${ai.ok ? "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" : "border-red-200 dark:border-red-800 bg-red-50/40 dark:bg-red-900/10"}`}>
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-xl ${ai.ok ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400" : "bg-red-100 dark:bg-red-900/30 text-red-500"}`}>
-            <BrainCircuit size={18} />
+          <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+            <Zap size={18} />
           </div>
           <div>
-            <div className="font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-              Gemini AI
-              {!ai.key_set && (
-                <span className="text-xs font-normal text-red-500 bg-red-50 dark:bg-red-900/30 px-1.5 py-0.5 rounded">
-                  المفتاح غير مضبوط
-                </span>
-              )}
+            <div className="font-semibold text-gray-800 dark:text-gray-100">
+              الأنظمة البديلة (بدون ذكاء اصطناعي)
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              {ai.ok
-                ? `النموذج النشط: ${ai.active_model_label} • ${ai.active_latency_ms}ms`
-                : ai.key_set ? "جميع النماذج معطّلة حالياً" : "GEMINI_API_KEY غير موجود"}
+              {ai.ok ? "جميع الأنظمة تعمل — قوالب + مطابقة محلية" : "بعض الأنظمة تحتاج مراجعة"}
             </div>
           </div>
         </div>
-        <StatusBadge ok={ai.ok} label={ai.ok ? "يعمل" : "معطّل"} />
+        <StatusBadge ok={ai.ok} label={ai.ok ? "يعمل" : "خلل"} />
       </div>
 
-      {/* Alert if all broken */}
-      {!ai.ok && ai.key_set && (
-        <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2.5 text-xs text-red-700 dark:text-red-400 flex items-start gap-2">
-          <AlertTriangle size={13} className="mt-0.5 shrink-0" />
-          <span>
-            الذكاء الاصطناعي <strong>لا يعمل</strong> — المزايا التالية ستفشل:
-            رسائل التغطية، تحليل السيرة الذاتية، تخصصات الوظائف.
-            تحقق من رصيد Gemini أو تجاوز الحصة (429).
-          </span>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Models */}
+        {/* Systems */}
         <div>
           <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1.5">
-            <Sparkles size={11} /> النماذج المتاحة (fallback chain)
+            <Cpu size={11} /> الأنظمة المستبدلة
           </div>
           <div className="space-y-1.5">
-            {ai.models.map(m => (
-              <ModelRow key={m.id} m={m} isActive={m.id === ai.active_model} />
-            ))}
+            {Object.entries(ai.systems).map(([key, sys]) => {
+              const meta = SYSTEM_LABELS[key] || { title: key, desc: "", icon: Cpu };
+              const Icon = meta.icon;
+              return (
+                <div key={key} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700/40">
+                  <div className="w-1.5 h-1.5 rounded-full shrink-0 bg-emerald-500" />
+                  <Icon size={14} className="text-gray-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs font-medium text-gray-800 dark:text-gray-100">{meta.title}</span>
+                    <div className="text-xs text-gray-400">{sys.note || meta.desc}</div>
+                  </div>
+                  <StatusBadge ok={sys.ok} label={sys.ok ? "يعمل" : "خلل"} />
+                </div>
+              );
+            })}
           </div>
         </div>
 
         {/* Features */}
         <div>
           <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1.5">
-            <Zap size={11} /> المزايا التي تعتمد على الذكاء الاصطناعي
+            <Zap size={11} /> المزايا المعتمدة عليها
           </div>
           <div className="space-y-1.5">
             {ai.features.map(f => (
               <div key={f.key} className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700/40 text-xs">
-                <span className="text-gray-700 dark:text-gray-200">{FEATURES_AR[f.key] || f.label}</span>
-                <StatusBadge ok={ai.features_ok} label={ai.features_ok ? "جاهزة" : "معطّلة"} />
+                <span className="text-gray-700 dark:text-gray-200">{f.label}</span>
+                <span className="text-xs text-gray-400 font-mono">{f.route}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="mt-3 text-xs text-gray-400 dark:text-gray-500 text-left" dir="ltr">
-        Last checked: {ai.checked_at ? new Date(ai.checked_at).toLocaleTimeString("ar-SA") : "—"}
+      {/* Extra info */}
+      <div className="mt-3 flex items-center gap-4 text-xs text-gray-400 bg-gray-50 dark:bg-gray-700/30 rounded-lg px-3 py-2">
+        <span>آخر 24 ساعة: {ai.worker_active_24h ? "✅ worker شغال" : "⚠️ worker ما تشغّل"}</span>
+        <span>•</span>
+        <span>{ai.cv_count} سيرة مرفوعة</span>
+        <span className="mr-auto">{ai.checked_at ? new Date(ai.checked_at).toLocaleTimeString("ar-SA") : "—"}</span>
       </div>
     </div>
   );
@@ -490,17 +445,17 @@ export default function StatusPage() {
                   <ServiceCard icon={Database} label="Supabase" status={data.services.supabase} />
                   <ServiceCard icon={Bot} label="بوت التيليجرام" status={data.services.telegram} />
                   <ServiceCard icon={Mail} label="Resend (إيميلات)" status={data.services.resend} />
-                  <ServiceCard icon={Cpu} label="Gemini AI" status={data.services.gemini} />
+                  <ServiceCard icon={Zap} label="الأنظمة البديلة" status={data.services.smart_system} extra="قوالب + مطابقة محلية" />
                 </div>
               </div>
             )}
 
-            {/* ── Gemini AI Deep Status ── */}
+            {/* ── Smart Systems Status ── */}
             <div>
               <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                <BrainCircuit size={14} /> الذكاء الاصطناعي — تفاصيل كاملة
+                <Zap size={14} /> الأنظمة البديلة (بدون ذكاء اصطناعي)
               </h2>
-              <AiPanel ai={ai} loading={aiLoading} />
+              <SmartSystemsPanel ai={ai} loading={aiLoading} />
             </div>
 
             {/* Worker Status */}

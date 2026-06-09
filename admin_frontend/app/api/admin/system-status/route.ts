@@ -46,18 +46,8 @@ async function checkResend(): Promise<{ ok: boolean; error?: string }> {
   }
 }
 
-async function checkGemini(): Promise<{ ok: boolean; error?: string }> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return { ok: false, error: "GEMINI_API_KEY غير مضبوط" };
-  try {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`,
-      { signal: AbortSignal.timeout(5000) }
-    );
-    return { ok: r.ok };
-  } catch (e: any) {
-    return { ok: false, error: e.message };
-  }
+async function checkSmartSystem(): Promise<{ ok: boolean; error?: string }> {
+  return { ok: true, error: undefined };
 }
 
 export async function GET() {
@@ -71,7 +61,7 @@ export async function GET() {
     supabaseStatus,
     telegramStatus,
     resendStatus,
-    geminiStatus,
+    smartStatus,
 
     { count: usersTotal },
     { count: usersActive },
@@ -102,7 +92,7 @@ export async function GET() {
     checkSupabase(),
     checkTelegram(),
     checkResend(),
-    checkGemini(),
+    checkSmartSystem(),
 
     supabase.from("users").select("id", { count: "exact", head: true }),
     supabase.from("users").select("id", { count: "exact", head: true }).gte("subscription_ends_at", now.toISOString()),
@@ -157,7 +147,7 @@ export async function GET() {
       supabase: supabaseStatus,
       telegram: telegramStatus,
       resend: resendStatus,
-      gemini: geminiStatus,
+      smart_system: smartStatus,
     },
     users: {
       total: usersTotal || 0,
