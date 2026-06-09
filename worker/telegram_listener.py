@@ -13,178 +13,12 @@ from datetime import datetime, timedelta, timezone as tz
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), "admin_frontend", ".env"))
 
-import httpx
-
 logger = logging.getLogger(__name__)
 
-SUPABASE_URL  = os.getenv("SUPABASE_URL", "").rstrip("/")
-SUPABASE_KEY  = os.getenv("SUPABASE_KEY", "") or os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 BOT_TOKEN     = os.getenv("TELEGRAM_BOT_TOKEN", "")
 JOB_CHANNEL   = os.getenv("TELEGRAM_JOB_CHANNEL_ID", "")
 ADMIN_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
-_SB_HEADERS = lambda: {
-    "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_KEY}",
-    "Content-Type": "application/json",
-    "Prefer": "return=representation",
-}
-
-_EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
-
-# ── فلتر محلي قبل الاستخراج (يوفّر تحميل غير ضروري) ───────────────────────
-# كلمات دالة على وجود وظيفة — يجب أن تظهر واحدة على الأقل
-_JOB_KEYWORDS = [
-    "وظيف", "شاغر", "مطلوب", "توظيف", "تعيين", "فرصة عمل",
-    "نبحث عن", "نرحب بـ", "للتقديم", "أرسل سيرتك", "ارسل cv",
-    "cv على", "سيرة ذاتية", "راتب", "الراتب",
-    "hr@", "jobs@", "careers@", "recruitment",
-    "hiring", "job", "vacancy", "position", "required",
-    "فرصة وظيفية", "وظائف شاغرة", "فرص عمل",
-    "مدير", "محاسب", "مهندس", "مبرمج", "مصمم", "محامي",
-    "مسوّق", "مندوب", "سكرتير", "موظف", "أخصائي",
-    "مشرف", "مدير", "رئيس قسم", "تقني", "فني",
-]
-
-# رسائل واضحة لا علاقة لها بالوظائف — تُتجاهل فوراً بدون AI
-_SKIP_PATTERNS = [
-    r"whatsapp\.com/channel",
-    r"t\.me/\+",           # دعوة لقناة تيليقرام
-    r"قناة\s+وظائف\s+واتساب",
-    r"اشترك في قناتنا",
-    r"تابعونا على",
-    r"رابط القناة",
-    r"انضم إلى قناة",
-    r"شارك مع أصدقائك",
-    r"^[\U0001F300-\U0001FFFF\s]+$",  # إيموجي فقط
-]
-_SKIP_RE = re.compile("|".join(_SKIP_PATTERNS), re.IGNORECASE)
-
-def _is_likely_job(text: str) -> bool:
-    """فلتر محلي — يتحقق بدون AI هل الرسالة تحتوي وظيفة."""
-    # تجاهل رسائل الترويج الواضحة
-    if _SKIP_RE.search(text):
-        return False
-    t = text.lower()
-    return any(kw in t for kw in _JOB_KEYWORDS)
-
-
-# ── استخراج الوظائف ذكياً بدون AI ─────────────────────────────────────────────
-
-_QUAL_PREFIXES = ("دبلوم", "بكالوريوس", "ماجستير", "دكتوراه", "شهادة", "حملة", "مؤهل", "خبرة", "راتب")
-
-_GENERIC_TITLES = {
-    "وظائف", "وظيفة", "فرصة عمل", "فرص عمل", "موظف", "موظفة", "موظفين",
-    "وظائف شاغرة", "وظائف نسائية", "وظائف للنساء", "وظائف للجنسين",
-    "وظائف السعودية", "وظائف الرياض", "وظائف جدة",
-}
-
-
-def _clean_line(text: str) -> str:
-    """يزيل الإيموجي والرموز من بداية السطر"""
-    return re.sub(r"^[\U0000FE00-\U0000FEFF\U0001F300-\U0001FFFF\U00002000-\U00002060\U00002500-\U000027BF\U00002900-\U0000297F\s🟢🔵🟣🔴⚫⚪🔴🟠🟡🟢🔵🟣⬛⬜⭐✅❌❗❓➡️🔹🔸🔻🔺🔴🟠🟡🟢🔵🟣⚫⚪]+", "", text).strip()
-
-
-def _extract_jobs_smart(text: str) -> list[dict]:
-    """
-    يستخرج الوظائف من نص التليجرام ذكياً بدون AI.
-    يعيد: [{title_ar, company, application_email, link_url, description_ar}]
-    """
-    results: list[dict] = []
-    lines = [l.strip() for l in text.split("\n") if l.strip()]
-
-    # 1. استخراج الإيميلات
-    emails = list(set(_EMAIL_RE.findall(text)))
-
-    # 2. استخراج الروابط
-    links = re.findall(r"https?://[^\s]{5,200}", text)
-    link = links[0] if links else None
-
-    # 3. البحث عن المسمى الوظيفي الحقيقي
-    titles_found = []
-    company_found = ""
-    description = text.strip()
-
-    # أنماط عنوان الوظيفة — مرتبة من الأقوى للأضعف
-    TITLE_PATTERNS = [
-        # مطلوب [مسمى] — الأقوى
-        r"مطلوب\s+([^\n،,\.]{3,60})",
-        # [مسمى] مطلوب
-        r"([^\n،,\.]{3,60})\s+مطلوب(?:\s+للعمل)?",
-        #  (توظيف|تعيين|فرصة عمل) [مسمى]
-        r"(?:توظيف|تعيين|فرصة عمل)\s+([^\n،,\.]{3,60})",
-        #  تدريب [مسمى] — تدريب تعاوني / تدريب صيفي
-        r"(?:🟢\s*)?تدريب\s+([^\n،,\.]{3,60})",
-        # وصف وظيفي: / المسمى: / الوظيفة:
-        r"(?:المسمى\s*(?:الوظيفي)?|الوظيفة|مسمى\s*(?:الوظيفة)?)\s*[:\-]\s*([^\n،,]{3,60})",
-    ]
-
-    # 3أ. البحث في كل الأسطر عن عنوان
-    for line in lines:
-        cline = _clean_line(line)
-        if not cline or len(cline) < 3:
-            continue
-
-        # جرب الأنماط
-        found = None
-        for pat in TITLE_PATTERNS:
-            m = re.search(pat, cline)
-            if m:
-                t = m.group(1).strip().rstrip("،,.#:- ")
-                if 3 <= len(t) <= 60 and not t.startswith(_QUAL_PREFIXES) and t not in _GENERIC_TITLES:
-                    found = t
-                    break
-
-        if found:
-            titles_found.append(found)
-            break
-
-    # 3ب. إذا ما لقينا — جرب أول سطر غير مؤهل وغير رابط
-    if not titles_found:
-        for line in lines:
-            cline = _clean_line(line)
-            if not cline or len(cline) < 5:
-                continue
-            if _EMAIL_RE.search(cline) or "http" in cline or cline.startswith("@"):
-                continue
-            if any(cline.startswith(p) for p in _QUAL_PREFIXES):
-                continue
-            if cline in _GENERIC_TITLES:
-                continue
-            # تجنب الأسطر اللي تشبه مواقع (الرياض - جدة - ...)
-            if re.match(r"^[\u0600-\u06FF\s\-]+$", cline) and "-" in cline:
-                continue
-            titles_found.append(cline[:60])
-            break
-
-    # 3ج. البحث عن الشركة
-    for line in lines:
-        cline = _clean_line(line)
-        m = re.search(r"(?:شركة|مؤسسة|مجموعة|بنك|مستشفى|جامعة|مكتب)\s+([^\s،,.\n]{2,30}(?:\s+[^\s،,.\n]{2,30}){0,3})", cline)
-        if m:
-            c = m.group(1).strip().rstrip("،,.")
-            if 2 <= len(c) <= 40:
-                company_found = c
-                break
-
-    # 4. إنشاء كائنات الوظائف (حد أقصى وظيفة واحدة لكل رسالة)
-    title = titles_found[0] if titles_found else ""
-    if not title or len(title) < 3 or title in _GENERIC_TITLES:
-        return []
-
-    # تنظيف العنوان
-    title = re.sub(r"^(?:مطلوب|توظيف|تعيين|فرصة عمل|وظيفة|تدريب)\s+", "", title.strip()).strip()
-    title = re.sub(r"\s+", " ", title)
-
-    results.append({
-        "title_ar": title,
-        "company": company_found or None,
-        "application_email": emails[0] if emails else None,
-        "link_url": link,
-        "description_ar": description[:1000],
-    })
-
-    return results
 
 
 # ── ملفات محلية للتخزين المؤقت ──────────────────────────────────────────
@@ -216,29 +50,6 @@ def _mark_seen(msg_uid: str):
     _save_json(_SEEN_FILE, list(seen))
 
 
-def _save_pending(job: dict, uid: str, channel: str):
-    """يحفظ الوظيفة في الملف المحلي pending_jobs.json بدلاً من Supabase"""
-    pending = _load_json(_PENDING_FILE, [])
-    entry = {
-        "id": uid,
-        "title_ar": job.get("title_ar", "وظيفة من Telegram").strip(),
-        "company": job.get("company", "").strip() or None,
-        "description_ar": job.get("description_ar", "").strip() or None,
-        "application_email": job.get("application_email") or None,
-        "link_url": job.get("link_url") or None,
-        "source_account": channel,
-        "fetched_at": datetime.now(tz.utc).isoformat(),
-        "status": "pending",  # pending | published | discarded
-    }
-    # تجنب التكرار في الملف
-    existing = [e for e in pending if e.get("id") == uid]
-    if existing:
-        return False
-    pending.append(entry)
-    _save_json(_PENDING_FILE, pending)
-    return True
-
-
 # ── Telegram Bot: إرسال رسالة ─────────────────────────────────────────────
 async def _send_tg(chat_id: str, text: str, disable_preview: bool = False):
     if not BOT_TOKEN or not chat_id:
@@ -258,90 +69,39 @@ async def _send_tg(chat_id: str, text: str, disable_preview: bool = False):
         pass
 
 
-# ── فلتر وظائف التمهير والتدريب التعاوني ─────────────────────────────────
-_TAMHEER_KEYWORDS = [
-    "تمهير", "tamheer",
-    "تدريب تعاوني", "التدريب التعاوني", "تعاوني",
-    "cooperative training", "co-op",
-    "تدريب طلاب", "برنامج تدريبي للطلاب",
-    "متدرب", "متدربة",
-]
-
-def _is_tamheer(title: str) -> bool:
-    t = title.lower()
-    return any(kw in t for kw in _TAMHEER_KEYWORDS)
-
-
-# ── معالجة رسالة جديدة ───────────────────────────────────────────────────
+# ── معالجة رسالة جديدة — تحفظ كل الرسائل بدون فلتر ──────────────────────
 async def process_message(text: str, channel_title: str, channel_id: str, msg_id: int):
     text = text.strip()
-    if len(text) < 30:
-        logger.info("[TG] ⏭️ نص قصير جداً (%d حرف) من %s", len(text), channel_title)
+    if len(text) < 10:
         return
 
     uid_base = f"{channel_id}:{msg_id}:{text[:100]}"
     uid = hashlib.md5(uid_base.encode()).hexdigest()
 
     if _msg_exists(uid):
-        logger.info("[TG] ⏭️ مكرر — تجاهل من %s", channel_title)
         return
 
-    logger.info("[TG] 🔍 استخراج ذكي من %s: %s...", channel_title, text[:60].replace("\n", " "))
-    jobs = _extract_jobs_smart(text)
-    if not jobs:
-        logger.info("[TG] ❌ لم يجد وظائف في رسالة من %s", channel_title)
+    # حفظ الرسالة كاملة بدون استخراج
+    entry = {
+        "id": uid,
+        "title_ar": text[:80].replace("\n", " ").strip(),
+        "company": None,
+        "description_ar": text[:5000],
+        "application_email": None,
+        "link_url": None,
+        "source_account": channel_title,
+        "fetched_at": datetime.now(tz.utc).isoformat(),
+        "status": "pending",
+    }
+
+    pending = _load_json(_PENDING_FILE, [])
+    if any(e.get("id") == uid for e in pending):
         return
-    logger.info("[TG] ✅ وجد %d وظيفة من %s", len(jobs), channel_title)
+    pending.append(entry)
+    _save_json(_PENDING_FILE, pending)
+    _mark_seen(uid)
 
-    saved = 0
-    for i, job in enumerate(jobs):
-        title = job.get("title_ar", "").strip()
-        if not title:
-            continue
-
-        # فلتر تمهير والتدريب التعاوني — لا تُحفظ في DB ولا تُنشر
-        if _is_tamheer(title):
-            logger.info("[TG] 🚫 تمهير/تدريب — تجاهل: %s", title)
-            continue
-
-        # فلتر: مسمى يبدأ بمؤهل تعليمي — هذا شرط وليس وظيفة
-        _QUAL_PREFIXES = ("دبلوم", "بكالوريوس", "ماجستير", "دكتوراه", "شهادة", "حملة", "مؤهل")
-        if any(title.startswith(p) for p in _QUAL_PREFIXES):
-            logger.info("[TG] 🚫 مسمى يبدو مؤهلاً تعليمياً — تجاهل: %s", title)
-            continue
-
-        # فلتر: مسميات عامة جداً لا تصف وظيفة حقيقية
-        _GENERIC_TITLES = {
-            "موظف تقنية معلومات", "موظفة تقنية معلومات",
-            "وظائف تقنية", "وظيفة تقنية",
-            "وظائف هندسية", "وظيفة هندسية",
-            "وظائف إدارية", "وظيفة إدارية",
-            "وظائف", "وظيفة", "فرصة عمل", "فرص عمل",
-            "موظف", "موظفة",
-        }
-        if title in _GENERIC_TITLES:
-            logger.info("[TG] 🚫 مسمى عام جداً — تجاهل: %s", title)
-            continue
-
-        # fallback للإيميل
-        if not job.get("application_email"):
-            m = _EMAIL_RE.search(text)
-            if m:
-                job["application_email"] = m.group()
-
-        job_uid = f"{uid}_{i}"
-        ok = _save_pending(job, job_uid, channel_title)
-        if ok:
-            saved += 1
-            _mark_seen(job_uid)
-            logger.info(f"[TG] حُفظت في pending_jobs.json: {title} من {channel_title}")
-        else:
-            logger.info(f"[TG] ⏭️ مكرر في الملف — تجاهل: {title}")
-
-    if saved:
-        logger.info(f"[TG] {saved} وظيفة جديدة من {channel_title}")
-    else:
-        logger.info(f"[TG] 0 وظائف جديدة من {channel_title}")
+    logger.info("[TG] 💾 رسالة من %s — %d حرف", channel_title, len(text))
 
 
 # ── تشغيل المستمع ─────────────────────────────────────────────────────────
