@@ -423,7 +423,7 @@ async def run_listener():
     except Exception as _e:
         logger.warning("[TG-Listener] خطأ اشتراك القنوات: %s", _e)
 
-    # ── قائمة القنوات فقط (بدون جلب تاريخي) ────────────────────
+    # ── قائمة القنوات + جلب آخر 7 أيام ──────────────────────────
     try:
         from telethon.tl.types import Channel
         channels_entities = []
@@ -442,10 +442,34 @@ async def run_listener():
         )
         logger.info("[TG-Listener] ✅ متصل — يراقب %d قناة", len(channel_names))
         await _send_tg(ADMIN_CHAT_ID, summary)
+
+        # ── جلب آخر 7 أيام من كل قناة ──────────────────────────
+        cutoff = datetime.now(tz.utc) - timedelta(days=7)
+        logger.info("[TG-Listener] 🔄 بدء جلب آخر 7 أيام من %d قناة...", len(channels_entities))
+
+        for ch in channels_entities:
+            ch_title = getattr(ch, "title", str(ch.id))
+            ch_id = str(ch.id)
+            try:
+                count = 0
+                async for msg in client.iter_messages(ch, offset_date=cutoff, reverse=False, limit=200):
+                    text = msg.text or msg.message or ""
+                    if not text.strip() or len(text.strip()) < 30:
+                        continue
+                    await process_message(text.strip(), ch_title, ch_id, msg.id)
+                    count += 1
+                    if count % 20 == 0:
+                        await asyncio.sleep(0.5)  # تجنب rate limit
+                logger.info("[TG-Listener] 📥 قناة %s: فحص %d رسالة", ch_title, count)
+            except Exception as e:
+                logger.warning("[TG-Listener] ⚠️ قناة %s: خطأ في الجلب — %s", ch_title, e)
+
+        logger.info("[TG-Listener] ✅ انتهى جلب آخر 7 أيام")
+        await _send_tg(ADMIN_CHAT_ID, f"✅ انتهى جلب آخر 7 أيام من {len(channels_entities)} قناة")
     except Exception as e:
         logger.warning("[TG-Listener] تعذّر جلب القنوات: %s", e)
 
-    # النشر يُدار الآن عبر Supabase Edge Function (tg-poster) + pg_cron
+    # ── الاستماع للرسائل الجديدة ────────────────────────────────
     await client.run_until_disconnected()
 
 
