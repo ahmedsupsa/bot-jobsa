@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Search, Save, User, FileText, Upload, Check, Loader2,
   ChevronDown, ChevronUp, Tags, Calendar, Trash2, KeyRound,
-  Copy, Mail, WifiOff, Eye, X, Phone, MapPin, Clock, Send, Download,
+  Copy, Mail, WifiOff, Eye, X, Phone, MapPin, Clock, Send, Download, Zap, AlertCircle,
 } from "lucide-react";
 
 type UserRow = {
@@ -24,6 +24,9 @@ type UserRow = {
   last_email_test_at?: string | null;
   has_cv?: boolean;
   cv_file_name?: string | null;
+  has_app_password?: boolean;
+  cover_letter_viewed?: boolean;
+  cv_rejected?: boolean;
 };
 
 type Field = { id: string; name_ar: string };
@@ -249,6 +252,16 @@ function UserGridCard({
             <WifiOff size={10} /> بدون إيميل
           </span>
         )}
+
+        {user.email_connected && user.has_app_password && user.cover_letter_viewed && user.has_cv && !user.cv_rejected ? (
+          <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-400">
+            <Zap size={10} /> جاهز للإرسال
+          </span>
+        ) : user.email_connected ? (
+          <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-400">
+            <AlertCircle size={10} /> غير مكتمل
+          </span>
+        ) : null}
 
         {user.has_cv ? (
           <span className="inline-flex items-center gap-1 rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[11px] text-blue-400">
@@ -549,6 +562,42 @@ function UserSidePanel({
                 {emailSaved ? "تم" : "حفظ"}
               </button>
             </div>
+          </Section>
+
+          <Section title="جاهزية التقديم">
+            {(() => {
+              const checks = [
+                { ok: user.email_connected, label: "إيميل مربوط" },
+                { ok: user.has_app_password, label: "كلمة مرور التطبيقات" },
+                { ok: user.cover_letter_viewed, label: "معاينة رسالة التقديم" },
+                { ok: user.has_cv && !user.cv_rejected, label: user.cv_rejected ? "السيرة مرفوضة" : "سيرة ذاتية صالحة" },
+              ];
+              const okCount = checks.filter(c => c.ok).length;
+              const allOk = okCount === checks.length;
+              return (
+                <div className={`rounded-xl border p-3 ${allOk ? "border-emerald-500/30 bg-emerald-500/10" : "border-amber-500/30 bg-amber-500/10"}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {allOk ? <Zap size={14} className="text-emerald-400" /> : <AlertCircle size={14} className="text-amber-400" />}
+                    <span className={`text-xs font-semibold ${allOk ? "text-emerald-400" : "text-amber-400"}`}>
+                      {allOk ? "جاهز للإرسال" : `${okCount}/${checks.length} مكتمل`}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    {checks.map((c, i) => (
+                      <div key={i} className="flex items-center gap-1.5 text-xs">
+                        {c.ok
+                          ? <Check size={11} className="text-emerald-400" />
+                          : <X size={11} className="text-amber-400" />}
+                        <span className={c.ok ? "text-emerald-400" : "text-amber-400"}>{c.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {allOk && user.smtp_email && (
+                    <div className="mt-2 text-[11px] text-muted2" dir="ltr">← {user.smtp_email}</div>
+                  )}
+                </div>
+              );
+            })()}
           </Section>
 
           <Section title="الاشتراك">

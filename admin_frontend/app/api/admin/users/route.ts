@@ -20,7 +20,7 @@ export async function GET() {
       ? supabase.from("activation_codes").select("id,code").in("id", codeIds)
       : Promise.resolve({ data: [] as any[] }),
     userIds.length > 0
-      ? supabase.from("user_settings").select("user_id,email,smtp_email,email_connected,smtp_host,last_email_test_at").in("user_id", userIds)
+      ? supabase.from("user_settings").select("user_id,email,smtp_email,email_connected,smtp_host,last_email_test_at,smtp_app_password_encrypted,cover_letter_viewed,cv_rejected").in("user_id", userIds)
       : Promise.resolve({ data: [] as any[] }),
     userIds.length > 0
       ? supabase.from("user_job_preferences").select("user_id,job_field_id").in("user_id", userIds)
@@ -38,6 +38,9 @@ export async function GET() {
     email_connected: s.email_connected || false,
     smtp_host: s.smtp_host || "",
     last_email_test_at: s.last_email_test_at || null,
+    has_app_password: !!s.smtp_app_password_encrypted,
+    cover_letter_viewed: !!s.cover_letter_viewed,
+    cv_rejected: !!s.cv_rejected,
   }]));
   const fieldNameMap = new Map((fields || []).map((f: any) => [String(f.id), f.name_ar]));
   const prefMap = new Map<string, string[]>();
@@ -54,7 +57,7 @@ export async function GET() {
     email: emailMap.get(u.id) || "",
     activation_code: u.activation_code_id ? codeMap.get(u.activation_code_id) || null : null,
     preferences: prefMap.get(u.id) || [],
-    ...(smtpMap.get(u.id) || { smtp_email: "", email_connected: false, smtp_host: "", last_email_test_at: null }),
+    ...(smtpMap.get(u.id) || { smtp_email: "", email_connected: false, smtp_host: "", last_email_test_at: null, has_app_password: false, cover_letter_viewed: false, cv_rejected: false }),
     ...(cvMap.get(u.id) || { has_cv: false, cv_file_name: null }),
   }));
 
