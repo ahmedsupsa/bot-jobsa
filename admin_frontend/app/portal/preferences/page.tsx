@@ -36,8 +36,6 @@ export default function PreferencesPage() {
   const [msg, setMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
   const [customName, setCustomName] = useState("");
   const [addingCustom, setAddingCustom] = useState(false);
-  const [allowTamheer, setAllowTamheer] = useState(false);
-  const [allowCooperative, setAllowCooperative] = useState(false);
   const [loading, setLoading] = useState(true);
 
   async function load() {
@@ -47,8 +45,6 @@ export default function PreferencesPage() {
       const prefsData = await prefsRes.json();
       setAllFields(prefsData.all_fields || []);
       setSelectedIds(new Set((prefsData.selected_ids || []).map(String)));
-      setAllowTamheer(prefsData.allow_tamheer ?? false);
-      setAllowCooperative(prefsData.allow_cooperative ?? false);
     } catch { clearToken(); router.replace("/portal/login"); }
     finally { setLoading(false); }
   }
@@ -66,7 +62,7 @@ export default function PreferencesPage() {
       const res = await fetch("/api/portal/preferences", {
         method: "POST",
         headers: { ...authHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ field_ids: [...selectedIds], allow_tamheer: allowTamheer, allow_cooperative: allowCooperative }),
+        body: JSON.stringify({ field_ids: [...selectedIds] }),
       });
       const d = await res.json();
       if (!res.ok) { setMsg({ text: d.error || "فشل الحفظ", type: "err" }); return; }
@@ -217,28 +213,6 @@ export default function PreferencesPage() {
               })}
             </div>
 
-            {/* برامج التوظيف */}
-            <div style={{ background:t.surface, border:`1px solid ${t.border}`, borderRadius:14, padding:16, marginBottom:16 }}>
-              <p style={{ color:t.text, fontSize:13, fontWeight:600, margin:"0 0 12px" }}>برامج التوظيف</p>
-              {[["allowTamheer","تمهير","تقديم على وظائف برنامج تمهير"],["allowCooperative","تدريب تعاوني","تقديم على وظائف التدريب التعاوني للطلاب"]].map(([key,label,desc])=>(
-                <label key={key} style={{
-                  display:"flex", alignItems:"center", justifyContent:"space-between",
-                  padding:"10px 0", borderBottom: key==="allowTamheer" ? `1px solid ${t.border}` : "none",
-                  cursor:"pointer",
-                }}>
-                  <div>
-                    <p style={{ color:t.text, fontSize:13, fontWeight:600, margin:0 }}>{label}</p>
-                    <p style={{ color:t.text3, fontSize:11, margin:0 }}>{desc}</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={key==="allowTamheer" ? allowTamheer : allowCooperative}
-                    onChange={e => key==="allowTamheer" ? setAllowTamheer(e.target.checked) : setAllowCooperative(e.target.checked)}
-                    style={{ width:16, height:16, cursor:"pointer", accentColor:"#7c3aed" }}
-                  />
-                </label>
-              ))}
-            </div>
 
             <button onClick={handleSave} disabled={saving} style={{
               display:"flex", alignItems:"center", justifyContent:"center", gap:8,
