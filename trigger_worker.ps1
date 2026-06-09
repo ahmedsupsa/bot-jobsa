@@ -1,7 +1,12 @@
 $log = "$PSScriptRoot\logs\worker_trigger.log"
 $url = "https://vnbaksiabcdnnnoglycr.supabase.co/functions/v1/worker"
-$secret = "YGgeXKN9VAAINTDCKFrY6KJ0wgNPeuL5qol1RCWZGgY"
-$headers = @{ "x-worker-secret" = $secret; "Content-Type" = "application/json" }
+$secret = "1e4f8453d44b4d4f8719b7e9d241cc4e"
+$anonKey = "sb_publishable_f39N5C7PqbLHhd10bMYnwQ_FeoGznC5"
+$headers = @{
+  "Authorization" = "Bearer $anonKey"
+  "x-worker-secret" = $secret
+  "Content-Type" = "application/json"
+}
 $body = @{} | ConvertTo-Json -Compress
 
 try {

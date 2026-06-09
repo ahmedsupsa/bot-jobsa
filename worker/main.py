@@ -1588,12 +1588,12 @@ async def main() -> None:
             await asyncio.sleep(3600)
         return
 
-    logger.info("🚀 Auto-Apply Worker بدأ (كل %d ثانية) — يستدعي Supabase Edge Function", CYCLE_INTERVAL)
+    logger.info("🚀 Auto-Apply Worker بدأ (كل %d ثانية) — إرسال SMTP مباشر", CYCLE_INTERVAL)
     await _run_job_fetcher()  # جلب أول عند البدء
     while True:
         start_ts = datetime.now(timezone.utc)
         try:
-            await run_cycle()
+            await _run_cycle_smtp()
         except Exception as e:
             logger.exception("خطأ غير متوقع في الدورة: %s", e)
 
