@@ -71,34 +71,6 @@ def _is_likely_job(text: str) -> bool:
 
 # ── استخراج الوظائف ذكياً بدون AI ─────────────────────────────────────────────
 
-# أنماط استخراج المسمى الوظيفي — بالترتيب (الأول = الأقوى)
-_JOB_TITLE_PATTERNS = [
-    # مطلوب [مسمى] — أقوى نمط
-    r"(?:مطلوب|مطلوب موظف|مطلوب موظفة|مطلوب للعمل|نبحث عن|نحتاج|نرحب بـ)\s+([^\n،,]{3,60})",
-    # [مسمى] مطلوب — النمط العكسي
-    r"([^\n،,]{3,60})\s+مطلوب(?:\s+للعمل)?",
-    # توظيف [مسمى] 
-    r"(?:توظيف|تعيين|فرصة عمل)\s+([^\n،,]{3,60})",
-    # [مسمى] في [شركة]
-    r"^([^\n،,]{3,60})\s*[:|-]\s*",
-    # وصف وظيفي: [مسمى]
-    r"(?:المسمى\s*(?:الوظيفي)?\s*[:\-]|الوظيفة\s*[:\-]|مسمى\s*(?:الوظيفة)?\s*[:\-])\s*([^\n،,]{3,60})",
-    # هاشتاقات #وظائف_مسمى
-    r"#وظائف[_\s]*([^\s#\n]{3,40})",
-    # أول سطر ليس رابط وليس مؤهلاً — غالباً هو المسمى
-    r"^([^\n\d]{3,60}?)(?:[\.\n]|$)",
-]
-
-_COMPANY_PATTERNS = [
-    r"(?:شركة|مؤسسة|مجموعة|بنك|مستشفى|جامعة)\s+([^\s،,.\n]{2,30}(?:\s+[^\s،,.\n]{2,30}){0,3})",
-    r"(?:في\s+|بـ\s+|بشركة\s+|لمجموعة\s+)([^\s،,.\n]{2,30}(?:\s+[^\s،,.\n]{2,30}){0,3})",
-    r"(?:للعمل\s+(?:في|بـ|بشركة|بمؤسسة|بمجموعة)\s*)([^\n،,]{3,50})",
-]
-
-_LINK_PATTERNS = [
-    r"https?://(?:www\.)?(?:t\.co|bit\.ly|lnkd\.in|careers?\.[^\s]+|jobs?\.[^\s]+|[^\s]{3,50}\.(?:com|sa|org|net)/[^\s]{2,100})",
-]
-
 _QUAL_PREFIXES = ("دبلوم", "بكالوريوس", "ماجستير", "دكتوراه", "شهادة", "حملة", "مؤهل", "خبرة", "راتب")
 
 _GENERIC_TITLES = {
@@ -106,6 +78,11 @@ _GENERIC_TITLES = {
     "وظائف شاغرة", "وظائف نسائية", "وظائف للنساء", "وظائف للجنسين",
     "وظائف السعودية", "وظائف الرياض", "وظائف جدة",
 }
+
+
+def _clean_line(text: str) -> str:
+    """يزيل الإيموجي والرموز من بداية السطر"""
+    return re.sub(r"^[\U0000FE00-\U0000FEFF\U0001F300-\U0001FFFF\U00002000-\U00002060\U00002500-\U000027BF\U00002900-\U0000297F\s🟢🔵🟣🔴⚫⚪🔴🟠🟡🟢🔵🟣⬛⬜⭐✅❌❗❓➡️🔹🔸🔻🔺🔴🟠🟡🟢🔵🟣⚫⚪]+", "", text).strip()
 
 
 def _extract_jobs_smart(text: str) -> list[dict]:
@@ -116,81 +93,96 @@ def _extract_jobs_smart(text: str) -> list[dict]:
     results: list[dict] = []
     lines = [l.strip() for l in text.split("\n") if l.strip()]
 
-    # 1. استخراج الإيميلات من النص كامل
+    # 1. استخراج الإيميلات
     emails = list(set(_EMAIL_RE.findall(text)))
 
     # 2. استخراج الروابط
-    links = []
-    for pat in _LINK_PATTERNS:
-        links.extend(re.findall(pat, text))
+    links = re.findall(r"https?://[^\s]{5,200}", text)
     link = links[0] if links else None
 
-    # 3. محاولة استخراج المسمى الوظيفي
+    # 3. البحث عن المسمى الوظيفي الحقيقي
     titles_found = []
     company_found = ""
     description = text.strip()
 
-    # 3أ. أولاً: البحث عن المسمى عبر الأنماط القوية
-    for pat in _JOB_TITLE_PATTERNS:
-        matches = re.findall(pat, text, re.MULTILINE)
-        for m in matches:
-            title = m.strip().rstrip("،,.#:- ")
-            if len(title) < 3 or len(title) > 60:
-                continue
-            if any(title.startswith(p) for p in _QUAL_PREFIXES):
-                continue
-            if title in _GENERIC_TITLES:
-                continue
-            titles_found.append(title)
+    # أنماط عنوان الوظيفة — مرتبة من الأقوى للأضعف
+    TITLE_PATTERNS = [
+        # مطلوب [مسمى] — الأقوى
+        r"مطلوب\s+([^\n،,\.]{3,60})",
+        # [مسمى] مطلوب
+        r"([^\n،,\.]{3,60})\s+مطلوب(?:\s+للعمل)?",
+        #  (توظيف|تعيين|فرصة عمل) [مسمى]
+        r"(?:توظيف|تعيين|فرصة عمل)\s+([^\n،,\.]{3,60})",
+        #  تدريب [مسمى] — تدريب تعاوني / تدريب صيفي
+        r"(?:🟢\s*)?تدريب\s+([^\n،,\.]{3,60})",
+        # وصف وظيفي: / المسمى: / الوظيفة:
+        r"(?:المسمى\s*(?:الوظيفي)?|الوظيفة|مسمى\s*(?:الوظيفة)?)\s*[:\-]\s*([^\n،,]{3,60})",
+    ]
 
-    # 3ب. البحث عن شركة
-    for pat in _COMPANY_PATTERNS:
-        match = re.search(pat, text)
-        if match:
-            c = match.group(1).strip().rstrip("،,.")
+    # 3أ. البحث في كل الأسطر عن عنوان
+    for line in lines:
+        cline = _clean_line(line)
+        if not cline or len(cline) < 3:
+            continue
+
+        # جرب الأنماط
+        found = None
+        for pat in TITLE_PATTERNS:
+            m = re.search(pat, cline)
+            if m:
+                t = m.group(1).strip().rstrip("،,.#:- ")
+                if 3 <= len(t) <= 60 and not t.startswith(_QUAL_PREFIXES) and t not in _GENERIC_TITLES:
+                    found = t
+                    break
+
+        if found:
+            titles_found.append(found)
+            break
+
+    # 3ب. إذا ما لقينا — جرب أول سطر غير مؤهل وغير رابط
+    if not titles_found:
+        for line in lines:
+            cline = _clean_line(line)
+            if not cline or len(cline) < 5:
+                continue
+            if _EMAIL_RE.search(cline) or "http" in cline or cline.startswith("@"):
+                continue
+            if any(cline.startswith(p) for p in _QUAL_PREFIXES):
+                continue
+            if cline in _GENERIC_TITLES:
+                continue
+            # تجنب الأسطر اللي تشبه مواقع (الرياض - جدة - ...)
+            if re.match(r"^[\u0600-\u06FF\s\-]+$", cline) and "-" in cline:
+                continue
+            titles_found.append(cline[:60])
+            break
+
+    # 3ج. البحث عن الشركة
+    for line in lines:
+        cline = _clean_line(line)
+        m = re.search(r"(?:شركة|مؤسسة|مجموعة|بنك|مستشفى|جامعة|مكتب)\s+([^\s،,.\n]{2,30}(?:\s+[^\s،,.\n]{2,30}){0,3})", cline)
+        if m:
+            c = m.group(1).strip().rstrip("،,.")
             if 2 <= len(c) <= 40:
                 company_found = c
                 break
 
-    # 3ج. إذا ما لقينا مسمى — نجرب نأخذ أول سطر طويل
-    if not titles_found:
-        for line in lines:
-            if len(line) < 10:
-                continue
-            if _EMAIL_RE.search(line):
-                continue
-            if line.startswith("@"):
-                continue
-            if "http" in line:
-                continue
-            # نظف من الهاشتاقات
-            clean = re.sub(r"#\w+", "", line).strip()
-            if 5 <= len(clean) <= 80 and not any(clean.startswith(p) for p in _QUAL_PREFIXES):
-                titles_found.append(clean)
-                break
+    # 4. إنشاء كائنات الوظائف (حد أقصى وظيفة واحدة لكل رسالة)
+    title = titles_found[0] if titles_found else ""
+    if not title or len(title) < 3 or title in _GENERIC_TITLES:
+        return []
 
-    # 4. لكل مسمى وجدناه، ننشئ كائن وظيفة
-    for title in titles_found[:3]:  # حد أقصى 3 وظائف
-        # تنظيف العنوان من الزوائد
-        title = re.sub(r"^[•\-*#\s]+|[•\-*#\s]+$", "", title).strip()
-        title = re.sub(r"\s+", " ", title)
-        # إزالة كلمات مطلوب/توظيف من بداية العنوان
-        title = re.sub(r"^(?:مطلوب|توظيف|تعيين|فرصة عمل|وظيفة)\s+", "", title).strip()
+    # تنظيف العنوان
+    title = re.sub(r"^(?:مطلوب|توظيف|تعيين|فرصة عمل|وظيفة|تدريب)\s+", "", title.strip()).strip()
+    title = re.sub(r"\s+", " ", title)
 
-        if not title or len(title) < 3 or title in _GENERIC_TITLES:
-            continue
-
-        job = {
-            "title_ar": title,
-            "company": company_found or None,
-            "application_email": emails[0] if emails else None,
-            "link_url": link,
-            "description_ar": description[:1000],
-        }
-        # تجنب التكرار
-        if any(j["title_ar"] == title for j in results):
-            continue
-        results.append(job)
+    results.append({
+        "title_ar": title,
+        "company": company_found or None,
+        "application_email": emails[0] if emails else None,
+        "link_url": link,
+        "description_ar": description[:1000],
+    })
 
     return results
 
