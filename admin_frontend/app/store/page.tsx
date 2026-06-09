@@ -7,6 +7,7 @@ import {
   Copy, CheckCheck, Building2, Wallet, Tag, Search, ArrowUpDown, Clock,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Footer } from "@/components/footer";
 
 type Product = {
   id: string;
@@ -970,15 +971,7 @@ export default function StorePage() {
         </div>
       )}
 
-      <footer style={s.footer}>
-        <div style={s.footerInner}>
-          <span style={{ color: "var(--text3)", fontSize: 12.5 }}>© 2026 Jobbots</span>
-          <div style={{ display: "flex", gap: 22 }}>
-            <Link href="/privacy" style={s.footerLink}>الخصوصية</Link>
-            <Link href="/terms" style={s.footerLink}>الشروط</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -1037,9 +1030,7 @@ const s: Record<string, React.CSSProperties> = {
   buyBtn: { width: "100%", padding: "13px", borderRadius: 11, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "var(--accent)", color: "var(--accent-fg)", border: "none", marginTop: "auto", position: "relative", zIndex: 1 },
 
   // FOOTER
-  footer: { borderTop: "1px solid var(--border)", padding: "24px", background: "var(--surface)" },
-  footerInner: { maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 },
-  footerLink: { color: "var(--text3)", fontSize: 12.5, textDecoration: "none" },
+
 
   // INLINE CHECKOUT SECTION
   checkoutSection: { background: "var(--bg)", borderTop: "1px solid var(--border)", padding: "48px 24px 64px" },

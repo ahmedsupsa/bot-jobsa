@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
+import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
   title: "الشروط والأحكام — Jobbots",
@@ -103,16 +104,7 @@ export default function TermsPage() {
         </div>
       </main>
 
-      {/* FOOTER */}
-      <footer style={s.footer}>
-        <div style={s.footerInner}>
-          <span style={s.footerCopy}>© {new Date().getFullYear()} Jobbots. جميع الحقوق محفوظة.</span>
-          <div style={{ display: "flex", gap: 22 }}>
-            <Link href="/privacy" style={s.footerLink}>الخصوصية</Link>
-            <Link href="/terms" style={s.footerLink}>الشروط</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
@@ -160,8 +152,5 @@ const s: Record<string, React.CSSProperties> = {
   list: { marginTop: 10, paddingRight: 20, display: "flex", flexDirection: "column", gap: 9 } as React.CSSProperties,
   link: { color: "var(--text)", fontWeight: 700 },
 
-  footer: { borderTop: "1px solid var(--border)", padding: "24px", background: "var(--surface)" },
-  footerInner: { maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" as const, gap: 12 },
-  footerCopy: { color: "var(--text3)", fontSize: 12.5 },
-  footerLink: { color: "var(--text3)", fontSize: 12.5, textDecoration: "none" },
+
 };

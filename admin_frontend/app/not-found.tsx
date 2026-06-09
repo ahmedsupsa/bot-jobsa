@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Home } from "lucide-react";
+import { Footer } from "@/components/footer";
 
 export default function NotFound() {
   return (
@@ -33,11 +34,7 @@ export default function NotFound() {
         </div>
       </div>
 
-      <footer style={s.footer}>
-        <p style={{ color: "#444", fontSize: 13, margin: 0 }}>
-          © {new Date().getFullYear()} Jobbots. جميع الحقوق محفوظة.
-        </p>
-      </footer>
+      <Footer />
     </div>
   );
 }
@@ -63,5 +60,5 @@ const s: Record<string, React.CSSProperties> = {
     border: "1px solid #2a2a2a", color: "#888", padding: "13px 20px",
     borderRadius: 12, fontSize: 14, textDecoration: "none",
   },
-  footer: { borderTop: "1px solid #1a1a1a", padding: "24px", textAlign: "center" },
+
 };

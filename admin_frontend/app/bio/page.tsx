@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { MessageCircle, ShoppingBag } from "lucide-react";
+import { Footer } from "@/components/footer";
 
 export const metadata = {
   title: "روابط Jobbots",
@@ -44,6 +45,7 @@ export default function BioPage() {
           <p className="text-[11px] text-muted font-medium">تقديم تلقائي ذكي — كل 30 دقيقة بلا جهد منك</p>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
