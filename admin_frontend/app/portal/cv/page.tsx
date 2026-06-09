@@ -6,11 +6,11 @@ import { useTheme } from "@/contexts/theme-context";
 import { portalFetch, clearToken, authHeaders } from "@/lib/portal-auth";
 import {
   Upload, FileText, CheckCircle, XCircle,
-  Bot, Search, Send, Eye, Calendar, Mail,
-  Sparkles, Loader2, X, Save, RefreshCw,
+  Bot, Search, Send, Eye, Calendar,
+  Sparkles, Loader2, X,
 } from "lucide-react";
 
-interface CVInfo { has_cv: boolean; file_name?: string; updated_at?: string; preview_url?: string; }
+interface CVInfo { has_cv: boolean; file_name?: string; updated_at?: string; preview_url?: string; cv_profile?: any; }
 
 export default function CVPage() {
   const router = useRouter();
@@ -28,50 +28,28 @@ export default function CVPage() {
     dashed:  dark ? "#2a2a2a" : "#d4d4d8",
   };
 
-  /* ── CV ── */
   const [cv, setCV] = useState<CVInfo | null>(null);
   const [cvLoading, setCvLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [drag, setDrag] = useState(false);
   const [cvMsg, setCvMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
+  const [summary, setSummary] = useState<any>(null);
+  const [summarizing, setSummarizing] = useState(false);
+  const [summaryMsg, setSummaryMsg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  /* ── مسميات وظيفية ── */
-  const [savedTitles, setSavedTitles] = useState<string[]>([]);
-  const [suggestedTitles, setSuggestedTitles] = useState<string[]>([]);
-  const [suggesting, setSuggesting] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [titlesMsg, setTitlesMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
-  const [titlesLoading, setTitlesLoading] = useState(true);
 
   async function loadCV() {
     try {
       const res = await portalFetch("/cv");
       if (res.status === 401) { clearToken(); router.replace("/portal/login"); return; }
-      setCV(await res.json());
+      const data = await res.json();
+      setCV(data);
+      if (data.cv_profile) setSummary(data.cv_profile);
     } catch { clearToken(); router.replace("/portal/login"); }
     finally { setCvLoading(false); }
   }
 
-  async function loadSavedTitles() {
-    try {
-      const res = await fetch("/api/portal/preferences/save-titles", { headers: authHeaders() });
-      if (res.ok) {
-        const d = await res.json();
-        setSavedTitles(d.titles || []);
-        if ((d.titles || []).length > 0) {
-          setSuggestedTitles(d.titles);
-          setTitlesLoading(false);
-          return;
-        }
-      }
-    } catch {}
-    // لا توجد مسميات محفوظة → استخراج تلقائي من التاكسونومي
-    await handleSuggest(true);
-    setTitlesLoading(false);
-  }
-
-  useEffect(() => { loadCV(); loadSavedTitles(); }, []);
+  useEffect(() => { loadCV(); }, []);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return;
@@ -97,61 +75,23 @@ export default function CVPage() {
     }
   }
 
-  async function handleSuggest(silent = false) {
-    setSuggesting(true);
-    if (!silent) setTitlesMsg(null);
+  async function handleExtractSummary() {
+    setSummarizing(true); setSummaryMsg(null);
     try {
-      const res = await fetch("/api/portal/preferences/suggest", {
+      const res = await fetch("/api/portal/cv/summary", {
         method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" },
       });
       const d = await res.json();
-      if (!res.ok) {
-        if (!silent) setTitlesMsg({ text: d.error || "فشل الاستخراج", type: "err" });
-        return;
-      }
-      setSuggestedTitles(d.titles || []);
-      const count = d.titles?.length || 0;
-      const fromTax = d.source === "taxonomy";
-      if (!silent || count > 0) {
-        setTitlesMsg({
-          text: fromTax
-            ? `✅ استُخرج ${count} مسمى من تخصصك "${d.matched_major || ""}" — راجعها واحفظ`
-            : `✅ اقترح الذكاء الاصطناعي ${count} مسمى — راجعها وعدّل ثم احفظ`,
-          type: "ok",
-        });
-      }
-    } catch {
-      if (!silent) setTitlesMsg({ text: "خطأ في الاتصال", type: "err" });
-    }
-    finally { setSuggesting(false); }
-  }
-
-  async function handleSaveTitles() {
-    if (suggestedTitles.length === 0) return;
-    setSaving(true); setTitlesMsg(null);
-    try {
-      const res = await fetch("/api/portal/preferences/save-titles", {
-        method: "POST",
-        headers: { ...authHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ titles: suggestedTitles }),
-      });
-      const d = await res.json();
-      if (!res.ok) { setTitlesMsg({ text: d.error || "فشل الحفظ", type: "err" }); return; }
-      setSavedTitles(suggestedTitles);
-      setTitlesMsg({ text: `تم حفظ ${d.count} مسمى وظيفي ✓ — البوت سيستخدمها في التطابق`, type: "ok" });
-    } catch { setTitlesMsg({ text: "خطأ في الاتصال", type: "err" }); }
-    finally { setSaving(false); }
-  }
-
-  function removeTitle(title: string) {
-    setSuggestedTitles(prev => prev.filter(t => t !== title));
+      if (!res.ok) { setSummaryMsg(d.error || "فشل الاستخراج"); return; }
+      setSummary(d.summary);
+      setSummaryMsg("تم استخراج الملخص ✓");
+    } catch { setSummaryMsg("خطأ في الاتصال"); }
+    finally { setSummarizing(false); }
   }
 
   const uploadedAt = cv?.updated_at
     ? new Date(cv.updated_at).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" })
     : null;
-
-  const titlesChanged = JSON.stringify(suggestedTitles.slice().sort()) !== JSON.stringify(savedTitles.slice().sort());
 
   return (
     <PortalShell>
@@ -160,7 +100,6 @@ export default function CVPage() {
           <p style={{ color: t.text3, textAlign: "center", padding: 60 }}>جاري التحميل…</p>
         ) : (
           <>
-            {/* رسالة CV */}
             {cvMsg && (
               <div style={{
                 display: "flex", alignItems: "center", gap: 8,
@@ -177,7 +116,6 @@ export default function CVPage() {
 
             {cv?.has_cv ? (
               <>
-                {/* بطاقة السيرة */}
                 <div style={{
                   display: "flex", alignItems: "flex-start", gap: 18,
                   background: dark ? "#0a1a0a" : "#f0fdf4",
@@ -213,7 +151,6 @@ export default function CVPage() {
                   </div>
                 </div>
 
-                {/* معاينة + استبدال */}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
                   {cv.preview_url && (
                     <a href={cv.preview_url} target="_blank" rel="noopener noreferrer" style={{
@@ -235,144 +172,89 @@ export default function CVPage() {
                   </button>
                 </div>
 
-                {/* ── بطاقة المسميات الوظيفية ── */}
-                {!titlesLoading && (
-                  <div style={{
-                    background: dark ? "#0d0d1a" : "#f5f3ff",
-                    border: `1px solid ${dark ? "#1e1e3a" : "#ddd6fe"}`,
-                    borderRadius: 18, padding: "20px 18px", marginBottom: 20,
-                  }}>
-                    {/* رأس البطاقة */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                        <div style={{
-                          width: 34, height: 34, borderRadius: 10,
-                          background: dark ? "#1a1a3a" : "#ede9fe",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                        }}>
-                          <Sparkles size={17} strokeWidth={1.5} color={dark ? "#a78bfa" : "#7c3aed"} />
-                        </div>
-                        <div>
-                          <p style={{ margin: 0, color: dark ? "#c4b5fd" : "#5b21b6", fontSize: 14, fontWeight: 700 }}>
-                            المسميات الوظيفية
-                          </p>
-                          <p style={{ margin: "2px 0 0", color: t.text3, fontSize: 12 }}>
-                            {savedTitles.length > 0
-                              ? `${savedTitles.length} مسمى محفوظ — البوت يطابق عليها`
-                              : "تُستخرج تلقائياً من تخصصك الجامعي"}
-                          </p>
-                        </div>
+                {/* ملخص السيرة */}
+                <div style={{
+                  background: dark ? "#0d0d1a" : "#f5f3ff",
+                  border: `1px solid ${dark ? "#1e1e3a" : "#ddd6fe"}`,
+                  borderRadius: 18, padding: "20px 18px", marginBottom: 20,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                      <div style={{
+                        width: 34, height: 34, borderRadius: 10,
+                        background: dark ? "#1a1a3a" : "#ede9fe",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <Sparkles size={17} strokeWidth={1.5} color={dark ? "#a78bfa" : "#7c3aed"} />
                       </div>
+                      <div>
+                        <p style={{ margin: 0, color: dark ? "#c4b5fd" : "#5b21b6", fontSize: 14, fontWeight: 700 }}>
+                          ملخص السيرة الذاتية
+                        </p>
+                        <p style={{ margin: "2px 0 0", color: t.text3, fontSize: 12 }}>
+                          {summary ? "ملخص مستخرج من سيرتك" : "استخرج ملخصاً من سيرتك الذاتية"}
+                        </p>
+                      </div>
+                    </div>
+                    {!summary && (
                       <button
-                        onClick={() => handleSuggest()}
-                        disabled={suggesting}
+                        onClick={handleExtractSummary}
+                        disabled={summarizing}
                         style={{
                           display: "inline-flex", alignItems: "center", gap: 7,
                           padding: "9px 16px", borderRadius: 10, border: "none",
                           background: dark ? "#7c3aed" : "#7c3aed",
                           color: "#fff", fontSize: 12, fontWeight: 700,
-                          cursor: suggesting ? "not-allowed" : "pointer",
-                          opacity: suggesting ? 0.7 : 1, fontFamily: "inherit",
-                          whiteSpace: "nowrap",
+                          cursor: summarizing ? "not-allowed" : "pointer",
+                          opacity: summarizing ? 0.7 : 1, fontFamily: "inherit",
                         }}
                       >
-                        {suggesting
+                        {summarizing
                           ? <><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> جاري الاستخراج…</>
-                          : <><RefreshCw size={13} /> {savedTitles.length > 0 ? "إعادة الاستخراج" : "استخراج المسميات"}</>
+                          : <><Sparkles size={13} /> استخراج الملخص</>
                         }
                       </button>
-                    </div>
-
-                    {/* رسالة */}
-                    {titlesMsg && (
-                      <div style={{
-                        display: "flex", alignItems: "center", gap: 8,
-                        padding: "10px 14px", borderRadius: 10, marginTop: 12,
-                        fontSize: 12, fontWeight: 500,
-                        background: titlesMsg.type === "ok" ? (dark ? "#0a1f0a" : "#f0fdf4") : (dark ? "#1a0a0a" : "#fef2f2"),
-                        color: titlesMsg.type === "ok" ? (dark ? "#86efac" : "#166534") : "#f87171",
-                        border: `1px solid ${titlesMsg.type === "ok" ? (dark ? "#2a2a2a" : "#bbf7d0") : (dark ? "#7f1d1d" : "#fecaca")}`,
-                      }}>
-                        {titlesMsg.type === "ok" ? <CheckCircle size={13} /> : <XCircle size={13} />}
-                        {titlesMsg.text}
-                      </div>
-                    )}
-
-                    {/* Chips المسميات */}
-                    {suggestedTitles.length > 0 && (
-                      <div style={{ marginTop: 14 }}>
-                        <p style={{ color: t.text3, fontSize: 12, margin: "0 0 10px" }}>
-                          اضغط × لحذف أي مسمى لا يناسبك
-                        </p>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                          {suggestedTitles.map(title => (
-                            <span
-                              key={title}
-                              style={{
-                                display: "inline-flex", alignItems: "center", gap: 6,
-                                padding: "7px 12px 7px 8px", borderRadius: 100,
-                                background: dark ? "#1a1a3a" : "#ede9fe",
-                                border: `1px solid ${dark ? "#3a3a6a" : "#c4b5fd"}`,
-                                color: dark ? "#c4b5fd" : "#5b21b6",
-                                fontSize: 13,
-                              }}
-                            >
-                              {title}
-                              <button
-                                onClick={() => removeTitle(title)}
-                                style={{
-                                  background: "transparent", border: "none", cursor: "pointer",
-                                  color: dark ? "#a78bfa" : "#7c3aed", padding: 0, display: "flex",
-                                  lineHeight: 1,
-                                }}
-                              >
-                                <X size={12} strokeWidth={2.5} />
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-
-                        {/* زر الحفظ */}
-                        {titlesChanged && (
-                          <button
-                            onClick={handleSaveTitles}
-                            disabled={saving}
-                            style={{
-                              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                              width: "100%", marginTop: 16, padding: "13px",
-                              background: dark ? "#fff" : "#09090b",
-                              color: dark ? "#0a0a0a" : "#fff",
-                              border: "none", borderRadius: 12,
-                              fontSize: 14, fontWeight: 700,
-                              cursor: saving ? "not-allowed" : "pointer",
-                              fontFamily: "inherit",
-                            }}
-                          >
-                            {saving
-                              ? <><Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> جاري الحفظ…</>
-                              : <><Save size={15} /> حفظ {suggestedTitles.length} مسمى وظيفي</>
-                            }
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {/* حال فارغة */}
-                    {suggestedTitles.length === 0 && !suggesting && (
-                      <div style={{
-                        marginTop: 14, padding: "20px", textAlign: "center",
-                        border: `1.5px dashed ${dark ? "#2a2a4a" : "#ddd6fe"}`, borderRadius: 12,
-                      }}>
-                        <p style={{ color: t.text3, fontSize: 13, margin: "0 0 4px" }}>
-                          اضغط "اقتراح بالذكاء الاصطناعي" ليحلل تخصصك
-                        </p>
-                        <p style={{ color: t.text3, fontSize: 12, margin: 0 }}>
-                          سيقترح 20 مسمى وظيفي مناسباً لسيرتك
-                        </p>
-                      </div>
                     )}
                   </div>
-                )}
+
+                  {summaryMsg && (
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      padding: "10px 14px", borderRadius: 10, marginTop: 12,
+                      fontSize: 12, fontWeight: 500,
+                      background: dark ? "#0a1f0a" : "#f0fdf4",
+                      color: dark ? "#86efac" : "#166534",
+                      border: `1px solid ${dark ? "#2a2a2a" : "#bbf7d0"}`,
+                    }}>
+                      <CheckCircle size={13} /> {summaryMsg}
+                    </div>
+                  )}
+
+                  {summary && (
+                    <div style={{ marginTop: 14, background: dark ? "#111" : "#fff", borderRadius: 12, padding: 16, border: `1px solid ${t.border}` }}>
+                      {summary.overview && (
+                        <div style={{ marginBottom: 12 }}>
+                          <p style={{ color: t.text2, fontSize: 12, fontWeight: 600, margin: "0 0 6px" }}>نبذة عامة</p>
+                          <p style={{ color: t.text, fontSize: 13, margin: 0, lineHeight: 1.7 }}>{summary.overview}</p>
+                        </div>
+                      )}
+                      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                        {summary.email && (
+                          <div>
+                            <p style={{ color: t.text3, fontSize: 11, margin: "0 0 2px" }}>الإيميل</p>
+                            <p style={{ color: t.text, fontSize: 13, margin: 0, direction: "ltr" }}>{summary.email}</p>
+                          </div>
+                        )}
+                        {summary.phone && (
+                          <div>
+                            <p style={{ color: t.text3, fontSize: 11, margin: "0 0 2px" }}>الجوال</p>
+                            <p style={{ color: t.text, fontSize: 13, margin: 0, direction: "ltr" }}>{summary.phone}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <>

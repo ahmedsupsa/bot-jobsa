@@ -195,21 +195,12 @@ async function classifyPendingJobs(): Promise<number> {
   return count;
 }
 
-// ── مطابقة التخصص (بدون AI) ──────────────────────────────────────────────────
+// ── مطابقة المسمى الوظيفي مع عنوان الوظيفة ────────────────────────────────────
 
-function majorMatches(userFields: string[], jobMajors: string[]): boolean {
-  if (!userFields.length) return true;  // لا تفضيلات → يُقبل كل شيء
-  if (!jobMajors.length)  return true;  // لم تُصنَّف التخصصات → نقبل
-
-  const userSet = userFields.map(f => f.trim().toLowerCase());
-  const jobSet  = jobMajors.map(m => m.trim().toLowerCase());
-
-  for (const u of userSet) {
-    for (const j of jobSet) {
-      if (u.includes(j) || j.includes(u)) return true;
-    }
-  }
-  return false;
+function titleMatches(userTitles: string[], jobTitle: string): boolean {
+  if (!userTitles.length) return false;  // ما عنده تفضيلات → ما نقدم له
+  const t = jobTitle.toLowerCase();
+  return userTitles.some(title => t.includes(title.trim().toLowerCase()));
 }
 
 // ── مطابقة الجنس ─────────────────────────────────────────────────────────────
@@ -452,11 +443,13 @@ async function runCycle() {
       const company  = String(job.company ?? "").trim();
       const toEmail  = String(job.application_email ?? "").trim();
       const genderReq = String(job.gender_req ?? "unknown");
-      const majors    = Array.isArray(job.mapped_majors) ? (job.mapped_majors as string[]) : [];
 
       // منع التكرار (job_id + fingerprint)
       const fp = await makeFingerprint(jobTitle, company, toEmail);
       if (usedIds.has(jobId) || usedFps.has(fp)) continue;
+
+      // فحص تطابق المسمى
+      if (!titleMatches(userFields, jobTitle)) continue;
 
       // فحص الجنس
       if (!genderMatches(gender, genderReq)) {
@@ -474,8 +467,7 @@ async function runCycle() {
         continue;
       }
 
-      // فحص التخصص
-      if (!majorMatches(userFields, majors)) continue;
+
 
       // ── إرسال التقديم ─────────────────────────────────────────────────
       const sentAt  = new Date().toISOString();

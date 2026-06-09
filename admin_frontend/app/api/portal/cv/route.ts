@@ -33,6 +33,7 @@ export async function GET(req: Request) {
     storage_path: cv.storage_path || "",
     updated_at: cv.created_at || "",
     preview_url,
+    cv_profile: cv.cv_profile,
   });
 }
 
