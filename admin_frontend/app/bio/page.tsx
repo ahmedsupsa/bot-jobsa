@@ -1,6 +1,6 @@
 import Image from "next/image";
 import type { Metadata } from "next";
-import { ShoppingBag, CreditCard, Building2, Timer, Sparkles, Zap, Check, ArrowLeft, Star, Bot } from "lucide-react";
+import { ShoppingBag, Building2, Timer, Sparkles, Zap, Check, ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "بوت التقديم على الوظائف | 7 ريال فقط بالشهر",
@@ -45,7 +45,7 @@ export default function BioPage() {
           {/* طرق الدفع */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--bg)", border: "1px solid var(--border)", padding: "10px 14px", borderRadius: 10 }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text2)", fontSize: 13 }}><CreditCard size={16} /> تمارا</span>
+              <span style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text2)", fontSize: 13 }}><Image src="/tamara-logo.png" alt="تمارا" width={16} height={16} style={{ display: "block" }} /> تمارا</span>
               <span style={{ color: "var(--text)", fontSize: 12, fontWeight: 600 }}>٦ دفعات ١٥ ريال</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--bg)", border: "1px solid var(--border)", padding: "10px 14px", borderRadius: 10 }}>
