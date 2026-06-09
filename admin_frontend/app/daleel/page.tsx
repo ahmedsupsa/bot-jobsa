@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { GUIDES } from "./data";
 
@@ -22,7 +23,7 @@ export default function GuidesIndexPage() {
       <nav style={p.nav}>
         <div style={p.navInner}>
           <Link href="/" style={p.brand}>
-            <span style={p.brandDot}>J</span>
+            <Image src="/logo-transparent.png" alt="Jobbots" width={22} height={22} style={{ borderRadius: 5 }} />
             <span style={p.brandName}>Jobbots</span>
           </Link>
           <Link href="/portal/login" style={p.navCta}>دخول المشترك</Link>
@@ -75,7 +76,6 @@ const p: Record<string, React.CSSProperties> = {
   nav: { borderBottom: "1px solid #e5e7eb", padding: "0 20px", height: 56, display: "flex", alignItems: "center" },
   navInner: { maxWidth: 1100, margin: "0 auto", width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" },
   brand: { display: "flex", alignItems: "center", gap: 8, textDecoration: "none" },
-  brandDot: { width: 28, height: 28, borderRadius: 7, background: "#000", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800 },
   brandName: { fontWeight: 800, fontSize: 17, color: "#111" },
   navCta: { background: "#111", color: "#fff", padding: "7px 16px", borderRadius: 9, fontSize: 13, fontWeight: 600, textDecoration: "none" },
   hero: { maxWidth: 860, margin: "0 auto", padding: "52px 20px 36px", textAlign: "center" },

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { SPECIALIZATIONS, getSpecBySlug } from "../data";
 
@@ -75,7 +76,7 @@ export default async function SpecPage({
       <nav style={pg.nav}>
         <div style={pg.navInner}>
           <Link href="/" style={pg.brand}>
-            <span style={pg.brandDot}>J</span>
+            <Image src="/logo-transparent.png" alt="Jobbots" width={22} height={22} style={{ borderRadius: 5 }} />
             <span style={pg.brandName}>Jobbots</span>
           </Link>
           <Link href="/portal/login" style={pg.navCta}>دخول المشترك</Link>
@@ -222,7 +223,6 @@ const pg: Record<string, React.CSSProperties> = {
   nav: { borderBottom: "1px solid #e5e7eb", padding: "0 20px", height: 56, display: "flex", alignItems: "center" },
   navInner: { maxWidth: 1100, margin: "0 auto", width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between" },
   brand: { display: "flex", alignItems: "center", gap: 8, textDecoration: "none" },
-  brandDot: { width: 28, height: 28, borderRadius: 7, background: "#000", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800 },
   brandName: { fontWeight: 800, fontSize: 17, color: "#111" },
   navCta: { background: "#111", color: "#fff", padding: "7px 16px", borderRadius: 9, fontSize: 13, fontWeight: 600, textDecoration: "none" },
   breadcrumb: { borderBottom: "1px solid #f0f0f0", padding: "10px 20px", background: "#fafafa" },

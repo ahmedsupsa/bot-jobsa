@@ -155,14 +155,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     background: repeating-linear-gradient(90deg, #fff 0px, #fff 8px, transparent 8px, transparent 14px);
     opacity: 0.15;
   }
-  .brand-logo {
-    width: 56px; height: 56px;
-    background: #fff; border-radius: 16px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 26px; font-weight: 900; color: #0a0a0a;
-    letter-spacing: -1px; flex-shrink: 0;
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
-  }
+  .brand-logo { display: none; } /* replaced by img */
   .brand-info { display: flex; align-items: center; gap: 16px; }
   .brand-name { color: #fff; font-size: 24px; font-weight: 900; letter-spacing: -0.5px; }
   .brand-tagline { color: #71717a; font-size: 12px; margin-top: 3px; }
@@ -440,7 +433,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   <!-- ── Header ── -->
   <div class="inv-header">
     <div class="brand-info">
-      <div class="brand-logo">J</div>
+      <img src="/logo-transparent.png" alt="Jobbots" style="width:48px;height:48px;border-radius:12px" />
       <div>
         <div class="brand-name">Jobbots</div>
         <div class="brand-tagline">منصة التقديم التلقائي للوظائف</div>

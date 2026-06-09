@@ -1,11 +1,12 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { setToken } from "@/lib/portal-auth";
 import {
   KeyRound, ArrowRight, Loader2,
   User, Phone, MapPin, Calendar, ChevronRight,
-  Mail, Sparkles, ShieldCheck, Zap,
+  Mail, Sparkles, ShieldCheck,
 } from "lucide-react";
 
 type Step = "login" | "register";
@@ -81,14 +82,8 @@ export default function PortalLogin() {
       {/* Left — Branding */}
       <div className="login-left">
         <div style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "auto" }}>
-            <div style={{
-              width: 38, height: 38, borderRadius: 10,
-              background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.15)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <Zap size={18} color="#fff" strokeWidth={2} />
-            </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "auto" }}>
+            <Image src="/logo-transparent.png" alt="Jobbots" width={34} height={34} style={{ borderRadius: 8 }} />
             <span style={{ color: "#fff", fontWeight: 700, fontSize: 17, letterSpacing: "-0.3px" }}>Jobbots</span>
           </div>
 

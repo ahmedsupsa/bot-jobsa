@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { GUIDES, getGuideBySlug } from "../data";
 
@@ -72,7 +73,7 @@ export default async function GuidePage({
       <nav style={gd.nav}>
         <div style={gd.navInner}>
           <Link href="/" style={gd.brand}>
-            <span style={gd.brandDot}>J</span>
+            <Image src="/logo-transparent.png" alt="Jobbots" width={22} height={22} style={{ borderRadius: 5 }} />
             <span style={gd.brandName}>Jobbots</span>
           </Link>
           <div style={{ display: "flex", gap: 10 }}>
@@ -171,7 +172,6 @@ const gd: Record<string, React.CSSProperties> = {
   nav: { borderBottom: "1px solid #e5e7eb", padding: "0 20px", height: 56, display: "flex", alignItems: "center" },
   navInner: { maxWidth: 1200, margin: "0 auto", width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between" },
   brand: { display: "flex", alignItems: "center", gap: 8, textDecoration: "none" },
-  brandDot: { width: 28, height: 28, borderRadius: 7, background: "#000", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800 },
   brandName: { fontWeight: 800, fontSize: 17, color: "#111" },
   navLink: { color: "#64748b", fontSize: 13, textDecoration: "none" },
   navCta: { background: "#111", color: "#fff", padding: "7px 16px", borderRadius: 9, fontSize: 13, fontWeight: 600, textDecoration: "none" },

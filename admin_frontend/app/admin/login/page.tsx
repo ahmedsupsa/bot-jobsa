@@ -1,12 +1,12 @@
 "use client";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Lock, ArrowLeft, Loader2, User, BriefcaseBusiness, Zap, ShieldCheck } from "lucide-react";
+import Image from "next/image";
+import { Lock, ArrowLeft, Loader2, User, Zap, ShieldCheck } from "lucide-react";
 
 const features = [
-  { icon: BriefcaseBusiness, text: "إدارة الوظائف والتقديمات تلقائياً" },
-  { icon: Zap,               text: "رسائل تغطية مولّدة بالذكاء الاصطناعي" },
-  { icon: ShieldCheck,       text: "لوحة تحكم آمنة ومتكاملة" },
+  { icon: Zap,         text: "إدارة الوظائف والتقديمات تلقائياً" },
+  { icon: ShieldCheck, text: "لوحة تحكم آمنة ومتكاملة" },
 ];
 
 function LoginForm() {
@@ -38,11 +38,7 @@ function LoginForm() {
   return (
     <div style={s.formBox}>
       <div style={s.brand}>
-        <div style={s.brandIcon}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
-          </svg>
-        </div>
+        <Image src="/logo-transparent.png" alt="Jobbots" width={28} height={28} style={{ borderRadius: 6 }} />
         <span style={s.brandName}>Jobbots</span>
       </div>
 
@@ -115,12 +111,8 @@ export default function AdminLogin() {
     <div className="login-split" dir="rtl">
       <div className="login-left">
         <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100%" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: "auto" }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.2)" }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
-              </svg>
-            </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "auto" }}>
+            <Image src="/logo-transparent.png" alt="Jobbots" width={36} height={36} style={{ borderRadius: 8 }} />
             <span style={{ color: "white", fontWeight: 800, fontSize: 18, letterSpacing: "-0.3px" }}>Jobbots</span>
           </div>
 
@@ -163,7 +155,6 @@ export default function AdminLogin() {
 const s: Record<string, React.CSSProperties> = {
   formBox: { width: "100%", maxWidth: 420 },
   brand: { display: "flex", alignItems: "center", gap: 10, marginBottom: 32 },
-  brandIcon: { width: 38, height: 38, borderRadius: 11, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" },
   brandName: { color: "var(--text)", fontSize: 16, fontWeight: 800, letterSpacing: "-0.3px" },
   formTitle: { color: "var(--text)", fontSize: 26, fontWeight: 800, margin: "0 0 6px", letterSpacing: "-0.4px" },
   formSub: { color: "var(--text3)", fontSize: 14, margin: "0 0 28px", lineHeight: 1.5 },

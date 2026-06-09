@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Briefcase, ArrowRight, Home } from "lucide-react";
+import Image from "next/image";
+import { ArrowRight, Home } from "lucide-react";
 
 export default function NotFound() {
   return (
@@ -7,7 +8,7 @@ export default function NotFound() {
       <nav style={s.nav}>
         <div style={s.navInner}>
           <Link href="/" style={s.logo}>
-            <div style={s.logoIcon}><Briefcase size={18} strokeWidth={1.5} color="#0a0a0a" /></div>
+            <Image src="/logo-transparent.png" alt="Jobbots" width={24} height={24} style={{ borderRadius: 5 }} />
             <span style={s.logoText}>Jobbots</span>
           </Link>
         </div>
@@ -46,7 +47,6 @@ const s: Record<string, React.CSSProperties> = {
   nav: { borderBottom: "1px solid #1a1a1a", padding: "0 24px" },
   navInner: { maxWidth: 1100, margin: "0 auto", height: 64, display: "flex", alignItems: "center" },
   logo: { display: "flex", alignItems: "center", gap: 10, textDecoration: "none" },
-  logoIcon: { width: 36, height: 36, borderRadius: 10, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" },
   logoText: { color: "#fff", fontSize: 18, fontWeight: 800 },
   body: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 24px", textAlign: "center" },
   code: { fontSize: 120, fontWeight: 900, color: "#1a1a1a", lineHeight: 1, marginBottom: 8, fontFamily: "monospace", letterSpacing: -4 },

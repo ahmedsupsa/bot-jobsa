@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { MessageCircle, ShoppingBag } from "lucide-react";
 
 export const metadata = {
@@ -11,8 +12,8 @@ export default function BioPage() {
       <div className="w-full max-w-sm bg-panel border border-line rounded-3xl p-8 text-center space-y-6 shadow-2xl">
         {/* الهوية والقيمة المضافة */}
         <div className="space-y-4">
-          <div className="w-20 h-20 mx-auto bg-ink rounded-full flex items-center justify-center text-white text-2xl font-black">
-            JB
+          <div className="w-20 h-20 mx-auto bg-ink rounded-full flex items-center justify-center">
+            <Image src="/logo-transparent.png" alt="Jobbots" width={36} height={36} className="block" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-ink">Jobbots</h1>
