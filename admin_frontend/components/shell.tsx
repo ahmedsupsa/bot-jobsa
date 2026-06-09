@@ -446,6 +446,14 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-bg">
           {children}
+
+          <footer style={{
+            marginTop: 40, padding: "20px 0",
+            borderTop: "1px solid var(--border)",
+            textAlign: "center", color: "var(--text4)", fontSize: 12,
+          }}>
+            © {new Date().getFullYear()} Jobbots — جميع الحقوق محفوظة
+          </footer>
         </main>
       </div>
 

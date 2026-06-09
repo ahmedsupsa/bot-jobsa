@@ -77,7 +77,10 @@ export default function PortalLogin() {
     { key: "city", label: "المدينة", icon: <MapPin size={15} strokeWidth={1.5} /> },
   ];
 
+  const yr = new Date().getFullYear();
+
   return (
+    <>
     <div className="login-split">
       {/* Left — Branding */}
       <div className="login-left">
@@ -217,6 +220,14 @@ export default function PortalLogin() {
         </div>
       </div>
     </div>
+      <footer style={{
+        textAlign: "center", padding: "16px 20px",
+        background: "#0a0a0a", color: "rgba(255,255,255,0.25)",
+        fontSize: 12, borderTop: "1px solid rgba(255,255,255,0.06)",
+      }}>
+        © {yr} Jobbots — جميع الحقوق محفوظة
+      </footer>
+    </>
   );
 }
 

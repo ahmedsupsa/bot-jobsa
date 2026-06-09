@@ -108,47 +108,56 @@ function LoginForm() {
 
 export default function AdminLogin() {
   return (
-    <div className="login-split" dir="rtl">
-      <div className="login-left">
-        <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100%" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "auto" }}>
-            <Image src="/logo-transparent.png" alt="Jobbots" width={36} height={36} style={{ borderRadius: 8 }} />
-            <span style={{ color: "white", fontWeight: 800, fontSize: 18, letterSpacing: "-0.3px" }}>Jobbots</span>
-          </div>
+    <>
+      <div className="login-split" dir="rtl">
+        <div className="login-left">
+          <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100%" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "auto" }}>
+              <Image src="/logo-transparent.png" alt="Jobbots" width={36} height={36} style={{ borderRadius: 8 }} />
+              <span style={{ color: "white", fontWeight: 800, fontSize: 18, letterSpacing: "-0.3px" }}>Jobbots</span>
+            </div>
 
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 12 }}>لوحة الإدارة</div>
-            <h1 style={{ color: "white", fontSize: "clamp(26px,3vw,34px)", fontWeight: 900, lineHeight: 1.2, margin: "0 0 14px", letterSpacing: "-0.5px" }}>
-              منصة التقديم<br />التلقائي على الوظائف
-            </h1>
-            <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 14, lineHeight: 1.7, margin: "0 0 36px" }}>
-              أدِر المستخدمين والوظائف والتقديمات من مكان واحد
-            </p>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 12 }}>لوحة الإدارة</div>
+              <h1 style={{ color: "white", fontSize: "clamp(26px,3vw,34px)", fontWeight: 900, lineHeight: 1.2, margin: "0 0 14px", letterSpacing: "-0.5px" }}>
+                منصة التقديم<br />التلقائي على الوظائف
+              </h1>
+              <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 14, lineHeight: 1.7, margin: "0 0 36px" }}>
+                أدِر المستخدمين والوظائف والتقديمات من مكان واحد
+              </p>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {features.map((f, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <f.icon size={16} color="rgba(255,255,255,0.9)" />
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {features.map((f, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <f.icon size={16} color="rgba(255,255,255,0.9)" />
+                    </div>
+                    <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 13.5, fontWeight: 500 }}>{f.text}</span>
                   </div>
-                  <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 13.5, fontWeight: 500 }}>{f.text}</span>
-                </div>
-              ))}
+                ))}
+              </div>
+            </div>
+
+            <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, marginTop: "auto", paddingTop: 32 }}>
+              © 2026 Jobbots — جميع الحقوق محفوظة
             </div>
           </div>
+        </div>
 
-          <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, marginTop: "auto", paddingTop: 32 }}>
-            © 2026 Jobbots — جميع الحقوق محفوظة
-          </div>
+        <div className="login-right">
+          <Suspense fallback={<div style={{ width: "100%", maxWidth: 420 }} />}>
+            <LoginForm />
+          </Suspense>
         </div>
       </div>
-
-      <div className="login-right">
-        <Suspense fallback={<div style={{ width: "100%", maxWidth: 420 }} />}>
-          <LoginForm />
-        </Suspense>
-      </div>
-    </div>
+      <footer style={{
+        textAlign: "center", padding: "16px 20px",
+        background: "#0a0a0a", color: "rgba(255,255,255,0.25)",
+        fontSize: 12, borderTop: "1px solid rgba(255,255,255,0.06)",
+      }}>
+        © {new Date().getFullYear()} Jobbots — جميع الحقوق محفوظة
+      </footer>
+    </>
   );
 }
 

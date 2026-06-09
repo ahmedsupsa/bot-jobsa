@@ -219,6 +219,15 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
 
           <PushPermissionBanner />
           {children}
+
+          {/* ─── FOOTER ─── */}
+          <footer style={{
+            marginTop: 40, padding: "20px 0",
+            borderTop: `1px solid ${t.border}`,
+            textAlign: "center", color: t.text3, fontSize: 12,
+          }}>
+            © {new Date().getFullYear()} Jobbots — جميع الحقوق محفوظة
+          </footer>
         </div>
       </main>
 
