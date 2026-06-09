@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
+import { Footer } from "@/components/footer";
 import { SPECIALIZATIONS } from "./data";
 
 export const metadata: Metadata = {
@@ -77,16 +78,7 @@ export default function JobsIndexPage() {
         <Link href="/store" style={p.ctaBtn}>اشترك وابدأ الآن</Link>
       </div>
 
-      <footer style={p.footer}>
-        <div style={p.footerInner}>
-          <span style={{ fontSize: 13, color: "#94a3b8" }}>© 2026 Jobbots</span>
-          <div style={{ display: "flex", gap: 16 }}>
-            <Link href="/daleel" style={p.footLink}>الأدلة</Link>
-            <Link href="/store" style={p.footLink}>الأسعار</Link>
-            <Link href="/" style={p.footLink}>الرئيسية</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
@@ -114,7 +106,5 @@ const p: Record<string, React.CSSProperties> = {
   ctaTitle: { fontSize: "clamp(20px,4vw,28px)", fontWeight: 800, color: "#fff", margin: "0 0 10px" },
   ctaSub: { fontSize: 15, color: "#94a3b8", margin: "0 0 24px" },
   ctaBtn: { display: "inline-block", background: "#fff", color: "#0f172a", padding: "12px 28px", borderRadius: 12, fontWeight: 700, fontSize: 14, textDecoration: "none" },
-  footer: { borderTop: "1px solid #e5e7eb", padding: "24px 20px" },
-  footerInner: { maxWidth: 1100, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 },
-  footLink: { fontSize: 13, color: "#64748b", textDecoration: "none" },
+
 };

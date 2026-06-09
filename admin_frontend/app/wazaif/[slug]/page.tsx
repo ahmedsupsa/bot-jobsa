@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
+import { Footer } from "@/components/footer";
 import { SPECIALIZATIONS, getSpecBySlug } from "../data";
 
 export async function generateStaticParams() {
@@ -194,18 +195,7 @@ export default async function SpecPage({
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer style={pg.footer}>
-        <div style={pg.footerInner}>
-          <span style={pg.footCopy}>© 2026 Jobbots. جميع الحقوق محفوظة.</span>
-          <div style={pg.footLinks}>
-            <Link href="/wazaif" style={pg.footLink}>جميع التخصصات</Link>
-            <Link href="/daleel" style={pg.footLink}>الأدلة</Link>
-            <Link href="/store" style={pg.footLink}>الأسعار</Link>
-            <Link href="/privacy" style={pg.footLink}>الخصوصية</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
 
       <style>{`
         @media (max-width: 640px) {
@@ -261,9 +251,5 @@ const pg: Record<string, React.CSSProperties> = {
   relCard: { background: "#fafafa", border: "1px solid #e5e7eb", borderRadius: 12, padding: "18px 16px", textDecoration: "none", display: "block" },
   relTitle: { fontSize: 14, fontWeight: 700, color: "#111", marginBottom: 4 },
   relSub: { fontSize: 12, color: "#64748b" },
-  footer: { borderTop: "1px solid #e5e7eb", padding: "24px 20px" },
-  footerInner: { maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 },
-  footCopy: { fontSize: 13, color: "#94a3b8" },
-  footLinks: { display: "flex", gap: 16, flexWrap: "wrap" },
-  footLink: { fontSize: 13, color: "#64748b", textDecoration: "none" },
+
 };

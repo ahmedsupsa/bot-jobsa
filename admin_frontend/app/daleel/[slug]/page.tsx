@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
+import { Footer } from "@/components/footer";
 import { GUIDES, getGuideBySlug } from "../data";
 
 export async function generateStaticParams() {
@@ -151,18 +152,7 @@ export default async function GuidePage({
         </aside>
       </main>
 
-      {/* FOOTER */}
-      <footer style={gd.footer}>
-        <div style={gd.footerInner}>
-          <span style={gd.footCopy}>© 2026 Jobbots</span>
-          <div style={gd.footLinks}>
-            <Link href="/daleel" style={gd.footLink}>الأدلة</Link>
-            <Link href="/wazaif" style={gd.footLink}>التخصصات</Link>
-            <Link href="/store" style={gd.footLink}>الأسعار</Link>
-            <Link href="/privacy" style={gd.footLink}>الخصوصية</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
@@ -199,9 +189,5 @@ const gd: Record<string, React.CSSProperties> = {
   sideCard: { background: "#fafafa", border: "1px solid #e5e7eb", borderRadius: 14, padding: "20px 18px" },
   sideTitle: { fontSize: 14, fontWeight: 800, color: "#111", margin: "0 0 14px", paddingBottom: 10, borderBottom: "1px solid #e5e7eb" },
   sideLink: { display: "block", fontSize: 13, color: "#475569", textDecoration: "none", padding: "7px 0", borderBottom: "1px solid #f1f5f9", lineHeight: 1.5 },
-  footer: { borderTop: "1px solid #e5e7eb", padding: "24px 20px" },
-  footerInner: { maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 },
-  footCopy: { fontSize: 13, color: "#94a3b8" },
-  footLinks: { display: "flex", gap: 16, flexWrap: "wrap" },
-  footLink: { fontSize: 13, color: "#64748b", textDecoration: "none" },
+
 };
