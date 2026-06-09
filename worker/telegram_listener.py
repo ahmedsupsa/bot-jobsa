@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 telegram_listener.py — يراقب قنوات Telegram بحسابك الشخصي
-ويستخرج الوظائف تلقائياً ويحفظها في المنصة
+ويستخرج الوظائف تلقائياً ويحفظها في ملف pending_jobs.json
 """
 import asyncio
 import hashlib
+import json
 import logging
 import os
 import re
@@ -194,65 +195,56 @@ def _extract_jobs_smart(text: str) -> list[dict]:
     return results
 
 
-# ── Supabase: تحقق من التكرار ─────────────────────────────────────────────
-async def _job_exists(uid: str) -> bool:
-    if not SUPABASE_URL or not SUPABASE_KEY:
-        return False
+# ── ملفات محلية للتخزين المؤقت ──────────────────────────────────────────
+_DATA_DIR = os.path.join(os.path.dirname(__file__))
+_PENDING_FILE = os.path.join(_DATA_DIR, "pending_jobs.json")
+_SEEN_FILE = os.path.join(_DATA_DIR, "seen_uids.json")
+
+def _load_json(path: str, default=None):
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get(
-                f"{SUPABASE_URL}/rest/v1/admin_jobs",
-                params={"tweet_uid": f"eq.{uid}", "select": "id", "limit": "1"},
-                headers=_SB_HEADERS(),
-            )
-            data = r.json()
-            return isinstance(data, list) and len(data) > 0
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
     except:
+        return default if default is not None else []
+
+def _save_json(path: str, data):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _msg_exists(msg_uid: str) -> bool:
+    """يتحقق هل هذا UID موجود مسبقاً في seen_uids.json"""
+    seen = set(_load_json(_SEEN_FILE, []))
+    return msg_uid in seen
+
+
+def _mark_seen(msg_uid: str):
+    seen = set(_load_json(_SEEN_FILE, []))
+    seen.add(msg_uid)
+    _save_json(_SEEN_FILE, list(seen))
+
+
+def _save_pending(job: dict, uid: str, channel: str):
+    """يحفظ الوظيفة في الملف المحلي pending_jobs.json بدلاً من Supabase"""
+    pending = _load_json(_PENDING_FILE, [])
+    entry = {
+        "id": uid,
+        "title_ar": job.get("title_ar", "وظيفة من Telegram").strip(),
+        "company": job.get("company", "").strip() or None,
+        "description_ar": job.get("description_ar", "").strip() or None,
+        "application_email": job.get("application_email") or None,
+        "link_url": job.get("link_url") or None,
+        "source_account": channel,
+        "fetched_at": datetime.now(tz.utc).isoformat(),
+        "status": "pending",  # pending | published | discarded
+    }
+    # تجنب التكرار في الملف
+    existing = [e for e in pending if e.get("id") == uid]
+    if existing:
         return False
-
-
-async def _msg_exists(msg_uid: str) -> bool:
-    """يتحقق هل أي وظيفة من هذه الرسالة محفوظة (uid_0, uid_1, ...)"""
-    if not SUPABASE_URL or not SUPABASE_KEY:
-        return False
-    try:
-        async with httpx.AsyncClient(timeout=8) as client:
-            r = await client.get(
-                f"{SUPABASE_URL}/rest/v1/admin_jobs",
-                params={"tweet_uid": f"like.{msg_uid}%", "select": "id", "limit": "1"},
-                headers=_SB_HEADERS(),
-            )
-            data = r.json()
-            return isinstance(data, list) and len(data) > 0
-    except:
-        return False
-
-
-# ── Supabase: حفظ وظيفة ──────────────────────────────────────────────────
-async def _save_job(job: dict, uid: str, channel: str) -> str | None:
-    if not SUPABASE_URL or not SUPABASE_KEY:
-        return None
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.post(
-                f"{SUPABASE_URL}/rest/v1/admin_jobs",
-                json={
-                    "title_ar":          job.get("title_ar", "وظيفة من Telegram").strip(),
-                    "company":           job.get("company", "").strip() or None,
-                    "description_ar":    job.get("description_ar", "").strip() or None,
-                    "application_email": job.get("application_email") or None,
-                    "specializations":   job.get("specializations", "").strip() or None,
-                    "link_url":          job.get("link_url") or None,
-                    "is_active":         False,
-                    "tweet_uid":         uid,
-                    "source_account":    channel,
-                },
-                headers=_SB_HEADERS(),
-            )
-            data = r.json()
-            return data[0]["id"] if isinstance(data, list) and data else None
-    except:
-        return None
+    pending.append(entry)
+    _save_json(_PENDING_FILE, pending)
+    return True
 
 
 # ── Telegram Bot: إرسال رسالة ─────────────────────────────────────────────
@@ -305,7 +297,7 @@ async def process_message(text: str, channel_title: str, channel_id: str, msg_id
     uid_base = f"{channel_id}:{msg_id}:{text[:100]}"
     uid = hashlib.md5(uid_base.encode()).hexdigest()
 
-    if await _msg_exists(uid):
+    if _msg_exists(uid):
         logger.info("[TG] ⏭️ مكرر — تجاهل من %s", channel_title)
         return
 
@@ -353,13 +345,18 @@ async def process_message(text: str, channel_title: str, channel_id: str, msg_id
                 job["application_email"] = m.group()
 
         job_uid = f"{uid}_{i}"
-        job_id = await _save_job(job, job_uid, channel_title)
-        if job_id:
+        ok = _save_pending(job, job_uid, channel_title)
+        if ok:
             saved += 1
-            logger.info(f"[TG] حُفظت في DB: {title} من {channel_title}")
+            _mark_seen(job_uid)
+            logger.info(f"[TG] حُفظت في pending_jobs.json: {title} من {channel_title}")
+        else:
+            logger.info(f"[TG] ⏭️ مكرر في الملف — تجاهل: {title}")
 
     if saved:
-        logger.info(f"[TG] {saved} وظيفة من {channel_title}")
+        logger.info(f"[TG] {saved} وظيفة جديدة من {channel_title}")
+    else:
+        logger.info(f"[TG] 0 وظائف جديدة من {channel_title}")
 
 
 # ── تشغيل المستمع ─────────────────────────────────────────────────────────

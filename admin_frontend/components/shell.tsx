@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Key, BriefcaseBusiness, Bell, LogOut,
   ShoppingBag, TrendingUp, MessageCircle, MailCheck, ShieldCheck, Send,
   Sun, Moon, Contact, MessagesSquare, Activity, BrainCircuit, Radio,
-  ChevronDown, KeyRound, X, Loader2, Eye, EyeOff,
+  ChevronDown, KeyRound, X, Loader2, Eye, EyeOff, ExternalLink,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "@/contexts/theme-context";
@@ -57,6 +57,7 @@ const groups: NavGroup[] = [
     id: "jobs",
     title: "الوظائف والتقديم",
     links: [
+      { href: "/admin/pending-jobs", label: "وظائف واردة", icon: ExternalLink, perm: "jobs" },
       { href: "/admin/jobs",                   label: "الوظائف",           icon: BriefcaseBusiness, perm: "jobs" },
       { href: "/admin/applications",           label: "مراقبة التقديمات",  icon: BrainCircuit,      perm: "jobs" },
       { href: "/admin/telegram-channel", label: "قناة Telegram",     icon: Radio,             perm: "jobs", superOnly: true },
