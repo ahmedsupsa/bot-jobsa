@@ -6,7 +6,7 @@ import { setToken } from "@/lib/portal-auth";
 import {
   KeyRound, ArrowRight, Loader2,
   User, Phone, MapPin, Calendar, ChevronRight,
-  Mail, Sparkles, ShieldCheck,
+  Mail, Sparkles, ShieldCheck, Zap,
 } from "lucide-react";
 
 type Step = "login" | "register";
