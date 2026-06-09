@@ -283,14 +283,23 @@ async function sendSmtp(opts: {
     auth: { user: opts.user, pass: opts.pass },
     connectionTimeout: 20000, greetingTimeout: 15000,
   });
+  // تحقق من صحة بيانات SMTP قبل الإرسال
+  try {
+    await transporter.verify();
+  } catch (verifyErr: unknown) {
+    const msg = String(verifyErr).slice(0, 200);
+    console.error(`[smtp] ❌ verify فشل لـ ${opts.user}: ${msg}`);
+    throw new Error(`فشل التحقق من SMTP: ${msg}`);
+  }
   const mail: Record<string, unknown> = {
-    from: `${opts.fromName} <${opts.user}>`,
+    from: `"${opts.fromName}" <${opts.user}>`,
     to: opts.to, subject: opts.subject, html: opts.html, replyTo: opts.user,
   };
   if (opts.cvBytes && opts.cvName) {
     mail.attachments = [{ filename: opts.cvName, content: opts.cvBytes }];
   }
-  await transporter.sendMail(mail);
+  const info = await transporter.sendMail(mail);
+  console.log(`[smtp] ✅ أُرسل إلى ${opts.to} — messageId: ${info.messageId || "غير معروف"}`);
 }
 
 // ── الدورة الرئيسية ───────────────────────────────────────────────────────────
