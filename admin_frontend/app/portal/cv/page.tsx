@@ -4,10 +4,12 @@ import { useRouter } from "next/navigation";
 import { PortalShell } from "@/components/portal-shell";
 import { useTheme } from "@/contexts/theme-context";
 import { portalFetch, clearToken, authHeaders } from "@/lib/portal-auth";
+import type { CvProfile } from "@/lib/cv-parser";
 import {
   Upload, FileText, CheckCircle, XCircle,
   Bot, Search, Send, Eye, Calendar,
-  Sparkles, Loader2, X,
+  Sparkles, Loader2, X, MapPin, GraduationCap,
+  Briefcase, Award, Star, Languages,
 } from "lucide-react";
 
 interface CVInfo { has_cv: boolean; file_name?: string; updated_at?: string; preview_url?: string; cv_profile?: any; }
@@ -33,7 +35,7 @@ export default function CVPage() {
   const [uploading, setUploading] = useState(false);
   const [drag, setDrag] = useState(false);
   const [cvMsg, setCvMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
-  const [summary, setSummary] = useState<any>(null);
+  const [profile, setProfile] = useState<CvProfile | null>(null);
   const [summarizing, setSummarizing] = useState(false);
   const [summaryMsg, setSummaryMsg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -44,7 +46,7 @@ export default function CVPage() {
       if (res.status === 401) { clearToken(); router.replace("/portal/login"); return; }
       const data = await res.json();
       setCV(data);
-      if (data.cv_profile) setSummary(data.cv_profile);
+      if (data.cv_profile) setProfile(data.cv_profile);
     } catch { clearToken(); router.replace("/portal/login"); }
     finally { setCvLoading(false); }
   }
@@ -82,9 +84,9 @@ export default function CVPage() {
         method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" },
       });
       const d = await res.json();
-      if (!res.ok) { setSummaryMsg(d.error || "فشل الاستخراج"); return; }
-      setSummary(d.summary);
-      setSummaryMsg("تم استخراج الملخص ✓");
+      if (!res.ok) { setSummaryMsg(d.error || "فشل التحليل"); return; }
+      setProfile(d.profile);
+      setSummaryMsg(d.message || "تم تحليل السيرة ✓");
     } catch { setSummaryMsg("خطأ في الاتصال"); }
     finally { setSummarizing(false); }
   }
@@ -172,89 +174,245 @@ export default function CVPage() {
                   </button>
                 </div>
 
-                {/* ملخص السيرة */}
-                <div style={{
-                  background: dark ? "#0d0d1a" : "#f5f3ff",
-                  border: `1px solid ${dark ? "#1e1e3a" : "#ddd6fe"}`,
-                  borderRadius: 18, padding: "20px 18px", marginBottom: 20,
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                      <div style={{
-                        width: 34, height: 34, borderRadius: 10,
-                        background: dark ? "#1a1a3a" : "#ede9fe",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}>
-                        <Sparkles size={17} strokeWidth={1.5} color={dark ? "#a78bfa" : "#7c3aed"} />
-                      </div>
-                      <div>
-                        <p style={{ margin: 0, color: dark ? "#c4b5fd" : "#5b21b6", fontSize: 14, fontWeight: 700 }}>
-                          ملخص السيرة الذاتية
-                        </p>
-                        <p style={{ margin: "2px 0 0", color: t.text3, fontSize: 12 }}>
-                          {summary?.overview ? "ملخص مستخرج من سيرتك" : "اضغط استخراج للحصول على ملخص سيرتك"}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleExtractSummary}
-                      disabled={summarizing}
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: 7,
-                        padding: "9px 16px", borderRadius: 10, border: "none",
-                        background: dark ? "#7c3aed" : "#7c3aed",
-                        color: "#fff", fontSize: 12, fontWeight: 700,
-                        cursor: summarizing ? "not-allowed" : "pointer",
-                        opacity: summarizing ? 0.7 : 1, fontFamily: "inherit",
-                      }}
-                    >
-                      {summarizing
-                        ? <><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> جاري الاستخراج…</>
-                        : <><Sparkles size={13} /> {summary ? "تحديث الملخص" : "استخراج الملخص"}</>
-                      }
-                    </button>
-                  </div>
-
-                  {summaryMsg && (
-                    <div style={{
-                      display: "flex", alignItems: "center", gap: 8,
-                      padding: "10px 14px", borderRadius: 10, marginTop: 12,
-                      fontSize: 12, fontWeight: 500,
-                      background: summaryMsg.includes("خطأ")||summaryMsg.includes("فشل")||summaryMsg.includes("لا يوجد") ? (dark ? "#1a0a0a" : "#fef2f2") : (dark ? "#0a1f0a" : "#f0fdf4"),
-                      color: summaryMsg.includes("خطأ")||summaryMsg.includes("فشل")||summaryMsg.includes("لا يوجد") ? (dark ? "#f87171" : "#dc2626") : (dark ? "#86efac" : "#166534"),
-                      border: `1px solid ${summaryMsg.includes("خطأ")||summaryMsg.includes("فشل")||summaryMsg.includes("لا يوجد") ? (dark ? "#7f1d1d" : "#fecaca") : (dark ? "#2a2a2a" : "#bbf7d0")}`,
-                    }}>
-                      {summaryMsg.includes("خطأ")||summaryMsg.includes("فشل")||summaryMsg.includes("لا يوجد") ? <XCircle size={13} /> : <CheckCircle size={13} />} {summaryMsg}
-                    </div>
-                  )}
-
-                  {summary && (
-                    <div style={{ marginTop: 14, background: dark ? "#111" : "#fff", borderRadius: 12, padding: 16, border: `1px solid ${t.border}` }}>
-                      {summary.overview ? (
-                        <div style={{ marginBottom: 12 }}>
-                          <p style={{ color: t.text2, fontSize: 12, fontWeight: 600, margin: "0 0 6px" }}>نبذة عامة</p>
-                          <p style={{ color: t.text, fontSize: 13, margin: 0, lineHeight: 1.7 }}>{summary.overview}</p>
+                  {/* ملخص السيرة الذاتية — نسخة احترافية */}
+                  <div style={{
+                    background: dark ? "#0d0d1a" : "#f5f3ff",
+                    border: `1px solid ${dark ? "#1e1e3a" : "#ddd6fe"}`,
+                    borderRadius: 18, padding: "20px 18px", marginBottom: 20,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                        <div style={{
+                          width: 34, height: 34, borderRadius: 10,
+                          background: dark ? "#1a1a3a" : "#ede9fe",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                          <Sparkles size={17} strokeWidth={1.5} color={dark ? "#a78bfa" : "#7c3aed"} />
                         </div>
-                      ) : (
-                        <p style={{ color: t.text3, fontSize: 12, margin: "0 0 12px" }}>لم يتم العثور على ملخص — السيرة قد لا تحتوي على نص واضح</p>
-                      )}
-                      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                        {summary.email && (
-                          <div>
-                            <p style={{ color: t.text3, fontSize: 11, margin: "0 0 2px" }}>الإيميل</p>
-                            <p style={{ color: t.text, fontSize: 13, margin: 0, direction: "ltr" }}>{summary.email}</p>
+                        <div>
+                          <p style={{ margin: 0, color: dark ? "#c4b5fd" : "#5b21b6", fontSize: 14, fontWeight: 700 }}>
+                            ملف السيرة الذاتية
+                          </p>
+                          <p style={{ margin: "2px 0 0", color: t.text3, fontSize: 12 }}>
+                            {profile?.name ? "تم تحليل السيرة بنجاح" : "اضغط تحليل لاستخراج بيانات سيرتك"}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleExtractSummary}
+                        disabled={summarizing}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 7,
+                          padding: "9px 16px", borderRadius: 10, border: "none",
+                          background: dark ? "#7c3aed" : "#7c3aed",
+                          color: "#fff", fontSize: 12, fontWeight: 700,
+                          cursor: summarizing ? "not-allowed" : "pointer",
+                          opacity: summarizing ? 0.7 : 1, fontFamily: "inherit",
+                        }}
+                      >
+                        {summarizing
+                          ? <><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> جاري التحليل…</>
+                          : <><Sparkles size={13} /> {profile ? "إعادة تحليل" : "تحليل السيرة"}</>
+                        }
+                      </button>
+                    </div>
+
+                    {summaryMsg && (
+                      <div style={{
+                        display: "flex", alignItems: "center", gap: 8,
+                        padding: "10px 14px", borderRadius: 10, marginTop: 12,
+                        fontSize: 12, fontWeight: 500,
+                        background: summaryMsg.includes("خطأ")||summaryMsg.includes("فشل")||summaryMsg.includes("لا يوجد") ? (dark ? "#1a0a0a" : "#fef2f2") : (dark ? "#0a1f0a" : "#f0fdf4"),
+                        color: summaryMsg.includes("خطأ")||summaryMsg.includes("فشل")||summaryMsg.includes("لا يوجد") ? (dark ? "#f87171" : "#dc2626") : (dark ? "#86efac" : "#166534"),
+                        border: `1px solid ${summaryMsg.includes("خطأ")||summaryMsg.includes("فشل")||summaryMsg.includes("لا يوجد") ? (dark ? "#7f1d1d" : "#fecaca") : (dark ? "#2a2a2a" : "#bbf7d0")}`,
+                      }}>
+                        {summaryMsg.includes("خطأ")||summaryMsg.includes("فشل")||summaryMsg.includes("لا يوجد") ? <XCircle size={13} /> : <CheckCircle size={13} />} {summaryMsg}
+                      </div>
+                    )}
+
+                    {profile && (
+                      <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+
+                        {/* الاسم والمدينة */}
+                        <div style={{
+                          background: dark ? "#111" : "#fff", borderRadius: 12, padding: 16,
+                          border: `1px solid ${t.border}`,
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                            {profile.name && (
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <div style={{ width: 32, height: 32, borderRadius: 8, background: dark ? "#1a1a3a" : "#ede9fe", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <Star size={14} color={dark ? "#a78bfa" : "#7c3aed"} />
+                                </div>
+                                <span style={{ color: t.text, fontSize: 15, fontWeight: 700 }}>{profile.name}</span>
+                              </div>
+                            )}
+                            {profile.city && (
+                              <div style={{ display: "flex", alignItems: "center", gap: 5, color: t.text2, fontSize: 13 }}>
+                                <MapPin size={13} /> {profile.city}
+                              </div>
+                            )}
+                          </div>
+                          {(profile.email || profile.phone) && (
+                            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 10, fontSize: 13 }}>
+                              {profile.email && <span style={{ color: t.text2, direction: "ltr" }}>{profile.email}</span>}
+                              {profile.phone && <span style={{ color: t.text2, direction: "ltr" }}>{profile.phone}</span>}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* النبذة العامة */}
+                        {profile.summary && (
+                          <div style={{
+                            background: dark ? "#111" : "#fff", borderRadius: 12, padding: 14,
+                            border: `1px solid ${t.border}`, fontSize: 13, lineHeight: 1.7, color: t.text2,
+                          }}>
+                            {profile.summary}
                           </div>
                         )}
-                        {summary.phone && (
-                          <div>
-                            <p style={{ color: t.text3, fontSize: 11, margin: "0 0 2px" }}>الجوال</p>
-                            <p style={{ color: t.text, fontSize: 13, margin: 0, direction: "ltr" }}>{summary.phone}</p>
+
+                        {/* التعليم */}
+                        {profile.education && (
+                          <div style={{
+                            background: dark ? "#111" : "#fff", borderRadius: 12, padding: 14,
+                            border: `1px solid ${t.border}`,
+                          }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                              <GraduationCap size={15} color={t.text2} />
+                              <span style={{ color: t.text, fontSize: 13, fontWeight: 600 }}>التعليم</span>
+                            </div>
+                            <div style={{ fontSize: 13, color: t.text2 }}>
+                              {profile.education.degree && <span>{profile.education.degree}</span>}
+                              {profile.education.major && <span> — {profile.education.major}</span>}
+                              {profile.education.university && <div style={{ marginTop: 4 }}>{profile.education.university}</div>}
+                              {(profile.education.gpa || profile.education.year) && (
+                                <div style={{ display: "flex", gap: 12, marginTop: 4 }}>
+                                  {profile.education.gpa && <span>{profile.education.gpa}</span>}
+                                  {profile.education.year && <span>{profile.education.year}</span>}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* الخبرة */}
+                        {profile.experience && profile.experience.length > 0 && (
+                          <div style={{
+                            background: dark ? "#111" : "#fff", borderRadius: 12, padding: 14,
+                            border: `1px solid ${t.border}`,
+                          }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                              <Briefcase size={15} color={t.text2} />
+                              <span style={{ color: t.text, fontSize: 13, fontWeight: 600 }}>
+                                الخبرة {profile.experience_years ? `(${profile.experience_years} سنوات)` : ""}
+                              </span>
+                            </div>
+                            {profile.experience.slice(0, 3).map((exp, i) => (
+                              <div key={i} style={{ fontSize: 13, color: t.text2, marginBottom: i < 2 ? 8 : 0 }}>
+                                {exp.title && <span style={{ color: t.text, fontWeight: 500 }}>{exp.title}</span>}
+                                {exp.company && <span> — {exp.company}</span>}
+                                {(exp.from || exp.to) && (
+                                  <div style={{ fontSize: 12, color: t.text3 }}>{exp.from}{exp.to ? ` - ${exp.to}` : ""}</div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* المهارات التقنية */}
+                        {profile.skills && profile.skills.length > 0 && (
+                          <div style={{
+                            background: dark ? "#111" : "#fff", borderRadius: 12, padding: 14,
+                            border: `1px solid ${t.border}`,
+                          }}>
+                            <span style={{ color: t.text, fontSize: 13, fontWeight: 600 }}>المهارات</span>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                              {profile.skills.map((s, i) => (
+                                <span key={i} style={{
+                                  padding: "4px 10px", borderRadius: 100, fontSize: 12,
+                                  background: dark ? "#1a1a3a" : "#ede9fe",
+                                  color: dark ? "#c4b5fd" : "#5b21b6",
+                                  border: `1px solid ${dark ? "#3a3a6a" : "#c4b5fd"}`,
+                                }}>{s}</span>
+                              ))}
+                              {(profile.soft_skills || []).map((s, i) => (
+                                <span key={`soft-${i}`} style={{
+                                  padding: "4px 10px", borderRadius: 100, fontSize: 12,
+                                  background: dark ? "#0a1f0a" : "#f0fdf4",
+                                  color: dark ? "#86efac" : "#166534",
+                                  border: `1px solid ${dark ? "#2a2a2a" : "#bbf7d0"}`,
+                                }}>{s}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* إجادة اللغة */}
+                        {profile.english_level && (
+                          <div style={{
+                            background: dark ? "#111" : "#fff", borderRadius: 12, padding: 14,
+                            border: `1px solid ${t.border}`,
+                          }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <Languages size={15} color={t.text2} />
+                              <span style={{ color: t.text, fontSize: 13 }}>الإنجليزية: <strong>{profile.english_level}</strong></span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* الشهادات */}
+                        {profile.certifications && profile.certifications.length > 0 && (
+                          <div style={{
+                            background: dark ? "#111" : "#fff", borderRadius: 12, padding: 14,
+                            border: `1px solid ${t.border}`,
+                          }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                              <Award size={15} color={t.text2} />
+                              <span style={{ color: t.text, fontSize: 13, fontWeight: 600 }}>الشهادات</span>
+                            </div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                              {profile.certifications.map((c, i) => (
+                                <span key={i} style={{
+                                  padding: "4px 10px", borderRadius: 100, fontSize: 12,
+                                  background: dark ? "#1a1a1a" : "#f4f4f5",
+                                  color: t.text2, border: `1px solid ${t.border}`,
+                                }}>{c}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* المجالات الوظيفية المناسبة */}
+                        {profile.job_categories && profile.job_categories.length > 0 && (
+                          <div style={{
+                            background: dark ? "#0a1f0a" : "#f0fdf4",
+                            borderRadius: 12, padding: 14,
+                            border: `1px solid ${dark ? "#2a2a2a" : "#bbf7d0"}`,
+                          }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                              <Star size={15} color={dark ? "#86efac" : "#166534"} />
+                              <span style={{ color: dark ? "#86efac" : "#166534", fontSize: 13, fontWeight: 600 }}>المجالات المناسبة</span>
+                            </div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                              {profile.job_categories.map((c, i) => (
+                                <span key={i} style={{
+                                  padding: "6px 14px", borderRadius: 100, fontSize: 13, fontWeight: 600,
+                                  background: dark ? "#0f2a0f" : "#dcfce7",
+                                  color: dark ? "#86efac" : "#166534",
+                                  border: `1px solid ${dark ? "#2a2a2a" : "#bbf7d0"}`,
+                                }}>{c}</span>
+                              ))}
+                            </div>
+                            {profile.overall_score !== undefined && (
+                              <div style={{ marginTop: 10, fontSize: 13, color: dark ? "#86efac" : "#166534", fontWeight: 700 }}>
+                                جودة السيرة: {profile.overall_score}/100
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
               </>
             ) : (
               <>

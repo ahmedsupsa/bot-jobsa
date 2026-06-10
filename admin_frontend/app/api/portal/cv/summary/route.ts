@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { extractToken, verifyToken } from "@/lib/auth";
+import { parseCvText, matchCategory } from "@/lib/cv-parser";
 
 export async function POST(req: Request) {
   const token = extractToken(req);
@@ -17,29 +18,26 @@ export async function POST(req: Request) {
 
   const cv = rows?.[0];
   if (!cv?.cv_parsed_text) {
-    return NextResponse.json({ error: "لا يوجد نص مستخرج من السيرة — السيرة قد تكون صورة وليس PDF نصياً. ارفع PDF نصي (غير مصور)" }, { status: 400 });
+    return NextResponse.json({
+      error: "لا يوجد نص مستخرج — السيرة قد تكون صورة. ارفع PDF نصي أو صورة واضحة."
+    }, { status: 400 });
   }
 
-  const text = cv.cv_parsed_text;
-  const summary: Record<string, string> = {};
+  const profile = parseCvText(cv.cv_parsed_text);
 
-  const emailMatch = text.match(/[\w.+-]+@[\w-]+\.[\w.]+/);
-  if (emailMatch) summary.email = emailMatch[0];
+  const toSave: Record<string, any> = {
+    ...profile,
+    skills: profile.skills || [],
+    soft_skills: profile.soft_skills || [],
+    certifications: profile.certifications || [],
+    job_categories: profile.job_categories || [],
+  };
 
-  const phoneMatch = text.match(/(?:05|5|\+9665|9665|٠٥)(?:\d[\s\-]?){8}/);
-  if (!phoneMatch) {
-    const fallback = text.match(/(\+?[\d\-\(\)\s]{7,})/);
-    if (fallback) summary.phone = fallback[0].trim();
-  } else {
-    summary.phone = phoneMatch[0].trim();
-  }
+  await supabase.from("user_cvs").update({ cv_profile: toSave }).eq("user_id", uid);
 
-  const cleanText = text.replace(/\s+/g, " ").trim();
-  if (cleanText) {
-    summary.overview = cleanText.slice(0, 500) + (cleanText.length > 500 ? "..." : "");
-  }
-
-  await supabase.from("user_cvs").update({ cv_profile: summary }).eq("user_id", uid);
-
-  return NextResponse.json({ ok: true, summary });
+  return NextResponse.json({
+    ok: true,
+    profile,
+    message: "تم تحليل السيرة بنجاح ✓",
+  });
 }
