@@ -185,53 +185,47 @@ export default function PreferencesPage() {
               />
             </div>
 
-            <div style={{ background:t.surface, border:`1px solid ${t.border}`, borderRadius:16, overflow:"hidden", marginBottom:20 }}>
-              {filteredCustom.length === 0 ? (
-                <p style={{ color:t.text3, textAlign:"center", padding:"30px 20px", fontSize:13 }}>لا توجد نتائج</p>
-              ) : (() => {
-                // Group by category
-                const grouped: Record<string, typeof filteredCustom> = {};
-                for (const f of filteredCustom) {
-                  const cat = f.category || "أخرى";
-                  if (!grouped[cat]) grouped[cat] = [];
-                  grouped[cat].push(f);
-                }
-                return Object.entries(grouped).map(([cat, items]) => (
-                  <div key={cat}>
-                    <div style={{
-                      padding:"10px 16px", fontSize:12, fontWeight:700,
-                      color: t.text3, background: dark ? "#0a0a0a" : "#f9f9f9",
-                      borderBottom:`1px solid ${t.border}`,
-                    }}>
-                      {cat}
-                    </div>
-                    {items.map((field, i) => {
+            {filteredCustom.length === 0 ? (
+              <p style={{ color:t.text3, textAlign:"center", padding:"30px 20px", fontSize:13 }}>لا توجد نتائج</p>
+            ) : (() => {
+              const grouped: Record<string, typeof filteredCustom> = {};
+              for (const f of filteredCustom) {
+                const cat = f.category || "أخرى";
+                if (!grouped[cat]) grouped[cat] = [];
+                grouped[cat].push(f);
+              }
+              return Object.entries(grouped).map(([cat, items]) => (
+                <div key={cat} style={{
+                  background: t.surface, border: `1px solid ${t.border}`,
+                  borderRadius: 16, padding: 16, marginBottom: 14,
+                }}>
+                  <p style={{
+                    margin: "0 0 12px", fontSize: 13, fontWeight: 700,
+                    color: t.purple,
+                  }}>{cat} <span style={{ color: t.text3, fontSize: 12, fontWeight: 400 }}>({items.length})</span></p>
+                  <div style={{
+                    display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8,
+                  }}>
+                    {items.map(field => {
                       const selected = selectedIds.has(field.id);
                       return (
                         <button key={field.id} onClick={() => toggleField(field.id)} style={{
-                          display:"flex", alignItems:"center", justifyContent:"space-between",
-                          width:"100%", padding:"14px 16px",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          gap: 5, padding: "8px 6px", borderRadius: 10, border: `1px solid ${selected ? "#7c3aed" : t.border}`,
                           background: selected ? t.purpleBg : "transparent",
-                          border:"none",
-                          borderBottom: i < items.length-1 ? `1px solid ${t.border}` : "none",
-                          cursor:"pointer", textAlign:"right", fontFamily:"inherit",
+                          cursor: "pointer", fontFamily: "inherit", fontSize: 12,
+                          color: selected ? t.purple : t.text,
+                          fontWeight: selected ? 600 : 400,
+                          textAlign: "center", lineHeight: 1.3, minHeight: 40,
                         }}>
-                          <span style={{ fontSize:14, fontWeight:selected?600:400, color:selected?t.purple:t.text }}>{field.name_ar}</span>
-                          <div style={{
-                            width:22, height:22, borderRadius:7, flexShrink:0,
-                            border:`1.5px solid ${selected ? "#7c3aed" : t.border}`,
-                            background: selected ? "#7c3aed" : "transparent",
-                            display:"flex", alignItems:"center", justifyContent:"center",
-                          }}>
-                            {selected && <CheckCircle size={13} strokeWidth={2.5} color="#fff"/>}
-                          </div>
+                          {field.name_ar}
                         </button>
                       );
                     })}
                   </div>
-                ));
-              })()}
-            </div>
+                </div>
+              ));
+            })()}
 
 
             <button onClick={handleSave} disabled={saving} style={{
