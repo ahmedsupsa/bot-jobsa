@@ -1,13 +1,13 @@
 "use client";
 import { useRouter, usePathname } from "next/navigation";
-import { useRef, useEffect } from "react";
-import { clearToken } from "@/lib/portal-auth";
+import { useRef, useEffect, useState } from "react";
+import { clearToken, authHeaders } from "@/lib/portal-auth";
 import { useTheme } from "@/contexts/theme-context";
 import { PushPermissionBanner } from "@/components/PushPermissionBanner";
 import Image from "next/image";
 import {
   Home, ClipboardList, FileText, User, LogOut,
-  MessageCircle, TrendingUp, Sun, Moon, Mail, Sliders, BookOpen,
+  MessageCircle, TrendingUp, Sun, Moon, Mail, Sliders, BookOpen, AlertTriangle,
 } from "lucide-react";
 
 const SIDEBAR_NAV = [
@@ -42,6 +42,14 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   const dark = theme === "dark";
   const navScrollRef = useRef<HTMLElement>(null);
   const activeTabRef = useRef<HTMLButtonElement>(null);
+  const [prefCount, setPrefCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/portal/preferences-count", { headers: authHeaders() })
+      .then(r => r.json())
+      .then(d => setPrefCount(d.count))
+      .catch(() => {});
+  }, []);
 
   // Auto-scroll active tab into center when route changes
   useEffect(() => {
@@ -218,6 +226,34 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
           </div>
+
+          {prefCount !== null && prefCount < 3 && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "12px 16px", borderRadius: 14, marginBottom: 16,
+              background: dark ? "#1a0a0a" : "#fef2f2",
+              border: `1px solid ${dark ? "#7f1d1d" : "#fecaca"}`,
+              fontSize: 13, fontWeight: 500,
+            }}>
+              <AlertTriangle size={16} strokeWidth={1.5} color="#f87171" style={{ flexShrink: 0 }} />
+              <div style={{ flex: 1, color: dark ? "#fca5a5" : "#991b1b" }}>
+                <strong style={{ display: "block", marginBottom: 2 }}>لم يتم اختيار تفضيلات كافية</strong>
+                التقديم التلقائي لا يعمل حتى تختار 3 مسميات وظيفية على الأقل في{" "}
+                <button onClick={() => router.push("/portal/preferences")} style={{
+                  background: "transparent", border: "none", cursor: "pointer",
+                  color: "#dc2626", fontWeight: 700, textDecoration: "underline",
+                  padding: 0, fontFamily: "inherit", fontSize: 13,
+                }}>التفضيلات</button>
+              </div>
+              <button onClick={() => router.push("/portal/preferences")} style={{
+                padding: "8px 16px", borderRadius: 10, border: "none",
+                background: "#dc2626", color: "#fff", fontSize: 12, fontWeight: 700,
+                cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+              }}>
+                اختر المسميات
+              </button>
+            </div>
+          )}
 
           <PushPermissionBanner />
           {children}
