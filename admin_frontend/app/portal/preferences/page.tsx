@@ -188,29 +188,49 @@ export default function PreferencesPage() {
             <div style={{ background:t.surface, border:`1px solid ${t.border}`, borderRadius:16, overflow:"hidden", marginBottom:20 }}>
               {filteredCustom.length === 0 ? (
                 <p style={{ color:t.text3, textAlign:"center", padding:"30px 20px", fontSize:13 }}>لا توجد نتائج</p>
-              ) : filteredCustom.map((field, i) => {
-                const selected = selectedIds.has(field.id);
-                return (
-                  <button key={field.id} onClick={() => toggleField(field.id)} style={{
-                    display:"flex", alignItems:"center", justifyContent:"space-between",
-                    width:"100%", padding:"14px 16px",
-                    background: selected ? t.purpleBg : "transparent",
-                    border:"none",
-                    borderBottom: i < filteredCustom.length-1 ? `1px solid ${t.border}` : "none",
-                    cursor:"pointer", textAlign:"right", fontFamily:"inherit",
-                  }}>
-                    <span style={{ fontSize:14, fontWeight:selected?600:400, color:selected?t.purple:t.text }}>{field.name_ar}</span>
+              ) : (() => {
+                // Group by category
+                const grouped: Record<string, typeof filteredCustom> = {};
+                for (const f of filteredCustom) {
+                  const cat = f.category || "أخرى";
+                  if (!grouped[cat]) grouped[cat] = [];
+                  grouped[cat].push(f);
+                }
+                return Object.entries(grouped).map(([cat, items]) => (
+                  <div key={cat}>
                     <div style={{
-                      width:22, height:22, borderRadius:7, flexShrink:0,
-                      border:`1.5px solid ${selected ? "#7c3aed" : t.border}`,
-                      background: selected ? "#7c3aed" : "transparent",
-                      display:"flex", alignItems:"center", justifyContent:"center",
+                      padding:"10px 16px", fontSize:12, fontWeight:700,
+                      color: t.text3, background: dark ? "#0a0a0a" : "#f9f9f9",
+                      borderBottom:`1px solid ${t.border}`,
                     }}>
-                      {selected && <CheckCircle size={13} strokeWidth={2.5} color="#fff"/>}
+                      {cat}
                     </div>
-                  </button>
-                );
-              })}
+                    {items.map((field, i) => {
+                      const selected = selectedIds.has(field.id);
+                      return (
+                        <button key={field.id} onClick={() => toggleField(field.id)} style={{
+                          display:"flex", alignItems:"center", justifyContent:"space-between",
+                          width:"100%", padding:"14px 16px",
+                          background: selected ? t.purpleBg : "transparent",
+                          border:"none",
+                          borderBottom: i < items.length-1 ? `1px solid ${t.border}` : "none",
+                          cursor:"pointer", textAlign:"right", fontFamily:"inherit",
+                        }}>
+                          <span style={{ fontSize:14, fontWeight:selected?600:400, color:selected?t.purple:t.text }}>{field.name_ar}</span>
+                          <div style={{
+                            width:22, height:22, borderRadius:7, flexShrink:0,
+                            border:`1.5px solid ${selected ? "#7c3aed" : t.border}`,
+                            background: selected ? "#7c3aed" : "transparent",
+                            display:"flex", alignItems:"center", justifyContent:"center",
+                          }}>
+                            {selected && <CheckCircle size={13} strokeWidth={2.5} color="#fff"/>}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ));
+              })()}
             </div>
 
 
