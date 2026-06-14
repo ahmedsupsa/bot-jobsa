@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { extractToken, verifyToken } from "@/lib/auth";
 import { tg } from "@/lib/telegram";
+import { extractTextWithOcr } from "@/lib/cv-ocr";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -77,9 +78,17 @@ export async function POST(req: Request) {
     if (ext === "pdf") {
       cv_parsed_text = await extractTextFromPdf(buffer);
       console.log(cv_parsed_text
-        ? `[cv-upload] ✅ استُخرج النص: ${cv_parsed_text.length} حرف`
-        : "[cv-upload] ⚠️ pdf-parse لم يستخرج نصاً"
+        ? `[cv-upload] ✅ نص من pdf-parse: ${cv_parsed_text.length} حرف`
+        : "[cv-upload] ⚠️ pdf-parse لم يستخرج نصاً — جرب OCR"
       );
+
+      if (!cv_parsed_text || cv_parsed_text.trim().length < 100) {
+        const ocrText = await extractTextWithOcr(buffer);
+        if (ocrText && ocrText.length > 50) {
+          cv_parsed_text = ocrText;
+          console.log(`[cv-upload] ✅ OCR استخرج: ${ocrText.length} حرف`);
+        }
+      }
 
       if (cv_parsed_text) {
         const txt = cv_parsed_text.trim();
@@ -91,7 +100,6 @@ export async function POST(req: Request) {
         if (txt.length < 100) return rejectCv("too_short", "الملف لا يحتوي على نص كافٍ — تأكد أن الملف سيرة ذاتية بصيغة PDF نصية (غير مصورة)");
         if (lineCount < 5) return rejectCv("too_few_lines", "الملف يبدو فارغاً أو غير قابل للقراءة — تأكد أن السيرة الذاتية PDF نصية وليست صورة ممسوحة ضوئياً");
         if (!hasCvKeywords && !hasPersonalInfo) return rejectCv("not_a_cv", "هذا الملف لا يبدو سيرة ذاتية — يرجى رفع سيرتك الذاتية الحقيقية (CV) بصيغة PDF");
-        // كشف السير اللي محتواها "لا يوجد" أو غير مفيد
         const emptyPattern = /لا يوجد/g;
         const emptyCount = (txt.match(emptyPattern) || []).length;
         if (emptyCount > 3) return rejectCv("empty_cv", "السيرة الذاتية لا تحتوي على بيانات حقيقية — يرجى رفع سيرة ذاتية مكتملة");
