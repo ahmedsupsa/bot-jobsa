@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-server";
 import { extractToken, verifyToken } from "@/lib/auth";
-import { parseCvText, matchCategory } from "@/lib/cv-parser";
+import { parseCvWithAI } from "@/lib/cv-ai-parser";
 
 export async function POST(req: Request) {
   const token = extractToken(req);
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     }, { status: 400 });
   }
 
-  const profile = parseCvText(cv.cv_parsed_text);
+  const profile = await parseCvWithAI(cv.cv_parsed_text);
 
   const toSave: Record<string, any> = {
     ...profile,
