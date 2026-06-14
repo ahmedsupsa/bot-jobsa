@@ -5,7 +5,7 @@ import { PortalShell } from "@/components/portal-shell";
 import { useTheme } from "@/contexts/theme-context";
 import { portalFetch, clearToken, getToken } from "@/lib/portal-auth";
 import {
-  User, Phone, MapPin, Calendar, Mail, CreditCard, Send,
+  User, Phone, Calendar, Mail, CreditCard, Send,
   CheckCircle, XCircle, Loader2, Pencil, Save, X,
   LogOut, Trash2, FileDown, Receipt, Award, Plus, GraduationCap,
   ShieldCheck, BookOpen, ClipboardList, BadgeCheck, Eye, ChevronDown,
@@ -13,7 +13,7 @@ import {
 import { TEMPLATE_META, TEMPLATE_IDS, getTemplatePreview, getTemplateIcon } from "./template-previews";
 
 interface UserData {
-  full_name: string; phone: string; age: number | null; city: string; gender: string;
+  full_name: string; phone: string; age: number | null; gender: string;
   subscription_active: boolean; days_left: number; subscription_ends_at: string;
   applications_count: number; email: string; sender_email_alias: string;
   template_type: string;
@@ -35,11 +35,7 @@ const CERT_TYPES: { value: CertType; label: string; icon: React.ReactNode }[] = 
   { value: "other",       label: "اعتماد آخر",           icon: <GraduationCap size={13} /> },
 ];
 
-const CITIES = [
-  "الرياض", "جدة", "مكة المكرمة", "المدينة المنورة", "الدمام", "الخبر", "الظهران",
-  "الأحساء", "الطائف", "تبوك", "بريدة", "خميس مشيط", "حائل", "الجبيل", "نجران",
-  "أبها", "ينبع", "الخرج", "القطيف", "عرعر", "سكاكا", "جازان", "الباحة",
-];
+
 
 export default function AccountPage() {
   const router = useRouter();
@@ -53,7 +49,6 @@ export default function AccountPage() {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
-  const [editCity, setEditCity] = useState("");
   const [editAge, setEditAge] = useState("");
   const [editGender, setEditGender] = useState("male");
   const [saving, setSaving] = useState(false);
@@ -191,7 +186,6 @@ export default function AccountPage() {
     if (!user) return;
     setEditName(user.full_name);
     setEditPhone(user.phone);
-    setEditCity(user.city);
     setEditAge(user.age ? String(user.age) : "");
     setEditGender(user.gender || "male");
     setMsg(null); setEditing(true);
@@ -204,7 +198,7 @@ export default function AccountPage() {
     try {
       const res = await portalFetch("/me", {
         method: "PATCH",
-        body: JSON.stringify({ full_name: editName.trim(), phone: editPhone.trim(), city: editCity.trim(), age: editAge ? parseInt(editAge) : null, gender: editGender }),
+        body: JSON.stringify({ full_name: editName.trim(), phone: editPhone.trim(), age: editAge ? parseInt(editAge) : null, gender: editGender }),
       });
       const d = await res.json();
       if (res.ok) { setMsg({ text: "تم حفظ البيانات بنجاح ✓", type: "ok" }); await load(); setEditing(false); }
@@ -317,11 +311,6 @@ export default function AccountPage() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <h1 style={{ color: t.text, fontSize: 22, fontWeight: 800, margin: "0 0 4px" }}>{user.full_name}</h1>
               <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-                {user.city && (
-                  <span style={{ color: t.text3, fontSize: 13, display: "flex", alignItems: "center", gap: 4 }}>
-                    <MapPin size={12} strokeWidth={1.5} /> {user.city}
-                  </span>
-                )}
                 {user.age && (
                   <span style={{ color: t.text3, fontSize: 13, display: "flex", alignItems: "center", gap: 4 }}>
                     <Calendar size={12} strokeWidth={1.5} /> {user.age} سنة
@@ -435,7 +424,6 @@ export default function AccountPage() {
                   <InfoRow t={t} icon={<User size={13} />} label="الاسم الكامل" value={user.full_name} />
                   <InfoRow t={t} icon={<Phone size={13} />} label="رقم الجوال" value={user.phone || "—"} dir="ltr" />
                   <InfoRow t={t} icon={<Calendar size={13} />} label="العمر" value={user.age ? `${user.age} سنة` : "—"} />
-                  <InfoRow t={t} icon={<MapPin size={13} />} label="المدينة" value={user.city || "—"} />
                   <InfoRow t={t} icon={<User size={13} />} label="الجنس" value={user.gender === "female" ? "أنثى" : "ذكر"} last />
                 </div>
               ) : (
@@ -473,20 +461,10 @@ export default function AccountPage() {
                       ))}
                     </div>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                    <div>
-                      <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 6 }}>المدينة</label>
-                      <select value={editCity} onChange={e => setEditCity(e.target.value)}
-                        style={{ ...inputStyle, appearance: "none", WebkitAppearance: "none" }}>
-                        <option value="">اختر المدينة</option>
-                        {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 6 }}>العمر</label>
-                      <input value={editAge} onChange={e => setEditAge(e.target.value.replace(/\D/g, ""))}
-                        placeholder="25" maxLength={2} dir="ltr" style={inputStyle} />
-                    </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 6 }}>العمر</label>
+                    <input value={editAge} onChange={e => setEditAge(e.target.value.replace(/\D/g, ""))}
+                      placeholder="25" maxLength={2} dir="ltr" style={inputStyle} />
                   </div>
                 </div>
               )}

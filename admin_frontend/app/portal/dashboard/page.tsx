@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 interface UserData {
-  full_name: string; phone: string; city: string;
+  full_name: string; phone: string;
   subscription_active: boolean; days_left: number;
   subscription_ends_at: string; email: string;
   smtp_email: string; applications_count: number;
@@ -207,7 +207,7 @@ export default function Dashboard() {
             <div>
               <h1 style={s.greeting}>مرحباً، {user.full_name.split(" ")[0]}</h1>
               <p style={s.greetingSub}>
-                {user.city}{todayLabel ? ` · ${todayLabel}` : ""}
+                {todayLabel || ""}
               </p>
             </div>
           </div>

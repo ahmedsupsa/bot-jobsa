@@ -60,12 +60,12 @@ function now(): string {
 
 export const tg = {
   // ── مستخدم جديد سجّل ──────────────────────────────────────────────
-  newUser: (name: string, phone: string, city: string) =>
+  newUser: (name: string, phone: string, gender: string) =>
     sendTelegram(
       `👤 <b>مستخدم جديد سجّل</b>\n` +
       `الاسم: ${name}\n` +
       `الجوال: ${phone}\n` +
-      `المدينة: ${city}\n` +
+      `الجنس: ${gender === "female" ? "أنثى" : "ذكر"}\n` +
       `🕐 ${now()}`
     ),
 

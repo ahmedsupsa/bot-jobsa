@@ -17,11 +17,14 @@ export async function POST(req: Request) {
   const code_id = (body.code_id || "").trim();
   const full_name = (body.full_name || "").trim();
   const phone = (body.phone || "").trim();
-  const city = (body.city || "").trim();
+  const gender = body.gender || "";
   const age = body.age ? parseInt(body.age) : null;
 
-  if (!code_id || !full_name || !phone || !city) {
+  if (!code_id || !full_name || !phone || !gender) {
     return NextResponse.json({ error: "جميع الحقول مطلوبة" }, { status: 400 });
+  }
+  if (gender !== "male" && gender !== "female") {
+    return NextResponse.json({ error: "يرجى اختيار الجنس (ذكر / أنثى)" }, { status: 400 });
   }
 
   if (age !== null && age < 17) {
@@ -52,7 +55,7 @@ export async function POST(req: Request) {
     full_name,
     phone,
     age: age || null,
-    city,
+    gender,
   };
 
   let { data: userRows, error: userErr } = await supabase
@@ -72,6 +75,6 @@ export async function POST(req: Request) {
     .eq("id", code_id);
 
   const token = await makeToken(String(user.id));
-  tg.newUser(full_name, phone, city).catch(() => {});
+  tg.newUser(full_name, phone, gender).catch(() => {});
   return NextResponse.json({ status: "ok", token, user_id: String(user.id) });
 }

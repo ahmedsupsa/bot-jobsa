@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Search, Save, User, FileText, Upload, Check, Loader2,
   ChevronDown, ChevronUp, Tags, Calendar, Trash2, KeyRound,
-  Copy, Mail, WifiOff, Eye, X, Phone, MapPin, Clock, Send, Download, Zap, AlertCircle,
+  Copy, Mail, WifiOff, Eye, X, Phone, Clock, Send, Download, Zap, AlertCircle,
 } from "lucide-react";
 
 type UserRow = {
@@ -79,7 +79,7 @@ export default function UsersPage() {
     const s = q.trim().toLowerCase();
     if (!s) return rows;
     return rows.filter((r) =>
-      `${r.full_name} ${r.email} ${r.phone} ${r.city}`.toLowerCase().includes(s)
+      `${r.full_name} ${r.email} ${r.phone}`.toLowerCase().includes(s)
     );
   }, [q, rows]);
 
@@ -138,7 +138,7 @@ export default function UsersPage() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="بحث بالاسم أو الجوال أو المدينة..."
+              placeholder="بحث بالاسم أو الجوال..."
               className="w-full rounded-xl border border-line/70 bg-panel pr-9 pl-3 py-2.5 text-sm placeholder:text-muted2 focus:border-accent/50 focus:outline-none"
             />
           </div>
@@ -234,9 +234,6 @@ function UserGridCard({
           <div className="text-xs text-muted2 flex gap-2 flex-wrap mt-1 items-center">
             {user.phone && (
               <span className="flex items-center gap-1"><Phone size={10} />{user.phone}</span>
-            )}
-            {user.city && (
-              <span className="flex items-center gap-1"><MapPin size={10} />{user.city}</span>
             )}
           </div>
         </div>
@@ -499,7 +496,6 @@ function UserSidePanel({
 
           <Section title="معلومات الحساب">
             <InfoRow icon={<Phone size={13} />} label="الجوال" value={user.phone || "—"} dir="ltr" />
-            <InfoRow icon={<MapPin size={13} />} label="المدينة" value={user.city || "—"} />
             <InfoRow icon={<Mail size={13} />} label="البريد" value={user.email || "—"} dir="ltr" />
             <InfoRow icon={<Clock size={13} />} label="الاشتراك" value={
               user.subscription_ends_at

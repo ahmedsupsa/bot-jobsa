@@ -45,7 +45,6 @@ export async function GET(req: Request) {
     full_name: user.full_name || "",
     phone: user.phone || "",
     age: user.age || null,
-    city: user.city || "",
     gender: user.gender || "male",
     subscription_active,
     subscription_ends_at: ends_at,
@@ -71,7 +70,7 @@ export async function PATCH(req: Request) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 }); }
 
-  const allowed = ["full_name", "phone", "city", "age", "gender"] as const;
+  const allowed = ["full_name", "phone", "age", "gender"] as const;
   const updates: Record<string, unknown> = {};
 
   for (const key of allowed) {

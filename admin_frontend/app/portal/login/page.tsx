@@ -5,7 +5,7 @@ import Image from "next/image";
 import { setToken } from "@/lib/portal-auth";
 import {
   KeyRound, ArrowRight, Loader2,
-  User, Phone, MapPin, Calendar, ChevronRight,
+  User, Phone, Calendar, ChevronRight,
   Mail, Sparkles, ShieldCheck, Zap,
 } from "lucide-react";
 
@@ -17,7 +17,8 @@ export default function PortalLogin() {
   const [value, setValue] = useState("");
   const [codeId, setCodeId] = useState("");
   const [subDays, setSubDays] = useState(30);
-  const [form, setForm] = useState({ full_name: "", phone: "", age: "", city: "" });
+  const [form, setForm] = useState({ full_name: "", phone: "", age: "", gender: "" });
+  const genderRequired = form.gender !== "male" && form.gender !== "female";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -74,7 +75,6 @@ export default function PortalLogin() {
     { key: "full_name", label: "الاسم الكامل", icon: <User size={15} strokeWidth={1.5} /> },
     { key: "phone", label: "رقم الجوال", icon: <Phone size={15} strokeWidth={1.5} />, dir: "ltr" },
     { key: "age", label: "العمر", icon: <Calendar size={15} strokeWidth={1.5} />, type: "number" },
-    { key: "city", label: "المدينة", icon: <MapPin size={15} strokeWidth={1.5} /> },
   ];
 
   const yr = new Date().getFullYear();
@@ -152,10 +152,28 @@ export default function PortalLogin() {
                   </div>
                 ))}
 
+                <div style={{ marginBottom: 14 }}>
+                  <label style={s.label}>الجنس <span style={{ color: "#f87171" }}>*</span></label>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    {(["male", "female"] as const).map(g => (
+                      <button key={g} type="button" onClick={() => setForm(f => ({ ...f, gender: g }))} style={{
+                        flex: 1, padding: "11px", borderRadius: 10,
+                        border: `2px solid ${form.gender === g ? "var(--accent)" : "var(--border2)"}`,
+                        background: form.gender === g ? "var(--accent)" : "transparent",
+                        color: form.gender === g ? "var(--accent-fg)" : "var(--text2)",
+                        fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+                        transition: "all 0.15s",
+                      }}>
+                        {g === "male" ? "ذكر" : "أنثى"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {error && <div style={s.error}>{error}</div>}
 
                 <button style={s.btn} type="submit"
-                  disabled={loading || !form.full_name || !form.phone || !form.city}>
+                  disabled={loading || !form.full_name || !form.phone || genderRequired}>
                   {loading
                     ? <><Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> جاري الإنشاء…</>
                     : <>إنشاء الحساب <ArrowRight size={15} strokeWidth={2} /></>}
