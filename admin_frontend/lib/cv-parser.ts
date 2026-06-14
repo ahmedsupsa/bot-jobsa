@@ -429,16 +429,8 @@ function extractEnglishLevel(text: string): string | undefined {
   );
   const source = levelSection?.[0] || text;
 
-  for (let [re, level] of ENGLISH_LEVELS) {
-    const m = source.match(re);
-    if (m) {
-      if (typeof level === "function") {
-        const result = level(m[0], m[1]);
-        if (result) return result;
-      } else {
-        return level;
-      }
-    }
+  for (const [re, level] of ENGLISH_LEVELS) {
+    if (re.test(source)) return level;
   }
 
   if (/(?:IELTS|TOEFL|STEP)\s*\d/.test(source)) return "Advanced";
