@@ -45,8 +45,8 @@ export async function POST(req: Request) {
     }
 
     const ext = file.name.split(".").pop()?.toLowerCase() || "";
-    if (!["pdf", "jpg", "jpeg", "png"].includes(ext)) {
-      return NextResponse.json({ error: "نوع الملف غير مدعوم (PDF أو صورة فقط)" }, { status: 400 });
+    if (ext !== "pdf") {
+      return NextResponse.json({ error: "يُقبل فقط ملفات PDF — السيرة الذاتية يجب أن تكون بصيغة PDF" }, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());

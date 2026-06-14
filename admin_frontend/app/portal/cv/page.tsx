@@ -173,7 +173,7 @@ export default function CVPage() {
                     <Upload size={14} /> استبدال السيرة
                   </button>
                 </div>
-                <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: "none" }} onChange={handleUpload} disabled={uploading} />
+                <input ref={fileRef} type="file" accept=".pdf" style={{ display: "none" }} onChange={handleUpload} disabled={uploading} />
 
                   {/* ملخص السيرة الذاتية — نسخة احترافية */}
                   <div style={{
@@ -490,7 +490,7 @@ function DropZone({ t, dark, drag, setDrag, uploading, fileRef, handleUpload, ha
       <p style={{ color: t.text, fontSize: 15, fontWeight: 600, margin: "0 0 6px" }}>
         {uploading ? "جاري الرفع…" : "اسحب ملفاً أو اضغط للرفع"}
       </p>
-      <p style={{ color: t.text3, fontSize: 13, margin: 0 }}>PDF · JPG · PNG — حتى 10 ميغابايت</p>
+      <p style={{ color: t.text3, fontSize: 13, margin: 0 }}>PDF فقط — حتى 10 ميغابايت</p>
     </div>
   );
 }
